@@ -29,5 +29,10 @@ from pyworkflow.tests import DataSet
 DataSet(name='reliontomo', folder='reliontomo',
         files={
                'refVol': 'caja72_job30_run_it025_class005.mrc',
-               'mask': 'mascara_cilindro_caja72.mrc'
+               'mask': 'mascara_cilindro_caja72.mrc',
+               'tiltseries': '*.mrcs',
+               'tomograms': '*ali_bin1.mrc',
+               'tlts': '*.tlt',
+               'doseFiles': '*.txt',
+               'dynamoTables': '*.tbl'
         })
