@@ -211,6 +211,89 @@ class TestWorkflowRelionTomo(TestWorkflow):
 
         return protDynamoExtract
 
+    def _classifySubtomograms(self, protExtractSubtomo, protImportRefVol, protImportMask):
+        print(magentaStr("\n==> Classifying subtomograms:"))
+        protClassifSubtomo = self.newProtocol(
+            ProtRelionSubtomoClassif3D,
+            threads=3,
+            mpi=5,
+            inputSubtomograms=getattr(protExtractSubtomo, 'outputSetOfSubtomogram', None),
+            numberOfClasses=1,
+            referenceVolume=getattr(protImportRefVol, 'outputVolume', None),
+            doCTF=False,
+            hasReferenceCTFCorrected=True,
+            ctfMultiplied=True,
+            referenceMask=getattr(protImportMask, 'outputMask', None),
+            pooledSubtomos=10
+        )
+        protClassifSubtomo.setObjLabel('classify subtomograms')
+        protClassifSubtomo = self.launchProtocol(protClassifSubtomo)
+        subTomoClasses = getattr(protClassifSubtomo, 'outputClasses', None)
+        avgSubTomoSet = getattr(protClassifSubtomo, 'outputVolumes', None)
+
+        # Validate output classes
+        self.assertSetSize(subTomoClasses, size=1)
+
+        # Validate output average subtomograms
+        self.assertSetSize(avgSubTomoSet, size=1)
+        self.assertEqual(avgSubTomoSet.getSamplingRate(), self.samplingRate)
+        self.assertEqual(avgSubTomoSet.getDim(), (self.boxSize, self.boxSize, self.boxSize))
+
+        return protClassifSubtomo
+
+    def _refineSubtomograms(self, protExtractSubtomo, protImportRefVol, protImportMask):
+        print(magentaStr("\n==> Refining subtomograms:"))
+        protRefineSubtomo = self.newProtocol(
+            ProtRelionSubtomoRefine3D,
+            threads=3,
+            mpi=5,
+            inputSubtomograms=getattr(protExtractSubtomo, 'outputSetOfSubtomogram', None),
+            numberOfClasses=1,
+            referenceVolume=getattr(protImportRefVol, 'outputVolume', None),
+            doCTF=False,
+            hasReferenceCTFCorrected=True,
+            ctfMultiplied=True,
+            referenceMask=getattr(protImportMask, 'outputMask', None),
+            pooledSubtomos=10,
+            doGpu=True,
+            extraParams='--sigma_tilt 3.667 --sigma_psi 3.667'
+        )
+        protRefineSubtomo.setObjLabel('refine subtomogram')
+        protRefineSubtomo = self.launchProtocol(protRefineSubtomo)
+        subTomoSet = getattr(protRefineSubtomo, 'outputParticles', None)
+        avgSubTomo = getattr(protRefineSubtomo, 'outputVolume', None)
+
+        # Validate output subtomograms
+        self.assertSetSize(subTomoSet, size=150)
+        self.assertEqual(subTomoSet.getSamplingRate(), self.samplingRate)
+        self.assertEqual(subTomoSet.getDim(), (self.boxSize, self.boxSize, self.boxSize))
+
+        # Validate output average subtomogram
+        self.assertEqual(avgSubTomo.getSamplingRate(), self.samplingRate)
+        self.assertEqual(avgSubTomo.getDim(), (self.boxSize, self.boxSize, self.boxSize))
+
+        return protRefineSubtomo
+
+    def _reconstructSubtomograms(self, protExtractSubtomo):
+        print(magentaStr("\n==> Reconstructing subtomograms:"))
+        protReconstructSubtomo = self.newProtocol(
+            ProtRelionSubTomoReconstruct,
+            threads=3,
+            mpi=5,
+            inputSubtomos=getattr(protExtractSubtomo, 'outputSetOfSubtomogram', None),
+
+            maxRes=40
+        )
+        protReconstructSubtomo.setObjLabel('reconstruct subtomograms')
+        protReconstructSubtomo = self.launchProtocol(protReconstructSubtomo)
+        recTomo = getattr(protReconstructSubtomo, 'outputTomogram', None)
+
+        # Validate output average subtomograms
+        self.assertEqual(recTomo.getSamplingRate(), self.samplingRate)
+        self.assertEqual(recTomo.getDim(), (self.boxSize, self.boxSize, self.boxSize))
+
+        return protReconstructSubtomo
+
     def test_workflow(self):
         protImportTomo = self._importTomograms()
         protImportCoords3D = self._importCoordinates3D(protImportTomo)
@@ -220,4 +303,7 @@ class TestWorkflowRelionTomo(TestWorkflow):
         protExtractSubtomo = self._extractSubtomograms(protImportTomo, protEstimateCTF3D)
         protImportRefVol = self._importVolume()
         protImportMask = self._importMask()
-
+        self._classifySubtomograms(protExtractSubtomo, protImportRefVol, protImportMask)
+        self._refineSubtomograms(protExtractSubtomo, protImportRefVol, protImportMask)
+        self. _reconstructSubtomograms(protExtractSubtomo)
+        
