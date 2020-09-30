@@ -30,7 +30,7 @@ jobs:
         pip install setuptools wheel twine
         pip install scipion-pyworkflow 
         pip install scipion-em
-        pip install scipion-em-relion
+        pip install scipion-em-relion==3.0.0b2
     - name: Build and publish
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
