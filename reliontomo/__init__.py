@@ -32,15 +32,3 @@ __version__ = '3.0.0'
 
 class Plugin(relion.Plugin):
     _supportedVersions = [V3_0]
-
-    @classmethod
-    def defineBinaries(cls, env):
-        relion_commands = [('cmake -DGUI=OFF -DCMAKE_INSTALL_PREFIX=./ .', []),
-                           ('make -j %d' % env.getProcessors(),
-                            ['bin/relion_refine'])]
-
-        env.addPackage(RELION, version=V3_0,
-                       url='https://github.com/3dem/relion/archive/3.0.tar.gz',
-                       commands=relion_commands,
-                       updateCuda=True,
-                       default=True)
