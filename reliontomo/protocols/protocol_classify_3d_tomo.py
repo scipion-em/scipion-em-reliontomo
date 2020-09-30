@@ -195,10 +195,10 @@ class ProtRelionSubtomoClassif3D(ProtClassify3D, ProtRelionBaseTomo, ProtTomoBas
     def _updateClass(self, item):
         classId = item.getObjId()
         if classId in self._classesInfo:
-            index, row = self._classesInfo[classId]
+            _, row = self._classesInfo[classId]
             fn = row.rlnReferenceImage + ":mrc"
             item.setAlignment3D()
-            item.getRepresentative().setLocation(index, fn)
+            item.getRepresentative().setLocation(fn)
             item._rlnclassDistribution = params.Float(row.rlnClassDistribution)
             item._rlnAccuracyRotations = params.Float(row.rlnAccuracyRotations)
             item._rlnAccuracyTranslations = params.Float(row.rlnAccuracyTranslations)
