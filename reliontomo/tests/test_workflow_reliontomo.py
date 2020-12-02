@@ -286,7 +286,7 @@ class TestWorkflowRelionTomo(TestWorkflow):
         )
         protReconstructSubtomo.setObjLabel('reconstruct subtomograms')
         protReconstructSubtomo = self.launchProtocol(protReconstructSubtomo)
-        recTomo = getattr(protReconstructSubtomo, 'outputTomogram', None)
+        recTomo = getattr(protReconstructSubtomo, 'outputAvgSubtomogram', None)
 
         # Validate output average subtomograms
         self.assertEqual(recTomo.getSamplingRate(), self.samplingRate)
