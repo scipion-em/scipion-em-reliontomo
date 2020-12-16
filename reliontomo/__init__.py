@@ -32,3 +32,7 @@ __version__ = '3.0.0'
 
 class Plugin(relion.Plugin):
     _supportedVersions = [V3_0]
+
+    @classmethod
+    def defineBinaries(cls, env):
+        pass
