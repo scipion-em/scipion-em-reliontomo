@@ -27,7 +27,7 @@ from reliontomo.contants import V3_0, RELIONTOMO_DEFAULT, RELION
 
 _logo = "relion_logo.png"
 _references = ['Scheres2012a', 'Scheres2012b', 'Kimanius2016', 'Zivanov2018']
-__version__ = '3.0.0'
+__version__ = '3.0.1'
 
 
 class Plugin(relion.Plugin):
