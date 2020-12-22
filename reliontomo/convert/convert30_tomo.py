@@ -33,6 +33,41 @@ from os.path import abspath, join
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from relion.convert import Table
 
+# Star file fields
+TOMO_NAME = 'rlnMicrographName'
+COORD_X = 'rlnCoordinateX'
+COORD_Y = 'rlnCoordinateY'
+COORD_Z = 'rlnCoordinateZ'
+SUBTOMO_NAME = 'rlnImageName'
+CTF_MISSING_WEDGE = 'rlnCtfImage'
+MAGNIFICATION = 'rlnMagnification'
+PIXEL_SIZE = 'rlnDetectorPixelSize'
+ROT = 'rlnAngleRot'
+TILT = 'rlnAngleTilt'
+TILT_PRIOR = 'rlnAngleTiltPrior'
+PSI = 'rlnAnglePsi'
+PSI_PRIOR = 'rlnAnglePsiPrior'
+SHIFTX = 'rlnOriginX'
+SHIFTY = 'rlnOriginY'
+SHIFTZ = 'rlnOriginZ'
+
+RELION_TOMO_LABELS = [TOMO_NAME,
+                      COORD_X,
+                      COORD_Y,
+                      COORD_Z,
+                      SUBTOMO_NAME,
+                      CTF_MISSING_WEDGE,
+                      MAGNIFICATION,
+                      PIXEL_SIZE,
+                      ROT,
+                      TILT,
+                      TILT_PRIOR,
+                      PSI,
+                      PSI_PRIOR,
+                      SHIFTX,
+                      SHIFTY,
+                      SHIFTZ]
+
 
 class Writer(WriterBase):
     """ Helper class to convert from Scipion SetOfImages subclasses
@@ -40,11 +75,11 @@ class Writer(WriterBase):
      interface as the new Writer class.
     """
 
-    def writeSetOfSubtomograms(self, subtomoSet, subtomosStar, **kwargs):
+    def writeSetOfSubtomograms(self, subtomoSet, subtomosStar, isPysegPosRec=False, **kwargs):
         currentTomo = ''
         MRC = 'mrc'
         ih = ImageHandler()
-        tomoTable = self._createStarTomoTable()
+        tomoTable = self._createStarTomoTable(isPysegPosRec)
         tmpDir = pwutils.getParentFolder(subtomosStar)
         for subtomo in subtomoSet:
             if pwutils.getExt(subtomo.getFileName()) != '.' + MRC:
@@ -69,22 +104,41 @@ class Writer(WriterBase):
             rlnOriginX = shifts[0]
             rlnOriginY = shifts[1]
             rlnOriginZ = shifts[2]
+            rlnTiltPrior = subtomo._tiltPriorAngle.get() if hasattr(subtomo, '_tiltPriorAngle') else rlnAngleTilt
+            rlnTiltPsi = subtomo._psiPriorAngle.get() if hasattr(subtomo, '_psiPriorAngle') else rlnAnglePsi
             # Add row to the table which will be used to generate the STAR file
-            tomoTable.addRow(rlnMicrographName,
-                             rlnCoordinateX,
-                             rlnCoordinateY,
-                             rlnCoordinateZ,
-                             rlnImageName,
-                             rlnCtfImage,
-                             rlnMagnification,
-                             rlnDetectorPixelSize,
-                             rlnAngleRot,
-                             rlnAngleTilt,
-                             rlnAnglePsi,
-                             rlnOriginX,
-                             rlnOriginY,
-                             rlnOriginZ
-                             )
+            fieldsToAdd = [rlnMicrographName,
+                           rlnCoordinateX,
+                           rlnCoordinateY,
+                           rlnCoordinateZ,
+                           rlnImageName,
+                           rlnCtfImage,
+                           rlnMagnification,
+                           rlnDetectorPixelSize,
+                           rlnAngleRot,
+                           rlnAngleTilt,
+                           rlnTiltPrior,
+                           rlnAnglePsi,
+                           rlnTiltPsi,
+                           rlnOriginX,
+                           rlnOriginY,
+                           rlnOriginZ]
+            if isPysegPosRec:
+                fieldsToAdd = [rlnMicrographName,
+                              rlnCoordinateX,
+                              rlnCoordinateY,
+                              rlnCoordinateZ,
+                              rlnImageName,
+                              rlnCtfImage,
+                              rlnAngleRot,
+                              rlnAngleTilt,
+                              rlnAnglePsi,
+                              rlnOriginX,
+                              rlnOriginY,
+                              rlnOriginZ]
+
+            tomoTable.addRow(*fieldsToAdd)
+
         # Write the STAR file
         if relion.Plugin.IS_30():
             tomoTable.write(subtomosStar)
@@ -97,22 +151,25 @@ class Writer(WriterBase):
         #                 ' --i %s --o %s' % (tmpTable, starFile))
 
     @ staticmethod
-    def _createStarTomoTable():
-        return Table(columns=['rlnMicrographName',
-                              'rlnCoordinateX',
-                              'rlnCoordinateY',
-                              'rlnCoordinateZ',
-                              'rlnImageName',
-                              'rlnCtfImage',
-                              'rlnMagnification',
-                              'rlnDetectorPixelSize',
-                              'rlnAngleRot',
-                              'rlnAngleTilt',
-                              'rlnAnglePsi',
-                              'rlnOriginX',
-                              'rlnOriginY',
-                              'rlnOriginZ',
-                              ])
+    def _createStarTomoTable(isPysegPosRec):
+
+        cols = RELION_TOMO_LABELS
+        # Pyseg post-rec only works if the magnification, pixel size and the prior angles aren't
+        # present in the star file
+        if isPysegPosRec:
+            cols = [TOMO_NAME,
+                    COORD_X,
+                    COORD_Y,
+                    COORD_Z,
+                    SUBTOMO_NAME,
+                    CTF_MISSING_WEDGE,
+                    ROT,
+                    TILT,
+                    PSI,
+                    SHIFTX,
+                    SHIFTY,
+                    SHIFTZ]
+        return Table(columns=cols)
 
     @ staticmethod
     def _getCTFFileFromSubtomo(subtomo):

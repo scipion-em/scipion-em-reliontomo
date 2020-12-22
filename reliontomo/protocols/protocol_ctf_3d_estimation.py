@@ -30,7 +30,7 @@ from relion.convert import Table
 from os.path import join, abspath
 import pyworkflow.utils.path as pwutils
 from pwem.protocols import EMProtocol
-from pyworkflow.protocol import params, StringParam, EnumParam, String
+from pyworkflow.protocol import params, StringParam, EnumParam, String, IntParam
 import numpy as np
 from operator import sub
 import math
@@ -92,6 +92,11 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                            "NOTE: wildcards and special characters "
                            "('*', '?', '#', ':', '%') cannot appear in the "
                            "actual path.")
+        form.addParam('boxSize', IntParam,
+                      label='Box Size',
+                      important=True,
+                      allowsNull=False,
+                      help='Perform a 3D reconstruction from 2D CTF-images, with the given size in pixels')
         group = form.addGroup('CTF Estimation Mode')
         group.addParam('ctf3dMode', EnumParam,
                        choices=self._getImportChoices(),
@@ -130,7 +135,7 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
 
     def reconstructCtf3DStep(self):
         sRate = self.tsSet.getSamplingRate()
-        boxSize = self.coordSet.getBoxSize()
+        boxSize = self.boxSize.get()
         program = "relion_reconstruct"
 
         for tsExt in self.tsExpandedList:
@@ -249,7 +254,8 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
             tsId = ts.getTsId().replace('TS_', '')
             remTS -= 1
             for doseFile in matches:
-                if tsId in doseFile:
+                doseBaseName = pwutils.removeBaseExt(doseFile)
+                if tsId in doseBaseName or doseBaseName in tsId:
                     # Get the corresponding subtomograms coordinates
                     coordList = [coord.clone() for coord in self.coordSet.iterCoordinates(volume=tomoList[ind])]
                     # Add to the TS Expanded list
