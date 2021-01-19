@@ -138,6 +138,7 @@ class TestWorkflowRelionTomo(TestWorkflow):
             inputCTFTiltSeries=getattr(protTSCtffind, 'outputTiltSeries', None),
             doseFilesPath=self.ds.getPath(),
             filesPattern='*ExpDose.txt',
+            boxSize=72,
             ctf3dMode=CTF3D_PER_SUBVOLUME,
         )
         protEstimateCTF3D.setObjLabel('Estimate CTF 3D')
