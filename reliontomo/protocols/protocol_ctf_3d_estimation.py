@@ -35,6 +35,7 @@ import numpy as np
 from operator import sub
 import math
 from pwem.emlib.image import ImageHandler
+from reliontomo.contants import V30_VALIDATION_MSG
 
 CTFDIRBASENAME = 'Ctf3D'
 CTF3D_PER_VOLUME = 0
@@ -61,10 +62,6 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
         self.tsExpandedList = []
         self.initialized = False
         self.ctfMRCFileList = []
-
-    # @classmethod
-    # def isDisabled(cls):
-    #     return Plugin.IS_30()
 
     # --------------------------- DEFINE param functions --------------------------------------------
     def _defineParams(self, form):
@@ -179,6 +176,8 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
         return summary message for NORMAL EXECUTION.
         """
         validateMsgs = self._initialize()
+        if not Plugin.IS_30():
+            validateMsgs.append(V30_VALIDATION_MSG)
         return validateMsgs
 
     def _summary(self):

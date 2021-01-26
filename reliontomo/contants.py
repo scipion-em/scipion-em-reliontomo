@@ -25,6 +25,10 @@
 
 RELION = 'relion'
 V3_0 = '3.0'
+V30_VALIDATION_MSG = 'This version of Reliontomo plugin requires Relion 3.0. Please install it if necessary and set ' \
+                     'variable RELIONTOMO_HOME in scipion.conf and pass it when launching scipion3:' \
+                     ' ./scipion3 --config [path_to_scipion.conf].'
+RELIONTOMO_HOME = 'RELIONTOMO_HOME'
 RELIONTOMO_DEFAULT_VERSION = V3_0
 RELIONTOMO_DEFAULT = RELION + '-' + RELIONTOMO_DEFAULT_VERSION
 

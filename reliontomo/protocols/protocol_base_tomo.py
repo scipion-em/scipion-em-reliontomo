@@ -36,10 +36,10 @@ from pwem.protocols import EMProtocol
 from pyworkflow.protocol.constants import LEVEL_ADVANCED
 from pyworkflow.utils.path import cleanPath
 
-import relion
+from reliontomo.contants import V30_VALIDATION_MSG
 from relion.convert import convertBinaryVol, MASK_FILL_ZERO, Table
 from relion import ANGULAR_SAMPLING_LIST
-
+from reliontomo import Plugin
 from reliontomo.convert import writeSetOfSubtomograms
 
 
@@ -496,6 +496,7 @@ class ProtRelionBaseTomo(EMProtocol):
     # --------------------------- INSERT steps functions --------------------------------------------
 
     def _insertAllSteps(self):
+
         self._initialize()
         self._insertFunctionStep('convertInputStep')
         self._insertRelionStep()
@@ -539,6 +540,8 @@ class ProtRelionBaseTomo(EMProtocol):
     # --------------------------- INFO functions --------------------------------------------
     def _validate(self):
         errors = []
+        if not Plugin.IS_30():
+            errors.append(V30_VALIDATION_MSG)
         if self.doContinue:
             continueProtocol = self.continueRun.get()
             if (continueProtocol is not None and
@@ -821,5 +824,3 @@ class ProtRelionBaseTomo(EMProtocol):
     def _getCTFFileFromSubtomo(subtomo):
         return subtomo.getCoordinate3D()._3dcftMrcFile.get()
 
-    def IS_GT30(self):
-        return relion.Plugin.IS_GT30()
