@@ -28,7 +28,7 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         EnumParam, IntParam, LEVEL_ADVANCED)
 
 from pwem.protocols import ProtReconstruct3D
-from tomo.objects import Tomogram
+from tomo.objects import Tomogram, AverageSubTomogram
 from relion import Plugin
 
 from reliontomo.convert import writeSetOfSubtomograms
@@ -151,11 +151,11 @@ class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
 
     def createOutputStep(self):
         imgSet = self.inputSubtomos.get()
-        volume = Tomogram()
+        volume = AverageSubTomogram()
         volume.setFileName(self._getFileName(self.outTomoName))
         volume.setSamplingRate(imgSet.getSamplingRate())
         
-        self._defineOutputs(outputTomogram=volume)
+        self._defineOutputs(outputAvgSubtomogram=volume)
         self._defineSourceRelation(self.inputSubtomos, volume)
     
     # -------------------------- INFO functions -------------------------------

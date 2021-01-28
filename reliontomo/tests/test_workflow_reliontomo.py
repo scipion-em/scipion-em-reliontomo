@@ -138,6 +138,7 @@ class TestWorkflowRelionTomo(TestWorkflow):
             inputCTFTiltSeries=getattr(protTSCtffind, 'outputTiltSeries', None),
             doseFilesPath=self.ds.getPath(),
             filesPattern='*ExpDose.txt',
+            boxSize=72,
             ctf3dMode=CTF3D_PER_SUBVOLUME,
         )
         protEstimateCTF3D.setObjLabel('Estimate CTF 3D')
@@ -286,7 +287,7 @@ class TestWorkflowRelionTomo(TestWorkflow):
         )
         protReconstructSubtomo.setObjLabel('reconstruct subtomograms')
         protReconstructSubtomo = self.launchProtocol(protReconstructSubtomo)
-        recTomo = getattr(protReconstructSubtomo, 'outputTomogram', None)
+        recTomo = getattr(protReconstructSubtomo, 'outputAvgSubtomogram', None)
 
         # Validate output average subtomograms
         self.assertEqual(recTomo.getSamplingRate(), self.samplingRate)
