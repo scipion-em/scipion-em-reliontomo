@@ -22,10 +22,8 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-import os
 import relion
-import pyworkflow.utils as pwutils
-from reliontomo.contants import V3_0, RELIONTOMO_HOME
+from reliontomo.contants import V3_0, RELIONTOMO_HOME, RELIONTOMO_DEFAULT
 
 _logo = "relion_logo.png"
 _references = ['Scheres2012a', 'Scheres2012b', 'Kimanius2016', 'Zivanov2018']
@@ -35,6 +33,11 @@ __version__ = '3.0.1'
 class Plugin(relion.Plugin):
     _supportedVersions = [V3_0]
     _homeVar = RELIONTOMO_HOME
+    _pathVars = [RELIONTOMO_HOME]
+
+    @classmethod
+    def _defineVariables(cls):
+        cls._defineEmVar(RELIONTOMO_HOME, RELIONTOMO_DEFAULT)
 
     @classmethod
     def defineBinaries(cls, env):
@@ -42,5 +45,5 @@ class Plugin(relion.Plugin):
 
     @classmethod
     def IS_30(cls):
-        environ = pwutils.Environ(os.environ)
-        return 'relion-3.0' in environ[RELIONTOMO_HOME]
+        return RELIONTOMO_DEFAULT in cls.getVar(RELIONTOMO_HOME)
+
