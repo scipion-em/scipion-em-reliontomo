@@ -29,10 +29,9 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
 
 from pwem.protocols import ProtReconstruct3D
 from tomo.objects import Tomogram, AverageSubTomogram
-from relion import Plugin
-
+from reliontomo import Plugin
 from reliontomo.convert import writeSetOfSubtomograms
-
+from reliontomo.contants import V30_VALIDATION_MSG
 
 class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
     """ This protocol reconstructs a volume using Relion.
@@ -161,7 +160,8 @@ class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
         errors = []
-
+        if not Plugin.IS_30():
+            errors.append(V30_VALIDATION_MSG)
         return errors
     
     def _summary(self):

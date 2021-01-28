@@ -82,7 +82,7 @@ class Writer(WriterBase):
         tomoTable = self._createStarTomoTable(isPysegPosRec)
         tmpDir = pwutils.getParentFolder(subtomosStar)
         for subtomo in subtomoSet:
-            if pwutils.getExt(subtomo.getFileName()) != '.' + MRC:
+            if pwutils.getExt(subtomo.getFileName().replace(':mrc', '')) != '.' + MRC:
                 mrcDir = join(tmpDir, pwutils.removeBaseExt(subtomo.getVolName()))
                 if currentTomo != subtomo.getVolName():
                     mkdir(mrcDir)
@@ -140,15 +140,7 @@ class Writer(WriterBase):
             tomoTable.addRow(*fieldsToAdd)
 
         # Write the STAR file
-        if relion.Plugin.IS_30():
-            tomoTable.write(subtomosStar)
-        # else:
-        #     tmpTable = self._getTmpPath('tbl.star')
-        #     tomoTable.write(tmpTable)
-        #     # Re-write the star file as expected by the current version of Relion, if necessary
-        #     starFile = abspath(subtomosStar)
-        #     self.runJob('relion_convert_star',
-        #                 ' --i %s --o %s' % (tmpTable, starFile))
+        tomoTable.write(subtomosStar)
 
     @ staticmethod
     def _createStarTomoTable(isPysegPosRec):
