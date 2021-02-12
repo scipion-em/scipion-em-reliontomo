@@ -28,7 +28,7 @@ import os
 from os.path import exists
 
 import pyworkflow.tests as pwtests
-from cistem.protocols import ProtTsCtffind
+from imod.protocols import ProtImodCtfEstimation
 from pwem.tests.workflows import TestWorkflow
 from pwem.protocols import ProtImportVolumes, ProtImportMask
 from pyworkflow.utils import magentaStr
@@ -112,30 +112,28 @@ class TestWorkflowRelionTomo(TestWorkflow):
 
         return protImportTS
 
-    def _tSCtffind(self, protImportTS):
+    def _tSCtfEstimateImod(self, protImportTS):
         print(magentaStr("\n==> Calculating the tilt series ctf:"))
-        protTSCtffind = self.newProtocol(
-            ProtTsCtffind,
-            inputTiltSeries=getattr(protImportTS, 'outputTiltSeries', None),
-            boxsize=512
+        protTSCtfImod = self.newProtocol(
+            ProtImodCtfEstimation,
+            inputSetOfTiltSeries=getattr(protImportTS, 'outputTiltSeries', None),
+            angleRange=10
         )
-        protTSCtffind.setObjLabel('calculate TS CTF')
-        protTSCtffind = self.launchProtocol(protTSCtffind)
-        tsSet = getattr(protTSCtffind, 'outputTiltSeries', None)
+        protTSCtfImod.setObjLabel('calculate TS CTF')
+        protTSCtfImod = self.launchProtocol(protTSCtfImod)
+        ctfSeriesSet = getattr(protTSCtfImod, 'outputSetOfCTFTomoSeries', None)
 
         # Validate output tomograms
-        self.assertSetSize(tsSet, size=2)
-        self.assertEqual(tsSet.getSamplingRate(), self.samplingRate)
-        self.assertEqual(tsSet.getDim(), (1854, 1920, 1))
+        self.assertSetSize(ctfSeriesSet, size=2)
 
-        return protTSCtffind
+        return protTSCtfImod
 
-    def _estimateCTF3D(self, protImportCoords3D, protTSCtffind):
+    def _estimateCTF3D(self, protImportCoords3D, protTSCtfImod):
         print(magentaStr("\n==> Estimating the 3D CTF:"))
         protEstimateCTF3D = self.newProtocol(
             ProtRelionEstimateCTF3D,
             inputCoordinates=getattr(protImportCoords3D, 'outputCoordinates', None),
-            inputCTFTiltSeries=getattr(protTSCtffind, 'outputTiltSeries', None),
+            inputSetCTFTomoSeries=getattr(protTSCtfImod, 'outputSetOfCTFTomoSeries', None),
             doseFilesPath=self.ds.getPath(),
             filesPattern='*ExpDose.txt',
             boxSize=72,
@@ -299,8 +297,8 @@ class TestWorkflowRelionTomo(TestWorkflow):
         protImportTomo = self._importTomograms()
         protImportCoords3D = self._importCoordinates3D(protImportTomo)
         protImportTS = self._importTiltSeries()
-        protTSCtffind = self._tSCtffind(protImportTS)
-        protEstimateCTF3D = self._estimateCTF3D(protImportCoords3D, protTSCtffind)
+        protTSCtfEstimationImod = self._tSCtfEstimateImod(protImportTS)
+        protEstimateCTF3D = self._estimateCTF3D(protImportCoords3D, protTSCtfEstimationImod)
         protExtractSubtomo = self._extractSubtomograms(protImportTomo, protEstimateCTF3D)
         protImportRefVol = self._importVolume()
         protImportMask = self._importMask()
