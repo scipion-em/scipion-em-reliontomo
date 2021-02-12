@@ -71,11 +71,11 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                       important=True,
                       pointerClass='SetOfCoordinates3D',
                       help='Select a set of subtomogram coordinates.')
-        form.addParam('inputCTFTiltSeries', params.PointerParam,
-                      label='Tilt series',
+        form.addParam('inputSetCTFTomoSeries', params.PointerParam,
+                      label='CTF tomo series',
                       important=True,
-                      pointerClass='SetOfTiltSeries',
-                      help='Select a set of tilt series (ctf estimated).')
+                      pointerClass='SetOfCTFTomoSeries',
+                      help='Select a set of CTF tomo series.')
         form.addParam('doseFilesPath', params.PathParam,
                       label="Dose files directory",
                       important=True,
@@ -193,16 +193,9 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
         validateMsgs = []
         if not self.initialized:
             self.coordSet = self.inputCoordinates.get()
-            self.tsSet = self.inputCTFTiltSeries.get()
+            self.ctfTomoSet = self.inputSetCTFTomoSeries.get()
+            self.tsSet = self.ctfTomoSet.getSetOfTiltSeries()
             self.EstimationMode = self.ctf3dMode.get()
-
-            # Check if the CTF has been estimated for the tilt images in the set introduced
-            # (Check the first tilt image of the first tilt series of the set, because the _hastCTF attribute
-            # is only updated to True in the tilt images and not in the tilt series or set the tilt series, as
-            # it should be. Thus, it is assumed that if the first tilt image of the first tilt series in the set
-            # has CTF, all the rest will be the same)
-            if not self.tsSet.getFirstItem().getFirstItem().hasCTF():
-                validateMsgs.append("Introduced tilt series don't provide a estimated CTF for each tilt image.")
 
             # Assign each dose file to a tilt series
             doseFilesNoOk = self._getDoseFiles()
@@ -228,37 +221,37 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
             return "There are no files matching the pattern %s" % pattern
 
     def _assignDoseFilesToTS(self, matches):
+        msg = ''
         nonMatchingTS = []
         remTS = len(self.tsSet)
         remDose = len(matches)
-        tsList = []
-        for ts in self.tsSet:
-            tsList.append(ts.clone(ignoreAttrs=[]))
-        tomoList = []
-        for tomo in self.coordSet.getPrecedents():
-            tomoList.append(tomo.clone())
+        tsList = [ts.clone(ignoreAttrs=[]) for ts in self.tsSet]
+        ctfSeriesList = [ctfSeries.clone(ignoreAttrs=[]) for ctfSeries in self.ctfTomoSet]
+        tomoList = [tomo.clone() for tomo in self.coordSet.getPrecedents()]
 
-        def getTomoNames(tomoList):
+        def sortTomoNames(tomoList):
             return sorted([tomo for tomo in tomoList.getFileName()])
 
-        def getTsIds(tsList):
-            return sorted([ts.getTsId() for ts in tsList])
+        def sortIds(obj):
+            return obj.getTsId()
 
-        tomoList.sort(key=getTomoNames)
-        tsList.sort(key=getTsIds)
+        tomoList.sort(key=sortTomoNames)
+        tsList.sort(key=sortIds)
+        ctfSeriesList.sort(key=sortIds)
         matches.sort()
-        for ind, ts in enumerate(tsList):
+        counter = 0
+        for ctfs, ts in zip(ctfSeriesList, tsList):
             # This clone command was used to pass the value by value instead of by reference, because
             # all the elements of list self.tsExpandedList were overwritten on each iteration of this loop
             tsId = ts.getTsId().replace('TS_', '')
             remTS -= 1
             for doseFile in matches:
-                doseBaseName = pwutils.removeBaseExt(doseFile)
+                doseBaseName = pwutils.removeBaseExt(doseFile).replace('_ExpDose', '')
                 if tsId in doseBaseName or doseBaseName in tsId:
                     # Get the corresponding subtomograms coordinates
-                    coordList = [coord.clone() for coord in self.coordSet.iterCoordinates(volume=tomoList[ind])]
+                    coordList = [coord.clone() for coord in self.coordSet.iterCoordinates(volume=tomoList[counter])]
                     # Add to the TS Expanded list
-                    self.tsExpandedList.append(ExtendedTS(ts, DoseFile(doseFile), coordList))
+                    self.tsExpandedList.append(ExtendedTS(ts, ctfs, DoseFile(doseFile), coordList))
                     matches.remove(doseFile)
                     remDose -= 1
                     break
@@ -266,9 +259,12 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
             if remTS != remDose:
                 nonMatchingTS.append('\n' + tsId)
 
-        if nonMatchingTS:
-            return "No matching dose file was found for the following TS:%s" % \
-                   ''.join(i for i in nonMatchingTS)
+            counter += 1
+
+        if not self.tsExpandedList:
+            msg += '\nNo matching dose files were found'
+        elif nonMatchingTS:
+            msg += "No matching dose file was found for the following TS:%s" % ''.join(i for i in nonMatchingTS)
 
     def _getProgram(self, program='relion_preprocess'):
         """ Get the program name depending on the MPI use or not. """
@@ -324,6 +320,7 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
         mrcFileList = []
         coordCounter = 0
         ts = tsExp.getTS()
+        ctfs = tsExp.getCTFSeries()
         coordList = tsExp.getCoords()
         tiltList = tsExp.getDoseFileTiltAngles()
         doseList = tsExp.getDoseFileDoses()
@@ -343,8 +340,8 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
             mrcFileList.append(mrc3DStar)
             self.ctfMRCFileList.append(mrc3DStar)
 
-            for ti in ts:
-                avgDefocus = (ti.getCTF().getDefocusU() + ti.getCTF().getDefocusV()) / 2
+            for ti, ctf in zip(ts, ctfs):
+                avgDefocus = (ctf.getDefocusU() + ctf.getDefocusV()) / 2
                 tiltAngleDegs = ti.getTiltAngle()
                 tiltAngleRads = np.deg2rad(tiltAngleDegs)
                 xTomo = float(coord.getX() - (sizeX / 2)) * setTsInfo[SRATE]
@@ -377,6 +374,7 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
         starFileList = []
         mrcFileList = []
         ts = tsExp.getTS()
+        ctfs = tsExp.getCTFSeries()
         tiltList = tsExp.getDoseFileTiltAngles()
         doseList = tsExp.getDoseFileDoses()
         tomoTable = self._createTable()
@@ -390,8 +388,8 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
         mrcFileList.append(mrc3DStar)
         self.ctfMRCFileList.append(mrc3DStar)
 
-        for ti in ts:
-            avgDefocus = (ti.getCTF().getDefocusU() + ti.getCTF().getDefocusV()) / 2
+        for ti, ctf in zip(ts, ctfs):
+            avgDefocus = (ctf.getDefocusU() + ctf.getDefocusV()) / 2
             tiltAngleDegs = ti.getTiltAngle()
             tiltAngleRads = np.deg2rad(tiltAngleDegs)
             # Weighting the 3D CTF model using the tilt dependent scale factor and the dose dependent B-Factor
@@ -429,8 +427,9 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
 # This class represents a expanded version of the tilt series, and adds the additional data
 # required to calculate the CTF3d
 class ExtendedTS:
-    def __init__(self, ts, doseFileObj, coords):
+    def __init__(self, ts, ctfs, doseFileObj, coords):
         self._ts = ts
+        self._ctfs = ctfs
         self._doseFile = doseFileObj
         self._coords = coords
         self._ctfStarFileList = []
@@ -438,6 +437,9 @@ class ExtendedTS:
 
     def getTS(self):
         return self._ts
+
+    def getCTFSeries(self):
+        return self._ctfs
 
     def getDoseFile(self):
         return self._doseFile
