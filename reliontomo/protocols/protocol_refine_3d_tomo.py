@@ -32,6 +32,7 @@ from os.path import abspath, exists, getmtime
 from pwem.objects import FSC, Integer
 from pwem.protocols import ProtRefine3D
 from relion.convert import Table, pwem, convert31
+from reliontomo import Plugin
 
 from tomo.objects import AverageSubTomogram
 from tomo.protocols import ProtTomoBase
@@ -83,7 +84,7 @@ leads to objective and high-quality results.
             if not joinHalves in self.extraParams.get():
                 args['--low_resol_join_halves'] = 40
 
-            if self.IS_GT30() and self.useFinerSamplingFaster:
+            if not Plugin.IS_30() and self.useFinerSamplingFaster:
                 args['--auto_ignore_angles'] = ''
                 args['--auto_resol_angles'] = ''
 

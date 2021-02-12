@@ -280,7 +280,6 @@ class TestWorkflowRelionTomo(TestWorkflow):
             threads=3,
             mpi=5,
             inputSubtomos=getattr(protExtractSubtomo, 'outputSetOfSubtomogram', None),
-
             maxRes=40
         )
         protReconstructSubtomo.setObjLabel('reconstruct subtomograms')
