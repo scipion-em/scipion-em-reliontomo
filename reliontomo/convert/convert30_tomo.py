@@ -28,7 +28,6 @@ import pyworkflow.utils as pwutils
 from relion.convert.convert_base import WriterBase
 from scipion.install.funcs import mkdir
 import numpy as np
-import relion
 from os.path import abspath, join
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from relion.convert import Table

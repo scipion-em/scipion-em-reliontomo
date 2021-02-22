@@ -31,7 +31,7 @@ from os.path import abspath, exists, getmtime
 
 from pwem.objects import FSC, Integer
 from pwem.protocols import ProtRefine3D
-from relion.convert import Table, pwem, convert31
+from relion.convert import Table, convert31
 from reliontomo import Plugin
 
 from tomo.objects import AverageSubTomogram

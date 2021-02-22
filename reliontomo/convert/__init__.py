@@ -1,4 +1,4 @@
-import pwem
+from pwem import ALIGN_PROJ
 from pyworkflow.object import Float, String
 from relion.convert import convert30, Table, relionToLocation
 
@@ -164,7 +164,7 @@ class ClassesLoader:
         if classId in self._classesInfo:
             index, fn, row = self._classesInfo[classId]
             item.setAlignment(self._alignType)
-            if self._alignType == pwem.ALIGN_PROJ:
+            if self._alignType == ALIGN_PROJ:
                 fn += ':mrc'  # mark reference as a MRC volume
             item.getRepresentative().setLocation(index, fn)
             item._rlnclassDistribution = Float(row.rlnClassDistribution)
