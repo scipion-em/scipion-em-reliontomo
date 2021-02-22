@@ -31,7 +31,7 @@ from pwem.protocols import ProtReconstruct3D
 from tomo.objects import Tomogram, AverageSubTomogram
 from reliontomo import Plugin
 from reliontomo.convert import writeSetOfSubtomograms
-from reliontomo.contants import V30_VALIDATION_MSG
+from reliontomo.constants import V30_VALIDATION_MSG
 
 class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
     """ This protocol reconstructs a volume using Relion.

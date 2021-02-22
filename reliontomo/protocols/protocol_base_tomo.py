@@ -36,7 +36,7 @@ from pwem.protocols import EMProtocol
 from pyworkflow.protocol.constants import LEVEL_ADVANCED
 from pyworkflow.utils.path import cleanPath
 
-from reliontomo.contants import V30_VALIDATION_MSG
+from reliontomo.constants import V30_VALIDATION_MSG
 from relion.convert import convertBinaryVol, MASK_FILL_ZERO, Table
 from relion import ANGULAR_SAMPLING_LIST
 from reliontomo import Plugin

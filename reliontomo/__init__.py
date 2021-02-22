@@ -23,7 +23,7 @@
 # *
 # **************************************************************************
 import relion
-from reliontomo.contants import V3_0, RELIONTOMO_HOME, RELIONTOMO_DEFAULT
+from reliontomo.constants import V3_0, RELIONTOMO_HOME, RELIONTOMO_DEFAULT
 
 _logo = "relion_logo.png"
 _references = ['Scheres2012a', 'Scheres2012b', 'Kimanius2016', 'Zivanov2018']

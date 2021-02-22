@@ -35,7 +35,7 @@ import numpy as np
 from operator import sub
 import math
 from pwem.emlib.image import ImageHandler
-from reliontomo.contants import V30_VALIDATION_MSG
+from reliontomo.constants import V30_VALIDATION_MSG
 
 CTFDIRBASENAME = 'Ctf3D'
 CTF3D_PER_VOLUME = 0
