@@ -73,7 +73,7 @@ class TestWorkflowRelionTomo(TestWorkflow):
         print(magentaStr("\n==> Importing data - coordinates 3D:"))
         protImportCoords3D = self.newProtocol(
             ProtImportCoordinates3D,
-            importFrom=2,  # IMPORT_FROM_DYNAMO
+            importFrom=3,  # IMPORT_FROM_DYNAMO
             filesPath=self.ds.getPath(),
             filesPattern='*.tbl',
             samplingRate=self.samplingRate,
