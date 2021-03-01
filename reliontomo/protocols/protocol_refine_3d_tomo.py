@@ -29,6 +29,7 @@ import glob
 from os import remove
 from os.path import abspath, exists, getmtime
 
+from pwem import ALIGN_PROJ
 from pwem.objects import FSC, Integer
 from pwem.protocols import ProtRefine3D
 from relion.convert import Table, convert31
@@ -230,7 +231,7 @@ leads to objective and high-quality results.
             item.setAlignmentProj()
         # with open(dataStar) as fid:
         #     self.dataTable.readStar(fid)
-        self.reader = convert31.Reader(alignType=pwem.ALIGN_PROJ,
+        self.reader = convert31.Reader(alignType=ALIGN_PROJ,
                                        pixelSize=subtomoClassesSet.getSamplingRate())
 
         mdIter = Table.iterRows(dataStar, key='rlnImageName')
