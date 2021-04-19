@@ -97,7 +97,7 @@ class TestWorkflowRelionTomo(TestWorkflow):
             ProtImportTs,
             filesPath=self.ds.getPath(),
             filesPattern='{TS}_bin1_ali_bin1.mrcs',
-            anglesFrom=3,  # ANGLES_FROM_TLT
+            anglesFrom=2,  # ANGLES_FROM_TLT
             magnification=10000,
             samplingRate=self.samplingRate,
         )
