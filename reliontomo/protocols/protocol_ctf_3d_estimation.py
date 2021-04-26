@@ -133,7 +133,7 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
     def reconstructCtf3DStep(self):
         sRate = self.tsSet.getSamplingRate()
         boxSize = self.boxSize.get()
-        program = "relion_reconstruct"
+        program = "relion_reconstruct" if self.numberOfMpi == 1 else "relion_reconstruct_mpi"
 
         for tsExt in self.tsExpandedList:
             coordCounter = 0
