@@ -74,11 +74,11 @@ class Writer(WriterBase):
      interface as the new Writer class.
     """
 
-    def writeSetOfSubtomograms(self, subtomoSet, subtomosStar, isPysegPosRec=False, **kwargs):
+    def writeSetOfSubtomograms(self, subtomoSet, subtomosStar, isPyseg=False, **kwargs):
         currentTomo = ''
         MRC = 'mrc'
         ih = ImageHandler()
-        tomoTable = self._createStarTomoTable(isPysegPosRec)
+        tomoTable = self._createStarTomoTable(isPyseg)
         tmpDir = pwutils.getParentFolder(subtomosStar)
         for subtomo in subtomoSet:
             if pwutils.getExt(subtomo.getFileName().replace(':mrc', '')) != '.' + MRC:
@@ -122,7 +122,7 @@ class Writer(WriterBase):
                            rlnOriginX,
                            rlnOriginY,
                            rlnOriginZ]
-            if isPysegPosRec:
+            if isPyseg:
                 fieldsToAdd = [rlnMicrographName,
                               rlnCoordinateX,
                               rlnCoordinateY,
@@ -142,12 +142,12 @@ class Writer(WriterBase):
         tomoTable.write(subtomosStar)
 
     @ staticmethod
-    def _createStarTomoTable(isPysegPosRec):
+    def _createStarTomoTable(isPyseg):
 
         cols = RELION_TOMO_LABELS
         # Pyseg post-rec only works if the magnification, pixel size and the prior angles aren't
         # present in the star file
-        if isPysegPosRec:
+        if isPyseg:
             cols = [TOMO_NAME,
                     COORD_X,
                     COORD_Y,
