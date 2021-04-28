@@ -32,6 +32,7 @@ from os.path import abspath, exists, getmtime
 from pwem import ALIGN_PROJ
 from pwem.objects import FSC, Integer
 from pwem.protocols import ProtRefine3D
+from pyworkflow import BETA
 from relion.convert import Table, convert31
 from reliontomo import Plugin
 
@@ -49,16 +50,12 @@ parameters of a statistical model are learned from the data,which
 leads to objective and high-quality results.
     """
     _label = '3D subtomogram auto-refine'
+    _devStatus = BETA
     IS_CLASSIFY = False
-
     PREFIXES = ['half1_', 'half2_']
 
     def __init__(self, **args):
         ProtRelionBaseTomo.__init__(self, **args)
-
-    # @classmethod
-    # def isDisabled(cls):
-    #     return Plugin.IS_30()
 
     def _initialize(self):
         """ This function is mean to be called after the

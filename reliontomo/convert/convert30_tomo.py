@@ -81,7 +81,7 @@ class Writer(WriterBase):
         tomoTable = self._createStarTomoTable(isPyseg)
         tmpDir = pwutils.getParentFolder(subtomosStar)
         for subtomo in subtomoSet:
-            if pwutils.getExt(subtomo.getFileName().replace(':mrc', '')) != '.' + MRC:
+            if pwutils.getExt(subtomo.getFileName().replace(':' + MRC, '')) != '.' + MRC:
                 mrcDir = join(tmpDir, pwutils.removeBaseExt(subtomo.getVolName()))
                 if currentTomo != subtomo.getVolName():
                     mkdir(mrcDir)
@@ -93,7 +93,7 @@ class Writer(WriterBase):
             rlnCoordinateX = subtomo.getCoordinate3D().getX()
             rlnCoordinateY = subtomo.getCoordinate3D().getY()
             rlnCoordinateZ = subtomo.getCoordinate3D().getZ()
-            rlnImageName = subtomo.getFileName()
+            rlnImageName = subtomo.getFileName().replace(':' + MRC, '')
             rlnCtfImage = abspath(self._getCTFFileFromSubtomo(subtomo))
             rlnMagnification = magn if magn else 10000 #64000
             rlnDetectorPixelSize = subtomo.getSamplingRate()

@@ -29,6 +29,8 @@ from os import remove
 from os.path import abspath, exists
 
 from pwem.protocols import ProtClassify3D, params
+from pyworkflow import BETA
+
 from .protocol_base_tomo import ProtRelionBaseTomo
 from tomo.protocols import ProtTomoBase
 
@@ -42,14 +44,11 @@ class ProtRelionSubtomoClassif3D(ProtClassify3D, ProtRelionBaseTomo, ProtTomoBas
     leads to objective and high-quality results.
     """
     _label = '3D subtomogram classification'
+    _devStatus = BETA
     IS_CLASSIFY = True
 
     def __init__(self, **args):
         ProtRelionBaseTomo.__init__(self, **args)
-
-    # @classmethod
-    # def isDisabled(cls):
-    #     return Plugin.IS_30()
 
     def _initialize(self):
         """ This function is mean to be called after the

@@ -24,6 +24,8 @@
 # *
 # **************************************************************************
 import glob
+
+from pyworkflow import BETA
 from tomo.protocols import ProtTomoBase
 from reliontomo import Plugin
 from relion.convert import Table
@@ -54,6 +56,7 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
     """ Generates the CTF star and MRC files needed by relion for the CTF3D.
     """
     _label = 'CTF 3D estimation'
+    _devStatus = BETA
     _outputClassName = 'SetOfCoordinates3D'
 
     def __init__(self, **args):

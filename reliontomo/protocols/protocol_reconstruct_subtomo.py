@@ -22,8 +22,8 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-
-from pyworkflow.protocol.params import (PointerParam, FloatParam,  
+from pyworkflow import BETA
+from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         StringParam, BooleanParam,
                                         EnumParam, IntParam, LEVEL_ADVANCED)
 
@@ -41,6 +41,7 @@ class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
     and used as direction projections to reconstruct.
     """
     _label = 'tomo reconstruct'
+    _devStatus = BETA
     inStarName = 'input_particles'
     outTomoName = 'output_volume'
 
