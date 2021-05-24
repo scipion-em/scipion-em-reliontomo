@@ -2,7 +2,7 @@
 Reliontomo plugin
 =================
 
-This plugin provide wrappers around several programs of `RELION <https://www3.mrc-lmb.cam.ac.uk/relion/index.php/Main_Page>`_ software suite for its use in Tomography.
+This plugin provide wrappers around several programs of `RELION <https://www3.mrc-lmb.cam.ac.uk/relion/index.php/Main_Page>`_ software suite (version 3.0) for its use in Tomography.
 
 Installation
 ------------
