@@ -116,8 +116,8 @@ class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
         subset = -1 if self.subset.get() == 0 else self.subset
         params += ' --subset %d' % subset
 
-        if Plugin.IS_GT30():
-            params += ' --class %d' % self.classNum.get()
+        # if Plugin.IS_GT30():
+        params += ' --class %d' % self.classNum.get()
 
         if self.doCTF:
             params += ' --ctf'
