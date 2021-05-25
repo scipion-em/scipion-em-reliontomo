@@ -82,9 +82,13 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                       help='Select a set of CTF tomo series.')
         form.addParam('doseFilesPath', params.PathParam,
                       label="Dose files directory\n(only if not importing from mdoc)",
-                      help="Root directory of the dose files for the tilt series.")
+                      allowsNull=True,
+                      help="Not necessary if the tilt series or tilt series movies contains the dose data. It's "
+                           "the case when the they're imported using the mdoc files. Root directory of the dose "
+                           "files for the tilt series.")
         form.addParam('filesPattern', StringParam,
                       label='Pattern',
+                      allowsNull=True,
                       help="Pattern of the files to be imported.\n\n"
                            "The pattern can contain standard wildcards such as\n"
                            "*, ?, etc, or special ones like ### to mark some\n"
