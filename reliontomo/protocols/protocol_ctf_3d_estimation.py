@@ -65,6 +65,7 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
         self.tsExpandedList = []
         self.initialized = False
         self.ctfMRCFileList = []
+        self._doseFromMdoc = None
 
     # --------------------------- DEFINE param functions --------------------------------------------
     def _defineParams(self, form):
@@ -80,8 +81,7 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                       pointerClass='SetOfCTFTomoSeries',
                       help='Select a set of CTF tomo series.')
         form.addParam('doseFilesPath', params.PathParam,
-                      label="Dose files directory",
-                      important=True,
+                      label="Dose files directory\n(only if not importing from mdoc)",
                       help="Root directory of the dose files for the tilt series.")
         form.addParam('filesPattern', StringParam,
                       label='Pattern',
@@ -97,12 +97,12 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                       important=True,
                       allowsNull=False,
                       help='Perform a 3D reconstruction from 2D CTF-images, with the given size in pixels')
-        group = form.addGroup('CTF Estimation Mode')
+        group = form.addGroup('CTF 3D Estimation Mode')
         group.addParam('ctf3dMode', EnumParam,
                        choices=self._getImportChoices(),
                        default=CTF3D_PER_VOLUME,
                        label='Choose CTF 3D estimation type',
-                       help='CTF 3D can be estimated per volume (faster, usable in first iterations'
+                       help='CTF 3D can be estimated per volume (faster, usable in first iterations '
                             'of the processing procedure) or per subvolume (slower, used for the refinement).')
         form.addParallelSection(threads=3, mpi=1)
 
@@ -200,12 +200,20 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
             self.tsSet = self.ctfTomoSet.getSetOfTiltSeries()
             self.EstimationMode = self.ctf3dMode.get()
 
-            # Assign each dose file to a tilt series
-            doseFilesNoOk = self._getDoseFiles()
-            if doseFilesNoOk:
-                validateMsgs.append(doseFilesNoOk)
-            self.initialized = True
+            # Check if the dose data is currently known (TS were imported from mdoc)
+            self._doseFromMdoc = self._hasDosePerFrame()
+            if not self._doseFromMdoc:
+                # Assign each dose file to a tilt series
+                doseFilesNoOk = self._getDoseFiles()
+                if doseFilesNoOk:
+                    validateMsgs.append(doseFilesNoOk)
+                self.initialized = True
         return validateMsgs
+
+    def _hasDosePerFrame(self):
+        # It's assumed that if the first tilt image of the first tilt series has dose per frame, all the rest of the
+        # tilt series of the set will have that data, too
+        return True if self.tsSet.getFirstItem().getFirstItem().getAcquisition().getDosePerFrame() else False
 
     def _getDoseFiles(self):
         path = self.doseFilesPath.get('').strip()
@@ -321,12 +329,15 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
     def _estimateCTF3DPerSubvolume(self, tsExp, setTsInfo, tsCounter):
         starFileList = []
         mrcFileList = []
+        tiltList = []
+        doseList = []
         coordCounter = 0
         ts = tsExp.getTS()
         ctfs = tsExp.getCTFSeries()
         coordList = tsExp.getCoords()
-        tiltList = tsExp.getDoseFileTiltAngles()
-        doseList = tsExp.getDoseFileDoses()
+        if not self._doseFromMdoc:
+            tiltList = tsExp.getDoseFileTiltAngles()
+            doseList = tsExp.getDoseFileDoses()
         sizeX, _, sizeZ, _ = ImageHandler().getDimensions(tsExp.getTS().getFirstItem().getFileName())
         for coord in coordList:
             tomoTable = self._createTable()
@@ -355,7 +366,10 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                 partDef = avgDefocus + deltaD
                 # Weighting the 3D CTF model using the tilt dependent scale factor and the dose dependent B-Factor
                 tiltScale = math.cos(abs(tiltAngleRads))
-                tiltImgDose = self._getCurrentDose(tiltAngleDegs, tiltList, doseList)
+                if self._doseFromMdoc:
+                    tiltImgDose = ti.getAcquisition().getDosePerFrame()
+                else:
+                    tiltImgDose = self._getCurrentDose(tiltAngleDegs, tiltList, doseList)
                 doseWeight = tiltImgDose * self.bFactor
                 # Add row to table
                 tomoTable.addRow(partDef,
@@ -376,10 +390,13 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
     def _estimateCTF3DPerVolume(self, tsExp, setTsInfo, tsCounter):
         starFileList = []
         mrcFileList = []
+        tiltList = []
+        doseList = []
         ts = tsExp.getTS()
         ctfs = tsExp.getCTFSeries()
-        tiltList = tsExp.getDoseFileTiltAngles()
-        doseList = tsExp.getDoseFileDoses()
+        if not self._doseFromMdoc:
+            tiltList = tsExp.getDoseFileTiltAngles()
+            doseList = tsExp.getDoseFileDoses()
         tomoTable = self._createTable()
         ctf3DStar = self._getCtfFile(ts.getTsId(),
                                      fileExt=CTFSTAR,
@@ -397,7 +414,10 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
             tiltAngleRads = np.deg2rad(tiltAngleDegs)
             # Weighting the 3D CTF model using the tilt dependent scale factor and the dose dependent B-Factor
             tiltScale = math.cos(abs(tiltAngleRads))
-            tiltImgDose = self._getCurrentDose(tiltAngleDegs, tiltList, doseList)
+            if self._doseFromMdoc:
+                tiltImgDose = ti.getAcquisition().getDosePerFrame()
+            else:
+                tiltImgDose = self._getCurrentDose(tiltAngleDegs, tiltList, doseList)
             doseWeight = tiltImgDose * self.bFactor
             # Add row to table
             tomoTable.addRow(avgDefocus,
@@ -409,27 +429,15 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                              0.0,
                              doseWeight,
                              tiltScale)
-        # # Write the corresponding CTF star file
-        # tomoTable.write(ctf3DStar)
 
-        # Write the STAR file
-        # if Plugin.IS_30():
         tomoTable.write(ctf3DStar)
-        # else:
-        #     tmpTable = self._getTmpPath('tbl.star')
-        #     tomoTable.write(tmpTable)
-        #     # Re-write the star file as expected by the current version of Relion, if necessary
-        #     starFile = abspath(ctf3DStar)
-        #     self.runJob('relion_convert_star',
-        #                 ' --i %s --o %s' % (tmpTable, starFile))
-
         self.tsExpandedList[tsCounter].setCTFStarList(starFileList)
         self.tsExpandedList[tsCounter].setCTFMRCList(mrcFileList)
 
 
-# This class represents a expanded version of the tilt series, and adds the additional data
-# required to calculate the CTF3d
 class ExtendedTS:
+    """This class represents a expanded version of the tilt series, and adds the additional data
+    required to calculate the CTF3d"""
     def __init__(self, ts, ctfs, doseFileObj, coords):
         self._ts = ts
         self._ctfs = ctfs
