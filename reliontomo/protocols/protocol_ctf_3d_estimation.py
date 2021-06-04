@@ -113,10 +113,12 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
     # --------------------------- INSERT steps functions --------------------------------------------
     def _insertAllSteps(self):
         self._initialize()
+        program = "relion_reconstruct" if self.numberOfMpi == 1 else "relion_reconstruct_mpi"
         # Insert the steps
         writeDeps = self._insertFunctionStep("writeStarCtf3DStep")
-        recFeps = self._insertFunctionStep("reconstructCtf3DStep", prerequisites=[writeDeps])
-        self._insertFunctionStep('createOutputStep', prerequisites=[recFeps])
+        for tsExt in self.tsExpandedList:
+            self._insertFunctionStep("reconstructCtf3DStep",  program, tsExt, prerequisites=[writeDeps])
+        self._insertFunctionStep('createOutputStep')
 
     # --------------------------- STEPS functions --------------------------------------------
     def writeStarCtf3DStep(self):
@@ -137,23 +139,16 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                 self._estimateCTF3DPerSubvolume(ts, setTsInfo, tsCounter)
             tsCounter += 1
 
-    def reconstructCtf3DStep(self):
-        sRate = self.tsSet.getSamplingRate()
-        boxSize = self.boxSize.get()
-        program = "relion_reconstruct" if self.numberOfMpi == 1 else "relion_reconstruct_mpi"
+    def reconstructCtf3DStep(self, program, tsExt):
+        for ctfStarFile, ctfMRCFile in zip(tsExt.getCTFStarList(), tsExt.getCTFMRCList()):
+            param = {"sampling": self.tsSet.getSamplingRate(),
+                     "ctfStar": abspath(ctfStarFile),
+                     "ctf3D": abspath(ctfMRCFile),
+                     "boxSize": self.boxSize.get()
+                     }
 
-        for tsExt in self.tsExpandedList:
-            coordCounter = 0
-            for ctfStarFile, ctfMRCFile in zip(tsExt.getCTFStarList(), tsExt.getCTFMRCList()):
-                param = {"sampling": sRate,
-                         "ctfStar": abspath(ctfStarFile),
-                         "ctf3D": abspath(ctfMRCFile),
-                         "boxSize": boxSize
-                         }
-
-                args = " --i %(ctfStar)s --o %(ctf3D)s --reconstruct_ctf %(boxSize)d --angpix %(sampling)f"
-                self.runJob(program, args % param) #, env=Plugin.getEnviron())
-                coordCounter += 1
+            args = " --i %(ctfStar)s --o %(ctf3D)s --reconstruct_ctf %(boxSize)d --angpix %(sampling)f"
+            self.runJob(program, args % param, env=Plugin.getEnviron())
 
     def createOutputStep(self):
         out_coords = self._createSetOfCoordinates3D(self.coordSet)  # Create an empty set of micrographs
@@ -214,6 +209,7 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                 if doseFilesNoOk:
                     validateMsgs.append(doseFilesNoOk)
                 self.initialized = True
+        self._store()
         return validateMsgs
 
     def _hasDosePerFrame(self):
