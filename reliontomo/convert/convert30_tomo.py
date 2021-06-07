@@ -33,6 +33,8 @@ from pwem.convert.transformations import translation_from_matrix, euler_from_mat
 from relion.convert import Table
 
 # Star file fields
+from tomo.constants import BOTTOM_LEFT_CORNER
+
 TOMO_NAME = 'rlnMicrographName'
 COORD_X = 'rlnCoordinateX'
 COORD_Y = 'rlnCoordinateY'
@@ -90,9 +92,9 @@ class Writer(WriterBase):
             angles, shifts = self._getTransformInfoFromSubtomo(subtomo)
             magn = subtomo.getAcquisition().getMagnification()
             rlnMicrographName = subtomo.getVolName()
-            rlnCoordinateX = subtomo.getCoordinate3D().getX()
-            rlnCoordinateY = subtomo.getCoordinate3D().getY()
-            rlnCoordinateZ = subtomo.getCoordinate3D().getZ()
+            rlnCoordinateX = subtomo.getCoordinate3D().getX(BOTTOM_LEFT_CORNER)
+            rlnCoordinateY = subtomo.getCoordinate3D().getY(BOTTOM_LEFT_CORNER)
+            rlnCoordinateZ = subtomo.getCoordinate3D().getZ(BOTTOM_LEFT_CORNER)
             rlnImageName = subtomo.getFileName().replace(':' + MRC, '')
             rlnCtfImage = abspath(self._getCTFFileFromSubtomo(subtomo))
             rlnMagnification = magn if magn else 10000 #64000

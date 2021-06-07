@@ -26,6 +26,7 @@
 import glob
 
 from pyworkflow import BETA
+from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.protocols import ProtTomoBase
 from reliontomo import Plugin
 from relion.convert import Table
@@ -64,7 +65,6 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
         self.bFactor = 4  # Info from Relion wiki
         self.tsExpandedList = []
         self.initialized = False
-        self.ctfMRCFileList = []
         self._doseFromMdoc = None
 
     # --------------------------- DEFINE param functions --------------------------------------------
@@ -117,7 +117,9 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
         # Insert the steps
         writeDeps = self._insertFunctionStep("writeStarCtf3DStep")
         for tsExt in self.tsExpandedList:
-            self._insertFunctionStep("reconstructCtf3DStep",  program, tsExt, prerequisites=[writeDeps])
+            for ctfStarFile, ctfMRCFile in zip(tsExt.getCTFStarList(), tsExt.getCTFMRCList()):
+                self._insertFunctionStep("reconstructCtf3DStep",  program, ctfStarFile, ctfMRCFile,
+                                         prerequisites=[writeDeps])
         self._insertFunctionStep('createOutputStep')
 
     # --------------------------- STEPS functions --------------------------------------------
@@ -136,19 +138,17 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
             if self.EstimationMode == CTF3D_PER_VOLUME:
                 self._estimateCTF3DPerVolume(ts, setTsInfo, tsCounter)
             else:
-                self._estimateCTF3DPerSubvolume(ts, setTsInfo, tsCounter)
+                self._estimateCTF3DPerSubvolume(ts, setTsInfo)
             tsCounter += 1
 
-    def reconstructCtf3DStep(self, program, tsExt):
-        for ctfStarFile, ctfMRCFile in zip(tsExt.getCTFStarList(), tsExt.getCTFMRCList()):
-            param = {"sampling": self.tsSet.getSamplingRate(),
-                     "ctfStar": abspath(ctfStarFile),
-                     "ctf3D": abspath(ctfMRCFile),
-                     "boxSize": self.boxSize.get()
-                     }
-
-            args = " --i %(ctfStar)s --o %(ctf3D)s --reconstruct_ctf %(boxSize)d --angpix %(sampling)f"
-            self.runJob(program, args % param, env=Plugin.getEnviron())
+    def reconstructCtf3DStep(self, program, ctfStarFile, ctfMRCFile):
+        param = {"sampling": self.tsSet.getSamplingRate(),
+                 "ctfStar": abspath(ctfStarFile),
+                 "ctf3D": abspath(ctfMRCFile),
+                 "boxSize": self.boxSize.get()
+                 }
+        args = " --i %(ctfStar)s --o %(ctf3D)s --reconstruct_ctf %(boxSize)d --angpix %(sampling)f"
+        self.runJob(program, args % param, env=Plugin.getEnviron())
 
     def createOutputStep(self):
         out_coords = self._createSetOfCoordinates3D(self.coordSet)  # Create an empty set of micrographs
@@ -209,6 +209,39 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                 if doseFilesNoOk:
                     validateMsgs.append(doseFilesNoOk)
                 self.initialized = True
+
+            if self.EstimationMode == CTF3D_PER_VOLUME:
+                for tsExt in self.tsExpandedList:
+                    ts = tsExt.getTS()
+                    ctf3DStar = self._getCtfFile(ts.getTsId(),
+                                                 fileExt=CTFSTAR,
+                                                 ctfMode=CTF3D_PER_VOLUME)
+                    mrc3DStar = self._getCtfFile(ts.getTsId(),
+                                                 fileExt=CTFMRC,
+                                                 ctfMode=CTF3D_PER_VOLUME)
+                    tsExt.setCTFMRCList(mrc3DStar)
+                    tsExt.setCTFStarList(ctf3DStar)
+            else:
+                for tsExt in self.tsExpandedList:
+                    ts = tsExt.getTS()
+                    coordList = tsExt.getCoords()
+                    ctfMRCList = []
+                    ctfStarList = []
+                    for i in range(len(coordList)):
+                        mrc3DStar = self._getCtfFile(ts.getTsId(),
+                                                     coordCounter=i,
+                                                     fileExt=CTFMRC,
+                                                     ctfMode=CTF3D_PER_SUBVOLUME)
+                        ctf3DStar = self._getCtfFile(ts.getTsId(),
+                                                     coordCounter=i,
+                                                     fileExt=CTFSTAR,
+                                                     ctfMode=CTF3D_PER_SUBVOLUME)
+                        ctfMRCList.append(mrc3DStar)
+                        ctfStarList.append(ctf3DStar)
+
+                    tsExt.setCTFMRCList(ctfMRCList)
+                    tsExt.setCTFStarList(ctfStarList)
+
         self._store()
         return validateMsgs
 
@@ -348,41 +381,25 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
         """
         return ['Per volume', 'Per subvolume']
 
-    def _estimateCTF3DPerSubvolume(self, tsExp, setTsInfo, tsCounter):
-        starFileList = []
-        mrcFileList = []
+    def _estimateCTF3DPerSubvolume(self, tsExp, setTsInfo):
         tiltList = []
         doseList = []
-        coordCounter = 0
         ts = tsExp.getTS()
         ctfs = tsExp.getCTFSeries()
-        coordList = tsExp.getCoords()
         if not self._doseFromMdoc:
             tiltList = tsExp.getTiltAngles()
             doseList = tsExp.getDoses()
 
         sizeX, _, sizeZ, _ = ImageHandler().getDimensions(tsExp.getTS().getFirstItem().getFileName())
-        for coord in coordList:
+        for coord, ctf3DStar in zip(tsExp.getCoords(), tsExp.getCTFStarList()):
             tomoTable = self._createTable()
-            ctf3DStar = self._getCtfFile(ts.getTsId(),
-                                         coordCounter=coordCounter,
-                                         fileExt=CTFSTAR,
-                                         ctfMode=CTF3D_PER_SUBVOLUME)
-            mrc3DStar = self._getCtfFile(ts.getTsId(),
-                                         coordCounter=coordCounter,
-                                         fileExt=CTFMRC,
-                                         ctfMode=CTF3D_PER_SUBVOLUME)
-            coordCounter += 1
-            starFileList.append(ctf3DStar)
-            mrcFileList.append(mrc3DStar)
-            self.ctfMRCFileList.append(mrc3DStar)
 
             for ti, ctf in zip(ts, ctfs):
                 avgDefocus = (ctf.getDefocusU() + ctf.getDefocusV()) / 2
                 tiltAngleDegs = ti.getTiltAngle()
                 tiltAngleRads = np.deg2rad(tiltAngleDegs)
-                xTomo = float(coord.getX() - (sizeX / 2)) * setTsInfo[SRATE]
-                zTomo = float(coord.getZ() - (sizeZ / 2)) * setTsInfo[SRATE]
+                xTomo = float(coord.getX(BOTTOM_LEFT_CORNER) - (sizeX / 2)) * setTsInfo[SRATE]
+                zTomo = float(coord.getZ(BOTTOM_LEFT_CORNER) - (sizeZ / 2)) * setTsInfo[SRATE]
                 # Calculating the height difference of the particle from the tilt axis
                 xImg = (xTomo * (math.cos(tiltAngleRads))) + (zTomo * (math.sin(tiltAngleRads)))
                 deltaD = xImg * math.sin(tiltAngleRads)
@@ -404,11 +421,9 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                                  0.0,
                                  doseWeight,
                                  tiltScale)
+
             # Write the corresponding CTF star file
             tomoTable.write(ctf3DStar)
-
-        self.tsExpandedList[tsCounter].setCTFStarList(starFileList)
-        self.tsExpandedList[tsCounter].setCTFMRCList(mrcFileList)
 
     def _estimateCTF3DPerVolume(self, tsExp, setTsInfo, tsCounter):
         starFileList = []
