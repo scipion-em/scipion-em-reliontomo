@@ -26,6 +26,7 @@
 import glob
 
 from pyworkflow import BETA
+from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.protocols import ProtTomoBase
 from reliontomo import Plugin
 from relion.convert import Table
@@ -64,7 +65,9 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
         self.bFactor = 4  # Info from Relion wiki
         self.tsExpandedList = []
         self.initialized = False
+        self._doseFromMdoc = None
         self.ctfMRCFileList = []
+        self.ctfStarFileList = []
 
     # --------------------------- DEFINE param functions --------------------------------------------
     def _defineParams(self, form):
@@ -80,11 +83,14 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                       pointerClass='SetOfCTFTomoSeries',
                       help='Select a set of CTF tomo series.')
         form.addParam('doseFilesPath', params.PathParam,
-                      label="Dose files directory",
-                      important=True,
-                      help="Root directory of the dose files for the tilt series.")
+                      label="Dose files directory\n(only if not importing from mdoc)",
+                      allowsNull=True,
+                      help="Not necessary if the tilt series or tilt series movies contains the dose data. It's "
+                           "the case when the they're imported using the mdoc files. Root directory of the dose "
+                           "files for the tilt series.")
         form.addParam('filesPattern', StringParam,
                       label='Pattern',
+                      allowsNull=True,
                       help="Pattern of the files to be imported.\n\n"
                            "The pattern can contain standard wildcards such as\n"
                            "*, ?, etc, or special ones like ### to mark some\n"
@@ -97,76 +103,68 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                       important=True,
                       allowsNull=False,
                       help='Perform a 3D reconstruction from 2D CTF-images, with the given size in pixels')
-        group = form.addGroup('CTF Estimation Mode')
+        group = form.addGroup('CTF 3D Estimation Mode')
         group.addParam('ctf3dMode', EnumParam,
                        choices=self._getImportChoices(),
                        default=CTF3D_PER_VOLUME,
                        label='Choose CTF 3D estimation type',
-                       help='CTF 3D can be estimated per volume (faster, usable in first iterations'
+                       help='CTF 3D can be estimated per volume (faster, usable in first iterations '
                             'of the processing procedure) or per subvolume (slower, used for the refinement).')
         form.addParallelSection(threads=3, mpi=1)
 
     # --------------------------- INSERT steps functions --------------------------------------------
     def _insertAllSteps(self):
-        self._initialize()
+        program = "relion_reconstruct" if self.numberOfMpi == 1 else "relion_reconstruct_mpi"
         # Insert the steps
         writeDeps = self._insertFunctionStep("writeStarCtf3DStep")
-        recFeps = self._insertFunctionStep("reconstructCtf3DStep", prerequisites=[writeDeps])
-        self._insertFunctionStep('createOutputStep', prerequisites=[recFeps])
+        for ctfStarFile, ctfMRCFile in zip(self.ctfStarFileList, self.ctfMRCFileList):
+            self._insertFunctionStep("reconstructCtf3DStep",  program, ctfStarFile, ctfMRCFile,
+                                     prerequisites=[writeDeps])
+        self._insertFunctionStep('createOutputStep')
 
     # --------------------------- STEPS functions --------------------------------------------
     def writeStarCtf3DStep(self):
-        tsCounter = 0
-        sRate = self.tsSet.getSamplingRate()
-        voltage = self.tsSet.getAcquisition().getVoltage()
-        sphAb = self.tsSet.getAcquisition().getSphericalAberration()
-        ampCn = self.tsSet.getAcquisition().getAmplitudeContrast()
+        tsSet = self.getTSSetFromCTFSeries()
+        sRate = tsSet.getSamplingRate()
+        voltage = tsSet.getAcquisition().getVoltage()
+        sphAb = tsSet.getAcquisition().getSphericalAberration()
+        ampCn = tsSet.getAcquisition().getAmplitudeContrast()
         setTsInfo = {SRATE: sRate,
                      VOLTAGE: voltage,
                      SPHAB: sphAb,
                      AMPCN: ampCn}
-
-        for tsExp in self.tsExpandedList:
-            if self.EstimationMode == CTF3D_PER_VOLUME:
-                self._estimateCTF3DPerVolume(tsExp, setTsInfo, tsCounter)
+        tsList = self.tsExpandedList if self.tsExpandedList else tsSet
+        for ts in tsList:
+            if self.ctf3dMode.get() == CTF3D_PER_VOLUME:
+                self._estimateCTF3DPerVolume(ts, setTsInfo)
             else:
-                self._estimateCTF3DPerSubvolume(tsExp, setTsInfo, tsCounter)
-            tsCounter += 1
+                self._estimateCTF3DPerSubvolume(ts, setTsInfo)
 
-    def reconstructCtf3DStep(self):
-        sRate = self.tsSet.getSamplingRate()
-        boxSize = self.boxSize.get()
-        program = "relion_reconstruct" if self.numberOfMpi == 1 else "relion_reconstruct_mpi"
-
-        for tsExt in self.tsExpandedList:
-            coordCounter = 0
-            for ctfStarFile, ctfMRCFile in zip(tsExt.getCTFStarList(), tsExt.getCTFMRCList()):
-                param = {"sampling": sRate,
-                         "ctfStar": abspath(ctfStarFile),
-                         "ctf3D": abspath(ctfMRCFile),
-                         "boxSize": boxSize
-                         }
-
-                args = " --i %(ctfStar)s --o %(ctf3D)s --reconstruct_ctf %(boxSize)d --angpix %(sampling)f"
-                self.runJob(program, args % param) #, env=Plugin.getEnviron())
-                coordCounter += 1
+    def reconstructCtf3DStep(self, program, ctfStarFile, ctfMRCFile):
+        param = {"sampling": self.getTSSetFromCTFSeries().getSamplingRate(),
+                 "ctfStar": abspath(ctfStarFile),
+                 "ctf3D": abspath(ctfMRCFile),
+                 "boxSize": self.boxSize.get()
+                 }
+        args = " --i %(ctfStar)s --o %(ctf3D)s --reconstruct_ctf %(boxSize)d --angpix %(sampling)f"
+        self.runJob(program, args % param, env=Plugin.getEnviron())
 
     def createOutputStep(self):
-        out_coords = self._createSetOfCoordinates3D(self.coordSet)  # Create an empty set of micrographs
+        out_coords = self._createSetOfCoordinates3D(self.inputCoordinates.get())  # Create an empty set of micrographs
         # Copy all the info of the inputs, then the mrc ctf star file attribute will added
-        out_coords.copyInfo(self.coordSet)
+        out_coords.copyInfo(self.inputCoordinates.get())
         coordCounter = 0
-        if self.EstimationMode == CTF3D_PER_VOLUME:
+        if self.ctf3dMode.get() == CTF3D_PER_VOLUME:
             for tsExp in self.tsExpandedList:
                 coords = tsExp.getCoords()
-                ctfMrc = tsExp.getCTFMRCList()[0]  # Only one element was created for each TS in per volume case
+                ctfMrc = tsExp.getCTFMRCList()
                 for coord in coords:
                     coord.setObjId(coordCounter + 1)
                     coord._3dcftMrcFile = String(ctfMrc)
                     out_coords.append(coord)
                     coordCounter += 1
         else:
-            for coord, ctfMrc in zip(self.coordSet, self.ctfMRCFileList):
+            for coord, ctfMrc in zip(self.inputCoordinates.get(), self.ctfMRCFileList):
                 coord._3dcftMrcFile = String(ctfMrc)
                 out_coords.append(coord)
 
@@ -192,20 +190,67 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
         return []
 
     # --------------------------- UTILS functions ---------------------------------------------------
+    def getTSSetFromCTFSeries(self):
+        return self.inputSetCTFTomoSeries.get().getSetOfTiltSeries()
+
     def _initialize(self):
         validateMsgs = []
-        if not self.initialized:
-            self.coordSet = self.inputCoordinates.get()
-            self.ctfTomoSet = self.inputSetCTFTomoSeries.get()
-            self.tsSet = self.ctfTomoSet.getSetOfTiltSeries()
-            self.EstimationMode = self.ctf3dMode.get()
 
+        # Check if the dose data is currently known (TS were imported from mdoc)
+        self._doseFromMdoc = self._hasDosePerFrame()
+        if self._doseFromMdoc:
+            self._genTSExp()
+        else:
             # Assign each dose file to a tilt series
             doseFilesNoOk = self._getDoseFiles()
             if doseFilesNoOk:
                 validateMsgs.append(doseFilesNoOk)
             self.initialized = True
+
+        if self.ctf3dMode.get() == CTF3D_PER_VOLUME:
+            for tsExt in self.tsExpandedList:
+                ts = tsExt.getTS()
+                ctf3DStar = self._getCtfFile(ts.getTsId(),
+                                             fileExt=CTFSTAR,
+                                             ctfMode=CTF3D_PER_VOLUME)
+                mrc3DStar = self._getCtfFile(ts.getTsId(),
+                                             fileExt=CTFMRC,
+                                             ctfMode=CTF3D_PER_VOLUME)
+                tsExt.setCTFMRCList(mrc3DStar)
+                tsExt.setCTFStarList(ctf3DStar)
+                self.ctfMRCFileList.append(mrc3DStar)
+                self.ctfStarFileList.append(ctf3DStar)
+        else:
+            for tsExt in self.tsExpandedList:
+                ts = tsExt.getTS()
+                coordList = tsExt.getCoords()
+                ctfMRCList = []
+                ctfStarList = []
+                for i in range(len(coordList)):
+                    mrc3DStar = self._getCtfFile(ts.getTsId(),
+                                                 coordCounter=i,
+                                                 fileExt=CTFMRC,
+                                                 ctfMode=CTF3D_PER_SUBVOLUME)
+                    ctf3DStar = self._getCtfFile(ts.getTsId(),
+                                                 coordCounter=i,
+                                                 fileExt=CTFSTAR,
+                                                 ctfMode=CTF3D_PER_SUBVOLUME)
+                    ctfMRCList.append(mrc3DStar)
+                    ctfStarList.append(ctf3DStar)
+                    self.ctfMRCFileList.append(mrc3DStar)
+                    self.ctfStarFileList.append(ctf3DStar)
+
+                tsExt.setCTFMRCList(ctfMRCList)
+                tsExt.setCTFStarList(ctfStarList)
+
+        self._store()
         return validateMsgs
+
+    def _hasDosePerFrame(self):
+        # It's assumed that if the first tilt image of the first tilt series has dose per frame, all the rest of the
+        # tilt series of the set will have that data, too
+        return True if self.getTSSetFromCTFSeries().getFirstItem().getFirstItem().getAcquisition().getDosePerFrame() \
+            else False
 
     def _getDoseFiles(self):
         path = self.doseFilesPath.get('').strip()
@@ -213,7 +258,7 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
         wholePattern = join(path, pattern) if pattern else path
         matches = glob.glob(wholePattern)
         if matches:
-            nTs = len(self.tsSet)
+            nTs = len(self.getTSSetFromCTFSeries())
             nMatches = len(matches)
             if nTs == nMatches:
                 self._assignDoseFilesToTS(matches)
@@ -226,21 +271,15 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
     def _assignDoseFilesToTS(self, matches):
         msg = ''
         nonMatchingTS = []
-        remTS = len(self.tsSet)
+        remTS = len(self.getTSSetFromCTFSeries())
         remDose = len(matches)
-        tsList = [ts.clone(ignoreAttrs=[]) for ts in self.tsSet]
-        ctfSeriesList = [ctfSeries.clone(ignoreAttrs=[]) for ctfSeries in self.ctfTomoSet]
-        tomoList = [tomo.clone() for tomo in self.coordSet.getPrecedents()]
+        tsList = [ts.clone(ignoreAttrs=[]) for ts in self.getTSSetFromCTFSeries()]
+        ctfSeriesList = [ctfSeries.clone(ignoreAttrs=[]) for ctfSeries in self.inputSetCTFTomoSeries.get()]
+        tomoList = [tomo.clone() for tomo in self.inputCoordinates.get().getPrecedents()]
 
-        def sortTomoNames(tomoList):
-            return sorted([tomo for tomo in tomoList.getFileName()])
-
-        def sortIds(obj):
-            return obj.getTsId()
-
-        tomoList.sort(key=sortTomoNames)
-        tsList.sort(key=sortIds)
-        ctfSeriesList.sort(key=sortIds)
+        tomoList.sort(key=self._sortTomoNames)
+        tsList.sort(key=self._sortIds)
+        ctfSeriesList.sort(key=self._sortIds)
         matches.sort()
         counter = 0
         for ctfs, ts in zip(ctfSeriesList, tsList):
@@ -252,7 +291,7 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                 doseBaseName = pwutils.removeBaseExt(doseFile).replace('_ExpDose', '')
                 if tsId in doseBaseName or doseBaseName in tsId:
                     # Get the corresponding subtomograms coordinates
-                    coordList = [coord.clone() for coord in self.coordSet.iterCoordinates(volume=tomoList[counter])]
+                    coordList = [coord.clone() for coord in self.inputCoordinates.get().iterCoordinates(volume=tomoList[counter])]
                     # Add to the TS Expanded list
                     self.tsExpandedList.append(ExtendedTS(ts, ctfs, DoseFile(doseFile), coordList))
                     matches.remove(doseFile)
@@ -268,6 +307,32 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
             msg += '\nNo matching dose files were found'
         elif nonMatchingTS:
             msg += "No matching dose file was found for the following TS:%s" % ''.join(i for i in nonMatchingTS)
+
+    def _genTSExp(self):
+        tsList = [ts.clone(ignoreAttrs=[]) for ts in self.getTSSetFromCTFSeries()]
+        ctfSeriesList = [ctfSeries.clone(ignoreAttrs=[]) for ctfSeries in self.inputSetCTFTomoSeries.get()]
+        tomoList = [tomo.clone() for tomo in self.inputCoordinates.get().getPrecedents()]
+
+        tomoList.sort(key=self._sortTomoNames)
+        tsList.sort(key=self._sortIds)
+        ctfSeriesList.sort(key=self._sortIds)
+        counter = 0
+        for ctfs, ts in zip(ctfSeriesList, tsList):
+            # This clone command was used to pass the value by value instead of by reference, because
+            # all the elements of list self.tsExpandedList were overwritten on each iteration of this loop
+            # Get the corresponding subtomograms coordinates
+            coordList = [coord.clone() for coord in self.inputCoordinates.get().iterCoordinates(volume=tomoList[counter])]
+            # Add to the TS Expanded list
+            self.tsExpandedList.append(ExtendedTS(ts, ctfs, None, coordList))
+            counter += 1
+
+    @staticmethod
+    def _sortTomoNames(tomoList):
+        return sorted([tomo for tomo in tomoList.getFileName()])
+
+    @staticmethod
+    def _sortIds(obj):
+        return obj.getTsId()
 
     def _getProgram(self, program='relion_preprocess'):
         """ Get the program name depending on the MPI use or not. """
@@ -318,44 +383,35 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
         """
         return ['Per volume', 'Per subvolume']
 
-    def _estimateCTF3DPerSubvolume(self, tsExp, setTsInfo, tsCounter):
-        starFileList = []
-        mrcFileList = []
-        coordCounter = 0
+    def _estimateCTF3DPerSubvolume(self, tsExp, setTsInfo):
+        tiltList = []
+        doseList = []
         ts = tsExp.getTS()
         ctfs = tsExp.getCTFSeries()
-        coordList = tsExp.getCoords()
-        tiltList = tsExp.getDoseFileTiltAngles()
-        doseList = tsExp.getDoseFileDoses()
+        if not self._doseFromMdoc:
+            tiltList = tsExp.getTiltAngles()
+            doseList = tsExp.getDoses()
+
         sizeX, _, sizeZ, _ = ImageHandler().getDimensions(tsExp.getTS().getFirstItem().getFileName())
-        for coord in coordList:
+        for coord, ctf3DStar in zip(tsExp.getCoords(), tsExp.getCTFStarList()):
             tomoTable = self._createTable()
-            ctf3DStar = self._getCtfFile(ts.getTsId(),
-                                         coordCounter=coordCounter,
-                                         fileExt=CTFSTAR,
-                                         ctfMode=CTF3D_PER_SUBVOLUME)
-            mrc3DStar = self._getCtfFile(ts.getTsId(),
-                                         coordCounter=coordCounter,
-                                         fileExt=CTFMRC,
-                                         ctfMode=CTF3D_PER_SUBVOLUME)
-            coordCounter += 1
-            starFileList.append(ctf3DStar)
-            mrcFileList.append(mrc3DStar)
-            self.ctfMRCFileList.append(mrc3DStar)
 
             for ti, ctf in zip(ts, ctfs):
                 avgDefocus = (ctf.getDefocusU() + ctf.getDefocusV()) / 2
                 tiltAngleDegs = ti.getTiltAngle()
                 tiltAngleRads = np.deg2rad(tiltAngleDegs)
-                xTomo = float(coord.getX() - (sizeX / 2)) * setTsInfo[SRATE]
-                zTomo = float(coord.getZ() - (sizeZ / 2)) * setTsInfo[SRATE]
+                xTomo = float(coord.getX(BOTTOM_LEFT_CORNER) - (sizeX / 2)) * setTsInfo[SRATE]
+                zTomo = float(coord.getZ(BOTTOM_LEFT_CORNER) - (sizeZ / 2)) * setTsInfo[SRATE]
                 # Calculating the height difference of the particle from the tilt axis
                 xImg = (xTomo * (math.cos(tiltAngleRads))) + (zTomo * (math.sin(tiltAngleRads)))
                 deltaD = xImg * math.sin(tiltAngleRads)
                 partDef = avgDefocus + deltaD
                 # Weighting the 3D CTF model using the tilt dependent scale factor and the dose dependent B-Factor
                 tiltScale = math.cos(abs(tiltAngleRads))
-                tiltImgDose = self._getCurrentDose(tiltAngleDegs, tiltList, doseList)
+                if self._doseFromMdoc:
+                    tiltImgDose = ti.getAcquisition().getDosePerFrame()
+                else:
+                    tiltImgDose = self._getCurrentDose(tiltAngleDegs, tiltList, doseList)
                 doseWeight = tiltImgDose * self.bFactor
                 # Add row to table
                 tomoTable.addRow(partDef,
@@ -367,29 +423,21 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                                  0.0,
                                  doseWeight,
                                  tiltScale)
+
             # Write the corresponding CTF star file
             tomoTable.write(ctf3DStar)
 
-        self.tsExpandedList[tsCounter].setCTFStarList(starFileList)
-        self.tsExpandedList[tsCounter].setCTFMRCList(mrcFileList)
-
-    def _estimateCTF3DPerVolume(self, tsExp, setTsInfo, tsCounter):
-        starFileList = []
-        mrcFileList = []
+    def _estimateCTF3DPerVolume(self, tsExp, setTsInfo):
+        tiltList = []
+        doseList = []
         ts = tsExp.getTS()
         ctfs = tsExp.getCTFSeries()
-        tiltList = tsExp.getDoseFileTiltAngles()
-        doseList = tsExp.getDoseFileDoses()
+        if not self._doseFromMdoc:
+            tiltList = tsExp.getTiltAngles()
+            doseList = tsExp.getDoses()
+
         tomoTable = self._createTable()
-        ctf3DStar = self._getCtfFile(ts.getTsId(),
-                                     fileExt=CTFSTAR,
-                                     ctfMode=CTF3D_PER_VOLUME)
-        mrc3DStar = self._getCtfFile(ts.getTsId(),
-                                     fileExt=CTFMRC,
-                                     ctfMode=CTF3D_PER_VOLUME)
-        starFileList.append(ctf3DStar)
-        mrcFileList.append(mrc3DStar)
-        self.ctfMRCFileList.append(mrc3DStar)
+        ctf3DStar = tsExp.getCTFStarList()
 
         for ti, ctf in zip(ts, ctfs):
             avgDefocus = (ctf.getDefocusU() + ctf.getDefocusV()) / 2
@@ -397,7 +445,10 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
             tiltAngleRads = np.deg2rad(tiltAngleDegs)
             # Weighting the 3D CTF model using the tilt dependent scale factor and the dose dependent B-Factor
             tiltScale = math.cos(abs(tiltAngleRads))
-            tiltImgDose = self._getCurrentDose(tiltAngleDegs, tiltList, doseList)
+            if self._doseFromMdoc:
+                tiltImgDose = ti.getAcquisition().getDosePerFrame()
+            else:
+                tiltImgDose = self._getCurrentDose(tiltAngleDegs, tiltList, doseList)
             doseWeight = tiltImgDose * self.bFactor
             # Add row to table
             tomoTable.addRow(avgDefocus,
@@ -409,27 +460,13 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                              0.0,
                              doseWeight,
                              tiltScale)
-        # # Write the corresponding CTF star file
-        # tomoTable.write(ctf3DStar)
 
-        # Write the STAR file
-        # if Plugin.IS_30():
         tomoTable.write(ctf3DStar)
-        # else:
-        #     tmpTable = self._getTmpPath('tbl.star')
-        #     tomoTable.write(tmpTable)
-        #     # Re-write the star file as expected by the current version of Relion, if necessary
-        #     starFile = abspath(ctf3DStar)
-        #     self.runJob('relion_convert_star',
-        #                 ' --i %s --o %s' % (tmpTable, starFile))
-
-        self.tsExpandedList[tsCounter].setCTFStarList(starFileList)
-        self.tsExpandedList[tsCounter].setCTFMRCList(mrcFileList)
 
 
-# This class represents a expanded version of the tilt series, and adds the additional data
-# required to calculate the CTF3d
 class ExtendedTS:
+    """This class represents a expanded version of the tilt series, and adds the additional data
+    required to calculate the CTF3d"""
     def __init__(self, ts, ctfs, doseFileObj, coords):
         self._ts = ts
         self._ctfs = ctfs
@@ -447,11 +484,17 @@ class ExtendedTS:
     def getDoseFile(self):
         return self._doseFile
 
-    def getDoseFileTiltAngles(self):
-        return self.getDoseFile().getTiltAngles()
+    def getTiltAngles(self):
+        if self.getDoseFile():
+            return self.getDoseFile().getTiltAngles()
+        else:
+            return [ti.getTiltAngle() for ti in self.getTS()]
 
-    def getDoseFileDoses(self):
-        return self.getDoseFile().getDoses()
+    def getDoses(self):
+        if self.getDoseFile():
+            return self.getDoseFile().getDoses()
+        else:
+            return [ti.getAcquisition().getDosePerFrame() for ti in self.getTS()]
 
     def getCoords(self):
         return self._coords

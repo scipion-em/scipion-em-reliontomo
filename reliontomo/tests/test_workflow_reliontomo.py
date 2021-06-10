@@ -116,7 +116,7 @@ class TestWorkflowRelionTomo(TestWorkflow):
         print(magentaStr("\n==> Calculating the tilt series ctf:"))
         protTSCtfImod = self.newProtocol(
             ProtImodCtfEstimation,
-            inputSetOfTiltSeries=getattr(protImportTS, 'outputTiltSeries', None),
+            inputSet=getattr(protImportTS, 'outputTiltSeries', None),
             angleRange=10
         )
         protTSCtfImod.setObjLabel('calculate TS CTF')
@@ -304,4 +304,3 @@ class TestWorkflowRelionTomo(TestWorkflow):
         self._classifySubtomograms(protExtractSubtomo, protImportRefVol, protImportMask)
         self._refineSubtomograms(protExtractSubtomo, protImportRefVol, protImportMask)
         self. _reconstructSubtomograms(protExtractSubtomo)
-        
