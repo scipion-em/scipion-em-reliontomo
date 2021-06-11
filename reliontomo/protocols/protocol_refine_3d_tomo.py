@@ -29,9 +29,12 @@ import glob
 from os import remove
 from os.path import abspath, exists, getmtime
 
+from pwem import ALIGN_PROJ
 from pwem.objects import FSC, Integer
 from pwem.protocols import ProtRefine3D
-from relion.convert import Table, pwem, convert31
+from pyworkflow import BETA
+from relion.convert import Table, convert31
+from reliontomo import Plugin
 
 from tomo.objects import AverageSubTomogram
 from tomo.protocols import ProtTomoBase
@@ -47,16 +50,12 @@ parameters of a statistical model are learned from the data,which
 leads to objective and high-quality results.
     """
     _label = '3D subtomogram auto-refine'
+    _devStatus = BETA
     IS_CLASSIFY = False
-
     PREFIXES = ['half1_', 'half2_']
 
     def __init__(self, **args):
         ProtRelionBaseTomo.__init__(self, **args)
-
-    # @classmethod
-    # def isDisabled(cls):
-    #     return Plugin.IS_30()
 
     def _initialize(self):
         """ This function is mean to be called after the
@@ -83,7 +82,7 @@ leads to objective and high-quality results.
             if not joinHalves in self.extraParams.get():
                 args['--low_resol_join_halves'] = 40
 
-            if self.IS_GT30() and self.useFinerSamplingFaster:
+            if not Plugin.IS_30() and self.useFinerSamplingFaster:
                 args['--auto_ignore_angles'] = ''
                 args['--auto_resol_angles'] = ''
 
@@ -229,7 +228,7 @@ leads to objective and high-quality results.
             item.setAlignmentProj()
         # with open(dataStar) as fid:
         #     self.dataTable.readStar(fid)
-        self.reader = convert31.Reader(alignType=pwem.ALIGN_PROJ,
+        self.reader = convert31.Reader(alignType=ALIGN_PROJ,
                                        pixelSize=subtomoClassesSet.getSamplingRate())
 
         mdIter = Table.iterRows(dataStar, key='rlnImageName')

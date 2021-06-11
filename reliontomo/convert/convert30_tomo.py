@@ -28,12 +28,13 @@ import pyworkflow.utils as pwutils
 from relion.convert.convert_base import WriterBase
 from scipion.install.funcs import mkdir
 import numpy as np
-import relion
 from os.path import abspath, join
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from relion.convert import Table
 
 # Star file fields
+from tomo.constants import BOTTOM_LEFT_CORNER
+
 TOMO_NAME = 'rlnMicrographName'
 COORD_X = 'rlnCoordinateX'
 COORD_Y = 'rlnCoordinateY'
@@ -75,14 +76,14 @@ class Writer(WriterBase):
      interface as the new Writer class.
     """
 
-    def writeSetOfSubtomograms(self, subtomoSet, subtomosStar, isPysegPosRec=False, **kwargs):
+    def writeSetOfSubtomograms(self, subtomoSet, subtomosStar, isPyseg=False, **kwargs):
         currentTomo = ''
         MRC = 'mrc'
         ih = ImageHandler()
-        tomoTable = self._createStarTomoTable(isPysegPosRec)
+        tomoTable = self._createStarTomoTable(isPyseg)
         tmpDir = pwutils.getParentFolder(subtomosStar)
         for subtomo in subtomoSet:
-            if pwutils.getExt(subtomo.getFileName()) != '.' + MRC:
+            if pwutils.getExt(subtomo.getFileName().replace(':' + MRC, '')) != '.' + MRC:
                 mrcDir = join(tmpDir, pwutils.removeBaseExt(subtomo.getVolName()))
                 if currentTomo != subtomo.getVolName():
                     mkdir(mrcDir)
@@ -91,10 +92,10 @@ class Writer(WriterBase):
             angles, shifts = self._getTransformInfoFromSubtomo(subtomo)
             magn = subtomo.getAcquisition().getMagnification()
             rlnMicrographName = subtomo.getVolName()
-            rlnCoordinateX = subtomo.getCoordinate3D().getX()
-            rlnCoordinateY = subtomo.getCoordinate3D().getY()
-            rlnCoordinateZ = subtomo.getCoordinate3D().getZ()
-            rlnImageName = subtomo.getFileName()
+            rlnCoordinateX = subtomo.getCoordinate3D().getX(BOTTOM_LEFT_CORNER)
+            rlnCoordinateY = subtomo.getCoordinate3D().getY(BOTTOM_LEFT_CORNER)
+            rlnCoordinateZ = subtomo.getCoordinate3D().getZ(BOTTOM_LEFT_CORNER)
+            rlnImageName = subtomo.getFileName().replace(':' + MRC, '')
             rlnCtfImage = abspath(self._getCTFFileFromSubtomo(subtomo))
             rlnMagnification = magn if magn else 10000 #64000
             rlnDetectorPixelSize = subtomo.getSamplingRate()
@@ -123,7 +124,7 @@ class Writer(WriterBase):
                            rlnOriginX,
                            rlnOriginY,
                            rlnOriginZ]
-            if isPysegPosRec:
+            if isPyseg:
                 fieldsToAdd = [rlnMicrographName,
                               rlnCoordinateX,
                               rlnCoordinateY,
@@ -140,23 +141,15 @@ class Writer(WriterBase):
             tomoTable.addRow(*fieldsToAdd)
 
         # Write the STAR file
-        if relion.Plugin.IS_30():
-            tomoTable.write(subtomosStar)
-        # else:
-        #     tmpTable = self._getTmpPath('tbl.star')
-        #     tomoTable.write(tmpTable)
-        #     # Re-write the star file as expected by the current version of Relion, if necessary
-        #     starFile = abspath(subtomosStar)
-        #     self.runJob('relion_convert_star',
-        #                 ' --i %s --o %s' % (tmpTable, starFile))
+        tomoTable.write(subtomosStar)
 
     @ staticmethod
-    def _createStarTomoTable(isPysegPosRec):
+    def _createStarTomoTable(isPyseg):
 
         cols = RELION_TOMO_LABELS
         # Pyseg post-rec only works if the magnification, pixel size and the prior angles aren't
         # present in the star file
-        if isPysegPosRec:
+        if isPyseg:
             cols = [TOMO_NAME,
                     COORD_X,
                     COORD_Y,

@@ -22,17 +22,16 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-
-from pyworkflow.protocol.params import (PointerParam, FloatParam,  
+from pyworkflow import BETA
+from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         StringParam, BooleanParam,
                                         EnumParam, IntParam, LEVEL_ADVANCED)
 
 from pwem.protocols import ProtReconstruct3D
 from tomo.objects import Tomogram, AverageSubTomogram
-from relion import Plugin
-
+from reliontomo import Plugin
 from reliontomo.convert import writeSetOfSubtomograms
-
+from reliontomo.constants import V30_VALIDATION_MSG
 
 class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
     """ This protocol reconstructs a volume using Relion.
@@ -42,6 +41,7 @@ class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
     and used as direction projections to reconstruct.
     """
     _label = 'tomo reconstruct'
+    _devStatus = BETA
     inStarName = 'input_particles'
     outTomoName = 'output_volume'
 
@@ -116,8 +116,8 @@ class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
         subset = -1 if self.subset.get() == 0 else self.subset
         params += ' --subset %d' % subset
 
-        if Plugin.IS_GT30():
-            params += ' --class %d' % self.classNum.get()
+        # if Plugin.IS_GT30():
+        params += ' --class %d' % self.classNum.get()
 
         if self.doCTF:
             params += ' --ctf'
@@ -161,7 +161,8 @@ class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
         errors = []
-
+        if not Plugin.IS_30():
+            errors.append(V30_VALIDATION_MSG)
         return errors
     
     def _summary(self):

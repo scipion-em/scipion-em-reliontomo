@@ -25,6 +25,10 @@
 
 RELION = 'relion'
 V3_0 = '3.0'
+RELIONTOMO_HOME = 'RELIONTOMO_HOME'
+RELIONTOMO_CUDA_LIB = 'RELION_CUDA_LIB'
 RELIONTOMO_DEFAULT_VERSION = V3_0
 RELIONTOMO_DEFAULT = RELION + '-' + RELIONTOMO_DEFAULT_VERSION
+V30_VALIDATION_MSG = 'This version of Reliontomo plugin requires Relion 3.0 binaries. ' \
+                     'Please install it if necessary via scipion3 installb %s.' % RELIONTOMO_DEFAULT
 
