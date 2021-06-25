@@ -22,66 +22,21 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-import os
-
 import pwem
 import relion
-from pwem import Config
-from pyworkflow.utils import Environ
-from reliontomo.constants import V3_0, RELIONTOMO_HOME, RELIONTOMO_DEFAULT, RELION, RELIONTOMO_CUDA_LIB
+from reliontomo.constants import RELIONTOMO_HOME, RELIONTOMO_DEFAULT, RELION, RELIONTOMO_CUDA_LIB, V4_0
 
 _logo = "relion_logo.png"
 _references = ['Scheres2012a', 'Scheres2012b', 'Kimanius2016', 'Zivanov2018']
-__version__ = '3.0.2'
+__version__ = '4.0.0'
 
 
 class Plugin(relion.Plugin):
-    _supportedVersions = [V3_0]
+    _supportedVersions = [V4_0]
     _homeVar = RELIONTOMO_HOME
     _pathVars = [RELIONTOMO_HOME]
 
     @classmethod
     def _defineVariables(cls):
-        cls._defineEmVar(RELIONTOMO_HOME, RELIONTOMO_DEFAULT)
+        cls._defineEmVar(RELIONTOMO_HOME, 'relion-%s' % V4_0)
         cls._defineVar(RELIONTOMO_CUDA_LIB, pwem.Config.CUDA_LIB)
-
-    @classmethod
-    def IS_30(cls):
-        return RELIONTOMO_DEFAULT in cls.getVar(RELIONTOMO_HOME)
-
-    @classmethod
-    def getEnviron(cls):
-        """ Setup the environment variables needed to launch Relion. """
-        environ = Environ(os.environ)
-        binPath = os.pathsep.join([cls.getHome('bin'), Config.MPI_BINDIR])
-        libPath = os.pathsep.join([cls.getHome('lib'), cls.getHome('lib64'), pwem.Config.MPI_LIBDIR])
-
-        if binPath not in environ['PATH']:
-            environ.update({'PATH': binPath,
-                            'LD_LIBRARY_PATH': libPath
-                            }, position=Environ.BEGIN)
-
-        # Get Relion CUDA library path if defined
-        cudaLib = cls.getVar(RELIONTOMO_CUDA_LIB, pwem.Config.CUDA_LIB)
-        environ.addLibrary(cudaLib)
-
-        if 'RELION_MPI_LIB' in os.environ:
-            environ.addLibrary(os.environ['RELION_MPI_LIB'])
-
-        if 'RELION_MPI_BIN' in os.environ:
-            environ.set('PATH', os.environ['RELION_MPI_BIN'],
-                        position=Environ.BEGIN)
-        return environ
-
-    @classmethod
-    def defineBinaries(cls, env):
-        relion_commands = [('cmake -DGUI=OFF -DCMAKE_INSTALL_PREFIX=./ .', []),
-                           ('make -j %d' % env.getProcessors(),
-                            ['bin/relion_refine'])]
-
-        env.addPackage(RELION, version=V3_0,
-                       url='https://github.com/3dem/relion/archive/3.0.tar.gz',
-                       commands=relion_commands,
-                       updateCuda=True,
-                       default=True)
-

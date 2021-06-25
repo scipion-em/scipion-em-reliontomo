@@ -24,11 +24,43 @@
 # **************************************************************************
 
 RELION = 'relion'
-V3_0 = '3.0'
+V4_0 = '4.0'
 RELIONTOMO_HOME = 'RELIONTOMO_HOME'
 RELIONTOMO_CUDA_LIB = 'RELION_CUDA_LIB'
-RELIONTOMO_DEFAULT_VERSION = V3_0
+RELIONTOMO_DEFAULT_VERSION = V4_0
 RELIONTOMO_DEFAULT = RELION + '-' + RELIONTOMO_DEFAULT_VERSION
-V30_VALIDATION_MSG = 'This version of Reliontomo plugin requires Relion 3.0 binaries. ' \
-                     'Please install it if necessary via scipion3 installb %s.' % RELIONTOMO_DEFAULT
+# V30_VALIDATION_MSG = 'This version of Reliontomo plugin requires Relion 3.0 binaries. ' \
+#                      'Please install it if necessary via scipion3 installb %s.' % RELIONTOMO_DEFAULT
+
+
+# Relion 4 tomogram star file fields
+TOMO_NAME = 'rlnTomoName'
+TILT_SERIES_NAME = 'rlnTomoTiltSeriesName'
+CTFPLOTTER_FILE = 'rlnTomoImportCtfPlotterFile'
+IMOD_DIR = 'rlnTomoImportImodDir'
+FRACTIONAL_DOSE = 'rlnTomoImportFractionalDose'
+ACQ_ORDER_FILE = 'rlnTomoImportOrderList'
+CULLED_FILE = 'rlnTomoImportCulledFile'
+
+# Relion 4 subtomogram star file fields
+CTF_IMAGE = 'rlnCtfImage'
+SUBTOMO_NAME = 'rlnImageName'
+COORD_X = 'rlnCoordinateX'
+COORD_Y = 'rlnCoordinateY'
+COORD_Z = 'rlnCoordinateZ'
+SHIFTX = 'rlnOriginX'
+SHIFTY = 'rlnOriginY'
+SHIFTZ = 'rlnOriginZ'
+ROT = 'rlnAngleRot'
+TILT = 'rlnAngleTilt'
+PSI = 'rlnAnglePsi'
+TILT_PRIOR = 'rlnAngleTiltPrior'
+PSI_PRIOR = 'rlnAnglePsiPrior'
+CLASS_NUMBER = 'rlnClassNumber'
+
+# IMOD's eTomo files
+NEWST_COM = 'newst.com'
+TILT_COM = 'tilt.com'
+
+
 
