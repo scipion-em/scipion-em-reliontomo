@@ -23,7 +23,6 @@
 # *
 # **************************************************************************
 import csv
-
 from pwem.emlib.image import ImageHandler
 import pyworkflow.utils as pwutils
 from relion.convert.convert_base import WriterBase
@@ -41,7 +40,8 @@ from tomo.constants import BOTTOM_LEFT_CORNER
 class Writer(WriterBase):
     """ Helper class to convert from Scipion SetOfTomograms and SetOfSubTomograms to star files ."""
 
-    def writeSetOfTomograms(self, prot, tomoSet, tsSet, ctfPlotterDir, eTomoDir, outStarFileName):
+    def writeSetOfTomograms(self, tomoSet, outStarFileName, prot=None, tsSet=None,
+                            ctfPlotterDir=None, eTomoDir=None):
         tomoTable = Table(columns=self._getTomogramStarFileLabels())
         tsList, tsIdFromTsSet = zip(*[(ts.clone(), ts.getTsId()) for ts in tsSet])
         for tomo in tomoSet:

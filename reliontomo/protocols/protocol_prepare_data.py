@@ -28,6 +28,8 @@ This module contains the protocol for 3d classification with relion.
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, PathParam
+from reliontomo.constants import IN_TOMO_STAR, IN_SUBTOMOS_STAR
+from reliontomo.convert import writeSetOfTomograms
 
 
 class ProtRelionPrepareData(EMProtocol):
@@ -91,7 +93,12 @@ class ProtRelionPrepareData(EMProtocol):
         self._insertFunctionStep(self._createOutputStep)
 
     def _convertInputStep(self):
-        pass
+        # Write the tomograms star file
+        tomoSet = self.inputSubtomos.get().getCoordinates3D().getPrecedents()
+        writeSetOfTomograms(tomoSet, self._getInTomosStarFilename(), prot=self, tsSet=self.inputTS.get(),
+                            ctfPlotterDir=self.ctfPlotterFilesPath.get(), eTomoDir=self.eTomoFilesPath.get())
+        # Write the particles star file
+        # Writer.writeSetOfSubtomograms()
 
     def _relionImportTomograms(self):
         pass
@@ -108,3 +115,10 @@ class ProtRelionPrepareData(EMProtocol):
         # TODO: el orderlist tiene que ir en un csv con order, ángulo
         # TODO: generar los nombres culled --> tsId_culled.st:mrc
         pass
+
+    def _getInTomosStarFilename(self):
+        return self._getExtraPath(IN_TOMO_STAR)
+
+    def _getInSubtomosStarFilename(self):
+        return self._getExtraPath(IN_SUBTOMOS_STAR)
+

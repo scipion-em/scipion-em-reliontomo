@@ -62,5 +62,9 @@ CLASS_NUMBER = 'rlnClassNumber'
 NEWST_COM = 'newst.com'
 TILT_COM = 'tilt.com'
 
+# Data preparation
+IN_TOMO_STAR = 'inTomos.star'
+IN_SUBTOMOS_STAR = 'inSubtomos.star'
+
 
 

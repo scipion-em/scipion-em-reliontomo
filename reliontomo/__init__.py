@@ -40,3 +40,7 @@ class Plugin(relion.Plugin):
     def _defineVariables(cls):
         cls._defineEmVar(RELIONTOMO_HOME, 'relion-%s' % V4_0)
         cls._defineVar(RELIONTOMO_CUDA_LIB, pwem.Config.CUDA_LIB)
+
+    @staticmethod
+    def isRe40():
+        return True if Plugin.getHome().endswith(V4_0) else False

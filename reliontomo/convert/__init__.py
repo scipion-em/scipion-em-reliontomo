@@ -1,6 +1,8 @@
 from pwem import ALIGN_PROJ
 from pyworkflow.object import Float, String
 from relion.convert import convert30, Table, relionToLocation
+from reliontomo import Plugin
+from reliontomo.convert import convert40_tomo
 
 from . import convert30_tomo
 
@@ -35,8 +37,10 @@ def createWriterTomo(**kwargs):
     plugin binary. It can also be forced to use old format by passing
     the format='30' argument.
     """
-    # is30 = kwargs.get('format', '') == '30' or relion.Plugin.IS_30()
-    Writer = convert30_tomo.Writer  # if is30 else None
+    if Plugin.isRe40():
+        Writer = convert40_tomo.Writer
+    else:
+        Writer = convert30_tomo.Writer
 
     return Writer(**kwargs)
 
@@ -81,6 +85,10 @@ def writeSetOfSubtomograms(imgSet, starFile, **kwargs):
             Relion3.0 format, if not, it will depends on the binary version
     """
     return createWriterTomo(**kwargs).writeSetOfSubtomograms(imgSet, starFile, **kwargs)
+
+
+def writeSetOfTomograms(imgSet, starFile, **kwargs):
+    return createWriterTomo(**kwargs).writeSetOfTomograms(imgSet, starFile, **kwargs)
 
 
 def readSetOfParticles(starFile, partsSet, **kwargs):
