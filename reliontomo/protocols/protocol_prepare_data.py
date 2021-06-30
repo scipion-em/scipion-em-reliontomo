@@ -46,12 +46,12 @@ class ProtRelionPrepareData(EMProtocol):
                       important=True,
                       allowsNull=False,
                       help='Select the input tilt series from the project.')
-        form.addParam('inputCoords', PointerParam,
-                      pointerClass='SetOfCoordinates3D',
-                      label="Input 3D coordinates",
+        form.addParam('inputSubtomos', PointerParam,
+                      pointerClass='SetOfSubTomograms',
+                      label="Input set of subtomograms",
                       important=True,
                       allowsNull=False,
-                      help='Select the input 3D coordinates from the project.')
+                      help='Select the input set of subtomograms from the project.')
         form.addParam('ctfPlotterFilesPath', PathParam,
                       label="IMOD's CTFPLotter results parent directory",
                       important=True,

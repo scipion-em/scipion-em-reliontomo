@@ -22,6 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+import csv
 
 from pwem.emlib.image import ImageHandler
 import pyworkflow.utils as pwutils
@@ -31,35 +32,38 @@ from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, I
     TILT, PSI, TILT_PRIOR, PSI_PRIOR, CLASS_NUMBER
 from scipion.install.funcs import mkdir
 import numpy as np
-from os.path import abspath, join
+from os.path import join
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from relion.convert import Table
-
-# Star file fields
 from tomo.constants import BOTTOM_LEFT_CORNER
 
 
 class Writer(WriterBase):
     """ Helper class to convert from Scipion SetOfTomograms and SetOfSubTomograms to star files ."""
 
-    def writeSetOfTomograms(self, tomoSet, tsSet, ctfPlotterDir, eTomoDir, outStarFileName):
+    def writeSetOfTomograms(self, prot, tomoSet, tsSet, ctfPlotterDir, eTomoDir, outStarFileName):
         tomoTable = Table(columns=self._getTomogramStarFileLabels())
-        # rr, tt = zip(*[(i * 10, i * 12) for i in xrange(4)])
-        tsFileList, tsIdFromTsSet = zip(*[(ts.getFileName(), ts.getTsId()) for ts in tsSet])
+        tsList, tsIdFromTsSet = zip(*[(ts.clone(), ts.getTsId()) for ts in tsSet])
         for tomo in tomoSet:
             tsId = tomo.getTsId()
-            tomoName = tomo.getFileName()
-            tsName = tsFileList.index(tsId)
-            ctfPlotterFile = self._getCtfPlotterFile(tsId, ctfPlotterDir)
-            eTomoTsSubDir = join(eTomoDir, tsId)
-            # fractionalDose =
+            ts = tsList[tsIdFromTsSet.index(tsId)]
+            tomoTable.addRow(tomo.getFileName(),                            # _rlnTomoName #1
+                             ts.getFileName(),                              # _rlnTomoTiltSeriesName #2
+                             self._getCtfPlotterFile(tsId, ctfPlotterDir),  # _rlnTomoImportCtfPlotterFile #3
+                             join(eTomoDir, tsId),                          # _rlnTomoImportImodDir #4
+                             ts.getAcquisition().getDosePerFrame(),         # _rlnTomoImportFractionalDose #5
+                             self._genOrderListFile(prot, ts),              # _rlnTomoImportOrderList #6
+                             self._genCulledFileName(prot, tsId)            # _rlnTomoImportCulledFile #7
+                             )
 
+        # Write the STAR file
+        tomoTable.write(outStarFileName)
 
-    def writeSetOfSubtomograms(self, subtomoSet, subtomosStar, isPyseg=False, **kwargs):
+    def writeSetOfSubtomograms(self, subtomoSet, subtomosStar):
         currentTomo = ''
         MRC = 'mrc'
         ih = ImageHandler()
-        tomoTable = self._createStarTomoTable(isPyseg)
+        tomoTable = Table(columns=self._getSubtomogramStarFileLabels())
         tmpDir = pwutils.getParentFolder(subtomosStar)
         for subtomo in subtomoSet:
             if pwutils.getExt(subtomo.getFileName().replace(':' + MRC, '')) != '.' + MRC:
@@ -69,79 +73,29 @@ class Writer(WriterBase):
                 mrcFile = join(mrcDir, pwutils.replaceBaseExt(subtomo.getFileName(), MRC))
                 ih.convert(subtomo.getFileName(), mrcFile)
             angles, shifts = self._getTransformInfoFromSubtomo(subtomo)
-            magn = subtomo.getAcquisition().getMagnification()
-            rlnMicrographName = subtomo.getVolName()
-            rlnCoordinateX = subtomo.getCoordinate3D().getX(BOTTOM_LEFT_CORNER)
-            rlnCoordinateY = subtomo.getCoordinate3D().getY(BOTTOM_LEFT_CORNER)
-            rlnCoordinateZ = subtomo.getCoordinate3D().getZ(BOTTOM_LEFT_CORNER)
-            rlnImageName = subtomo.getFileName().replace(':' + MRC, '')
-            rlnCtfImage = abspath(self._getCTFFileFromSubtomo(subtomo))
-            rlnMagnification = magn if magn else 10000 #64000
-            rlnDetectorPixelSize = subtomo.getSamplingRate()
-            rlnAngleRot = angles[0]
             rlnAngleTilt = angles[1]
             rlnAnglePsi = angles[2]
-            rlnOriginX = shifts[0]
-            rlnOriginY = shifts[1]
-            rlnOriginZ = shifts[2]
-            rlnTiltPrior = subtomo._tiltPriorAngle.get() if hasattr(subtomo, '_tiltPriorAngle') else rlnAngleTilt
-            rlnTiltPsi = subtomo._psiPriorAngle.get() if hasattr(subtomo, '_psiPriorAngle') else rlnAnglePsi
             # Add row to the table which will be used to generate the STAR file
-            fieldsToAdd = [rlnMicrographName,
-                           rlnCoordinateX,
-                           rlnCoordinateY,
-                           rlnCoordinateZ,
-                           rlnImageName,
-                           rlnCtfImage,
-                           rlnMagnification,
-                           rlnDetectorPixelSize,
-                           rlnAngleRot,
-                           rlnAngleTilt,
-                           rlnTiltPrior,
-                           rlnAnglePsi,
-                           rlnTiltPsi,
-                           rlnOriginX,
-                           rlnOriginY,
-                           rlnOriginZ]
-            if isPyseg:
-                fieldsToAdd = [rlnMicrographName,
-                              rlnCoordinateX,
-                              rlnCoordinateY,
-                              rlnCoordinateZ,
-                              rlnImageName,
-                              rlnCtfImage,
-                              rlnAngleRot,
-                              rlnAngleTilt,
-                              rlnAnglePsi,
-                              rlnOriginX,
-                              rlnOriginY,
-                              rlnOriginZ]
-
-            tomoTable.addRow(*fieldsToAdd)
+            tomoTable.addRow([
+                subtomo.getVolName(),                                # _rlnTomoName #1
+                self._getCTFFileFromSubtomo(subtomo),                # _rlnCtfImage #2
+                subtomo.getFileName().replace(':' + MRC, ''),        # _rlnImageName #3
+                subtomo.getCoordinate3D().getX(BOTTOM_LEFT_CORNER),  # _rlnCoordinateX #4
+                subtomo.getCoordinate3D().getY(BOTTOM_LEFT_CORNER),  # _rlnCoordinateY #5
+                subtomo.getCoordinate3D().getZ(BOTTOM_LEFT_CORNER),  # _rlnCoordinateZ #6
+                shifts[0],                                           # _rlnOriginX #7
+                shifts[1],                                           # _rlnOriginY #8
+                shifts[2],                                           # _rlnOriginZ #9
+                angles[0],                                           # _rlnAngleRot #10
+                rlnAngleTilt,                                        # _rlnAngleTilt #11
+                rlnAnglePsi,                                         # _rlnAnglePsi #12
+                getattr(subtomo, '_tiltPriorAngle', rlnAngleTilt),   # _rlnAngleTiltPrior #13
+                getattr(subtomo, '_psiPriorAngle', rlnAnglePsi),     # _rlnAnglePsiPrior #14
+                subtomo.getClassId()                                 # _rlnClassNumber #15
+            ])
 
         # Write the STAR file
         tomoTable.write(subtomosStar)
-
-    @ staticmethod
-    def _createStarTomoTable(isPyseg):
-        pass
-        # cols = RELION_TOMO_LABELS
-        # # Pyseg post-rec only works if the magnification, pixel size and the prior angles aren't
-        # # present in the star file
-        # if isPyseg:
-        #     cols = [TOMO_NAME,
-        #             COORD_X,
-        #             COORD_Y,
-        #             COORD_Z,
-        #             SUBTOMO_NAME,
-        #             CTF_MISSING_WEDGE,
-        #             ROT,
-        #             TILT,
-        #             PSI,
-        #             SHIFTX,
-        #             SHIFTY,
-        #             SHIFTZ]
-        # return Table(columns=cols)
 
     @ staticmethod
     def _getCTFFileFromSubtomo(subtomo):
@@ -166,7 +120,7 @@ class Writer(WriterBase):
             angles = -np.rad2deg(euler_from_matrix(M, axes='szyz'))
 
         return angles, shifts
-#############################################################################################################
+
     @staticmethod
     def _getTomogramStarFileLabels():
         return [
@@ -178,6 +132,7 @@ class Writer(WriterBase):
             ACQ_ORDER_FILE,
             CULLED_FILE
         ]
+
     @staticmethod
     def _getSubtomogramStarFileLabels():
         return [
@@ -201,3 +156,24 @@ class Writer(WriterBase):
     @staticmethod
     def _getCtfPlotterFile(tsId, ctfPlotterDir):
         return join(ctfPlotterDir, tsId, tsId + '.defocus')
+
+    @staticmethod
+    def _genOrderListFile(prot, ts):
+        """The order file expected by Relion is A 2-column, comma-separated file with the frame-order list
+        of the tilt series, where the first column is the frame (image) number (starting at 1) and the second
+        column is the tilt angle (in degrees).
+        :param prot: current protocol object
+        :param ts: TiltSeries object"""
+        outputFilename = prot._getExtraPath(ts.getTsId() + '_order_list.csv')
+        tiList = [ti.clone() for ti in ts]
+        ind = np.argsort([ti.getTiltAngle() for ti in tiList])  # Indices to get the data sorted by acqOrder
+        with open(outputFilename, mode='w') as acqOrderFile:
+            acqOrderFileWriter = csv.writer(acqOrderFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            [acqOrderFileWriter.writerow([tiList[i].getAcquisitionOder, tiList[i].getTiltAngle()]) for i in ind]
+
+        return outputFilename
+
+    @staticmethod
+    def _genCulledFileName(prot, tsId):
+        # TODO: is this a simply name to generate something or the path to an existing file?
+        return None
