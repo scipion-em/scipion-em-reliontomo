@@ -43,7 +43,6 @@ ACQ_ORDER_FILE = 'rlnTomoImportOrderList'
 CULLED_FILE = 'rlnTomoImportCulledFile'
 
 # Relion 4 subtomogram star file fields
-CTF_IMAGE = 'rlnCtfImage'
 SUBTOMO_NAME = 'rlnImageName'
 COORD_X = 'rlnCoordinateX'
 COORD_Y = 'rlnCoordinateY'
@@ -63,8 +62,10 @@ NEWST_COM = 'newst.com'
 TILT_COM = 'tilt.com'
 
 # Data preparation
-IN_TOMO_STAR = 'inTomos.star'
+IN_TOMOS_STAR = 'inTomos.star'
+OUT_TOMOS_STAR = 'outTomos.star'
 IN_SUBTOMOS_STAR = 'inSubtomos.star'
+OUT_SUBTOMOS_STAR = 'outSubtomos.star'
 
 
 

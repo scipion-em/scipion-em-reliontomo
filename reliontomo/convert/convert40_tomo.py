@@ -27,7 +27,7 @@ from pwem.emlib.image import ImageHandler
 import pyworkflow.utils as pwutils
 from relion.convert.convert_base import WriterBase
 from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, IMOD_DIR, FRACTIONAL_DOSE, \
-    ACQ_ORDER_FILE, CULLED_FILE, CTF_IMAGE, SUBTOMO_NAME, COORD_X, COORD_Y, COORD_Z, SHIFTX, SHIFTY, SHIFTZ, ROT, \
+    ACQ_ORDER_FILE, CULLED_FILE, SUBTOMO_NAME, COORD_X, COORD_Y, COORD_Z, SHIFTX, SHIFTY, SHIFTZ, ROT, \
     TILT, PSI, TILT_PRIOR, PSI_PRIOR, CLASS_NUMBER
 from scipion.install.funcs import mkdir
 import numpy as np
@@ -78,20 +78,19 @@ class Writer(WriterBase):
             # Add row to the table which will be used to generate the STAR file
             tomoTable.addRow([
                 subtomo.getVolName(),                                # _rlnTomoName #1
-                self._getCTFFileFromSubtomo(subtomo),                # _rlnCtfImage #2
-                subtomo.getFileName().replace(':' + MRC, ''),        # _rlnImageName #3
-                subtomo.getCoordinate3D().getX(BOTTOM_LEFT_CORNER),  # _rlnCoordinateX #4
-                subtomo.getCoordinate3D().getY(BOTTOM_LEFT_CORNER),  # _rlnCoordinateY #5
-                subtomo.getCoordinate3D().getZ(BOTTOM_LEFT_CORNER),  # _rlnCoordinateZ #6
-                shifts[0],                                           # _rlnOriginX #7
-                shifts[1],                                           # _rlnOriginY #8
-                shifts[2],                                           # _rlnOriginZ #9
-                angles[0],                                           # _rlnAngleRot #10
-                rlnAngleTilt,                                        # _rlnAngleTilt #11
-                rlnAnglePsi,                                         # _rlnAnglePsi #12
-                getattr(subtomo, '_tiltPriorAngle', rlnAngleTilt),   # _rlnAngleTiltPrior #13
-                getattr(subtomo, '_psiPriorAngle', rlnAnglePsi),     # _rlnAnglePsiPrior #14
-                subtomo.getClassId()                                 # _rlnClassNumber #15
+                subtomo.getFileName().replace(':' + MRC, ''),        # _rlnImageName #2
+                subtomo.getCoordinate3D().getX(BOTTOM_LEFT_CORNER),  # _rlnCoordinateX #3
+                subtomo.getCoordinate3D().getY(BOTTOM_LEFT_CORNER),  # _rlnCoordinateY #4
+                subtomo.getCoordinate3D().getZ(BOTTOM_LEFT_CORNER),  # _rlnCoordinateZ #5
+                shifts[0],                                           # _rlnOriginX #6
+                shifts[1],                                           # _rlnOriginY #7
+                shifts[2],                                           # _rlnOriginZ #8
+                angles[0],                                           # _rlnAngleRot #9
+                rlnAngleTilt,                                        # _rlnAngleTilt #10
+                rlnAnglePsi,                                         # _rlnAnglePsi #11
+                getattr(subtomo, '_tiltPriorAngle', rlnAngleTilt),   # _rlnAngleTiltPrior #12
+                getattr(subtomo, '_psiPriorAngle', rlnAnglePsi),     # _rlnAnglePsiPrior #13
+                subtomo.getClassId()                                 # _rlnClassNumber #14
             ])
 
         # Write the STAR file
@@ -137,7 +136,6 @@ class Writer(WriterBase):
     def _getSubtomogramStarFileLabels():
         return [
             TOMO_NAME,
-            CTF_IMAGE,
             SUBTOMO_NAME,
             COORD_X,
             COORD_Y,
@@ -175,5 +173,4 @@ class Writer(WriterBase):
 
     @staticmethod
     def _genCulledFileName(prot, tsId):
-        # TODO: is this a simply name to generate something or the path to an existing file?
-        return None
+        return prot._getExtraPath(tsId + '_culled.mrc:mrc')
