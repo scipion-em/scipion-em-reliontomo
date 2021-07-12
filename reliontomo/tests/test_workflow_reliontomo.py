@@ -28,7 +28,7 @@ import os
 from os.path import exists
 
 import pyworkflow.tests as pwtests
-from imod.protocols import ProtImodCtfEstimation
+from imod.protocols import ProtImodAutomaticCtfEstimation
 from pwem.tests.workflows import TestWorkflow
 from pwem.protocols import ProtImportVolumes, ProtImportMask
 from pyworkflow.utils import magentaStr
@@ -115,7 +115,7 @@ class TestWorkflowRelionTomo(TestWorkflow):
     def _tSCtfEstimateImod(self, protImportTS):
         print(magentaStr("\n==> Calculating the tilt series ctf:"))
         protTSCtfImod = self.newProtocol(
-            ProtImodCtfEstimation,
+            ProtImodAutomaticCtfEstimation,
             inputSet=getattr(protImportTS, 'outputTiltSeries', None),
             angleRange=10
         )
