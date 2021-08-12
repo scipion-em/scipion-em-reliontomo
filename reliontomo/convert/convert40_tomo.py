@@ -41,19 +41,19 @@ class Writer(WriterBase):
     """ Helper class to convert from Scipion SetOfTomograms and SetOfSubTomograms to star files ."""
 
     def writeSetOfTomograms(self, tomoSet, outStarFileName, prot=None, tsSet=None,
-                            ctfPlotterDir=None, eTomoDir=None):
+                            ctfPlotterParentDir=None, eTomoParentDir=None):
         tomoTable = Table(columns=self._getTomogramStarFileLabels())
         tsList, tsIdFromTsSet = zip(*[(ts.clone(), ts.getTsId()) for ts in tsSet])
         for tomo in tomoSet:
             tsId = tomo.getTsId()
             ts = tsList[tsIdFromTsSet.index(tsId)]
-            tomoTable.addRow(tomo.getFileName(),                            # _rlnTomoName #1
-                             ts.getFileName(),                              # _rlnTomoTiltSeriesName #2
-                             self._getCtfPlotterFile(tsId, ctfPlotterDir),  # _rlnTomoImportCtfPlotterFile #3
-                             join(eTomoDir, tsId),                          # _rlnTomoImportImodDir #4
-                             ts.getAcquisition().getDosePerFrame(),         # _rlnTomoImportFractionalDose #5
-                             self._genOrderListFile(prot, ts),              # _rlnTomoImportOrderList #6
-                             self._genCulledFileName(prot, tsId)            # _rlnTomoImportCulledFile #7
+            tomoTable.addRow(tomo.getFileName(),                                  # _rlnTomoName #1
+                             ts.getFileName(),                                    # _rlnTomoTiltSeriesName #2
+                             self._getCtfPlotterFile(tsId, ctfPlotterParentDir),  # _rlnTomoImportCtfPlotterFile #3
+                             join(eTomoParentDir, tsId),                          # _rlnTomoImportImodDir #4
+                             ts.getAcquisition().getDosePerFrame(),               # _rlnTomoImportFractionalDose #5
+                             self._genOrderListFile(prot, ts),                    # _rlnTomoImportOrderList #6
+                             self._genCulledFileName(prot, tsId)                  # _rlnTomoImportCulledFile #7
                              )
 
         # Write the STAR file

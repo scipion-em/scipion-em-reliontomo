@@ -26,8 +26,9 @@
 This module contains the protocol for 3d classification with relion.
 """
 from pwem.protocols import EMProtocol
-from pyworkflow import BETA
+from pyworkflow import BETA, join
 from pyworkflow.protocol import PointerParam, PathParam, BooleanParam, LEVEL_ADVANCED, EnumParam
+from pyworkflow.utils import getParentFolder
 from reliontomo import Plugin
 from reliontomo.constants import IN_TOMOS_STAR, IN_SUBTOMOS_STAR, OUT_TOMOS_STAR
 from reliontomo.convert import writeSetOfTomograms, writeSetOfSubtomograms
@@ -50,7 +51,7 @@ class ProtRelionPrepareData(EMProtocol):
     def _defineParams(self, form):
         form.addSection(label='CTFTomoSeries')
 
-        form.addParam('inputCTFTS', PointerParam,
+        form.addParam('inputCtfTs', PointerParam,
                       pointerClass='SetOfCTFTomoSeries',
                       label="Input CTF tomo series",
                       important=True,
@@ -144,19 +145,36 @@ class ProtRelionPrepareData(EMProtocol):
                       )
 
     def _insertAllSteps(self):
+        # JORGE
+        import os
+        fname = "/home/jjimenez/Desktop/test_JJ.txt"
+        if os.path.exists(fname):
+            os.remove(fname)
+        fjj = open(fname, "a+")
+        fjj.write('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
+        fjj.close()
+        print('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
+        import time
+        time.sleep(10)
+        # JORGE_END
         self._initialize()
         self._insertFunctionStep(self._convertInputStep)
         self._insertFunctionStep(self._relionImportTomograms)
         self._insertFunctionStep(self._relionImportParticles)
 
     def _initialize(self):
+        self.TsSet = self.inputCtfTs.get().getTiltSeries()
         self.tomoSet = self.inputSubtomos.get().getCoordinates3D().getPrecedents()
         self.acquisition = self.tomoSet.getAcquisition()
 
     def _convertInputStep(self):
         # Write the tomograms star file
-        writeSetOfTomograms(self.tomoSet, self._getInTomosStarFilename(), prot=self, tsSet=self.inputTS.get(),
-                            ctfPlotterDir=self.ctfPlotterFilesPath.get(), eTomoDir=self.eTomoFilesPath.get())
+        writeSetOfTomograms(self.tomoSet,
+                            self._getInTomosStarFilename(),
+                            prot=self,
+                            tsSet=self.TsSet,
+                            ctfPlotterParentDir=join(getParentFolder(self.inputCtfTs.get()._mapperPath), 'extra'),
+                            eTomoParentDir=self.eTomoFilesPath.get())
         # Write the particles star file
         writeSetOfSubtomograms(self.inputSubtomos.get(), self._getInSubtomosStarFilename())
 
