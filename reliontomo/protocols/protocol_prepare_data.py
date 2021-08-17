@@ -25,10 +25,13 @@
 """
 This module contains the protocol for 3d classification with relion.
 """
+from os import mkdir
+from os.path import join
+
+from imod.utils import generateDefocusIMODFileFromObject
 from pwem.protocols import EMProtocol
-from pyworkflow import BETA, join
+from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, PathParam, BooleanParam, LEVEL_ADVANCED, EnumParam
-from pyworkflow.utils import getParentFolder
 from reliontomo import Plugin
 from reliontomo.constants import IN_TOMOS_STAR, IN_SUBTOMOS_STAR, OUT_TOMOS_STAR
 from reliontomo.convert import writeSetOfTomograms, writeSetOfSubtomograms
@@ -36,6 +39,9 @@ from reliontomo.convert import writeSetOfTomograms, writeSetOfSubtomograms
 # eTomo data source choices
 ETOMO_FROM_PROT = 0
 ETOMO_FROM_DIR = 1
+
+# Other constants
+DEFOCUS = 'defocus'
 
 
 class ProtRelionPrepareData(EMProtocol):
@@ -45,6 +51,8 @@ class ProtRelionPrepareData(EMProtocol):
     _devStatus = BETA
     tomoSet = None
     acquisition = None
+    inTomosStar = 'inTomos.star'
+    inSubtomosStar = 'inSubtomos.star'
 
     # -------------------------- DEFINE param functions -----------------------
 
@@ -64,27 +72,6 @@ class ProtRelionPrepareData(EMProtocol):
                       help='It is the handedness of the tilt geometry and it is used to describe '
                            'whether the focus increases or decreases as a function of Z distance.'
                       )
-        # form.addParam('ctfPlotterFilesPath', PathParam,
-        #               label="IMOD's CTFPLotter results parent directory",
-        #               important=True,
-        #               allowsNull=False,
-        #               help='Used to provide the *.defocus* files obtained with CTFPlotter. '
-        #                    'It is expected to be the parent folder where all your resulting subdirectories '
-        #                    'obtained with IMOD-CTFPlotter are contained.\n\n'
-        #                    'There *must* be one subdirectory '
-        #                    '*per tilt series* and each file *must* contain as many rows as the '
-        #                    'number of tilt images which compose the corresponding tilt series.\n\n'
-        #                    '*Example:*\n'
-        #                    'CTF manual estimation protocol folder:\n'
-        #                    '    |_extra\n'
-        #                    '        |_ts1\n'
-        #                    '            |_ts1.defocus\n'
-        #                    '        |_ts2\n'
-        #                    '            |_ts2.defocus\n\n'
-        #                    'In this case, the CTFPlotter directory would be the path to\n'
-        #                    '*CTF manual estimation protocol folder*.'
-        #               )
-
         group = form.addGroup('IMOD related arguments')
         group.addParam('eTomoDataFrom', EnumParam,
                        label='Choose IMOD-eTomo data source',
@@ -163,26 +150,36 @@ class ProtRelionPrepareData(EMProtocol):
         self._insertFunctionStep(self._relionImportParticles)
 
     def _initialize(self):
-        self.TsSet = self.inputCtfTs.get().getTiltSeries()
-        self.tomoSet = self.inputSubtomos.get().getCoordinates3D().getPrecedents()
-        self.acquisition = self.tomoSet.getAcquisition()
+        mkdir(self._getExtraPath(DEFOCUS))
+        self.TsSet = self.inputCtfTs.get().getSetOfTiltSeries()
+        self.tomoSet = self.inputSubtomos.get().getCoordinates3D().get().getPrecedents()
 
     def _convertInputStep(self):
+        # Generate defocus files
+        for ctfTomo in self.inputCtfTs.get():
+            defocusPath = self._getExtraPath(DEFOCUS, ctfTomo.getTsId())
+            mkdir(defocusPath)
+            generateDefocusIMODFileFromObject(ctfTomo, join(defocusPath, ctfTomo.getTsId() + '.' + DEFOCUS))
         # Write the tomograms star file
         writeSetOfTomograms(self.tomoSet,
-                            self._getInTomosStarFilename(),
+                            self._getStarFilename(IN_TOMOS_STAR),
                             prot=self,
                             tsSet=self.TsSet,
-                            ctfPlotterParentDir=join(getParentFolder(self.inputCtfTs.get()._mapperPath), 'extra'),
+                            ctfPlotterParentDir=self._getExtraPath(DEFOCUS),
                             eTomoParentDir=self.eTomoFilesPath.get())
         # Write the particles star file
-        writeSetOfSubtomograms(self.inputSubtomos.get(), self._getInSubtomosStarFilename())
+        writeSetOfSubtomograms(self.inputSubtomos.get(),
+                               self._getStarFilename(IN_SUBTOMOS_STAR))
 
     def _relionImportTomograms(self):
-        self.runJob('relion_tomo_import_tomograms', self._genImportTomosCmd(), env=Plugin.getEnviron())
+        self.runJob('relion_tomo_import_tomograms',
+                    self._genImportTomosCmd(),
+                    env=Plugin.getEnviron())
 
     def _relionImportParticles(self):
-        self.runJob('flipZCoords', self._genImportSubtomosCmd(), env=Plugin.getEnviron())
+        self.runJob('relion_tomo_import_particles',
+                    self._genImportSubtomosCmd(),
+                    env=Plugin.getEnviron())
 
     def _validate(self):
         # TODO: generar cada .defocus file a partir de la CTFTomoSeries --> Fede
@@ -192,13 +189,14 @@ class ProtRelionPrepareData(EMProtocol):
         pass
 
     def _genImportTomosCmd(self):
+        acq = self.tomoSet.getAcquisition()
         cmd = '--i %s ' % self._getStarFilename(IN_TOMOS_STAR)
         cmd += '--o %s ' % self._getStarFilename(OUT_TOMOS_STAR)
         cmd += '--hand %s ' % self._decodeHandeness()
         cmd += '--angpix %s ' % self.inputSubtomos.get().getSamplingRate()
-        cmd += '--voltage %s ' % self.acquisition.getVoltage()
-        cmd += '--Cs %s ' % self.acquisition.getSphericalAberration()
-        cmd += '--Q0 %s ' % self.acquisition.getAmplitudeContrast()
+        cmd += '--voltage %s ' % acq.getVoltage()
+        cmd += '--Cs %s ' % acq.getSphericalAberration()
+        cmd += '--Q0 %s ' % acq.getAmplitudeContrast()
         if self.flipYZ.get():
             cmd += '--flipYZ '
         if self.flipZ.get():
@@ -208,9 +206,9 @@ class ProtRelionPrepareData(EMProtocol):
 
     def _genImportSubtomosCmd(self):
         cmd = '--i %s ' % self._getStarFilename(IN_SUBTOMOS_STAR)
-        cmd += '--t %s ' % self._getStarFilename(OUT_TOMOS_STAR)
         cmd += '--o %s ' % self._getExtraPath()
-        if self.flipZCoords().get():
+        cmd += '--t %s ' % self._getStarFilename(OUT_TOMOS_STAR)
+        if self.flipZCoords.get():
             cmd += '--flipZ '
         return cmd
 

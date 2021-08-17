@@ -43,12 +43,12 @@ class Writer(WriterBase):
     def writeSetOfTomograms(self, tomoSet, outStarFileName, prot=None, tsSet=None,
                             ctfPlotterParentDir=None, eTomoParentDir=None):
         tomoTable = Table(columns=self._getTomogramStarFileLabels())
-        tsList, tsIdFromTsSet = zip(*[(ts.clone(), ts.getTsId()) for ts in tsSet])
+        tsIdFromTsSet = [ts.getTsId() for ts in tsSet]
         for tomo in tomoSet:
             tsId = tomo.getTsId()
-            ts = tsList[tsIdFromTsSet.index(tsId)]
-            tomoTable.addRow(tomo.getFileName(),                                  # _rlnTomoName #1
-                             ts.getFileName(),                                    # _rlnTomoTiltSeriesName #2
+            ts = tsSet[tsIdFromTsSet.index(tsId) + 1]
+            tomoTable.addRow(tsId,                                                # _rlnTomoName #1
+                             ts.getFirstItem().getFileName() + ':mrc',            # _rlnTomoTiltSeriesName #2
                              self._getCtfPlotterFile(tsId, ctfPlotterParentDir),  # _rlnTomoImportCtfPlotterFile #3
                              join(eTomoParentDir, tsId),                          # _rlnTomoImportImodDir #4
                              ts.getAcquisition().getDosePerFrame(),               # _rlnTomoImportFractionalDose #5
@@ -65,6 +65,7 @@ class Writer(WriterBase):
         ih = ImageHandler()
         tomoTable = Table(columns=self._getSubtomogramStarFileLabels())
         tmpDir = pwutils.getParentFolder(subtomosStar)
+        precedentsSet = subtomoSet.getCoordinates3D().get().getPrecedents()
         for subtomo in subtomoSet:
             if pwutils.getExt(subtomo.getFileName().replace(':' + MRC, '')) != '.' + MRC:
                 mrcDir = join(tmpDir, pwutils.removeBaseExt(subtomo.getVolName()))
@@ -76,25 +77,33 @@ class Writer(WriterBase):
             rlnAngleTilt = angles[1]
             rlnAnglePsi = angles[2]
             # Add row to the table which will be used to generate the STAR file
-            tomoTable.addRow([
-                subtomo.getVolName(),                                # _rlnTomoName #1
-                subtomo.getFileName().replace(':' + MRC, ''),        # _rlnImageName #2
-                subtomo.getCoordinate3D().getX(BOTTOM_LEFT_CORNER),  # _rlnCoordinateX #3
-                subtomo.getCoordinate3D().getY(BOTTOM_LEFT_CORNER),  # _rlnCoordinateY #4
-                subtomo.getCoordinate3D().getZ(BOTTOM_LEFT_CORNER),  # _rlnCoordinateZ #5
-                shifts[0],                                           # _rlnOriginX #6
-                shifts[1],                                           # _rlnOriginY #7
-                shifts[2],                                           # _rlnOriginZ #8
-                angles[0],                                           # _rlnAngleRot #9
-                rlnAngleTilt,                                        # _rlnAngleTilt #10
-                rlnAnglePsi,                                         # _rlnAnglePsi #11
-                getattr(subtomo, '_tiltPriorAngle', rlnAngleTilt),   # _rlnAngleTiltPrior #12
-                getattr(subtomo, '_psiPriorAngle', rlnAnglePsi),     # _rlnAnglePsiPrior #13
-                subtomo.getClassId()                                 # _rlnClassNumber #14
-            ])
+            tomoTable.addRow(
+                self._getPrecedentTsIdFromSubtomo(subtomo, precedentsSet),   # _rlnTomoName #1
+                subtomo.getFileName().replace(':' + MRC, ''),                # _rlnImageName #2
+                subtomo.getCoordinate3D().getX(BOTTOM_LEFT_CORNER),          # _rlnCoordinateX #3
+                subtomo.getCoordinate3D().getY(BOTTOM_LEFT_CORNER),          # _rlnCoordinateY #4
+                subtomo.getCoordinate3D().getZ(BOTTOM_LEFT_CORNER),          # _rlnCoordinateZ #5
+                shifts[0],                                                   # _rlnOriginX #6
+                shifts[1],                                                   # _rlnOriginY #7
+                shifts[2],                                                   # _rlnOriginZ #8
+                angles[0],                                                   # _rlnAngleRot #9
+                rlnAngleTilt,                                                # _rlnAngleTilt #10
+                rlnAnglePsi,                                                 # _rlnAnglePsi #11
+                getattr(subtomo, '_tiltPriorAngle', rlnAngleTilt),           # _rlnAngleTiltPrior #12
+                getattr(subtomo, '_psiPriorAngle', rlnAnglePsi),             # _rlnAnglePsiPrior #13
+                getattr(subtomo, '_getClassId', 0)                           # _rlnClassNumber #14
+            )
 
         # Write the STAR file
         tomoTable.write(subtomosStar)
+
+    @staticmethod
+    def _getPrecedentTsIdFromSubtomo(subtomo, precedentsSet):
+        for tomo in precedentsSet:
+            if subtomo.getVolName() in tomo.getFileName():
+                return tomo.getTsId()
+
+        raise Exception('Not able to read TsId for subtomogram %s' % subtomo.getVolName())
 
     @ staticmethod
     def _getCTFFileFromSubtomo(subtomo):
@@ -167,7 +176,11 @@ class Writer(WriterBase):
         ind = np.argsort([ti.getTiltAngle() for ti in tiList])  # Indices to get the data sorted by acqOrder
         with open(outputFilename, mode='w') as acqOrderFile:
             acqOrderFileWriter = csv.writer(acqOrderFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            [acqOrderFileWriter.writerow([tiList[i].getAcquisitionOder, tiList[i].getTiltAngle()]) for i in ind]
+            acqOrderList = [ti.getAcquisitionOrder() for ti in tiList]
+            if min(acqOrderList) == 0:
+                [acqOrderFileWriter.writerow([tiList[i].getAcquisitionOrder() + 1, tiList[i].getTiltAngle()]) for i in ind]
+            else:
+                [acqOrderFileWriter.writerow([tiList[i].getAcquisitionOrder(), tiList[i].getTiltAngle()]) for i in ind]
 
         return outputFilename
 
