@@ -25,8 +25,8 @@
 """
 This module contains the protocol for 3d classification with relion.
 """
-from os import mkdir
-from os.path import join
+from os import mkdir, listdir
+from os.path import join, exists
 
 from imod.utils import generateDefocusIMODFileFromObject
 from pwem.protocols import EMProtocol
@@ -131,24 +131,14 @@ class ProtRelionPrepareData(EMProtocol):
                       expertLevel=LEVEL_ADVANCED
                       )
 
+    # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        # JORGE
-        import os
-        fname = "/home/jjimenez/Desktop/test_JJ.txt"
-        if os.path.exists(fname):
-            os.remove(fname)
-        fjj = open(fname, "a+")
-        fjj.write('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
-        fjj.close()
-        print('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
-        import time
-        time.sleep(10)
-        # JORGE_END
         self._initialize()
         self._insertFunctionStep(self._convertInputStep)
         self._insertFunctionStep(self._relionImportTomograms)
         self._insertFunctionStep(self._relionImportParticles)
 
+    # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
         mkdir(self._getExtraPath(DEFOCUS))
         self.TsSet = self.inputCtfTs.get().getSetOfTiltSeries()
@@ -166,7 +156,7 @@ class ProtRelionPrepareData(EMProtocol):
                             prot=self,
                             tsSet=self.TsSet,
                             ctfPlotterParentDir=self._getExtraPath(DEFOCUS),
-                            eTomoParentDir=self.eTomoFilesPath.get())
+                            eTomoParentDir=self._getEtomoParentDir())
         # Write the particles star file
         writeSetOfSubtomograms(self.inputSubtomos.get(),
                                self._getStarFilename(IN_SUBTOMOS_STAR))
@@ -181,12 +171,38 @@ class ProtRelionPrepareData(EMProtocol):
                     self._genImportSubtomosCmd(),
                     env=Plugin.getEnviron())
 
+    # -------------------------- INFO functions -------------------------------
     def _validate(self):
-        # TODO: generar cada .defocus file a partir de la CTFTomoSeries --> Fede
-        # TODO: lo mismo con los tilt.com y newst.com
-        # TODO: el orderlist tiene que ir en un csv con order, ángulo
-        # TODO: generar los nombres culled --> tsId_culled.st:mrc
-        pass
+        # TODO: generar los nombres culled --> tsId_culled.st:mrc cuando se quiten vistas con IMOD
+        errorMsg = []
+        # Check if files tilt.com and newst.com are contained in the eTomo corresponding directories
+        NEWST_COM = 'newst.com'
+        TILT_COM = 'tilt.com'
+        tsIdList = [ts.getTsId() for ts in self.inputCtfTs.get().getSetOfTiltSeries()]
+        eTomoParentDir = self._getEtomoParentDir()
+        for tsId in tsIdList:
+            currentTsEtomoDir = join(eTomoParentDir, tsId)
+            currentTsErrMsg = ['\n%s [%s]:\n' % (tsId, currentTsEtomoDir)]
+            if exists(currentTsEtomoDir):
+                filesList = listdir(currentTsEtomoDir)
+                if NEWST_COM not in filesList:
+                    currentTsErrMsg.append('\t- File %s not found\n' % NEWST_COM)
+                if TILT_COM not in filesList:
+                    currentTsErrMsg.append('\t- File %s not found\n' % TILT_COM)
+            else:
+                currentTsErrMsg.append('\t- Directory %s not found\n' % currentTsEtomoDir)
+
+            if len(currentTsErrMsg) > 1:
+                errorMsg.append(''.join(currentTsErrMsg))
+
+        return errorMsg
+
+    # --------------------------- UTILS functions -----------------------------
+    def _getEtomoParentDir(self):
+        if self.eTomoDataFrom.get() == ETOMO_FROM_PROT:
+            return self.eTomoProt.get()._getExtraPath()
+        else:
+            return self.eTomoFilesPath.get()
 
     def _genImportTomosCmd(self):
         acq = self.tomoSet.getAcquisition()

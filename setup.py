@@ -141,7 +141,7 @@ setup(
     #
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=['scipion-em-relion', 'scipion-em-tomo'],  # Optional
+    # install_requires=['scipion-em-relion', 'scipion-em-tomo'],  # Optional
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"
@@ -163,7 +163,7 @@ setup(
     # MANIFEST.in as well.
     # include_package_data=True,
     package_data={  # Optional
-       'relion': ['relion_logo.png', 'protocols.conf'],
+       'reliontomo': ['relion_logo.png', 'protocols.conf'],
     },
 
     # Although 'package_data' is the preferred approach, in some case you may
