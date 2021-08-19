@@ -22,12 +22,8 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-"""
-This module contains the protocol for 3d classification with relion.
-"""
 from os import mkdir, listdir
 from os.path import join, exists
-
 from imod.utils import generateDefocusIMODFileFromObject
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
@@ -45,9 +41,9 @@ DEFOCUS = 'defocus'
 
 
 class ProtRelionPrepareData(EMProtocol):
+    """Prepare data for Relion 4
     """
-    """
-    _label = 'Load and prepare data as expected by relion 4'
+    _label = 'Prepare data for Relion 4'
     _devStatus = BETA
     tomoSet = None
     acquisition = None

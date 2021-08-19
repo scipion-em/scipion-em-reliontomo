@@ -65,7 +65,11 @@ TILT_COM = 'tilt.com'
 IN_TOMOS_STAR = 'inTomos.star'
 OUT_TOMOS_STAR = 'outTomos.star'
 IN_SUBTOMOS_STAR = 'inSubtomos.star'
-OUT_SUBTOMOS_STAR = 'outSubtomos.star'
+OUT_SUBTOMOS_STAR = 'particles.star'
+
+# Initial models
+REC_PARTICLES_DIR = 'recParticles'
+PSEUDO_SUBTOMOS_DIR = 'pseudoSubtomos'
 
 
 
