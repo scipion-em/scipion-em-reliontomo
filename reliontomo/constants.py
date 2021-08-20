@@ -29,8 +29,8 @@ RELIONTOMO_HOME = 'RELIONTOMO_HOME'
 RELIONTOMO_CUDA_LIB = 'RELION_CUDA_LIB'
 RELIONTOMO_DEFAULT_VERSION = V4_0
 RELIONTOMO_DEFAULT = RELION + '-' + RELIONTOMO_DEFAULT_VERSION
-# V30_VALIDATION_MSG = 'This version of Reliontomo plugin requires Relion 3.0 binaries. ' \
-#                      'Please install it if necessary via scipion3 installb %s.' % RELIONTOMO_DEFAULT
+V30_VALIDATION_MSG = 'This version of Reliontomo plugin requires Relion 3.0 binaries. ' \
+                     'Please install it if necessary via scipion3 installb relion-3.0'
 
 
 # Relion 4 tomogram star file fields
@@ -70,6 +70,10 @@ OUT_SUBTOMOS_STAR = 'particles.star'
 # Initial models
 REC_PARTICLES_DIR = 'recParticles'
 PSEUDO_SUBTOMOS_DIR = 'pseudoSubtomos'
+
+# Refine - angular sampling
+ANGULAR_SAMPLING_LIST = ['30', '15', '7.5', '3.7', '1.8', '0.9', '0.5',
+                         '0.2', '0.1', '0.06', '0.03', '0.01', '0.007', '0.004']
 
 
 

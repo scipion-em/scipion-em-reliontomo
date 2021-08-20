@@ -28,4 +28,6 @@
 # from .protocol_refine_3d_tomo import ProtRelionSubtomoRefine3D
 # from .protocol_reconstruct_subtomo import ProtRelionSubTomoReconstruct
 from .protocol_prepare_data import ProtRelionPrepareData
-from .protocol_make_subtomos_and_rec_particle import ProtRelionMakePseudoSubtomoAndRecParticle
+from .protocol_make_pseudo_subtomos import ProtRelionMakePseudoSubtomograms
+from .protocol_rec_particle import ProtRelionReconstructParticle
+from .protocol_de_novo_initial_model import ProtRelionDeNovoInitialModel
