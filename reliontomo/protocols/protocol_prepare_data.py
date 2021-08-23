@@ -158,14 +158,10 @@ class ProtRelionPrepareData(EMProtocol):
                                self._getStarFilename(IN_SUBTOMOS_STAR))
 
     def _relionImportTomograms(self):
-        self.runJob('relion_tomo_import_tomograms',
-                    self._genImportTomosCmd(),
-                    env=Plugin.getEnviron())
+        Plugin.runRelionTomo(self, 'relion_tomo_import_tomograms', self._genImportTomosCmd())
 
     def _relionImportParticles(self):
-        self.runJob('relion_tomo_import_particles',
-                    self._genImportSubtomosCmd(),
-                    env=Plugin.getEnviron())
+        Plugin.runRelionTomo(self, 'relion_tomo_import_particles', self._genImportSubtomosCmd())
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):

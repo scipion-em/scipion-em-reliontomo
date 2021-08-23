@@ -30,7 +30,7 @@ from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, FloatParam, StringParam, BooleanParam, \
     EnumParam, PathParam
 from pyworkflow.utils import Message
-from reliontomo.constants import ANGULAR_SAMPLING_LIST
+from reliontomo.constants import ANGULAR_SAMPLING_LIST, OUT_SUBTOMOS_STAR
 from reliontomo.utils import genSymmetryTable
 
 
@@ -78,10 +78,10 @@ class ProtRelionDeNovoInitialModel(EMProtocol):
                       expertLevel=LEVEL_ADVANCED)
 
         form.addSection(label='Optimisation')
-        form.addParam('numberOfIterations', IntParam,
+        form.addParam('maxNumberOfIterations', IntParam,
                       default=25,
                       label='Number of iterations',
-                      help='Number of iterations to be performed.')
+                      help='Maximum number of iterations to be performed.')
         form.addParam('numberOfClasses', IntParam,
                       default=1,
                       label='Number of classes to be defined.')
@@ -90,6 +90,20 @@ class ProtRelionDeNovoInitialModel(EMProtocol):
                       label='Circular mask diameter (Å)',
                       help='Diameter of the circular mask that will be applied to the experimental images '
                            '(in Angstroms)')
+        form.addParam('gradBasedOpt', BooleanParam,
+                      default=False,
+                      label='Perform gradient based optimisation',
+                      expertLevel=LEVEL_ADVANCED,
+                      help='Perform gradient based optimisation (instead of default expectation-maximization).')
+        form.addParam('gradWriteIter', IntParam,
+                      default=10,
+                      label='Write out model every number of iterations',
+                      expertLevel=LEVEL_ADVANCED,
+                      help='Write out model every so many iterations during gradient refinement')
+        form.addParam('initBlobs', BooleanParam,
+                      default=False,
+                      label='Initialize models with random Gaussians.',
+                      expertLevel=LEVEL_ADVANCED)
         form.addParam('flattenSolvent', BooleanParam,
                       default=False,
                       label='Flatten and enforce non-negative solvent?')
@@ -127,7 +141,7 @@ class ProtRelionDeNovoInitialModel(EMProtocol):
         form.addSection(label='Compute')
         form.addParam('noParallelDiscIO', BooleanParam,
                       default=False,
-                      label='Use parallel disc I/O?',
+                      label='Do not let MPI processes access the disc simultaneously',
                       help='Do NOT let parallel (MPI) processes access the disc simultaneously (use '
                            'this option with NFS).')
         form.addParam('pooledSubtomos', IntParam,
@@ -137,26 +151,13 @@ class ProtRelionDeNovoInitialModel(EMProtocol):
         form.addParam('allParticlesRam', BooleanParam,
                       default=False,
                       label='Pre-read all particles into RAM?',
-                      help='If set to Yes, all particle images will be read into computer memory, which will greatly '
-                           'speed up calculations on systems with slow disk access. However, one should of course be '
-                           'careful with the amount of RAM available. Because particles are read in float-precision, '
-                           'it will take \n( N * (box_size)^2 * 4 / (1024 * 1024 * 1024) ) Giga-bytes to read N '
-                           'particles into RAM. For 100 thousand 200x200 images, that becomes 15Gb, or 60 Gb for the '
-                           'same number of 400x400 particles. Remember that running a single MPI slave on each node '
-                           'that runs as many threads as available cores will have access to all available RAM.\n\n'
-                           'If parallel disc I/O is set to No, then only the master reads all particles into RAM and '
-                           'sends those particles through the network to the MPI slaves during the refinement '
-                           'iterations.')
+                      help='If set to Yes, the leader process read all particles into memory. Be careful you have '
+                           'enough RAM for large data sets!')
         form.addParam('combineItersDisc', BooleanParam,
                       default=False,
                       label='Combine iterations through disc?',
-                      help='If set to Yes, at the end of every iteration all MPI slaves will write out a large file '
-                           'with their accumulated results. The MPI master will read in all these files, combine '
-                           'them all, and write out a new file with the combined results. All MPI slaves will then '
-                           'read in the combined results. This reduces heavy load on the network, but increases load '
-                           'on the disc I/O. This will affect the time it takes between the progress-bar in the '
-                           'expectation step reaching its end (the mouse gets to the cheese) and the start of the '
-                           'ensuing maximisation step. It will depend on your system setup which is most efficient.')
+                      help='If set to Yes, the large arrays of summed weights will be sent through the MPI network '
+                           'instead of writing large files to disc.')
         form.addParam('scratchDir', PathParam,
                       label='Copy particles to scratch directory',
                       help='If provided, particle stacks will be copied to this local scratch disk prior for '
@@ -192,19 +193,72 @@ class ProtRelionDeNovoInitialModel(EMProtocol):
                            "--verb 1\n"
                            "--pad 2\n")
 
-        form.addParallelSection(threads=0, mpi=1)
+        form.addParallelSection(threads=1, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        pass
+        self._insertFunctionStep(self._generateDeNovo3DModel)
 
     # -------------------------- STEPS functions ------------------------------
+    def _generateDeNovo3DModel(self):
+        # TODO: mpirun n_mpi, -j threads
+        cmd = ''
+        cmd += '--i %s ' % self.inputPrepareDataProt.get()._getExtraPath(OUT_SUBTOMOS_STAR)
+        cmd += '--o %s ' % self._getExtraPath()
+        cmd += '--denovo_3dref '
+        cmd += '--j %i ' % self.numberOfThreads
+        # CTF args
+        if self.doCTF.get():
+            cmd += '--ctf '
+        if self.ignoreCTFUntilFirstPeak.get():
+            cmd += '--ctf_intact_first_peak '
+        if self.ctfPhaseFlipped.get():
+            cmd += '--ctf_phase_flipped '
+        if self.padCtf.get():
+            cmd += '--pad_ctf '
+        if self.ctfUncorrectedRef.get():
+            cmd += '--ctf_uncorrected_ref '
 
-    # # -------------------------- INFO functions -------------------------------
+        # Optimisation args
+        cmd += '--iter %i ' % self.maxNumberOfIterations.get()
+        cmd += '--K %i ' % self.numberOfClasses.get()
+        cmd += '--particle_diameter %.2f ' % self.maskDiameter.get()
+        if self.flattenSolvent.get():
+            cmd += '--flatten_solvent '
+        if self.gradBasedOpt.get():
+            cmd += '--grad '
+        if self.gradWriteIter.get():
+            cmd += '--grad_write_iter '
+        if self.initBlobs.get():
+            cmd += '--init_blobs '
+        cmd += '--sym %s ' % self.symmetry.get()
+        cmd += '--healpix_order %.2f ' % self.angularSamplingDeg.get()
+        cmd += '--offset_step %i ' % self.offsetSearchStepPix.get()
+        cmd += '--offset_range %i ' % self.offsetSearchRangePix.get()
+
+        # Compute args
+        if self.noParallelDiscIO.get():
+            cmd += '--no_parallel_disc_io '
+        cmd += '--pool %i ' % self.pooledSubtomos.get()
+        if self.allParticlesRam.get():
+            cmd += '--preread_images '
+        if self.combineItersDisc.get():
+            cmd += '--dont_combine_weights_via_disc '
+        if self.scratchDir.get():
+            cmd += '--scratch_dir %s ' % self.scratchDir.get()
+        if self.doGpu.get():
+            cmd += '--gpu %s ' % self.gpusToUse.get()
+
+        # Additional args
+        cmd += 'oversampling %.2f' % self.oversampling.get()
+        if self.extraParams.get():
+            cmd += ' ' + self.extraParams.get()
+
+    # -------------------------- INFO functions -------------------------------
     def _validate(self):
         pass
 
-    # # --------------------------- UTILS functions -----------------------------
+    # --------------------------- UTILS functions -----------------------------
     # if self.keepOnlyLastIterFiles:
     #     self._cleanUndesiredFiles()
 

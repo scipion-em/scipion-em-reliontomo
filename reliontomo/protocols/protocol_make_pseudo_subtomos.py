@@ -82,9 +82,8 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
 
     # -------------------------- STEPS functions ------------------------------
     def _relionMakePseudoSubtomos(self):
-        self.runJob(getProgram('relion_tomo_subtomo', self.numberOfMpi.get()),
-                    self._genMakePseudoSubtomoCmd(),
-                    env=Plugin.getEnviron())
+        Plugin.runRelionTomo(self, 'relion_tomo_subtomo', self._genMakePseudoSubtomoCmd(),
+                             numberOfMpi=self.numberOfMpi.get())
 
     # # -------------------------- INFO functions -------------------------------
     def _validate(self):

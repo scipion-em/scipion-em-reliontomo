@@ -58,9 +58,8 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
 
     # -------------------------- STEPS functions ------------------------------
     def _relionReconstructParticle(self):
-        self.runJob(getProgram('relion_tomo_reconstruct_particle', self.numberOfMpi.get()),
-                    self._genRecParticleCmd(),
-                    env=Plugin.getEnviron())
+        Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_particle', self._genRecParticleCmd(),
+                             numberOfMpi=self.numberOfMpi.get())
 
     # # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -81,6 +80,6 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
         #        the procedure, but it does not require additional memory. Unless memory is limited, the --j_out option
         #        should be preferred. The product of --j_out and --j_in should not exceed the number of CPU cores
         #        available.
-        cmd += '--j_out %i ' % self.numberOfMpi.get()
+        cmd += '--j_out %i ' % self.numberOfThreads.get()
         cmd += '--j_in %i ' % 1
         return cmd

@@ -76,7 +76,7 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
                             'for further refinement. More information about the Wiener Filter can be found here: '
                             'https://en.wikipedia.org/wiki/Wiener_filter')
 
-        form.addParallelSection(threads=0, mpi=1)
+        form.addParallelSection(threads=1, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -95,7 +95,7 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
         cmd += '--crop %i ' % self.croppedBoxSize.get()
         cmd += '--bin %.1f ' % self.binningFactor.get()
         cmd += '--SNR %.2f ' % self.snrWiener.get()
-        cmd += '--j %i ' % self.numberOfMpi.get()
+        cmd += '--j %i ' % self.numberOfThreads.get()
         return cmd
 
     def _getFileFromDataPrepProt(self, fileName):
