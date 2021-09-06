@@ -23,6 +23,7 @@
 # *
 # **************************************************************************
 import json
+from reliontomo import Plugin
 from os import remove
 from os.path import abspath, exists
 from pwem.protocols import EMProtocol
@@ -31,7 +32,7 @@ from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, FloatPar
     EnumParam, PathParam
 from pyworkflow.utils import Message
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, OUT_SUBTOMOS_STAR
-from reliontomo.utils import genSymmetryTable
+from reliontomo.utils import genSymmetryTable, getProgram
 
 
 class ProtRelionDeNovoInitialModel(EMProtocol):
@@ -44,8 +45,8 @@ class ProtRelionDeNovoInitialModel(EMProtocol):
 
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
-        form.addParam('inputPrepareDataProt', PointerParam,
-                      pointerClass='ProtRelionPrepareData',
+        form.addParam('inputPseudoSubtomosProt', PointerParam,
+                      pointerClass='ProtRelionMakePseudoSubtomograms',
                       label="Data preparation protocol",
                       important=True,
                       allowsNull=False)
@@ -85,9 +86,16 @@ class ProtRelionDeNovoInitialModel(EMProtocol):
         form.addParam('numberOfClasses', IntParam,
                       default=1,
                       label='Number of classes to be defined.')
-        form.addParam('maskDiameter', FloatParam,
-                      default=-1,
+        form.addParam('maskDiameter', IntParam,
+                      allowsNull=False,
                       label='Circular mask diameter (Å)',
+                      help='Diameter of the circular mask that will be applied to the experimental images '
+                           '(in Angstroms)')
+        form.addParam('zeroMask', IntParam,
+                      allowsNull=False,
+                      label='Mask surrounding background in particles to zero?',
+                      default=False,
+                      expertLevel=LEVEL_ADVANCED,
                       help='Diameter of the circular mask that will be applied to the experimental images '
                            '(in Angstroms)')
         form.addParam('gradBasedOpt', BooleanParam,
@@ -100,9 +108,9 @@ class ProtRelionDeNovoInitialModel(EMProtocol):
                       label='Write out model every number of iterations',
                       expertLevel=LEVEL_ADVANCED,
                       help='Write out model every so many iterations during gradient refinement')
-        form.addParam('initBlobs', BooleanParam,
+        form.addParam('noInitBlobs', BooleanParam,
                       default=False,
-                      label='Initialize models with random Gaussians.',
+                      label='Switch off initializing models with random Gaussians?',
                       expertLevel=LEVEL_ADVANCED)
         form.addParam('flattenSolvent', BooleanParam,
                       default=False,
@@ -168,6 +176,7 @@ class ProtRelionDeNovoInitialModel(EMProtocol):
                       help='If set to Yes, it will use available gpu resources for some calculations.')
         form.addParam('gpusToUse', StringParam,
                       condition='doGpu',
+                      default='0',
                       label='GPUs to use:',
                       help='It can be used to provide a list of which GPUs (e. g. "0:1:2:3") to use. MPI-processes are '
                            'separated by ":", threads by ",". For example: "0,0:1,1:0,0:1,1"')
@@ -201,9 +210,21 @@ class ProtRelionDeNovoInitialModel(EMProtocol):
 
     # -------------------------- STEPS functions ------------------------------
     def _generateDeNovo3DModel(self):
-        # TODO: mpirun n_mpi, -j threads
+        # Gradient based optimisation is not compatible with MPI (relion throws an exception mentioning it)
+        nMpi = 1 if self.gradBasedOpt.get() else self.numberOfMpi.get()
+        Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genCommand(), numberOfMpi=nMpi)
+
+    # -------------------------- INFO functions -------------------------------
+    def _validate(self):
+        pass
+
+    # --------------------------- UTILS functions -----------------------------
+    # if self.keepOnlyLastIterFiles:
+    #     self._cleanUndesiredFiles()
+
+    def _genCommand(self):
         cmd = ''
-        cmd += '--i %s ' % self.inputPrepareDataProt.get()._getExtraPath(OUT_SUBTOMOS_STAR)
+        cmd += '--i %s ' % self.inputPseudoSubtomosProt.get()._getExtraPath(OUT_SUBTOMOS_STAR)
         cmd += '--o %s ' % self._getExtraPath()
         cmd += '--denovo_3dref '
         cmd += '--j %i ' % self.numberOfThreads
@@ -222,17 +243,19 @@ class ProtRelionDeNovoInitialModel(EMProtocol):
         # Optimisation args
         cmd += '--iter %i ' % self.maxNumberOfIterations.get()
         cmd += '--K %i ' % self.numberOfClasses.get()
-        cmd += '--particle_diameter %.2f ' % self.maskDiameter.get()
+        cmd += '--particle_diameter %i ' % self.maskDiameter.get()
+        if self.zeroMask.get():
+            cmd += '--zero_mask '
         if self.flattenSolvent.get():
             cmd += '--flatten_solvent '
         if self.gradBasedOpt.get():
             cmd += '--grad '
         if self.gradWriteIter.get():
-            cmd += '--grad_write_iter '
-        if self.initBlobs.get():
-            cmd += '--init_blobs '
+            cmd += '--grad_write_iter %i ' % self.gradWriteIter.get()
+        if self.noInitBlobs.get():
+            cmd += '--no_init_blobs '
         cmd += '--sym %s ' % self.symmetry.get()
-        cmd += '--healpix_order %.2f ' % self.angularSamplingDeg.get()
+        cmd += '--healpix_order %i ' % self.angularSamplingDeg.get()
         cmd += '--offset_step %i ' % self.offsetSearchStepPix.get()
         cmd += '--offset_range %i ' % self.offsetSearchRangePix.get()
 
@@ -242,7 +265,7 @@ class ProtRelionDeNovoInitialModel(EMProtocol):
         cmd += '--pool %i ' % self.pooledSubtomos.get()
         if self.allParticlesRam.get():
             cmd += '--preread_images '
-        if self.combineItersDisc.get():
+        if not self.combineItersDisc.get():
             cmd += '--dont_combine_weights_via_disc '
         if self.scratchDir.get():
             cmd += '--scratch_dir %s ' % self.scratchDir.get()
@@ -250,17 +273,11 @@ class ProtRelionDeNovoInitialModel(EMProtocol):
             cmd += '--gpu %s ' % self.gpusToUse.get()
 
         # Additional args
-        cmd += 'oversampling %.2f' % self.oversampling.get()
+        cmd += 'oversampling %i' % self.oversampling.get()
         if self.extraParams.get():
             cmd += ' ' + self.extraParams.get()
 
-    # -------------------------- INFO functions -------------------------------
-    def _validate(self):
-        pass
-
-    # --------------------------- UTILS functions -----------------------------
-    # if self.keepOnlyLastIterFiles:
-    #     self._cleanUndesiredFiles()
+        return cmd
 
     def _cleanUndesiredFiles(self):
         """Remove all files generated by relion_classify 3d excepting the ones which
