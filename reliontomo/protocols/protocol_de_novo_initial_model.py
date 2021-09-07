@@ -23,6 +23,7 @@
 # *
 # **************************************************************************
 import json
+from tomo.objects import AverageSubTomogram
 from reliontomo import Plugin
 from os import remove
 from os.path import abspath, exists
@@ -91,7 +92,7 @@ class ProtRelionDeNovoInitialModel(EMProtocol):
                       label='Circular mask diameter (Å)',
                       help='Diameter of the circular mask that will be applied to the experimental images '
                            '(in Angstroms)')
-        form.addParam('zeroMask', IntParam,
+        form.addParam('zeroMask', BooleanParam,
                       allowsNull=False,
                       label='Mask surrounding background in particles to zero?',
                       default=False,
@@ -207,12 +208,19 @@ class ProtRelionDeNovoInitialModel(EMProtocol):
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._insertFunctionStep(self._generateDeNovo3DModel)
+        self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
     def _generateDeNovo3DModel(self):
         # Gradient based optimisation is not compatible with MPI (relion throws an exception mentioning it)
         nMpi = 1 if self.gradBasedOpt.get() else self.numberOfMpi.get()
         Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genCommand(), numberOfMpi=nMpi)
+
+    def createOutputStep(self):
+        vol = AverageSubTomogram()
+        vol.setFileName(self._getExtraPath('relion_class001.mrc'))  # TODO: generate the name of the volume following this pattern extra_it002_class001.mrc
+        vol.setSamplingRate(8.83)  # TODO: check how to get the sampling rate at this point of the pipeline
+        self._defineOutputs(outputVolume=vol)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -225,7 +233,8 @@ class ProtRelionDeNovoInitialModel(EMProtocol):
     def _genCommand(self):
         cmd = ''
         cmd += '--i %s ' % self.inputPseudoSubtomosProt.get()._getExtraPath(OUT_SUBTOMOS_STAR)
-        cmd += '--o %s ' % self._getExtraPath()
+        cmd += '--o %s ' % self._getExtraPath()  # If not, Relion will concatenate it directly converting the
+        # last part of the path into a prefix of the resulting filename
         cmd += '--denovo_3dref '
         cmd += '--j %i ' % self.numberOfThreads
         # CTF args
