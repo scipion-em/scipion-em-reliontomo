@@ -25,7 +25,7 @@
 import json
 from pyworkflow.protocol import StringParam
 from reliontomo import Plugin
-from reliontomo.protocols.protocol_make_pseusosubtomos_and_rec_particle_base import \
+from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
 from reliontomo.utils import getProgram, genSymmetryTable
 

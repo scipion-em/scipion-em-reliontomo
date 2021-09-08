@@ -38,31 +38,25 @@ from reliontomo.constants import ANGULAR_SAMPLING_LIST, OUT_SUBTOMOS_STAR
 from reliontomo.utils import genSymmetryTable, getProgram
 
 
-class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
-    """Generate a de novo 3D initial model from the pseudo-subtomograms."""
+class ProtRelionRefineSUbtomograms(ProtRelionRefineBase):
+    """Subtomograms auto-refinement."""
 
-    _label = 'Generate a de novo 3D initial model from the pseudo-subtomograms'
-    #
-    # def __init__(self, **args):
-    #     ProtRelionRefineBase.__init__(self, **args)
+    _label = 'Subtomograms auto-refinement'
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self._generateDeNovo3DModel)
+        self._insertFunctionStep(self._autoRefine)
         self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
-    def _generateDeNovo3DModel(self):
-        # Gradient based optimisation is not compatible with MPI (relion throws an exception mentioning it)
-        nMpi = 1 if self.gradBasedOpt.get() else self.numberOfMpi.get()
-        Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genCommand(), numberOfMpi=nMpi)
+    def _autoRefine(self):
+        pass
+        # # Gradient based optimisation is not compatible with MPI (relion throws an exception mentioning it)
+        # nMpi = 1 if self.gradBasedOpt.get() else self.numberOfMpi.get()
+        # Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genCommand(), numberOfMpi=nMpi)
 
     def createOutputStep(self):
-        self._manageGeneratedFiles()
-        vol = AverageSubTomogram()
-        vol.setFileName(self._getExtraPath(self._getModelName()))
-        vol.setSamplingRate(8.83)  # TODO: check how to get the sampling rate at this point of the pipeline
-        self._defineOutputs(outputVolume=vol)
+        pass
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -82,7 +76,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         """There's some kind of bug in relion4 which makes it generate the file in the protocol base directory
         instead of the extra directory. It uses extra as a prefix of each generated file instead. Hence, until
         it's solved, the files will be moved to the extra directory and the prefix extra_ will be removed"""
-        prefix = 'extra_'
+        prefix = '_extra'
         genFiles = [f for f in listdir(self._getPath()) if isfile(join(self._getPath(), f))]
         for f in genFiles:
             moveFile(self._getPath(f), self._getExtraPath(f.replace(prefix, '')))
