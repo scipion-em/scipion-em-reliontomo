@@ -22,20 +22,14 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-import json
-
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
-from tomo.objects import AverageSubTomogram
 from reliontomo import Plugin
-from os import remove, listdir
-from os.path import abspath, exists, isfile, join
-from pwem.protocols import EMProtocol
-from pyworkflow import BETA
-from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, FloatParam, StringParam, BooleanParam, \
-    EnumParam, PathParam
-from pyworkflow.utils import Message, moveFile
-from reliontomo.constants import ANGULAR_SAMPLING_LIST, OUT_SUBTOMOS_STAR
-from reliontomo.utils import genSymmetryTable, getProgram
+from os import listdir
+from os.path import isfile, join
+from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, StringParam, BooleanParam, EnumParam
+from pyworkflow.utils import moveFile
+from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG
+from reliontomo.utils import getProgram
 
 
 class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
@@ -48,15 +42,17 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        ProtRelionRefineBase._defineIOParams(form)
+        self._defineInputParams(form)
         self._defineReferenceParams(form)
-        self._addSymmetryParam(form)
         self._defineCTFParams(form)
-        ProtRelionRefineBase._defineOptimisationParams(form)
         self._defineOptimisationParams(form)
-    
+        self._defineAutoSamplingParams(form)
+        self._defineComputeParams(form)
+        ProtRelionRefineBase._defineAdditionalParams(form)
+
     @staticmethod
-    def _defineReferenceParams(form):
+    def _defineInputParams(form):
+        ProtRelionRefineBase._defineIOParams(form)
         form.addParam('referenceVolume', PointerParam,
                       pointerClass='Volume',
                       allowsNull=False,
@@ -74,7 +70,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
                            'of the mask for the experimental images will be applied.\n\n'
                            'In some cases, for example for non-empty icosahedral viruses, it is also useful '
                            'to use a second mask. Check _Advaced_ parameters to select another volume mask.')
-        form.addParam('solventMask', PointerParam,
+        form.addParam('solventMask2', PointerParam,
                       pointerClass='VolumeMask',
                       expertLevel=LEVEL_ADVANCED,
                       allowsNull=True,
@@ -85,6 +81,8 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
                            'set to a constant. Note that this second mask should have one-values inside the '
                            'virion and zero-values in the capsid and the solvent areas.')
 
+    @staticmethod
+    def _defineReferenceParams(form):
         form.addSection(label='Reference')
         form.addParam('isMapAbsoluteGreyScale', BooleanParam,
                       default=True,
@@ -109,12 +107,67 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
                       help='It is recommended to strongly low-pass filter your initial reference map. '
                            'If it has not yet been low-pass filtered, it may be done internally using this option. '
                            'If set to 0, no low-pass filter will be applied to the initial reference(s).')
+        ProtRelionRefineBase._addSymmetryParam(form)
 
     @staticmethod
     def _defineOptimisationParams(form):
+        ProtRelionRefineBase._defineOptimisationParams(form)
         form.addParam('solventCorrectFSC', BooleanParam,
                       default=False,
-                      label='Correct FSC curve for the effects of the solvent mask?')
+                      condition='solventMask',
+                      label='Correct FSC curve for the effects of the solvent mask?',
+                      help="If set to Yes, then instead of using unmasked maps to calculate the gold-standard FSCs "
+                           "during refinement, masked half-maps are used and a post-processing-like correction of "
+                           "the FSC curves (with phase-randomisation) is performed every iteration.\n\n"
+                           "This only works when a reference mask is provided. This may yield "
+                           "higher-resolution maps, especially when the mask contains only a relatively small "
+                           "volume inside the box.")
+
+    @staticmethod
+    def _defineAutoSamplingParams(form):
+        form.addSection(label='Auto-sampling')
+        ProtRelionRefineBase._addAngularCommonParams(form)
+        form.addParam('localSearchAutoSampling', EnumParam,
+                      default=4,
+                      choices=ANGULAR_SAMPLING_LIST,
+                      label='Local searches from auto-sampling',
+                      help="Minimum healpix order (before oversampling) from which autosampling procedure will "
+                           "use local searches.\n\n"
+                           "In the automated procedure to increase the angular samplings, local angular "
+                           "searches of -6/+6 times the sampling rate will be used from this angular sampling rate "
+                           "onwards. For most lower-symmetric particles a value of 1.8 degrees will be sufficient. "
+                           "Perhaps icosahedral symmetries may benefit from a smaller value such as 0.9 degrees.")
+        form.addParam('relaxSym', StringParam,
+                      allowsNull=True,
+                      label='Symmetry to be relaxed',
+                      help="With this option, poses related to the standard local angular search range by the given "
+                           "point group will also be explored. For example, if you have a pseudo-symmetric dimer A-A', "
+                           "refinement or classification in C1 with symmetry relaxation by C2 might be able to improve "
+                           "distinction between A and A'. Note that the reference must be more-or-less aligned to the "
+                           "convention of (pseudo-)symmetry operators. For details, see Ilca et al 2019 and Abrishami "
+                           "et al 2020 cited in the About dialog.\n\n%s" % SYMMETRY_HELP_MSG)
+        form.addParam('useFinerAngularSampling', BooleanParam,
+                      default=False,
+                      label='Use finer angular sampling faster?',
+                      help="If set to Yes, then let auto-refinement proceed faster with finer angular samplings. "
+                           "Two additional conditions will be considered:\n\n "
+                           "\t-Angular sampling will go down despite changes still happening in the angles.\n"
+                           "\t-Angular sampling will go down if the current resolution already requires that sampling\n"
+                           "\t at the edge of the particle.\n\nThis option will make the computation faster, but "
+                           "hasn't been tested for many cases for potential loss in reconstruction quality upon "
+                           "convergence.")
+
+    @staticmethod
+    def _defineComputeParams(form):
+        ProtRelionRefineBase._defineComputeParams(form)
+        form.addParam('skipPadding', BooleanParam,
+                      default=False,
+                      label='Skip padding?',
+                      help="If set to Yes, the calculations will not use padding in Fourier space for better "
+                           "interpolation in the references. Otherwise, references are padded 2x before Fourier "
+                           "transforms are calculated. Skipping padding (i.e. use --pad 1) gives nearly as good "
+                           "results as using --pad 2, but some artifacts may appear in the corners from signal "
+                           "that is folded back.")
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -123,10 +176,8 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
 
     # -------------------------- STEPS functions ------------------------------
     def _autoRefine(self):
-        pass
-        # # Gradient based optimisation is not compatible with MPI (relion throws an exception mentioning it)
-        # nMpi = 1 if self.gradBasedOpt.get() else self.numberOfMpi.get()
-        # Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genCommand(), numberOfMpi=nMpi)
+        nMpi = self.numberOfMpi.get()
+        Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genAutoRefineCommand(), numberOfMpi=nMpi)
 
     def createOutputStep(self):
         pass
@@ -136,9 +187,33 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         pass
 
     # --------------------------- UTILS functions -----------------------------
-    def _genInitModelCommand(self):
-        cmd = self._genCommand()
-        cmd += '--denovo_3dref '
+    def _genAutoRefineCommand(self):
+        cmd = self._genCommonCommand()
+        cmd += '--auto_refine --split_random_halves --low_resol_join_halves 40 --norm --scale '
+        # I/O args
+        cmd += '--ref %s ' % self.referenceVolume.get()
+        if self.solventMask.get():
+            cmd += '--solvent_mask %s ' % self.solventMask.get()
+        if self.solventMask2.get():
+            cmd += '--solvent_mask2 %s ' % self.solventMask2.get()
+        # Reference args
+        if self.isMapAbsoluteGreyScale.get():
+            cmd += 'firstiter_cc '
+        if self.initialLowPassFilterA.get():
+            cmd += '--ini_high %.2f ' % self.initialLowPassFilterA.get()
+        # Optimisation args
+        if self.solventCorrectFSC.get():
+            cmd += '--solvent_correct_fsc '
+        # Angular sampling args
+        if self.localSearchAutoSampling.get():
+            cmd += '--auto_local_healpix_order %i ' % self.localSearchAutoSampling.get()
+        if self.relaxSym.get():
+            cmd += '--relax_sym %s ' % self.relaxSym.get()
+        if self.useFinerAngularSampling.get():
+            cmd += '--auto_ignore_angles --auto_resol_angles '
+        # Compute args
+        cmd += '--pad %i' % (1 if self.skipPadding.get() else 2)
+
         return cmd
 
     def _getModelName(self):

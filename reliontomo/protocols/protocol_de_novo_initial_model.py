@@ -22,20 +22,14 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-import json
-
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from tomo.objects import AverageSubTomogram
 from reliontomo import Plugin
-from os import remove, listdir
-from os.path import abspath, exists, isfile, join
-from pwem.protocols import EMProtocol
-from pyworkflow import BETA
-from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, FloatParam, StringParam, BooleanParam, \
-    EnumParam, PathParam
-from pyworkflow.utils import Message, moveFile
-from reliontomo.constants import ANGULAR_SAMPLING_LIST, OUT_SUBTOMOS_STAR
-from reliontomo.utils import genSymmetryTable, getProgram
+from os import listdir
+from os.path import isfile, join
+from pyworkflow.protocol import LEVEL_ADVANCED, IntParam, BooleanParam
+from pyworkflow.utils import moveFile
+from reliontomo.utils import getProgram
 
 
 class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
@@ -50,16 +44,15 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
 
     def _defineParams(self, form):
         ProtRelionRefineBase._defineParams(self, form)
-        self._defineIOParams(form)
-        self._defineCTFParams(form)
-        ProtRelionRefineBase._defineOptimisationParams(form)
+        ProtRelionRefineBase._defineIOParams(form)
+        ProtRelionRefineBase._defineCTFParams(form)
         self._defineOptimisationParams(form)
-        self._defineComputeParams(form)
-        self._defineAdditionalParams(form)
-        form.addParallelSection(threads=1, mpi=1)
+        ProtRelionRefineBase._defineComputeParams(form)
+        ProtRelionRefineBase._defineAdditionalParams(form)
 
     @staticmethod
     def _defineOptimisationParams(form):
+        ProtRelionRefineBase._defineOptimisationParams(form)
         form.addParam('maxNumberOfIterations', IntParam,
                       default=25,
                       label='Number of iterations',
@@ -85,28 +78,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
                       default=False,
                       label='Flatten and enforce non-negative solvent?')
         ProtRelionRefineBase._addSymmetryParam(form)
-        form.addParam('angularSamplingDeg', EnumParam,
-                      default=2,
-                      choices=ANGULAR_SAMPLING_LIST,
-                      label='Angular sampling interval (deg)',
-                      help='There are only a few discrete angular samplings possible because '
-                           'we use the HealPix library to generate the sampling of the first '
-                           'two Euler angles on the sphere. The samplings are approximate numbers '
-                           'and vary slightly over the sphere.')
-        form.addParam('offsetSearchRangePix', IntParam,
-                      default=6,
-                      label='Offset search range (pix.)',
-                      help='Probabilities will be calculated only for translations in a circle '
-                           'with this radius (in pixels). The center of this circle changes at '
-                           'every iteration and is placed at the optimal translation for each '
-                           'image in the previous iteration.')
-        form.addParam('offsetSearchStepPix', IntParam,
-                      default=2,
-                      label='Offset search step (pix.)',
-                      help='Translations will be sampled with this step-size (in pixels). '
-                           'Translational sampling is also done using the adaptive approach. '
-                           'Therefore, if adaptive=1, the translations will first be evaluated'
-                           'on a 2x coarser grid.')
+        ProtRelionRefineBase._addAngularCommonParams(form)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -117,7 +89,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
     def _generateDeNovo3DModel(self):
         # Gradient based optimisation is not compatible with MPI (relion throws an exception mentioning it)
         nMpi = 1 if self.gradBasedOpt.get() else self.numberOfMpi.get()
-        Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genCommand(), numberOfMpi=nMpi)
+        Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genInitModelCommand(), numberOfMpi=nMpi)
 
     def createOutputStep(self):
         self._manageGeneratedFiles()
@@ -132,8 +104,23 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
 
     # --------------------------- UTILS functions -----------------------------
     def _genInitModelCommand(self):
-        cmd = self._genCommand()
+        cmd = self._genCommonCommand()
         cmd += '--denovo_3dref '
+        # Optimisation args
+        cmd += '--iter %i ' % self.maxNumberOfIterations.get()
+        cmd += '--K %i ' % self.numberOfClasses.get()
+        if self.flattenSolvent.get():
+            cmd += '--flatten_solvent '
+        if self.gradBasedOpt.get():
+            cmd += '--grad '
+        if self.gradWriteIter.get():
+            cmd += '--grad_write_iter %i ' % self.gradWriteIter.get()
+        if self.noInitBlobs.get():
+            cmd += '--no_init_blobs '
+        cmd += '--sym %s ' % self.symmetry.get()
+        cmd += '--healpix_order %i ' % self.angularSamplingDeg.get()
+        cmd += '--offset_step %i ' % self.offsetSearchStepPix.get()
+        cmd += '--offset_range %i ' % self.offsetSearchRangePix.get()
         return cmd
 
     def _getModelName(self):

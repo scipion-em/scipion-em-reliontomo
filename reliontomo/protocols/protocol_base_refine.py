@@ -22,18 +22,14 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-import json
-from tomo.objects import AverageSubTomogram
-from reliontomo import Plugin
 from os import remove
 from os.path import abspath, exists
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
-from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, FloatParam, StringParam, BooleanParam, \
+from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, StringParam, BooleanParam, \
     EnumParam, PathParam
 from pyworkflow.utils import Message
-from reliontomo.constants import ANGULAR_SAMPLING_LIST, OUT_SUBTOMOS_STAR
-from reliontomo.utils import genSymmetryTable, getProgram
+from reliontomo.constants import ANGULAR_SAMPLING_LIST, OUT_SUBTOMOS_STAR, SYMMETRY_HELP_MSG
 
 
 class ProtRelionRefineBase(EMProtocol):
@@ -170,11 +166,32 @@ class ProtRelionRefineBase(EMProtocol):
         form.addParam('symmetry', StringParam,
                       label='Symmetry group',
                       default='C1',
-                      help='Symmetry libraries have been copied from XMIPP. As such, with the exception of tetrahedral '
-                           'symmetry, they comply with '
-                           'https://relion.readthedocs.io/en/latest/Reference/Bibliography.html#id23. '
-                           'Possible values [notation label] are described below:\n\n'
-                           '%s' % json.dumps(genSymmetryTable(), indent=1))
+                      help=SYMMETRY_HELP_MSG)
+
+    @staticmethod
+    def _addAngularCommonParams(form):
+        form.addParam('angularSamplingDeg', EnumParam,
+                      default=2,
+                      choices=ANGULAR_SAMPLING_LIST,
+                      label='Angular sampling interval (deg)',
+                      help='There are only a few discrete angular samplings possible because '
+                           'we use the HealPix library to generate the sampling of the first '
+                           'two Euler angles on the sphere. The samplings are approximate numbers '
+                           'and vary slightly over the sphere.')
+        form.addParam('offsetSearchRangePix', IntParam,
+                      default=6,
+                      label='Offset search range (pix.)',
+                      help='Probabilities will be calculated only for translations in a circle '
+                           'with this radius (in pixels). The center of this circle changes at '
+                           'every iteration and is placed at the optimal translation for each '
+                           'image in the previous iteration.')
+        form.addParam('offsetSearchStepPix', IntParam,
+                      default=2,
+                      label='Offset search step (pix.)',
+                      help='Translations will be sampled with this step-size (in pixels). '
+                           'Translational sampling is also done using the adaptive approach. '
+                           'Therefore, if adaptive=1, the translations will first be evaluated'
+                           'on a 2x coarser grid.')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -185,12 +202,11 @@ class ProtRelionRefineBase(EMProtocol):
         pass
 
     # --------------------------- UTILS functions -----------------------------
-    def _genCommand(self):
+    def _genCommonCommand(self):
         cmd = ''
         cmd += '--i %s ' % self.inputPseudoSubtomosProt.get()._getExtraPath(OUT_SUBTOMOS_STAR)
         cmd += '--o %s ' % self._getExtraPath()  # If not, Relion will concatenate it directly converting the
         # last part of the path into a prefix of the resulting filename
-        cmd += '--denovo_3dref '
         cmd += '--j %i ' % self.numberOfThreads
         # CTF args
         if self.doCTF.get():
@@ -205,23 +221,9 @@ class ProtRelionRefineBase(EMProtocol):
             cmd += '--ctf_uncorrected_ref '
 
         # Optimisation args
-        cmd += '--iter %i ' % self.maxNumberOfIterations.get()
-        cmd += '--K %i ' % self.numberOfClasses.get()
         cmd += '--particle_diameter %i ' % self.maskDiameter.get()
         if self.zeroMask.get():
             cmd += '--zero_mask '
-        if self.flattenSolvent.get():
-            cmd += '--flatten_solvent '
-        if self.gradBasedOpt.get():
-            cmd += '--grad '
-        if self.gradWriteIter.get():
-            cmd += '--grad_write_iter %i ' % self.gradWriteIter.get()
-        if self.noInitBlobs.get():
-            cmd += '--no_init_blobs '
-        cmd += '--sym %s ' % self.symmetry.get()
-        cmd += '--healpix_order %i ' % self.angularSamplingDeg.get()
-        cmd += '--offset_step %i ' % self.offsetSearchStepPix.get()
-        cmd += '--offset_range %i ' % self.offsetSearchRangePix.get()
 
         # Compute args
         if self.noParallelDiscIO.get():

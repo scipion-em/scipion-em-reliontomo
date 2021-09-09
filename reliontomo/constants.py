@@ -22,6 +22,9 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+import json
+
+from reliontomo.utils import genSymmetryTable
 
 RELION = 'relion'
 V4_0 = '4.0'
@@ -74,6 +77,13 @@ PSEUDO_SUBTOMOS_DIR = 'pseudoSubtomos'
 # Refine - angular sampling
 ANGULAR_SAMPLING_LIST = ['30', '15', '7.5', '3.7', '1.8', '0.9', '0.5',
                          '0.2', '0.1', '0.06', '0.03', '0.01', '0.007', '0.004']
+
+# Symmetry description
+SYMMETRY_HELP_MSG = 'Symmetry libraries have been copied from XMIPP. As such, with the exception of tetrahedral ' \
+                    'symmetry, they comply with ' \
+                    'https://relion.readthedocs.io/en/latest/Reference/Bibliography.html#id23. Possible values ' \
+                    '[notation label] are described below:\n\n' \
+                    '%s' % json.dumps(genSymmetryTable(), indent=1)
 
 
 
