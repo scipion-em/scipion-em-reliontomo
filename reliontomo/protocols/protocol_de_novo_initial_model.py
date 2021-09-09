@@ -42,9 +42,71 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
     """Generate a de novo 3D initial model from the pseudo-subtomograms."""
 
     _label = 'Generate a de novo 3D initial model from the pseudo-subtomograms'
-    #
-    # def __init__(self, **args):
-    #     ProtRelionRefineBase.__init__(self, **args)
+
+    def __init__(self, **args):
+        ProtRelionRefineBase.__init__(self, **args)
+
+    # -------------------------- DEFINE param functions -----------------------
+
+    def _defineParams(self, form):
+        ProtRelionRefineBase._defineParams(self, form)
+        self._defineIOParams(form)
+        self._defineCTFParams(form)
+        ProtRelionRefineBase._defineOptimisationParams(form)
+        self._defineOptimisationParams(form)
+        self._defineComputeParams(form)
+        self._defineAdditionalParams(form)
+        form.addParallelSection(threads=1, mpi=1)
+
+    @staticmethod
+    def _defineOptimisationParams(form):
+        form.addParam('maxNumberOfIterations', IntParam,
+                      default=25,
+                      label='Number of iterations',
+                      help='Maximum number of iterations to be performed.')
+        form.addParam('numberOfClasses', IntParam,
+                      default=1,
+                      label='Number of classes to be defined.')
+        form.addParam('gradBasedOpt', BooleanParam,
+                      default=False,
+                      label='Perform gradient based optimisation',
+                      expertLevel=LEVEL_ADVANCED,
+                      help='Perform gradient based optimisation (instead of default expectation-maximization).')
+        form.addParam('gradWriteIter', IntParam,
+                      default=10,
+                      label='Write out model every number of iterations',
+                      expertLevel=LEVEL_ADVANCED,
+                      help='Write out model every so many iterations during gradient refinement')
+        form.addParam('noInitBlobs', BooleanParam,
+                      default=False,
+                      label='Switch off initializing models with random Gaussians?',
+                      expertLevel=LEVEL_ADVANCED)
+        form.addParam('flattenSolvent', BooleanParam,
+                      default=False,
+                      label='Flatten and enforce non-negative solvent?')
+        ProtRelionRefineBase._addSymmetryParam(form)
+        form.addParam('angularSamplingDeg', EnumParam,
+                      default=2,
+                      choices=ANGULAR_SAMPLING_LIST,
+                      label='Angular sampling interval (deg)',
+                      help='There are only a few discrete angular samplings possible because '
+                           'we use the HealPix library to generate the sampling of the first '
+                           'two Euler angles on the sphere. The samplings are approximate numbers '
+                           'and vary slightly over the sphere.')
+        form.addParam('offsetSearchRangePix', IntParam,
+                      default=6,
+                      label='Offset search range (pix.)',
+                      help='Probabilities will be calculated only for translations in a circle '
+                           'with this radius (in pixels). The center of this circle changes at '
+                           'every iteration and is placed at the optimal translation for each '
+                           'image in the previous iteration.')
+        form.addParam('offsetSearchStepPix', IntParam,
+                      default=2,
+                      label='Offset search step (pix.)',
+                      help='Translations will be sampled with this step-size (in pixels). '
+                           'Translational sampling is also done using the adaptive approach. '
+                           'Therefore, if adaptive=1, the translations will first be evaluated'
+                           'on a 2x coarser grid.')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

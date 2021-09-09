@@ -31,5 +31,5 @@ from .protocol_prepare_data import ProtRelionPrepareData
 from .protocol_make_pseudo_subtomos import ProtRelionMakePseudoSubtomograms
 from .protocol_rec_particle import ProtRelionReconstructParticle
 from .protocol_de_novo_initial_model import ProtRelionDeNovoInitialModel
-from .protocol_refine_subtomograms import ProtRelionRefineSUbtomograms
+from .protocol_refine_subtomograms import ProtRelionRefineSubtomograms
 

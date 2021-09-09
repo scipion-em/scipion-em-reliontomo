@@ -44,11 +44,6 @@ class ProtRelionRefineBase(EMProtocol):
     # -------------------------- DEFINE param functions -----------------------
 
     def _defineParams(self, form):
-        self._defineIOParams(form)
-        self._defineCTFParams(form)
-        self._defineOptimisationParams(form)
-        self._defineComputeParams(form)
-        self._defineAdditionalParams(form)
         form.addParallelSection(threads=1, mpi=1)
 
     @staticmethod
@@ -92,13 +87,6 @@ class ProtRelionRefineBase(EMProtocol):
     @staticmethod
     def _defineOptimisationParams(form):
         form.addSection(label='Optimisation')
-        form.addParam('maxNumberOfIterations', IntParam,
-                      default=25,
-                      label='Number of iterations',
-                      help='Maximum number of iterations to be performed.')
-        form.addParam('numberOfClasses', IntParam,
-                      default=1,
-                      label='Number of classes to be defined.')
         form.addParam('maskDiameter', IntParam,
                       allowsNull=False,
                       label='Circular mask diameter (Å)',
@@ -108,56 +96,8 @@ class ProtRelionRefineBase(EMProtocol):
                       allowsNull=False,
                       label='Mask surrounding background in particles to zero?',
                       default=False,
-                      expertLevel=LEVEL_ADVANCED,
                       help='Diameter of the circular mask that will be applied to the experimental images '
                            '(in Angstroms)')
-        form.addParam('gradBasedOpt', BooleanParam,
-                      default=False,
-                      label='Perform gradient based optimisation',
-                      expertLevel=LEVEL_ADVANCED,
-                      help='Perform gradient based optimisation (instead of default expectation-maximization).')
-        form.addParam('gradWriteIter', IntParam,
-                      default=10,
-                      label='Write out model every number of iterations',
-                      expertLevel=LEVEL_ADVANCED,
-                      help='Write out model every so many iterations during gradient refinement')
-        form.addParam('noInitBlobs', BooleanParam,
-                      default=False,
-                      label='Switch off initializing models with random Gaussians?',
-                      expertLevel=LEVEL_ADVANCED)
-        form.addParam('flattenSolvent', BooleanParam,
-                      default=False,
-                      label='Flatten and enforce non-negative solvent?')
-        form.addParam('symmetry', StringParam,
-                      label='Symmetry group',
-                      default='C1',
-                      help='Symmetry libraries have been copied from XMIPP. As such, with the exception of tetrahedral '
-                           'symmetry, they comply with '
-                           'https://relion.readthedocs.io/en/latest/Reference/Bibliography.html#id23. '
-                           'Possible values [notation label] are described below:\n\n'
-                           '%s' % json.dumps(genSymmetryTable(), indent=1))
-        form.addParam('angularSamplingDeg', EnumParam,
-                      default=2,
-                      choices=ANGULAR_SAMPLING_LIST,
-                      label='Angular sampling interval (deg)',
-                      help='There are only a few discrete angular samplings possible because '
-                           'we use the HealPix library to generate the sampling of the first '
-                           'two Euler angles on the sphere. The samplings are approximate numbers '
-                           'and vary slightly over the sphere.')
-        form.addParam('offsetSearchRangePix', IntParam,
-                      default=6,
-                      label='Offset search range (pix.)',
-                      help='Probabilities will be calculated only for translations in a circle '
-                           'with this radius (in pixels). The center of this circle changes at '
-                           'every iteration and is placed at the optimal translation for each '
-                           'image in the previous iteration.')
-        form.addParam('offsetSearchStepPix', IntParam,
-                      default=2,
-                      label='Offset search step (pix.)',
-                      help='Translations will be sampled with this step-size (in pixels). '
-                           'Translational sampling is also done using the adaptive approach. '
-                           'Therefore, if adaptive=1, the translations will first be evaluated'
-                           'on a 2x coarser grid.')
 
     @staticmethod
     def _defineComputeParams(form):
@@ -224,6 +164,17 @@ class ProtRelionRefineBase(EMProtocol):
                            "may be useful for testing developmental options and/or expert use of the program, e.g: \n"
                            "--verb 1\n"
                            "--pad 2\n")
+
+    @staticmethod
+    def _addSymmetryParam(form):
+        form.addParam('symmetry', StringParam,
+                      label='Symmetry group',
+                      default='C1',
+                      help='Symmetry libraries have been copied from XMIPP. As such, with the exception of tetrahedral '
+                           'symmetry, they comply with '
+                           'https://relion.readthedocs.io/en/latest/Reference/Bibliography.html#id23. '
+                           'Possible values [notation label] are described below:\n\n'
+                           '%s' % json.dumps(genSymmetryTable(), indent=1))
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

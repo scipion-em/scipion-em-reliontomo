@@ -38,10 +38,83 @@ from reliontomo.constants import ANGULAR_SAMPLING_LIST, OUT_SUBTOMOS_STAR
 from reliontomo.utils import genSymmetryTable, getProgram
 
 
-class ProtRelionRefineSUbtomograms(ProtRelionRefineBase):
-    """Subtomograms auto-refinement."""
+class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
+    """Auto-refinement of subtomograms."""
 
-    _label = 'Subtomograms auto-refinement'
+    _label = 'Auto-refinement of subtomograms'
+
+    def __init__(self, **args):
+        ProtRelionRefineBase.__init__(self, **args)
+
+    # -------------------------- DEFINE param functions -----------------------
+    def _defineParams(self, form):
+        ProtRelionRefineBase._defineIOParams(form)
+        self._defineReferenceParams(form)
+        self._addSymmetryParam(form)
+        self._defineCTFParams(form)
+        ProtRelionRefineBase._defineOptimisationParams(form)
+        self._defineOptimisationParams(form)
+    
+    @staticmethod
+    def _defineReferenceParams(form):
+        form.addParam('referenceVolume', PointerParam,
+                      pointerClass='Volume',
+                      allowsNull=False,
+                      label='Reference volume',
+                      help='Initial reference 3D map, it should have the same dimensions and the same '
+                           'pixel size as your input particles.')
+        form.addParam('solventMask', PointerParam,
+                      pointerClass='VolumeMask',
+                      label='Reference mask (optional)',
+                      allowsNull=True,
+                      help='A volume mask containing a (soft) mask with the same dimensions '
+                           'as the reference(s), and values between 0 and 1, with 1 being 100% protein '
+                           'and 0 being 100% solvent. The reconstructed reference map will be multiplied '
+                           'by this mask. If no mask is given, a soft spherical mask based on the <radius> '
+                           'of the mask for the experimental images will be applied.\n\n'
+                           'In some cases, for example for non-empty icosahedral viruses, it is also useful '
+                           'to use a second mask. Check _Advaced_ parameters to select another volume mask.')
+        form.addParam('solventMask', PointerParam,
+                      pointerClass='VolumeMask',
+                      expertLevel=LEVEL_ADVANCED,
+                      allowsNull=True,
+                      label='Second reference mask (optional)',
+                      help='For all white (value 1) pixels in this second mask the '
+                           'corresponding pixels in the reconstructed map are set to the average value of '
+                           'these pixels. Thereby, for example, the higher density inside the virion may be '
+                           'set to a constant. Note that this second mask should have one-values inside the '
+                           'virion and zero-values in the capsid and the solvent areas.')
+
+        form.addSection(label='Reference')
+        form.addParam('isMapAbsoluteGreyScale', BooleanParam,
+                      default=True,
+                      label='Is initial 3D map on absolute greyscale?',
+                      help='Perform CC-calculation in the first iteration (use this if references are not on the '
+                           'absolute intensity scale). See detailed explanation below:\n\n '
+                           'Probabilities are calculated based on a Gaussian noise model,'
+                           'which contains a squared difference term between the reference and the experimental '
+                           'image.\n\n This has a consequence that the reference needs to be on the same absolute '
+                           'intensity greyscale as the experimental images. RELION and XMIPP reconstruct maps at '
+                           'their absolute intensity greyscale. Other packages may perform internal normalisations of '
+                           'the reference density, which will result in incorrect grey-scales. But, if the map was'
+                           'reconstructed in RELION or in XMIPP, set this option to Yes, otherwise set it to No.\n\n'
+                           'If set to No, RELION will use a (grey-scale invariant) cross-correlation criterion in the '
+                           'first iteration, and prior to the second iteration the map will be filtered again using '
+                           'the initial low-pass filter. This procedure is relatively quick and typically does not '
+                           'negatively affect the outcome of the subsequent map refinement. Therefore, if in doubt it '
+                           'is recommended to set this option to No.')
+        form.addParam('initialLowPassFilterA', FloatParam,
+                      default=30,
+                      label='Initial low-pass filter (A)',
+                      help='It is recommended to strongly low-pass filter your initial reference map. '
+                           'If it has not yet been low-pass filtered, it may be done internally using this option. '
+                           'If set to 0, no low-pass filter will be applied to the initial reference(s).')
+
+    @staticmethod
+    def _defineOptimisationParams(form):
+        form.addParam('solventCorrectFSC', BooleanParam,
+                      default=False,
+                      label='Correct FSC curve for the effects of the solvent mask?')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -69,13 +142,13 @@ class ProtRelionRefineSUbtomograms(ProtRelionRefineBase):
         return cmd
 
     def _getModelName(self):
-        """generate the name of the volume following this pattern extra_it002_class001.mrc"""
+        '''generate the name of the volume following this pattern extra_it002_class001.mrc'''
         return 'it{:03d}_class001.mrc'.format(self.maxNumberOfIterations.get())
 
     def _manageGeneratedFiles(self):
-        """There's some kind of bug in relion4 which makes it generate the file in the protocol base directory
+        '''There's some kind of bug in relion4 which makes it generate the file in the protocol base directory
         instead of the extra directory. It uses extra as a prefix of each generated file instead. Hence, until
-        it's solved, the files will be moved to the extra directory and the prefix extra_ will be removed"""
+        it's solved, the files will be moved to the extra directory and the prefix extra_ will be removed'''
         prefix = '_extra'
         genFiles = [f for f in listdir(self._getPath()) if isfile(join(self._getPath(), f))]
         for f in genFiles:
