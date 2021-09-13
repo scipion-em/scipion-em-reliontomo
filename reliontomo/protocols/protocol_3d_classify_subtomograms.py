@@ -27,149 +27,89 @@ from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
 from os import listdir
 from os.path import isfile, join
-from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, StringParam, BooleanParam, EnumParam
+from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, StringParam, BooleanParam, EnumParam, \
+    LEVEL_NORMAL, GE, LE
 from pyworkflow.utils import moveFile
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG
 from reliontomo.utils import getProgram
 
 
-class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms, ProtRelionDeNovoInitialModel):
+class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
     """3D Classification of subtomograms."""
 
     _label = '3D Classification of subtomograms'
 
     def __init__(self, **args):
         ProtRelionRefineSubtomograms.__init__(self, **args)
-        ProtRelionDeNovoInitialModel.__init__(self, **args)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
         ProtRelionRefineSubtomograms._defineInputParams(form)
         ProtRelionRefineSubtomograms._defineReferenceParams(form)
         ProtRelionRefineSubtomograms._defineCTFParams(form)
-        # self._defineOptimisationParams(form)
-        # self._defineAutoSamplingParams(form)
+        self._defineOptimisationParams(form)
+        self._defineSamplingParams(form)
         ProtRelionRefineSubtomograms._defineComputeParams(form)
         ProtRelionRefineSubtomograms._defineAdditionalParams(form)
 
     @staticmethod
-    def _defineInputParams(form):
-        ProtRelionRefineBase._defineIOParams(form)
-        form.addParam('referenceVolume', PointerParam,
-                      pointerClass='Volume',
-                      allowsNull=False,
-                      label='Reference volume',
-                      help='Initial reference 3D map, it should have the same dimensions and the same '
-                           'pixel size as your input particles.')
-        form.addParam('solventMask', PointerParam,
-                      pointerClass='VolumeMask',
-                      label='Reference mask (optional)',
-                      allowsNull=True,
-                      help='A volume mask containing a (soft) mask with the same dimensions '
-                           'as the reference(s), and values between 0 and 1, with 1 being 100% protein '
-                           'and 0 being 100% solvent. The reconstructed reference map will be multiplied '
-                           'by this mask. If no mask is given, a soft spherical mask based on the <radius> '
-                           'of the mask for the experimental images will be applied.\n\n'
-                           'In some cases, for example for non-empty icosahedral viruses, it is also useful '
-                           'to use a second mask. Check _Advaced_ parameters to select another volume mask.')
-        form.addParam('solventMask2', PointerParam,
-                      pointerClass='VolumeMask',
-                      expertLevel=LEVEL_ADVANCED,
-                      allowsNull=True,
-                      label='Second reference mask (optional)',
-                      help='For all white (value 1) pixels in this second mask the '
-                           'corresponding pixels in the reconstructed map are set to the average value of '
-                           'these pixels. Thereby, for example, the higher density inside the virion may be '
-                           'set to a constant. Note that this second mask should have one-values inside the '
-                           'virion and zero-values in the capsid and the solvent areas.')
-
-    @staticmethod
-    def _defineReferenceParams(form):
-        form.addSection(label='Reference')
-        form.addParam('isMapAbsoluteGreyScale', BooleanParam,
-                      default=True,
-                      label='Is initial 3D map on absolute greyscale?',
-                      help='Perform CC-calculation in the first iteration (use this if references are not on the '
-                           'absolute intensity scale). See detailed explanation below:\n\n '
-                           'Probabilities are calculated based on a Gaussian noise model,'
-                           'which contains a squared difference term between the reference and the experimental '
-                           'image.\n\n This has a consequence that the reference needs to be on the same absolute '
-                           'intensity greyscale as the experimental images. RELION and XMIPP reconstruct maps at '
-                           'their absolute intensity greyscale. Other packages may perform internal normalisations of '
-                           'the reference density, which will result in incorrect grey-scales. But, if the map was'
-                           'reconstructed in RELION or in XMIPP, set this option to Yes, otherwise set it to No.\n\n'
-                           'If set to No, RELION will use a (grey-scale invariant) cross-correlation criterion in the '
-                           'first iteration, and prior to the second iteration the map will be filtered again using '
-                           'the initial low-pass filter. This procedure is relatively quick and typically does not '
-                           'negatively affect the outcome of the subsequent map refinement. Therefore, if in doubt it '
-                           'is recommended to set this option to No.')
-        form.addParam('initialLowPassFilterA', FloatParam,
-                      default=30,
-                      label='Initial low-pass filter (A)',
-                      help='It is recommended to strongly low-pass filter your initial reference map. '
-                           'If it has not yet been low-pass filtered, it may be done internally using this option. '
-                           'If set to 0, no low-pass filter will be applied to the initial reference(s).')
-        ProtRelionRefineBase._insertSymmetryParam(form)
-
-    @staticmethod
-    def _defineOptimisationParamsCommon2All(form):
-        ProtRelionRefineBase._defineOptimisationParamsCommon2All(form)
-        form.addParam('solventCorrectFSC', BooleanParam,
+    def _defineOptimisationParams(form):
+        ProtRelionRefineSubtomograms._insertOptimisationSection(form)
+        ProtRelionRefineSubtomograms._insertNumOfClassesParam(form)
+        ProtRelionRefineSubtomograms._insertRegularisationParam(form)
+        ProtRelionRefineSubtomograms._insertNItersParam(form)
+        form.addParam('useFastSubsets', BooleanParam,
+                      label='Use fast subsets (for large data sets)?',
                       default=False,
-                      condition='solventMask',
-                      label='Correct FSC curve for the effects of the solvent mask?',
-                      help="If set to Yes, then instead of using unmasked maps to calculate the gold-standard FSCs "
-                           "during refinement, masked half-maps are used and a post-processing-like correction of "
-                           "the FSC curves (with phase-randomisation) is performed every iteration.\n\n"
-                           "This only works when a reference mask is provided. This may yield "
-                           "higher-resolution maps, especially when the mask contains only a relatively small "
-                           "volume inside the box.")
+                      help='If set to Yes, the first 5 iterations will be done with random subsets of only K*1500 '
+                           'particles (K being the number of classes); the next 5 with K*4500 particles, the next '
+                           '5 with 30% of the data set; and the final ones with all data. This was inspired by a '
+                           'cisTEM implementation by Niko Grigorieff et al.')
+        ProtRelionRefineSubtomograms._insertMaskDiameterParam(form)
+        ProtRelionRefineSubtomograms._insertZeroMaskParam(form)
+        form.addParam('limitResolutionEStepTo', FloatParam,
+                      label='Limit resolution E-step to (Å)',
+                      default=-1,
+                      help='If set to a positive number, then the expectation step (i.e. the alignment) will be done '
+                           'only including the Fourier components up to this resolution (in Angstroms).\n\nThis is '
+                           'useful to prevent overfitting, as the classification runs in RELION are not guaranteed to '
+                           'be 100% overfitting-free (unlike the 3D auto-refine with its gold-standard FSC). '
+                           'In particular for very difficult data sets, e.g. of very small or featureless particles, '
+                           'this has been shown to give much better class averages. \n\nIn such cases, values in the '
+                           'range of 7-12 Angstroms have proven useful.')
 
     @staticmethod
-    def _defineAutoSamplingParams(form):
-        form.addSection(label='Auto-sampling')
-        ProtRelionRefineBase._insertAngularCommonParams(form)
-        form.addParam('localSearchAutoSampling', EnumParam,
-                      default=4,
-                      choices=ANGULAR_SAMPLING_LIST,
-                      label='Local searches from auto-sampling',
-                      help="Minimum healpix order (before oversampling) from which autosampling procedure will "
-                           "use local searches.\n\n"
-                           "In the automated procedure to increase the angular samplings, local angular "
-                           "searches of -6/+6 times the sampling rate will be used from this angular sampling rate "
-                           "onwards. For most lower-symmetric particles a value of 1.8 degrees will be sufficient. "
-                           "Perhaps icosahedral symmetries may benefit from a smaller value such as 0.9 degrees.")
-        form.addParam('relaxSym', StringParam,
-                      allowsNull=True,
-                      label='Symmetry to be relaxed',
-                      help="With this option, poses related to the standard local angular search range by the given "
-                           "point group will also be explored. For example, if you have a pseudo-symmetric dimer A-A', "
-                           "refinement or classification in C1 with symmetry relaxation by C2 might be able to improve "
-                           "distinction between A and A'. Note that the reference must be more-or-less aligned to the "
-                           "convention of (pseudo-)symmetry operators. For details, see Ilca et al 2019 and Abrishami "
-                           "et al 2020 cited in the About dialog.\n\n%s" % SYMMETRY_HELP_MSG)
-        form.addParam('useFinerAngularSampling', BooleanParam,
+    def _defineSamplingParams(form):
+        form.addSection(label='Sampling')
+        form.addParam('doImageAlignment', BooleanParam,
+                      label='Perform image alignment?',
                       default=False,
-                      label='Use finer angular sampling faster?',
-                      help="If set to Yes, then let auto-refinement proceed faster with finer angular samplings. "
-                           "Two additional conditions will be considered:\n\n "
-                           "\t-Angular sampling will go down despite changes still happening in the angles.\n"
-                           "\t-Angular sampling will go down if the current resolution already requires that sampling\n"
-                           "\t at the edge of the particle.\n\nThis option will make the computation faster, but "
-                           "hasn't been tested for many cases for potential loss in reconstruction quality upon "
-                           "convergence.")
-
-    @staticmethod
-    def _defineComputeParams(form):
-        ProtRelionRefineBase._defineComputeParams(form)
-        form.addParam('skipPadding', BooleanParam,
+                      help='If set to No, then rather than performing both alignment and classification, only '
+                           'classification will be performed. This allows the use of very focused masks. It requires '
+                           'that the optimal orientations of all particles are already stored in the input STAR file.')
+        ProtRelionRefineBase._insertAngularCommonParams(form,
+                                                        angSampling=2,
+                                                        offsetRange=5,
+                                                        offsetStep=1,
+                                                        condition='doImageAlignment')
+        form.addParam('doLocalAngleSearch', BooleanParam,
+                      label='Perform local angular searches?',
                       default=False,
-                      label='Skip padding?',
-                      help="If set to Yes, the calculations will not use padding in Fourier space for better "
-                           "interpolation in the references. Otherwise, references are padded 2x before Fourier "
-                           "transforms are calculated. Skipping padding (i.e. use --pad 1) gives nearly as good "
-                           "results as using --pad 2, but some artifacts may appear in the corners from signal "
-                           "that is folded back.")
+                      condition='doImageAlignment',
+                      help="If set to Yes, then rather than performing exhaustive angular searches, local searches "
+                           "within the range given below will be performed.\n\nA prior Gaussian distribution centered "
+                           "at the optimal orientation in the previous iteration and with a stddev of 1/3 of the range "
+                           "given below will be enforced.")
+        form.addParam('localAngularSearchRange', FloatParam,
+                      label='Local angular search range',
+                      condition='doImageAlignment and doLocalAngleSearch',
+                      default=5,
+                      validators=[GE(0), LE(15)],
+                      help="Local angular searches will be performed within +/- the given amount (in degrees) from "
+                           "the optimal orientation in the previous iteration.\n\nA Gaussian prior (also see previous "
+                           "option) will be applied, so that orientations closer to the optimal orientation in the "
+                           "previous iteration will get higher weights than those further away.")
+        ProtRelionRefineSubtomograms._insertRelaxSymmetry(form, condition='doImageAlignment and doLocalAngleSearch')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

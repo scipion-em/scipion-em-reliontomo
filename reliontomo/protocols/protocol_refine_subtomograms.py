@@ -137,15 +137,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
                            "searches of -6/+6 times the sampling rate will be used from this angular sampling rate "
                            "onwards. For most lower-symmetric particles a value of 1.8 degrees will be sufficient. "
                            "Perhaps icosahedral symmetries may benefit from a smaller value such as 0.9 degrees.")
-        form.addParam('relaxSym', StringParam,
-                      allowsNull=True,
-                      label='Symmetry to be relaxed',
-                      help="With this option, poses related to the standard local angular search range by the given "
-                           "point group will also be explored. For example, if you have a pseudo-symmetric dimer A-A', "
-                           "refinement or classification in C1 with symmetry relaxation by C2 might be able to improve "
-                           "distinction between A and A'. Note that the reference must be more-or-less aligned to the "
-                           "convention of (pseudo-)symmetry operators. For details, see Ilca et al 2019 and Abrishami "
-                           "et al 2020 cited in the About dialog.\n\n%s" % SYMMETRY_HELP_MSG)
+        ProtRelionRefineSubtomograms._insertRelaxSymmetry(form)
         form.addParam('useFinerAngularSampling', BooleanParam,
                       default=False,
                       label='Use finer angular sampling faster?',
@@ -168,6 +160,19 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
                            "transforms are calculated. Skipping padding (i.e. use --pad 1) gives nearly as good "
                            "results as using --pad 2, but some artifacts may appear in the corners from signal "
                            "that is folded back.")
+
+    @staticmethod
+    def _insertRelaxSymmetry(form, condition=True):
+        form.addParam('relaxSym', StringParam,
+                      allowsNull=True,
+                      condition=condition,
+                      label='Symmetry to be relaxed',
+                      help="With this option, poses related to the standard local angular search range by the given "
+                           "point group will also be explored. For example, if you have a pseudo-symmetric dimer A-A', "
+                           "refinement or classification in C1 with symmetry relaxation by C2 might be able to improve "
+                           "distinction between A and A'. Note that the reference must be more-or-less aligned to the "
+                           "convention of (pseudo-)symmetry operators. For details, see Ilca et al 2019 and Abrishami "
+                           "et al 2020 cited in the About dialog.\n\n%s" % SYMMETRY_HELP_MSG)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

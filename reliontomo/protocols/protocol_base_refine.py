@@ -99,6 +99,13 @@ class ProtRelionRefineBase(EMProtocol):
                            "the results.")
 
     @staticmethod
+    def _insertNItersParam(form):
+        form.addParam('nIterations', IntParam,
+                      allowsNull=False,
+                      default=25,
+                      label='Number of iterations to be performed')
+
+    @staticmethod
     def _insertRegularisationParam(form):
         form.addParam('regularisation', FloatParam,
                       default=0,
@@ -127,11 +134,18 @@ class ProtRelionRefineBase(EMProtocol):
     @staticmethod
     def _insertZeroMaskParam(form):
         form.addParam('zeroMask', BooleanParam,
-                      allowsNull=False,
-                      label='Mask surrounding background in particles to zero?',
-                      default=False,
-                      help='Diameter of the circular mask that will be applied to the experimental images '
-                           '(in Angstroms)')
+                      label='Mask individual particles with zeros?',
+                      default=True,
+                      help="If set to Yes, then in the individual particles, the area outside a circle with the "
+                           "radius of the particle will be set to zeros prior to taking the Fourier transform.\n\nThis "
+                           "will remove noise and therefore increase sensitivity in the alignment and classification.\n"
+                           "\nHowever, it will also introduce correlations between the Fourier components that are not "
+                           "modelled. When set to No, then the solvent area is filled with random noise, which "
+                           "prevents introducing correlations.\n\nHigh-resolution refinements (e.g. ribosomes or other "
+                           "large complexes in 3D auto-refine) tend to work better when filling the solvent area with "
+                           "random noise (i.e. setting this option to No), refinements of smaller complexes and most "
+                           "classifications go better when using zeros (i.e. setting this option to Yes).")
+
     @staticmethod
     def _insertFlattenSolventParam(form):
         form.addParam('flattenSolvent', BooleanParam,
@@ -229,9 +243,11 @@ class ProtRelionRefineBase(EMProtocol):
 
     # ANGULAR SAMPLING PARAMS ------------------------------------------------------------------------------------------
     @staticmethod
-    def _insertAngularCommonParams(form, expertLevel=LEVEL_NORMAL, angSampling=1, offsetRange=6, offsetStep=2):
+    def _insertAngularCommonParams(form, expertLevel=LEVEL_NORMAL, angSampling=1, offsetRange=6,
+                                   offsetStep=2, condition=True):
         form.addParam('angularSamplingDeg', EnumParam,
                       default=angSampling,
+                      condition=condition,
                       choices=ANGULAR_SAMPLING_LIST,
                       label='Angular sampling interval (deg)',
                       expertLevel=expertLevel,
@@ -241,6 +257,7 @@ class ProtRelionRefineBase(EMProtocol):
                            'and vary slightly over the sphere.')
         form.addParam('offsetSearchRangePix', IntParam,
                       default=offsetRange,
+                      condition=condition,
                       label='Offset search range (pix.)',
                       expertLevel=expertLevel,
                       help='Probabilities will be calculated only for translations in a circle '
@@ -249,6 +266,7 @@ class ProtRelionRefineBase(EMProtocol):
                            'image in the previous iteration.')
         form.addParam('offsetSearchStepPix', IntParam,
                       default=offsetStep,
+                      condition=condition,
                       label='Offset search step (pix.)',
                       expertLevel=expertLevel,
                       help='Translations will be sampled with this step-size (in pixels). '
@@ -270,6 +288,7 @@ class ProtRelionRefineBase(EMProtocol):
         cmd += '--i %s ' % self.inputPseudoSubtomosProt.get()._getExtraPath(OUT_SUBTOMOS_STAR)
         cmd += '--o %s ' % self._getExtraPath()  # If not, Relion will concatenate it directly converting the
         # last part of the path into a prefix of the resulting filename
+        # cmd  += '--pipeline_control %s ' % self._getExtraPath()
         cmd += '--j %i ' % self.numberOfThreads
         # CTF args
         if self.doCTF.get():

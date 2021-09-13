@@ -28,7 +28,7 @@ from tomo.objects import AverageSubTomogram
 from reliontomo import Plugin
 from os import listdir
 from os.path import isfile, join
-from pyworkflow.protocol import LEVEL_ADVANCED, IntParam, BooleanParam
+from pyworkflow.protocol import LEVEL_ADVANCED
 from pyworkflow.utils import moveFile
 from reliontomo.utils import getProgram
 
@@ -66,33 +66,6 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
                                                         angSampling=1,
                                                         offsetRange=6,
                                                         offsetStep=2)
-        # ProtRelionRefineBase._defineOptimisationParamsCommon2All(form)
-        # form.addParam('maxNumberOfIterations', IntParam,
-        #               default=25,
-        #               label='Number of iterations',
-        #               help='Maximum number of iterations to be performed.')
-        # form.addParam('numberOfClasses', IntParam,
-        #               default=1,
-        #               label='Number of classes to be defined.')
-        # form.addParam('gradBasedOpt', BooleanParam,
-        #               default=False,
-        #               label='Perform gradient based optimisation',
-        #               expertLevel=LEVEL_ADVANCED,
-        #               help='Perform gradient based optimisation (instead of default expectation-maximization).')
-        # form.addParam('gradWriteIter', IntParam,
-        #               default=10,
-        #               label='Write out model every number of iterations',
-        #               expertLevel=LEVEL_ADVANCED,
-        #               help='Write out model every so many iterations during gradient refinement')
-        # form.addParam('noInitBlobs', BooleanParam,
-        #               default=False,
-        #               label='Switch off initializing models with random Gaussians?',
-        #               expertLevel=LEVEL_ADVANCED)
-        # form.addParam('flattenSolvent', BooleanParam,
-        #               default=False,
-        #               label='Flatten and enforce non-negative solvent?')
-        # ProtRelionRefineBase._insertSymmetryParam(form)
-        # ProtRelionRefineBase._addAngularCommonParams(form)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -125,7 +98,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         cmd = self._genCommonCommand()
 
         # Initial model specific commands
-        cmd += '--denovo_3dref --grad --zero_mask --auto_sampling --pad 1'
+        cmd += '--denovo_3dref --grad --zero_mask --auto_sampling --pad 1 '
         #   Optimisation args
         cmd += '--iter %i ' % self.nVdamMiniBatches.get()
         cmd += '--tau2_fudge %d ' % self.regularisation.get()
@@ -150,7 +123,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
 
     def _getModelName(self):
         """generate the name of the volume following this pattern extra_it002_class001.mrc"""
-        return 'it{:03d}_class001.mrc'.format(self.maxNumberOfIterations.get())
+        return 'run_it{:03d}_model.mrc'.format(self.nVdamMiniBatches.get())
 
     def _manageGeneratedFiles(self):
         """There's some kind of bug in relion4 which makes it generate the file in the protocol base directory
@@ -159,4 +132,4 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         prefix = 'extra_'
         genFiles = [f for f in listdir(self._getPath()) if isfile(join(self._getPath(), f))]
         for f in genFiles:
-            moveFile(self._getPath(f), self._getExtraPath(f.replace(prefix, '')))
+            moveFile(self._getPath(f), self._getExtraPath(f.replace(prefix, 'run_')))
