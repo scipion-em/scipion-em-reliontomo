@@ -23,13 +23,10 @@
 # *
 # **************************************************************************
 
-# from .protocol_ctf_3d_estimation import ProtRelionEstimateCTF3D
-# from .protocol_classify_3d_tomo import ProtRelionSubtomoClassif3D
-# from .protocol_refine_3d_tomo import ProtRelionSubtomoRefine3D
-# from .protocol_reconstruct_subtomo import ProtRelionSubTomoReconstruct
 from .protocol_prepare_data import ProtRelionPrepareData
 from .protocol_make_pseudo_subtomos import ProtRelionMakePseudoSubtomograms
 from .protocol_rec_particle import ProtRelionReconstructParticle
 from .protocol_de_novo_initial_model import ProtRelionDeNovoInitialModel
 from .protocol_refine_subtomograms import ProtRelionRefineSubtomograms
+from .protocol_3d_classify_subtomograms import ProtRelion3DClassifySubtomograms
 

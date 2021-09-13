@@ -22,6 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from reliontomo.constants import INITIAL_MODEL
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from tomo.objects import AverageSubTomogram
 from reliontomo import Plugin
@@ -46,53 +47,69 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         ProtRelionRefineBase._defineParams(self, form)
         ProtRelionRefineBase._defineIOParams(form)
         ProtRelionRefineBase._defineCTFParams(form)
-        self._defineOptimisationParams(form)
+        self._defineOptimisationParamsCommon2All(form)
         ProtRelionRefineBase._defineComputeParams(form)
         ProtRelionRefineBase._defineAdditionalParams(form)
 
     @staticmethod
-    def _defineOptimisationParams(form):
-        ProtRelionRefineBase._defineOptimisationParams(form)
-        form.addParam('maxNumberOfIterations', IntParam,
-                      default=25,
-                      label='Number of iterations',
-                      help='Maximum number of iterations to be performed.')
-        form.addParam('numberOfClasses', IntParam,
-                      default=1,
-                      label='Number of classes to be defined.')
-        form.addParam('gradBasedOpt', BooleanParam,
-                      default=False,
-                      label='Perform gradient based optimisation',
-                      expertLevel=LEVEL_ADVANCED,
-                      help='Perform gradient based optimisation (instead of default expectation-maximization).')
-        form.addParam('gradWriteIter', IntParam,
-                      default=10,
-                      label='Write out model every number of iterations',
-                      expertLevel=LEVEL_ADVANCED,
-                      help='Write out model every so many iterations during gradient refinement')
-        form.addParam('noInitBlobs', BooleanParam,
-                      default=False,
-                      label='Switch off initializing models with random Gaussians?',
-                      expertLevel=LEVEL_ADVANCED)
-        form.addParam('flattenSolvent', BooleanParam,
-                      default=False,
-                      label='Flatten and enforce non-negative solvent?')
-        ProtRelionRefineBase._addSymmetryParam(form)
-        ProtRelionRefineBase._addAngularCommonParams(form)
+    def _defineOptimisationParamsCommon2All(form):
+        ProtRelionRefineBase._insertOptimisationSection(form)
+        ProtRelionRefineBase._insertVdamMiniBatchesParam(form)
+        ProtRelionRefineBase._insertRegularisationParam(form)
+        ProtRelionRefineBase._insertNumOfClassesParam(form)
+        ProtRelionRefineBase._insertMaskDiameterParam(form)
+        ProtRelionRefineBase._insertFlattenSolventParam(form)
+        ProtRelionRefineBase._insertSymmetryParam(form)
+        ProtRelionRefineBase._insertDoInC1AndApplySymLaterParam(form)
+        ProtRelionRefineBase._insertAngularCommonParams(form,
+                                                        expertLevel=LEVEL_ADVANCED,
+                                                        angSampling=1,
+                                                        offsetRange=6,
+                                                        offsetStep=2)
+        # ProtRelionRefineBase._defineOptimisationParamsCommon2All(form)
+        # form.addParam('maxNumberOfIterations', IntParam,
+        #               default=25,
+        #               label='Number of iterations',
+        #               help='Maximum number of iterations to be performed.')
+        # form.addParam('numberOfClasses', IntParam,
+        #               default=1,
+        #               label='Number of classes to be defined.')
+        # form.addParam('gradBasedOpt', BooleanParam,
+        #               default=False,
+        #               label='Perform gradient based optimisation',
+        #               expertLevel=LEVEL_ADVANCED,
+        #               help='Perform gradient based optimisation (instead of default expectation-maximization).')
+        # form.addParam('gradWriteIter', IntParam,
+        #               default=10,
+        #               label='Write out model every number of iterations',
+        #               expertLevel=LEVEL_ADVANCED,
+        #               help='Write out model every so many iterations during gradient refinement')
+        # form.addParam('noInitBlobs', BooleanParam,
+        #               default=False,
+        #               label='Switch off initializing models with random Gaussians?',
+        #               expertLevel=LEVEL_ADVANCED)
+        # form.addParam('flattenSolvent', BooleanParam,
+        #               default=False,
+        #               label='Flatten and enforce non-negative solvent?')
+        # ProtRelionRefineBase._insertSymmetryParam(form)
+        # ProtRelionRefineBase._addAngularCommonParams(form)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._insertFunctionStep(self._generateDeNovo3DModel)
+        self._insertFunctionStep(self._alignSymmetry)
         self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
     def _generateDeNovo3DModel(self):
-        # Gradient based optimisation is not compatible with MPI (relion throws an exception mentioning it)
-        nMpi = 1 if self.gradBasedOpt.get() else self.numberOfMpi.get()
-        Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genInitModelCommand(), numberOfMpi=nMpi)
+        Plugin.runRelionTomo(self, getProgram('relion_refine', self.numberOfMpi.get()), self._genInitModelCommand(),
+                             numberOfMpi=self.numberOfMpi.get())
+        self._manageGeneratedFiles()
+
+    def _alignSymmetry(self):
+        Plugin.runRelionTomo(self, 'relion_align_symmetry', self._genApplySymCmd())
 
     def createOutputStep(self):
-        self._manageGeneratedFiles()
         vol = AverageSubTomogram()
         vol.setFileName(self._getExtraPath(self._getModelName()))
         vol.setSamplingRate(8.83)  # TODO: check how to get the sampling rate at this point of the pipeline
@@ -104,23 +121,31 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
 
     # --------------------------- UTILS functions -----------------------------
     def _genInitModelCommand(self):
+        # Common parameters from base protocol
         cmd = self._genCommonCommand()
-        cmd += '--denovo_3dref '
-        # Optimisation args
-        cmd += '--iter %i ' % self.maxNumberOfIterations.get()
+
+        # Initial model specific commands
+        cmd += '--denovo_3dref --grad --zero_mask --auto_sampling --pad 1'
+        #   Optimisation args
+        cmd += '--iter %i ' % self.nVdamMiniBatches.get()
+        cmd += '--tau2_fudge %d ' % self.regularisation.get()
         cmd += '--K %i ' % self.numberOfClasses.get()
         if self.flattenSolvent.get():
             cmd += '--flatten_solvent '
-        if self.gradBasedOpt.get():
-            cmd += '--grad '
-        if self.gradWriteIter.get():
-            cmd += '--grad_write_iter %i ' % self.gradWriteIter.get()
-        if self.noInitBlobs.get():
-            cmd += '--no_init_blobs '
-        cmd += '--sym %s ' % self.symmetry.get()
+        cmd += '--sym C1 ' if self.doInC1AndApplySymLater.get() else '--sym %s ' % self.symmetry.get()
         cmd += '--healpix_order %i ' % self.angularSamplingDeg.get()
         cmd += '--offset_step %i ' % self.offsetSearchStepPix.get()
         cmd += '--offset_range %i ' % self.offsetSearchRangePix.get()
+        return cmd
+
+    def _genApplySymCmd(self):
+        cmd = '--i %s ' % self._getExtraPath(self._getModelName())
+        cmd += '--o %s ' % self._getExtraPath(INITIAL_MODEL)
+        if self.doInC1AndApplySymLater.get() and 'c1' not in self.symmetry.get().lower():
+            cmd += '--sym %s ' % self.symmetry.get()
+        else:
+            cmd += '--sym C1 '
+        cmd += '--apply_sym --select_largest_class '
         return cmd
 
     def _getModelName(self):

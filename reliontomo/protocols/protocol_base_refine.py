@@ -27,7 +27,7 @@ from os.path import abspath, exists
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, StringParam, BooleanParam, \
-    EnumParam, PathParam
+    EnumParam, PathParam, FloatParam, LEVEL_NORMAL
 from pyworkflow.utils import Message
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, OUT_SUBTOMOS_STAR, SYMMETRY_HELP_MSG
 
@@ -42,6 +42,7 @@ class ProtRelionRefineBase(EMProtocol):
     def _defineParams(self, form):
         form.addParallelSection(threads=1, mpi=1)
 
+    # I/O PARAMS -------------------------------------------------------------------------------------------------------
     @staticmethod
     def _defineIOParams(form):
         form.addSection(label=Message.LABEL_INPUT)
@@ -51,6 +52,7 @@ class ProtRelionRefineBase(EMProtocol):
                       important=True,
                       allowsNull=False)
 
+    # CTF PARAMS -------------------------------------------------------------------------------------------------------
     @staticmethod
     def _defineCTFParams(form):
         form.addSection(label='CTF')
@@ -80,29 +82,92 @@ class ProtRelionRefineBase(EMProtocol):
                       label='Have the input references not been CTF-amplitude corrected?',
                       expertLevel=LEVEL_ADVANCED)
 
+    # OPTIMIZATION PARAMS ----------------------------------------------------------------------------------------------
     @staticmethod
-    def _defineOptimisationParams(form):
+    def _insertOptimisationSection(form):
         form.addSection(label='Optimisation')
+
+    @staticmethod
+    def _insertVdamMiniBatchesParam(form):
+        form.addParam('nVdamMiniBatches', IntParam,
+                      allowsNull=False,
+                      default=200,
+                      label='Number of VDAM mini-batches',
+                      help="How many iterations (i.e. mini-batches) to perform with the VDAM ((variable metric "
+                           "gradient descent with adaptive moments) algorithm. Using 200 (default) has given good "
+                           "results for many data sets. Using 100 will run faster, at the expense of some quality in "
+                           "the results.")
+
+    @staticmethod
+    def _insertRegularisationParam(form):
+        form.addParam('regularisation', FloatParam,
+                      default=0,
+                      label='Regularisation parameter T',
+                      help="Bayes law strictly determines the relative weight between the contribution of the "
+                           "experimental data and the prior. However, in practice one may need to adjust this weight "
+                           "to put slightly more weight on the experimental data to allow optimal results. If it's set "
+                           "to 0, no regularisation will be applied. Values greater than 1 for this regularisation "
+                           "parameter (T in the JMB2011 paper) put more weight on the experimental data. Values "
+                           "around 2-4 have been observed to be useful for 3D initial model calculations.")
+
+    @staticmethod
+    def _insertNumOfClassesParam(form):
+        form.addParam('numberOfClasses', IntParam,
+                      default=1,
+                      label='Number of classes to be defined.')
+
+    @staticmethod
+    def _insertMaskDiameterParam(form):
         form.addParam('maskDiameter', IntParam,
                       allowsNull=False,
                       label='Circular mask diameter (Å)',
                       help='Diameter of the circular mask that will be applied to the experimental images '
                            '(in Angstroms)')
+
+    @staticmethod
+    def _insertZeroMaskParam(form):
         form.addParam('zeroMask', BooleanParam,
                       allowsNull=False,
                       label='Mask surrounding background in particles to zero?',
                       default=False,
                       help='Diameter of the circular mask that will be applied to the experimental images '
                            '(in Angstroms)')
+    @staticmethod
+    def _insertFlattenSolventParam(form):
+        form.addParam('flattenSolvent', BooleanParam,
+                      default=True,
+                      label='Flatten and enforce non-negative solvent?',
+                      help="If set to Yes, the job will apply a spherical mask and enforce all values in the "
+                           "reference to be non-negative.")
 
+    @staticmethod
+    def _insertSymmetryParam(form):
+        form.addParam('symmetry', StringParam,
+                      label='Symmetry group',
+                      default='C1',
+                      help=SYMMETRY_HELP_MSG)
+
+    @staticmethod
+    def _insertDoInC1AndApplySymLaterParam(form):
+        form.addParam('doInC1AndApplySymLater', BooleanParam,
+                      default=True,
+                      label='Run in C1 and apply symmetry later?',
+                      help="If set to Yes, the gradient-driven optimisation is run in C1 and the symmetry orientation "
+                           "is searched and applied later. If set to No, the entire optimisation is run in the "
+                           "symmetry point group indicated above.")
+
+    # COMPUTE PARAMS ---------------------------------------------------------------------------------------------------
     @staticmethod
     def _defineComputeParams(form):
         form.addSection(label='Compute')
-        form.addParam('noParallelDiscIO', BooleanParam,
-                      default=False,
-                      label='Do not let MPI processes access the disc simultaneously',
-                      help='Do NOT let parallel (MPI) processes access the disc simultaneously (use '
-                           'this option with NFS).')
+        form.addParam('parallelDiscIO', BooleanParam,
+                      default=True,
+                      label='Use parallel disc I/O?',
+                      help="If set to Yes, all MPI followers will read their own images from disc. Otherwise, only "
+                           "the leader will read images and send them through the network to the followers. Parallel "
+                           "file systems like gluster of fhgfs are good at parallel disc I/O. NFS may break with "
+                           "many followers reading in parallel. If your datasets contain particles with different "
+                           "box sizes, you have to say Yes.")
         form.addParam('pooledSubtomos', IntParam,
                       default=1,
                       label='Number of pooled particles',
@@ -138,6 +203,7 @@ class ProtRelionRefineBase(EMProtocol):
                       help='It can be used to provide a list of which GPUs (e. g. "0:1:2:3") to use. MPI-processes are '
                            'separated by ":", threads by ",". For example: "0,0:1,1:0,0:1,1"')
 
+    # ADDITIONAL PARAMS ------------------------------------------------------------------------------------------------
     @staticmethod
     def _defineAdditionalParams(form):
         form.addSection(label='Additional')
@@ -161,33 +227,30 @@ class ProtRelionRefineBase(EMProtocol):
                            "--verb 1\n"
                            "--pad 2\n")
 
+    # ANGULAR SAMPLING PARAMS ------------------------------------------------------------------------------------------
     @staticmethod
-    def _addSymmetryParam(form):
-        form.addParam('symmetry', StringParam,
-                      label='Symmetry group',
-                      default='C1',
-                      help=SYMMETRY_HELP_MSG)
-
-    @staticmethod
-    def _addAngularCommonParams(form):
+    def _insertAngularCommonParams(form, expertLevel=LEVEL_NORMAL, angSampling=1, offsetRange=6, offsetStep=2):
         form.addParam('angularSamplingDeg', EnumParam,
-                      default=2,
+                      default=angSampling,
                       choices=ANGULAR_SAMPLING_LIST,
                       label='Angular sampling interval (deg)',
+                      expertLevel=expertLevel,
                       help='There are only a few discrete angular samplings possible because '
                            'we use the HealPix library to generate the sampling of the first '
                            'two Euler angles on the sphere. The samplings are approximate numbers '
                            'and vary slightly over the sphere.')
         form.addParam('offsetSearchRangePix', IntParam,
-                      default=6,
+                      default=offsetRange,
                       label='Offset search range (pix.)',
+                      expertLevel=expertLevel,
                       help='Probabilities will be calculated only for translations in a circle '
                            'with this radius (in pixels). The center of this circle changes at '
                            'every iteration and is placed at the optimal translation for each '
                            'image in the previous iteration.')
         form.addParam('offsetSearchStepPix', IntParam,
-                      default=2,
+                      default=offsetStep,
                       label='Offset search step (pix.)',
+                      expertLevel=expertLevel,
                       help='Translations will be sampled with this step-size (in pixels). '
                            'Translational sampling is also done using the adaptive approach. '
                            'Therefore, if adaptive=1, the translations will first be evaluated'
@@ -222,11 +285,11 @@ class ProtRelionRefineBase(EMProtocol):
 
         # Optimisation args
         cmd += '--particle_diameter %i ' % self.maskDiameter.get()
-        if self.zeroMask.get():
-            cmd += '--zero_mask '
+        # if self.zeroMask.get():
+        #     cmd += '--zero_mask '
 
         # Compute args
-        if self.noParallelDiscIO.get():
+        if not self.parallelDiscIO.get():
             cmd += '--no_parallel_disc_io '
         cmd += '--pool %i ' % self.pooledSubtomos.get()
         if self.allParticlesRam.get():

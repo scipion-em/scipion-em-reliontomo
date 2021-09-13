@@ -22,6 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from reliontomo.protocols import ProtRelionRefineSubtomograms, ProtRelionDeNovoInitialModel
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
 from os import listdir
@@ -32,23 +33,24 @@ from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG
 from reliontomo.utils import getProgram
 
 
-class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
-    """Auto-refinement of subtomograms."""
+class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms, ProtRelionDeNovoInitialModel):
+    """3D Classification of subtomograms."""
 
-    _label = 'Auto-refinement of subtomograms'
+    _label = '3D Classification of subtomograms'
 
     def __init__(self, **args):
-        ProtRelionRefineBase.__init__(self, **args)
+        ProtRelionRefineSubtomograms.__init__(self, **args)
+        ProtRelionDeNovoInitialModel.__init__(self, **args)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        self._defineInputParams(form)
-        self._defineReferenceParams(form)
-        self._defineCTFParams(form)
-        self._defineOptimisationParamsCommon2All(form)
-        self._defineAutoSamplingParams(form)
-        self._defineComputeParams(form)
-        ProtRelionRefineBase._defineAdditionalParams(form)
+        ProtRelionRefineSubtomograms._defineInputParams(form)
+        ProtRelionRefineSubtomograms._defineReferenceParams(form)
+        ProtRelionRefineSubtomograms._defineCTFParams(form)
+        # self._defineOptimisationParams(form)
+        # self._defineAutoSamplingParams(form)
+        ProtRelionRefineSubtomograms._defineComputeParams(form)
+        ProtRelionRefineSubtomograms._defineAdditionalParams(form)
 
     @staticmethod
     def _defineInputParams(form):
