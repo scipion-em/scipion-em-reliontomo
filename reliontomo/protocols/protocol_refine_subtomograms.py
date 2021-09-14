@@ -111,7 +111,9 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
 
     @staticmethod
     def _defineOptimisationParamsCommon2All(form):
-        ProtRelionRefineBase._defineOptimisationParamsCommon2All(form)
+        ProtRelionRefineSubtomograms._insertOptimisationSection(form)
+        ProtRelionRefineBase._insertMaskDiameterParam(form)
+        ProtRelionRefineBase._insertZeroMaskParam(form)
         form.addParam('solventCorrectFSC', BooleanParam,
                       default=False,
                       condition='solventMask',
@@ -193,7 +195,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
 
     # --------------------------- UTILS functions -----------------------------
     def _genAutoRefineCommand(self):
-        cmd = self._genCommonCommand()
+        cmd = self._genBaseCommand()
         cmd += '--auto_refine --split_random_halves --low_resol_join_halves 40 --norm --scale '
         # I/O args
         cmd += '--ref %s ' % self.referenceVolume.get()

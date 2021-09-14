@@ -40,7 +40,7 @@ class ProtRelionRefineBase(EMProtocol):
     # -------------------------- DEFINE param functions -----------------------
 
     def _defineParams(self, form):
-        form.addParallelSection(threads=1, mpi=1)
+        pass
 
     # I/O PARAMS -------------------------------------------------------------------------------------------------------
     @staticmethod
@@ -121,7 +121,7 @@ class ProtRelionRefineBase(EMProtocol):
     def _insertNumOfClassesParam(form):
         form.addParam('numberOfClasses', IntParam,
                       default=1,
-                      label='Number of classes to be defined.')
+                      label='Number of classes to be defined')
 
     @staticmethod
     def _insertMaskDiameterParam(form):
@@ -216,6 +216,7 @@ class ProtRelionRefineBase(EMProtocol):
                       label='GPUs to use:',
                       help='It can be used to provide a list of which GPUs (e. g. "0:1:2:3") to use. MPI-processes are '
                            'separated by ":", threads by ",". For example: "0,0:1,1:0,0:1,1"')
+        form.addParallelSection(threads=1, mpi=1)
 
     # ADDITIONAL PARAMS ------------------------------------------------------------------------------------------------
     @staticmethod
@@ -243,8 +244,8 @@ class ProtRelionRefineBase(EMProtocol):
 
     # ANGULAR SAMPLING PARAMS ------------------------------------------------------------------------------------------
     @staticmethod
-    def _insertAngularCommonParams(form, expertLevel=LEVEL_NORMAL, angSampling=1, offsetRange=6,
-                                   offsetStep=2, condition=True):
+    def _insertAngularCommonParams(form, expertLevel=LEVEL_NORMAL, angSampling=2, offsetRange=5,
+                                   offsetStep=1, condition=True):
         form.addParam('angularSamplingDeg', EnumParam,
                       default=angSampling,
                       condition=condition,
@@ -264,7 +265,7 @@ class ProtRelionRefineBase(EMProtocol):
                            'with this radius (in pixels). The center of this circle changes at '
                            'every iteration and is placed at the optimal translation for each '
                            'image in the previous iteration.')
-        form.addParam('offsetSearchStepPix', IntParam,
+        form.addParam('offsetSearchStepPix', FloatParam,
                       default=offsetStep,
                       condition=condition,
                       label='Offset search step (pix.)',
@@ -283,14 +284,23 @@ class ProtRelionRefineBase(EMProtocol):
         pass
 
     # --------------------------- UTILS functions -----------------------------
-    def _genCommonCommand(self):
+    def _genBaseCommand(self):
         cmd = ''
-        cmd += '--i %s ' % self.inputPseudoSubtomosProt.get()._getExtraPath(OUT_SUBTOMOS_STAR)
+        cmd += self._genIOBaseCmd()  # I/O args
+        cmd += self._genCTFBaseCmd()  # CTF args
+        cmd += self._genOptimisationBaseCmd()  # Optimisation args
+        cmd += self._genComputeBaseCmd()  # Compute args
+        cmd += self._genAddiotionalBaseCmd()  # Additional args
+        return cmd
+
+    def _genIOBaseCmd(self):
+        cmd = '--i %s ' % self.inputPseudoSubtomosProt.get()._getExtraPath(OUT_SUBTOMOS_STAR)
         cmd += '--o %s ' % self._getExtraPath()  # If not, Relion will concatenate it directly converting the
-        # last part of the path into a prefix of the resulting filename
-        # cmd  += '--pipeline_control %s ' % self._getExtraPath()
         cmd += '--j %i ' % self.numberOfThreads
-        # CTF args
+        return cmd
+
+    def _genCTFBaseCmd(self):
+        cmd = ''
         if self.doCTF.get():
             cmd += '--ctf '
         if self.ignoreCTFUntilFirstPeak.get():
@@ -301,13 +311,13 @@ class ProtRelionRefineBase(EMProtocol):
             cmd += '--pad_ctf '
         if self.ctfUncorrectedRef.get():
             cmd += '--ctf_uncorrected_ref '
+        return cmd
 
-        # Optimisation args
-        cmd += '--particle_diameter %i ' % self.maskDiameter.get()
-        # if self.zeroMask.get():
-        #     cmd += '--zero_mask '
+    def _genOptimisationBaseCmd(self):
+        return '--particle_diameter %i ' % self.maskDiameter.get()
 
-        # Compute args
+    def _genComputeBaseCmd(self):
+        cmd = ''
         if not self.parallelDiscIO.get():
             cmd += '--no_parallel_disc_io '
         cmd += '--pool %i ' % self.pooledSubtomos.get()
@@ -321,12 +331,12 @@ class ProtRelionRefineBase(EMProtocol):
             cmd += '--scratch_dir %s ' % self.scratchDir.get()
         if self.doGpu.get():
             cmd += '--gpu %s ' % self.gpusToUse.get()
+        return cmd
 
-        # Additional args
-        cmd += 'oversampling %i' % self.oversampling.get()
+    def _genAddiotionalBaseCmd(self):
+        cmd = 'oversampling %i' % self.oversampling.get()
         if self.extraParams.get():
             cmd += ' ' + self.extraParams.get()
-
         return cmd
 
     def _applyKeepIterFilesUserSelection(self):

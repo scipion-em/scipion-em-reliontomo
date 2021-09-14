@@ -47,12 +47,12 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         ProtRelionRefineBase._defineParams(self, form)
         ProtRelionRefineBase._defineIOParams(form)
         ProtRelionRefineBase._defineCTFParams(form)
-        self._defineOptimisationParamsCommon2All(form)
+        self._defineOptimisationParams(form)
         ProtRelionRefineBase._defineComputeParams(form)
         ProtRelionRefineBase._defineAdditionalParams(form)
 
     @staticmethod
-    def _defineOptimisationParamsCommon2All(form):
+    def _defineOptimisationParams(form):
         ProtRelionRefineBase._insertOptimisationSection(form)
         ProtRelionRefineBase._insertVdamMiniBatchesParam(form)
         ProtRelionRefineBase._insertRegularisationParam(form)
@@ -77,14 +77,14 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
     def _generateDeNovo3DModel(self):
         Plugin.runRelionTomo(self, getProgram('relion_refine', self.numberOfMpi.get()), self._genInitModelCommand(),
                              numberOfMpi=self.numberOfMpi.get())
-        self._manageGeneratedFiles()
 
     def _alignSymmetry(self):
         Plugin.runRelionTomo(self, 'relion_align_symmetry', self._genApplySymCmd())
 
     def createOutputStep(self):
+        self._manageGeneratedFiles()
         vol = AverageSubTomogram()
-        vol.setFileName(self._getExtraPath(self._getModelName()))
+        vol.setFileName(self._getExtraPath(INITIAL_MODEL))
         vol.setSamplingRate(8.83)  # TODO: check how to get the sampling rate at this point of the pipeline
         self._defineOutputs(outputVolume=vol)
 
@@ -95,7 +95,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
     # --------------------------- UTILS functions -----------------------------
     def _genInitModelCommand(self):
         # Common parameters from base protocol
-        cmd = self._genCommonCommand()
+        cmd = self._genBaseCommand()
 
         # Initial model specific commands
         cmd += '--denovo_3dref --grad --zero_mask --auto_sampling --pad 1 '
@@ -108,11 +108,12 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         cmd += '--sym C1 ' if self.doInC1AndApplySymLater.get() else '--sym %s ' % self.symmetry.get()
         cmd += '--healpix_order %i ' % self.angularSamplingDeg.get()
         cmd += '--offset_step %i ' % self.offsetSearchStepPix.get()
-        cmd += '--offset_range %i ' % self.offsetSearchRangePix.get()
+        cmd += '--offset_range %d ' % (2 * self.offsetSearchRangePix.get())
+
         return cmd
 
     def _genApplySymCmd(self):
-        cmd = '--i %s ' % self._getExtraPath(self._getModelName())
+        cmd = '--i %s ' % self._getExtraPath('..', self._getModelName())
         cmd += '--o %s ' % self._getExtraPath(INITIAL_MODEL)
         if self.doInC1AndApplySymLater.get() and 'c1' not in self.symmetry.get().lower():
             cmd += '--sym %s ' % self.symmetry.get()
@@ -122,8 +123,8 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         return cmd
 
     def _getModelName(self):
-        """generate the name of the volume following this pattern extra_it002_class001.mrc"""
-        return 'run_it{:03d}_model.mrc'.format(self.nVdamMiniBatches.get())
+        """generate the name of the volume following this pattern extra_it002_model.star"""
+        return 'extra_it{:03d}_model.star'.format(self.nVdamMiniBatches.get())
 
     def _manageGeneratedFiles(self):
         """There's some kind of bug in relion4 which makes it generate the file in the protocol base directory
@@ -132,4 +133,4 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         prefix = 'extra_'
         genFiles = [f for f in listdir(self._getPath()) if isfile(join(self._getPath(), f))]
         for f in genFiles:
-            moveFile(self._getPath(f), self._getExtraPath(f.replace(prefix, 'run_')))
+            moveFile(self._getPath(f), self._getExtraPath(f.replace(prefix, '')))

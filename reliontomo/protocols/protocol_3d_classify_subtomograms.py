@@ -87,11 +87,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                       help='If set to No, then rather than performing both alignment and classification, only '
                            'classification will be performed. This allows the use of very focused masks. It requires '
                            'that the optimal orientations of all particles are already stored in the input STAR file.')
-        ProtRelionRefineBase._insertAngularCommonParams(form,
-                                                        angSampling=2,
-                                                        offsetRange=5,
-                                                        offsetStep=1,
-                                                        condition='doImageAlignment')
+        ProtRelionRefineBase._insertAngularCommonParams(form, condition='doImageAlignment')
         form.addParam('doLocalAngleSearch', BooleanParam,
                       label='Perform local angular searches?',
                       default=False,
@@ -110,16 +106,23 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                            "option) will be applied, so that orientations closer to the optimal orientation in the "
                            "previous iteration will get higher weights than those further away.")
         ProtRelionRefineSubtomograms._insertRelaxSymmetry(form, condition='doImageAlignment and doLocalAngleSearch')
+        form.addParam('allowCoarser', BooleanParam,
+                      label='Allow coarser sampling?',
+                      default=False,
+                      condition='doImageAlignment',
+                      help="If set to Yes, the program will use coarser angular and translational samplings if the "
+                           "estimated accuracies of the assignments are still low in the earlier iterations. This may "
+                           "speed up the calculations.")
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self._autoRefine)
+        self._insertFunctionStep(self._classify3d)
         self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
-    def _autoRefine(self):
+    def _classify3d(self):
         nMpi = self.numberOfMpi.get()
-        Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genAutoRefineCommand(), numberOfMpi=nMpi)
+        Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genCl3dCommand(), numberOfMpi=nMpi)
 
     def createOutputStep(self):
         pass
@@ -129,44 +132,69 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         pass
 
     # --------------------------- UTILS functions -----------------------------
-    def _genAutoRefineCommand(self):
-        cmd = self._genCommonCommand()
-        cmd += '--auto_refine --split_random_halves --low_resol_join_halves 40 --norm --scale '
+    def _genCl3dCommand(self):
+        cmd = '--norm --scale '
+
         # I/O args
-        cmd += '--ref %s ' % self.referenceVolume.get()
+        cmd += self._genIOBaseCmd()
+        cmd += '--ref %s ' % self.referenceVolume.get().getFileName()
         if self.solventMask.get():
-            cmd += '--solvent_mask %s ' % self.solventMask.get()
+            cmd += '--solvent_mask %s ' % self.solventMask.get().getFileName()
         if self.solventMask2.get():
-            cmd += '--solvent_mask2 %s ' % self.solventMask2.get()
+            cmd += '--solvent_mask2 %s ' % self.solventMask2.get().getFileName()
+
         # Reference args
         if self.isMapAbsoluteGreyScale.get():
             cmd += 'firstiter_cc '
         if self.initialLowPassFilterA.get():
             cmd += '--ini_high %.2f ' % self.initialLowPassFilterA.get()
+        cmd += '--sym %s ' % self.symmetry.get()
+
+        # CTF args
+        self._genCTFBaseCmd()
+
         # Optimisation args
-        if self.solventCorrectFSC.get():
-            cmd += '--solvent_correct_fsc '
-        # Angular sampling args
-        if self.localSearchAutoSampling.get():
-            cmd += '--auto_local_healpix_order %i ' % self.localSearchAutoSampling.get()
-        if self.relaxSym.get():
-            cmd += '--relax_sym %s ' % self.relaxSym.get()
-        if self.useFinerAngularSampling.get():
-            cmd += '--auto_ignore_angles --auto_resol_angles '
+        cmd += self._genOptimisationBaseCmd()
+        cmd += '--K %i ' % self.numberOfClasses.get()
+        cmd += '--tau2_fudge %d ' % self.regularisation.get()
+        cmd += '--iter %i ' % self.nIterations.get()
+        if self.useFastSubsets.get():
+            cmd += '--fast_subsets '
+        if self.zeroMask.get():
+            cmd += '--zero_mask '
+        if self.limitResolutionEStepTo.get() > 0:
+            cmd += '--strict_highres_exp %d ' % self.limitResolutionEStepTo.get()
+
+        # Sampling args
+        if self.doImageAlignment.get():
+            cmd += '--healpix_order %i ' % self.angularSamplingDeg.get()
+            cmd += 'offset_range %i ' % self.offsetSearchRangePix.get()
+            cmd += '--offset_step %d ' % (2 * self.offsetSearchStepPix.get())
+            if self.doLocalAngleSearch.get():
+                cmd += '--sigma_ang %d ' % self.localAngularSearchRange.get()
+                if self.relaxSym.get():
+                   cmd += '--relax_sym %s ' % self.relaxSym.get()
+            if self.allowCoarser.get():
+                cmd += '--allow_coarser_sampling '
+
         # Compute args
-        cmd += '--pad %i' % (1 if self.skipPadding.get() else 2)
+        cmd += self._genComputeBaseCmd()
+        cmd += '--pad %i ' % (1 if self.skipPadding.get() else 2)
+
+        # Additional args
+        cmd += self._genAddiotionalBaseCmd()
 
         return cmd
 
-    def _getModelName(self):
-        '''generate the name of the volume following this pattern extra_it002_class001.mrc'''
-        return 'it{:03d}_class001.mrc'.format(self.maxNumberOfIterations.get())
-
-    def _manageGeneratedFiles(self):
-        '''There's some kind of bug in relion4 which makes it generate the file in the protocol base directory
-        instead of the extra directory. It uses extra as a prefix of each generated file instead. Hence, until
-        it's solved, the files will be moved to the extra directory and the prefix extra_ will be removed'''
-        prefix = '_extra'
-        genFiles = [f for f in listdir(self._getPath()) if isfile(join(self._getPath(), f))]
-        for f in genFiles:
-            moveFile(self._getPath(f), self._getExtraPath(f.replace(prefix, '')))
+    # def _getModelName(self):
+    #     """generate the name of the volume following this pattern extra_it002_class001.mrc"""
+    #     return 'it{:03d}_class001.mrc'.format(self.maxNumberOfIterations.get())
+    #
+    # def _manageGeneratedFiles(self):
+    #     """There's some kind of bug in relion4 which makes it generate the file in the protocol base directory
+    #     instead of the extra directory. It uses extra as a prefix of each generated file instead. Hence, until
+    #     it's solved, the files will be moved to the extra directory and the prefix extra_ will be removed"""
+    #     prefix = '_extra'
+    #     genFiles = [f for f in listdir(self._getPath()) if isfile(join(self._getPath(), f))]
+    #     for f in genFiles:
+    #         moveFile(self._getPath(f), self._getExtraPath(f.replace(prefix, '')))
