@@ -28,7 +28,8 @@ import pyworkflow.utils as pwutils
 from relion.convert.convert_base import WriterBase
 from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, IMOD_DIR, FRACTIONAL_DOSE, \
     ACQ_ORDER_FILE, CULLED_FILE, SUBTOMO_NAME, COORD_X, COORD_Y, COORD_Z, SHIFTX, SHIFTY, SHIFTZ, ROT, \
-    TILT, PSI, TILT_PRIOR, PSI_PRIOR, CLASS_NUMBER
+    TILT, PSI, TILT_PRIOR, PSI_PRIOR, CLASS_NUMBER, TOMO_PARTICLE_NAME, RANDOM_SUBSET, OPTICS_GROUP, SHIFTX_ANGST, \
+    SHIFTY_ANGST, SHIFTZ_ANGST, CTF_IMAGE
 from scipion.install.funcs import mkdir
 import numpy as np
 from os.path import join
@@ -158,6 +159,32 @@ class Writer(WriterBase):
             TILT_PRIOR,
             PSI_PRIOR,
             CLASS_NUMBER
+        ]
+
+    @staticmethod
+    def _getPseudoSubtomogramStarFileLabels():
+        return [
+            TOMO_NAME,
+            SUBTOMO_NAME,
+            COORD_X,
+            COORD_Y,
+            COORD_Z,
+            SHIFTX,
+            SHIFTY,
+            SHIFTZ,
+            ROT,
+            TILT,
+            PSI,
+            TILT_PRIOR,
+            PSI_PRIOR,
+            CLASS_NUMBER,
+            TOMO_PARTICLE_NAME,
+            RANDOM_SUBSET,
+            OPTICS_GROUP,
+            SHIFTX_ANGST,
+            SHIFTY_ANGST,
+            SHIFTZ_ANGST,
+            CTF_IMAGE
         ]
 
     @staticmethod

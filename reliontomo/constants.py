@@ -60,6 +60,15 @@ TILT_PRIOR = 'rlnAngleTiltPrior'
 PSI_PRIOR = 'rlnAnglePsiPrior'
 CLASS_NUMBER = 'rlnClassNumber'
 
+# Relion pseudo-subtomograms
+TOMO_PARTICLE_NAME = 'rlnTomoParticleName'
+RANDOM_SUBSET = 'rlnRandomSubset'
+OPTICS_GROUP = 'rlnOpticsGroup'
+SHIFTX_ANGST = 'rlnOriginXAngst'
+SHIFTY_ANGST = 'rlnOriginYAngst'
+SHIFTZ_ANGST = 'rlnOriginZAngst'
+CTF_IMAGE = 'rlnCtfImage'
+
 # IMOD's eTomo files
 NEWST_COM = 'newst.com'
 TILT_COM = 'tilt.com'
