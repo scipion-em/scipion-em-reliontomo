@@ -69,6 +69,8 @@ SHIFTY_ANGST = 'rlnOriginYAngst'
 SHIFTZ_ANGST = 'rlnOriginZAngst'
 CTF_IMAGE = 'rlnCtfImage'
 
+FILE_NOT_FOUND = 'File not found'
+
 # IMOD's eTomo files
 NEWST_COM = 'newst.com'
 TILT_COM = 'tilt.com'

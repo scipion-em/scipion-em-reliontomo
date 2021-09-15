@@ -45,6 +45,17 @@ def createWriterTomo(**kwargs):
     return Writer(**kwargs)
 
 
+def createReaderTomo():
+    """ Create a new Writer instance.
+    By default it will create the version (3.1 or older) based on the current
+    plugin binary. It can also be forced to use old format by passing
+    the format='30' argument.
+    """
+    if Plugin.isRe40():
+        Reader = convert40_tomo.Reader
+        return Reader()
+
+
 def writeSetOfParticles(imgSet, starFile, **kwargs):
     """ Convenience function to a SetOfImages as Relion metadata using a Writer.
 
@@ -106,6 +117,10 @@ def readSetOfParticles(starFile, partsSet, **kwargs):
             Relion3.0 format, if not, it will depends on the binary version
     """
     return createReader(**kwargs).readSetOfParticles(starFile, partsSet, **kwargs)
+
+
+def readSetOfPseudoSubtomograms(starFile, precedents, outputSet, invert):
+    return createReaderTomo().readPseudoSubtomgramsStarFile(starFile, precedents, outputSet, invert=invert)
 
 
 class ClassesLoader:

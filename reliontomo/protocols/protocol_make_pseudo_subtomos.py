@@ -22,8 +22,13 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from pyworkflow.mapper import SqliteDb
 from pyworkflow.protocol import LEVEL_ADVANCED, IntParam, FloatParam, BooleanParam
+from pyworkflow.utils import cleanPath
 from reliontomo import Plugin
+from reliontomo.constants import OUT_SUBTOMOS_STAR
+from reliontomo.convert import readSetOfPseudoSubtomograms
+from reliontomo.objects import SetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
 from reliontomo.utils import getProgram
@@ -79,11 +84,26 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._insertFunctionStep(self._relionMakePseudoSubtomos)
+        self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
     def _relionMakePseudoSubtomos(self):
         Plugin.runRelionTomo(self, 'relion_tomo_subtomo', self._genMakePseudoSubtomoCmd(),
                              numberOfMpi=self.numberOfMpi.get())
+
+    def createOutputStep(self):
+        # Sqlite stuff
+        setFn = self._getPath('pseudoSubtomograms.sqlite')
+        cleanPath(setFn) # Close the connection to the database if it is open before deleting the file
+        SqliteDb.closeConnection(setFn)
+        # Output objects stuff
+        starFile = self._getExtraPath(OUT_SUBTOMOS_STAR)
+        protPrepDataInputSubtomos = self.inputPrepareDataProt.get().inputSubtomos.get()
+        outputSet = SetOfPseudoSubtomograms(starFile)
+        outputSet.setSamplingRate(protPrepDataInputSubtomos.getSamplingRate())
+        precedents = protPrepDataInputSubtomos.getCoordinates3D().get().getPrecedents()
+        readSetOfPseudoSubtomograms(starFile, precedents, outputSet, invert=True)
+        self._defineOutputs(outputSetOfPseudoSubtomogram=outputSet)
 
     # # -------------------------- INFO functions -------------------------------
     def _validate(self):

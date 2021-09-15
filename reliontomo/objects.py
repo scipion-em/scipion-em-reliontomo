@@ -25,26 +25,73 @@
 from pyworkflow.object import String, Integer, Float
 from relion.convert import OpticsGroups
 from tomo.objects import SubTomogram, SetOfSubTomograms
+from tomo.protocols import ProtTomoBase
 
 
 class PseudoSubtomogram(SubTomogram):
 
-    def __init__(self, **kwargs):
+    def __init__(self, tomoParticleName=None, randomSubset=None, opticsGroupId=None, xShiftAngst=None,
+                 yShiftAngst=None, zShiftAngst=None, ctfImage=None, **kwargs):
         SubTomogram.__init__(self, **kwargs)
-        self._tomoParticleName = String()
-        self._randomSubset = Integer()
-        self._opticsGroupId = Integer()
-        self._xShiftAngst = Float()
-        self._yShiftAngst = Float()
-        self._zShiftAngst = Float()
-        self._ctfImage = String()
+        self._tomoParticleName = String(tomoParticleName)
+        self._randomSubset = Integer(randomSubset)
+        self._opticsGroupId = Integer(opticsGroupId)
+        self._xShiftAngst = Float(xShiftAngst)
+        self._yShiftAngst = Float(yShiftAngst)
+        self._zShiftAngst = Float(zShiftAngst)
+        self._ctfImage = String(ctfImage)
 
-    # TODO: add all the getters and setters
+    def getTomoParticleName(self):
+        return self._tomoParticleName.get()
+
+    def getRandomSubset(self):
+        return self._randomSubset.get()
+
+    def getOpticsGroupId(self):
+        return self._opticsGroupId.get()
+
+    def getShiftXAngst(self):
+        return self._xShiftAngst.get()
+
+    def getShiftYAngst(self):
+        return self._yShiftAngst.get()
+
+    def getShiftZAngst(self):
+        return self._zShiftAngst.get()
+
+    def getCtfImage(self):
+        return self._ctfImage.get()
+
+    def setTomoParticleName(self, val):
+        self._tomoParticleName.set(val)
+
+    def setRandomSubset(self, val):
+        self._randomSubset.set(val)
+
+    def setOpticsGroupId(self, val):
+        self._opticsGroupId.set(val)
+
+    def setShiftXAngst(self, val):
+        self._xShiftAngst.set(val)
+
+    def setShiftYAngst(self, val):
+        self._yShiftAngst.set(val)
+
+    def setShiftZAngst(self, val):
+        self._zShiftAngst.set(val)
+
+    def setCtfImage(self, val):
+        self._ctfImage.set(val)
 
 
-class SetOfPseudoSubtomograms(SetOfSubTomograms):
+class SetOfPseudoSubtomograms(SetOfSubTomograms, ProtTomoBase):
+
     def __init__(self, particlesStarFile, **kwargs):
         SetOfSubTomograms.__init__(self, **kwargs)
         self._opticsGroup = OpticsGroups.fromStar(particlesStarFile)
 
-    # TODO: add all the getters and setters
+    def getOpticsGroupObj(self):
+        return self._opticsGroup.get()
+
+    def setOpticsGroupObj(self, val):
+        self._opticsGroup.set(val)

@@ -23,19 +23,26 @@
 # *
 # **************************************************************************
 import csv
+from os import mkdir
+
 from pwem.emlib.image import ImageHandler
 import pyworkflow.utils as pwutils
-from relion.convert.convert_base import WriterBase
+from pwem.objects import Transform
+from pyworkflow.object import Float, String
+from pyworkflow.utils import getParentFolder
+from relion.convert.convert_base import WriterBase, ReaderBase
 from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, IMOD_DIR, FRACTIONAL_DOSE, \
     ACQ_ORDER_FILE, CULLED_FILE, SUBTOMO_NAME, COORD_X, COORD_Y, COORD_Z, SHIFTX, SHIFTY, SHIFTZ, ROT, \
     TILT, PSI, TILT_PRIOR, PSI_PRIOR, CLASS_NUMBER, TOMO_PARTICLE_NAME, RANDOM_SUBSET, OPTICS_GROUP, SHIFTX_ANGST, \
-    SHIFTY_ANGST, SHIFTZ_ANGST, CTF_IMAGE
-from scipion.install.funcs import mkdir
+    SHIFTY_ANGST, SHIFTZ_ANGST, CTF_IMAGE, FILE_NOT_FOUND
+import pwem.convert.transformations as tfs
 import numpy as np
 from os.path import join
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from relion.convert import Table
+from reliontomo.objects import PseudoSubtomogram
 from tomo.constants import BOTTOM_LEFT_CORNER
+from tomo.objects import SubTomogram, Coordinate3D, TomoAcquisition
 
 
 class Writer(WriterBase):
@@ -214,3 +221,99 @@ class Writer(WriterBase):
     @staticmethod
     def _genCulledFileName(prot, tsId):
         return prot._getExtraPath(tsId + '_culled.mrc:mrc')
+
+
+class Reader:
+    def readPseudoSubtomgramsStarFile(self, starFile, precedents, outputSet, invert=True):
+        tomoTable = Table()
+        tomoTable.read(starFile)
+        ih = ImageHandler()
+        samplingRate = outputSet.getSamplingRate()
+        precedentFileList, tsIdList = zip(*[[tomo.getFileName(), tomo.getTsId()] for tomo in precedents])
+        # subtomosPath = join(getParentFolder(starFile), 'Subtomograms')
+        for counter, row in enumerate(tomoTable):
+            psubtomo = PseudoSubtomogram()
+            coordinate3d = Coordinate3D()
+            transform = Transform()
+            origin = Transform()
+
+            tomoName = row.get(TOMO_NAME, FILE_NOT_FOUND)
+            tomoInd = tsIdList.index(tomoName)
+            # currentTomoPath = join(subtomosPath, tomoName)
+            subtomoFilename = row.get(SUBTOMO_NAME, FILE_NOT_FOUND)
+            coordinate3d.setVolume(precedents[tomoInd])  # 3D coordinate must be referred to a volume to get its origin
+            x = row.get(COORD_X, 0)
+            y = row.get(COORD_Y, 0)
+            z = row.get(COORD_Z, 0)
+            tiltPrior = row.get(TILT_PRIOR, 0)
+            psiPrior = row.get(PSI_PRIOR, 0)
+            coordinate3d.setX(float(x), BOTTOM_LEFT_CORNER)
+            coordinate3d.setY(float(y), BOTTOM_LEFT_CORNER)
+            coordinate3d.setZ(float(z), BOTTOM_LEFT_CORNER)
+            M = self._getTransformMatrixFromTableRow(row, invert)
+            transform.setMatrix(M)
+
+            psubtomo.setVolName(precedentFileList[tomoInd])
+            psubtomo.setFileName(subtomoFilename)
+            psubtomo.setCoordinate3D(coordinate3d)
+            psubtomo.setTransform(transform)
+            psubtomo.setAcquisition(TomoAcquisition())
+            psubtomo.setClassId(row.get(CLASS_NUMBER, 0))
+            psubtomo.setSamplingRate(samplingRate)
+            psubtomo._tiltPriorAngle = Float(tiltPrior)
+            psubtomo._psiPriorAngle = Float(psiPrior)
+
+            # Set the origin and the dimensions of the current subtomogram
+            x, y, z, n = ih.getDimensions(subtomoFilename)
+            zDim, filename = self._manageIhDims(subtomoFilename, z, n)
+            origin.setShifts(x / -2. * samplingRate, y / -2. * samplingRate, zDim / -2. * samplingRate)
+            psubtomo.setOrigin(origin)
+
+            # Set the pseudosubtomogram specific values
+            psubtomo.setTomoParticleName(row.get(TOMO_PARTICLE_NAME, FILE_NOT_FOUND))
+            psubtomo.setRandomSubset(row.get(RANDOM_SUBSET, 0))
+            psubtomo.setOpticsGroupId(row.get(OPTICS_GROUP, 0))
+            psubtomo.setShiftXAngst(row.get(SHIFTX_ANGST, 0))
+            psubtomo.setShiftYAngst(row.get(SHIFTY_ANGST, 0))
+            psubtomo.setShiftZAngst(row.get(SHIFTZ_ANGST, 0))
+            psubtomo.setCtfImage(row.get(CTF_IMAGE, FILE_NOT_FOUND))
+
+            # Add current subtomogram to the output set
+            outputSet.append(psubtomo)
+
+    @staticmethod
+    def _manageIhDims(fileName, z, n):
+        if fileName.endswith('.mrc') or fileName.endswith('.map'):
+            fileName += ':mrc'
+            if z == 1 and n != 1:
+                zDim = n
+            else:
+                zDim = z
+        else:
+            zDim = z
+
+        return zDim, fileName
+
+    @staticmethod
+    def _getTransformMatrixFromTableRow(row, invert):
+        shiftx = row.get(SHIFTX, 0)
+        shifty = row.get(SHIFTY, 0)
+        shiftz = row.get(SHIFTZ, 0)
+        tilt = row.get(TILT, 0)
+        psi = row.get(PSI, 0)
+        rot = row.get(ROT, 0)
+        shifts = (float(shiftx), float(shifty), float(shiftz))
+        angles = (float(rot), float(tilt), float(psi))
+        radAngles = -np.deg2rad(angles)
+        M = tfs.euler_matrix(radAngles[0], radAngles[1], radAngles[2], 'szyz')
+        if invert:
+            M[0, 3] = -shifts[0]
+            M[1, 3] = -shifts[1]
+            M[2, 3] = -shifts[2]
+            M = np.linalg.inv(M)
+        else:
+            M[0, 3] = shifts[0]
+            M[1, 3] = shifts[1]
+            M[2, 3] = shifts[2]
+
+        return M
