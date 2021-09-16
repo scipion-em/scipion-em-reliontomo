@@ -27,7 +27,7 @@ from os.path import abspath, exists
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, StringParam, BooleanParam, \
-    EnumParam, PathParam, FloatParam, LEVEL_NORMAL
+    EnumParam, PathParam, FloatParam, LEVEL_NORMAL, GE, LE
 from pyworkflow.utils import Message
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, OUT_SUBTOMOS_STAR, SYMMETRY_HELP_MSG
 
@@ -103,12 +103,14 @@ class ProtRelionRefineBase(EMProtocol):
         form.addParam('nIterations', IntParam,
                       allowsNull=False,
                       default=25,
+                      validators=[GE(1)],
                       label='Number of iterations to be performed')
 
     @staticmethod
     def _insertRegularisationParam(form):
         form.addParam('regularisation', FloatParam,
                       default=0,
+                      validators=[GE(0)],
                       label='Regularisation parameter T',
                       help="Bayes law strictly determines the relative weight between the contribution of the "
                            "experimental data and the prior. However, in practice one may need to adjust this weight "
@@ -121,12 +123,14 @@ class ProtRelionRefineBase(EMProtocol):
     def _insertNumOfClassesParam(form):
         form.addParam('numberOfClasses', IntParam,
                       default=1,
+                      validators=[GE(1)],
                       label='Number of classes to be defined')
 
     @staticmethod
     def _insertMaskDiameterParam(form):
         form.addParam('maskDiameter', IntParam,
                       allowsNull=False,
+                      validators=[GE(0)],
                       label='Circular mask diameter (Å)',
                       help='Diameter of the circular mask that will be applied to the experimental images '
                            '(in Angstroms)')
@@ -184,8 +188,16 @@ class ProtRelionRefineBase(EMProtocol):
                            "box sizes, you have to say Yes.")
         form.addParam('pooledSubtomos', IntParam,
                       default=1,
+                      validators=[GE(1)],
                       label='Number of pooled particles',
-                      help='Number of images to pool for each thread task.')
+                      help="Particles are processed in individual batches by MPI followers. During each batch, a "
+                           "stack of particle images is only opened and closed once to improve disk access times.\n\n"
+                           "All particle images of a single batch are read into memory together. The size of these "
+                           "batches is at least one particle per thread used. This parameter controls how many "
+                           "particles are read together for each thread. If it is set to 3 and one uses 8 threads, "
+                           "batches of 3x8=24 particles will be read together.\n\nThis may improve performance on "
+                           "systems where disk access, and particularly metadata handling of disk access, is a "
+                           "problem. It has a modest cost of increased RAM usage.")
         form.addParam('skipGridding', BooleanParam,
                       default=False,
                       label='Skip griding?',
@@ -261,6 +273,7 @@ class ProtRelionRefineBase(EMProtocol):
                       condition=condition,
                       label='Offset search range (pix.)',
                       expertLevel=expertLevel,
+                      validators=[GE(0.1), LE(30)],
                       help='Probabilities will be calculated only for translations in a circle '
                            'with this radius (in pixels). The center of this circle changes at '
                            'every iteration and is placed at the optimal translation for each '
@@ -270,6 +283,7 @@ class ProtRelionRefineBase(EMProtocol):
                       condition=condition,
                       label='Offset search step (pix.)',
                       expertLevel=expertLevel,
+                      validators=[GE(0.1), LE(5)],
                       help='Translations will be sampled with this step-size (in pixels). '
                            'Translational sampling is also done using the adaptive approach. '
                            'Therefore, if adaptive=1, the translations will first be evaluated'
