@@ -226,10 +226,12 @@ class Writer(WriterBase):
 class Reader:
     def readPseudoSubtomgramsStarFile(self, starFile, precedents, outputSet, invert=True):
         tomoTable = Table()
-        tomoTable.read(starFile)
+        tomoTable.read(starFile, tableName='particles')
         ih = ImageHandler()
         samplingRate = outputSet.getSamplingRate()
         precedentFileList, tsIdList = zip(*[[tomo.getFileName(), tomo.getTsId()] for tomo in precedents])
+        precedentFileList = list(precedentFileList)
+        tsIdList = list(tsIdList)
         # subtomosPath = join(getParentFolder(starFile), 'Subtomograms')
         for counter, row in enumerate(tomoTable):
             psubtomo = PseudoSubtomogram()
@@ -241,7 +243,7 @@ class Reader:
             tomoInd = tsIdList.index(tomoName)
             # currentTomoPath = join(subtomosPath, tomoName)
             subtomoFilename = row.get(SUBTOMO_NAME, FILE_NOT_FOUND)
-            coordinate3d.setVolume(precedents[tomoInd])  # 3D coordinate must be referred to a volume to get its origin
+            coordinate3d.setVolume(precedents[tomoInd + 1])  # 3D coord must be referred to a volume to get its origin
             x = row.get(COORD_X, 0)
             y = row.get(COORD_Y, 0)
             z = row.get(COORD_Z, 0)

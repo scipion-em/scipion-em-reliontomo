@@ -86,12 +86,15 @@ class PseudoSubtomogram(SubTomogram):
 
 class SetOfPseudoSubtomograms(SetOfSubTomograms, ProtTomoBase):
 
-    def __init__(self, particlesStarFile, **kwargs):
+    def __init__(self, particlesStarFile=None, **kwargs):
         SetOfSubTomograms.__init__(self, **kwargs)
-        self._opticsGroup = OpticsGroups.fromStar(particlesStarFile)
+        self._opticsGroup = OpticsGroups.fromStar(particlesStarFile) if particlesStarFile else None
 
     def getOpticsGroupObj(self):
         return self._opticsGroup.get()
 
-    def setOpticsGroupObj(self, val):
-        self._opticsGroup.set(val)
+    def setOpticsGroupObjFromStar(self, particlesStarFile):
+        self._opticsGroup = OpticsGroups.fromStar(particlesStarFile)
+
+    def setOpticsGroupObj(self, opticsGroupObj):
+        self._opticsGroup = opticsGroupObj
