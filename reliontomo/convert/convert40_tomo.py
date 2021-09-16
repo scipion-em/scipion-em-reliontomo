@@ -39,7 +39,7 @@ import pwem.convert.transformations as tfs
 import numpy as np
 from os.path import join
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
-from relion.convert import Table
+from relion.convert import Table, OpticsGroups
 from reliontomo.objects import PseudoSubtomogram
 from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.objects import SubTomogram, Coordinate3D, TomoAcquisition
@@ -232,7 +232,8 @@ class Reader:
         precedentFileList, tsIdList = zip(*[[tomo.getFileName(), tomo.getTsId()] for tomo in precedents])
         precedentFileList = list(precedentFileList)
         tsIdList = list(tsIdList)
-        # subtomosPath = join(getParentFolder(starFile), 'Subtomograms')
+        opticsGroupStr = OpticsGroups.fromImages(outputSet).toString()
+
         for counter, row in enumerate(tomoTable):
             psubtomo = PseudoSubtomogram()
             coordinate3d = Coordinate3D()
@@ -241,7 +242,6 @@ class Reader:
 
             tomoName = row.get(TOMO_NAME, FILE_NOT_FOUND)
             tomoInd = tsIdList.index(tomoName)
-            # currentTomoPath = join(subtomosPath, tomoName)
             subtomoFilename = row.get(SUBTOMO_NAME, FILE_NOT_FOUND)
             coordinate3d.setVolume(precedents[tomoInd + 1])  # 3D coord must be referred to a volume to get its origin
             x = row.get(COORD_X, 0)
@@ -260,6 +260,7 @@ class Reader:
             psubtomo.setCoordinate3D(coordinate3d)
             psubtomo.setTransform(transform)
             psubtomo.setAcquisition(TomoAcquisition())
+            psubtomo.getAcquisition().opticsGroupInfo.set(opticsGroupStr)
             psubtomo.setClassId(row.get(CLASS_NUMBER, 0))
             psubtomo.setSamplingRate(samplingRate)
             psubtomo._tiltPriorAngle = Float(tiltPrior)

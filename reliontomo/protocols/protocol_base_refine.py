@@ -46,9 +46,9 @@ class ProtRelionRefineBase(EMProtocol):
     @staticmethod
     def _defineIOParams(form):
         form.addSection(label=Message.LABEL_INPUT)
-        form.addParam('inputPseudoSubtomosProt', PointerParam,
-                      pointerClass='ProtRelionMakePseudoSubtomograms',
-                      label="Data preparation protocol",
+        form.addParam('inputPseudoSubtomos', PointerParam,
+                      pointerClass='SetOfPseudoSubtomograms',
+                      label="Input pseudo-subtomograms",
                       important=True,
                       allowsNull=False)
 
@@ -294,7 +294,7 @@ class ProtRelionRefineBase(EMProtocol):
         return cmd
 
     def _genIOBaseCmd(self):
-        cmd = '--i %s ' % self.inputPseudoSubtomosProt.get()._getExtraPath(OUT_SUBTOMOS_STAR)
+        cmd = '--i %s ' % self.inputPseudoSubtomos.get().getStarFile()
         cmd += '--o %s ' % self._getExtraPath()  # If not, Relion will concatenate it directly converting the
         cmd += '--j %i ' % self.numberOfThreads
         return cmd
