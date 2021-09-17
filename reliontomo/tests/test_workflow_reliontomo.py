@@ -217,8 +217,8 @@ class TestWorkflowRelionTomo(TestWorkflow):
         print(magentaStr("\n==> Classifying subtomograms:"))
         protClassifSubtomo = self.newProtocol(
             ProtRelionSubtomoClassif3D,
-            threads=3,
-            mpi=5,
+            threads=1,
+            mpi=4,
             inputSubtomograms=getattr(protExtractSubtomo, 'outputSetOfSubtomogram', None),
             numberOfClasses=1,
             referenceVolume=getattr(protImportRefVol, 'outputVolume', None),
@@ -226,7 +226,8 @@ class TestWorkflowRelionTomo(TestWorkflow):
             hasReferenceCTFCorrected=True,
             ctfMultiplied=True,
             referenceMask=getattr(protImportMask, 'outputMask', None),
-            pooledSubtomos=10
+            pooledSubtomos=3,
+            numberOfIterations=5
         )
         protClassifSubtomo.setObjLabel('classify subtomograms')
         protClassifSubtomo = self.launchProtocol(protClassifSubtomo)
@@ -258,6 +259,8 @@ class TestWorkflowRelionTomo(TestWorkflow):
             referenceMask=getattr(protImportMask, 'outputMask', None),
             pooledSubtomos=10,
             doGpu=True,
+            gpusToUse='0',
+            numberOfIterations=5,
             extraParams='--sigma_tilt 3.667 --sigma_psi 3.667'
         )
         protRefineSubtomo.setObjLabel('refine subtomogram')
@@ -292,8 +295,6 @@ class TestWorkflowRelionTomo(TestWorkflow):
         # Validate output average subtomograms
         self.assertEqual(recTomo.getSamplingRate(), self.samplingRate)
         self.assertEqual(recTomo.getDim(), (self.boxSize, self.boxSize, self.boxSize))
-
-        return protReconstructSubtomo
 
     def test_workflow(self):
         protImportTomo = self._importTomograms()
