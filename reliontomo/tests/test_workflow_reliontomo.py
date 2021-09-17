@@ -28,7 +28,7 @@ import os
 from os.path import exists
 
 import pyworkflow.tests as pwtests
-from imod.protocols import ProtImodCtfEstimation
+from imod.protocols import ProtImodAutomaticCtfEstimation
 from pwem.tests.workflows import TestWorkflow
 from pwem.protocols import ProtImportVolumes, ProtImportMask
 from pyworkflow.utils import magentaStr
@@ -100,6 +100,9 @@ class TestWorkflowRelionTomo(TestWorkflow):
             anglesFrom=2,  # ANGLES_FROM_TLT
             magnification=10000,
             samplingRate=self.samplingRate,
+            voltage=300,
+            dosePerFrame=2.1,
+            tiltAxisAngle=87.2
         )
         protImportTS.setObjLabel('import tilt series')
         protImportTS = self.launchProtocol(protImportTS)
@@ -115,7 +118,7 @@ class TestWorkflowRelionTomo(TestWorkflow):
     def _tSCtfEstimateImod(self, protImportTS):
         print(magentaStr("\n==> Calculating the tilt series ctf:"))
         protTSCtfImod = self.newProtocol(
-            ProtImodCtfEstimation,
+            ProtImodAutomaticCtfEstimation,
             inputSet=getattr(protImportTS, 'outputTiltSeries', None),
             angleRange=10
         )
@@ -214,8 +217,8 @@ class TestWorkflowRelionTomo(TestWorkflow):
         print(magentaStr("\n==> Classifying subtomograms:"))
         protClassifSubtomo = self.newProtocol(
             ProtRelionSubtomoClassif3D,
-            threads=3,
-            mpi=5,
+            threads=1,
+            mpi=4,
             inputSubtomograms=getattr(protExtractSubtomo, 'outputSetOfSubtomogram', None),
             numberOfClasses=1,
             referenceVolume=getattr(protImportRefVol, 'outputVolume', None),
@@ -223,7 +226,8 @@ class TestWorkflowRelionTomo(TestWorkflow):
             hasReferenceCTFCorrected=True,
             ctfMultiplied=True,
             referenceMask=getattr(protImportMask, 'outputMask', None),
-            pooledSubtomos=10
+            pooledSubtomos=3,
+            numberOfIterations=5
         )
         protClassifSubtomo.setObjLabel('classify subtomograms')
         protClassifSubtomo = self.launchProtocol(protClassifSubtomo)
@@ -255,6 +259,8 @@ class TestWorkflowRelionTomo(TestWorkflow):
             referenceMask=getattr(protImportMask, 'outputMask', None),
             pooledSubtomos=10,
             doGpu=True,
+            gpusToUse='0',
+            numberOfIterations=5,
             extraParams='--sigma_tilt 3.667 --sigma_psi 3.667'
         )
         protRefineSubtomo.setObjLabel('refine subtomogram')
@@ -289,8 +295,6 @@ class TestWorkflowRelionTomo(TestWorkflow):
         # Validate output average subtomograms
         self.assertEqual(recTomo.getSamplingRate(), self.samplingRate)
         self.assertEqual(recTomo.getDim(), (self.boxSize, self.boxSize, self.boxSize))
-
-        return protReconstructSubtomo
 
     def test_workflow(self):
         protImportTomo = self._importTomograms()
