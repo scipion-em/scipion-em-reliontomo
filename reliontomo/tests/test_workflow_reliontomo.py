@@ -100,6 +100,9 @@ class TestWorkflowRelionTomo(TestWorkflow):
             anglesFrom=2,  # ANGLES_FROM_TLT
             magnification=10000,
             samplingRate=self.samplingRate,
+            voltage=300,
+            dosePerFrame=2.1,
+            tiltAxisAngle=87.2
         )
         protImportTS.setObjLabel('import tilt series')
         protImportTS = self.launchProtocol(protImportTS)

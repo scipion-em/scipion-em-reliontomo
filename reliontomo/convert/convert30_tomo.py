@@ -25,10 +25,11 @@
 
 from pwem.emlib.image import ImageHandler
 import pyworkflow.utils as pwutils
+from pyworkflow.object import String
 from relion.convert.convert_base import WriterBase
 from scipion.install.funcs import mkdir
 import numpy as np
-from os.path import abspath, join
+from os.path import join
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from relion.convert import Table
 
@@ -76,7 +77,7 @@ class Writer(WriterBase):
      interface as the new Writer class.
     """
 
-    def writeSetOfSubtomograms(self, subtomoSet, subtomosStar, isPyseg=False, **kwargs):
+    def writeSetOfSubtomograms(self, subtomoSet, subtomosStar, isPyseg=False):
         currentTomo = ''
         MRC = 'mrc'
         ih = ImageHandler()
@@ -96,7 +97,7 @@ class Writer(WriterBase):
             rlnCoordinateY = subtomo.getCoordinate3D().getY(BOTTOM_LEFT_CORNER)
             rlnCoordinateZ = subtomo.getCoordinate3D().getZ(BOTTOM_LEFT_CORNER)
             rlnImageName = subtomo.getFileName().replace(':' + MRC, '')
-            rlnCtfImage = abspath(self._getCTFFileFromSubtomo(subtomo))
+            rlnCtfImage = self._getCTFFileFromSubtomo(subtomo)
             rlnMagnification = magn if magn else 10000 #64000
             rlnDetectorPixelSize = subtomo.getSamplingRate()
             rlnAngleRot = angles[0]
@@ -169,7 +170,7 @@ class Writer(WriterBase):
         try:
             return subtomo.getCoordinate3D()._3dcftMrcFile.get()
         except:
-            return 'Unavailable'
+            return ''
 
     @staticmethod
     def _getTransformInfoFromSubtomo(subtomo, calcInv=True):
