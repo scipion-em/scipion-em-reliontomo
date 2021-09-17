@@ -4,5 +4,8 @@ include *.rst
 # Include the license file
 include LICENSE
 
+# Include the requirement file
+include requirements.txt
+
 # Include conf file
 include reliontomo/protocols.conf
