@@ -147,7 +147,7 @@ class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
         # TODO: If the input particles comes from Relion, just link the file.
         imgSet = self.inputSubtomos.get()
         imgStar = self._getFileName(self.inStarName)
-        writeSetOfSubtomograms(imgSet, imgStar, outputDir=self._getTmpPath())
+        writeSetOfSubtomograms(imgSet, imgStar)
 
     def createOutputStep(self):
         imgSet = self.inputSubtomos.get()
