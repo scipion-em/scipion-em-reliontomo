@@ -98,4 +98,5 @@ SYMMETRY_HELP_MSG = 'Symmetry libraries have been copied from XMIPP. As such, wi
                     '%s' % json.dumps(genSymmetryTable(), indent=1)
 
 
-
+# Per particle per tilt box size values
+BOX_SIZE_VALS = list(range(32, 512, 16))

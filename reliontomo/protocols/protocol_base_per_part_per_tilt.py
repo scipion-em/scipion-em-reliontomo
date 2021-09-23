@@ -1,0 +1,86 @@
+# *
+# * Authors:     Scipion Team
+# *
+# * Unidad de  Bioinformatica of Centro Nacional de Biotecnologia , CSIC
+# *
+# * This program is free software; you can redistribute it and/or modify
+# * it under the terms of the GNU General Public License as published by
+# * the Free Software Foundation; either version 2 of the License, or
+# * (at your option) any later version.
+# *
+# * This program is distributed in the hope that it will be useful,
+# * but WITHOUT ANY WARRANTY; without even the implied warranty of
+# * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# * GNU General Public License for more details.
+# *
+# * You should have received a copy of the GNU General Public License
+# * along with this program; if not, write to the Free Software
+# * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+# * 02111-1307  USA
+# *
+# *  All comments concerning this program package may be sent to the
+# *  e-mail address 'scipion-users@lists.sourceforge.net'
+# *
+# **************************************************************************
+import numpy as np
+
+from pwem.protocols import EMProtocol
+from pyworkflow import BETA
+from pyworkflow.protocol import PointerParam, IntParam, GE, LE
+from pyworkflow.utils import Message
+from reliontomo.constants import BOX_SIZE_VALS
+
+
+class ProtRelionPerParticlePerTiltBase(EMProtocol):
+    """Base protocol used for the getting the frame alignment and ctf-refinment"""
+
+    _devStatus = BETA
+
+    _boxSize4Est = None
+
+    # -------------------------- DEFINE param functions -----------------------
+
+    def _defineParams(self, form):
+        form.addSection(label=Message.LABEL_INPUT)
+        form.addParam('inputPrepareDataProt', PointerParam,
+                      pointerClass='ProtRelionPrepareData',
+                      label="Data preparation protocol",
+                      important=True,
+                      allowsNull=False)
+        form.addParam('inputPseudoSubtomos', PointerParam,
+                      pointerClass='SetOfPseudoSubtomograms',
+                      label="Input pseudo-subtomograms",
+                      important=True,
+                      allowsNull=False)
+        # form.addParam('inputTrajectory')
+
+    @staticmethod
+    def _insertBoxSizeForEstimationParam(form):
+        form.addParam('boxSize', IntParam,
+                      label='Box size for estimation (pix)',
+                      default=128,
+                      allowsNull=False,
+                      validators=[GE(32), LE(512)],
+                      help="Box size to be used for the estimation. Note that this can be larger than the box size "
+                           "of the reference map. A sufficiently large box size allows more of the high-frequency "
+                           "signal to be captured that has been delocalized by the CTF.")
+
+    # -------------------------- INSERT steps functions -----------------------
+    def _insertAllSteps(self):
+        pass
+
+    # -------------------------- UTILS functions -----------------------------
+    def _initialize(self):
+        self._findClosestAdmittedVal()
+
+    def _findClosestAdmittedVal(self):
+        validVals = np.array(BOX_SIZE_VALS)
+        # Find index of minimum value
+        ind = np.where(validVals == np.amin(validVals - self.boxSize.get()))[0].tolist()[0]
+        self._boxSize4Est = BOX_SIZE_VALS[ind]
+
+
+
+
+
+
