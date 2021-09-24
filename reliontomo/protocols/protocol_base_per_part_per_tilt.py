@@ -26,9 +26,10 @@ import numpy as np
 
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
-from pyworkflow.protocol import PointerParam, IntParam, GE, LE
+from pyworkflow.protocol import PointerParam, IntParam, GE, LE, StringParam
 from pyworkflow.utils import Message
-from reliontomo.constants import BOX_SIZE_VALS
+from reliontomo.constants import BOX_SIZE_VALS, OUT_TOMOS_STAR
+from reliontomo.utils import getFileFromDataPrepProt
 
 
 class ProtRelionPerParticlePerTiltBase(EMProtocol):
@@ -52,7 +53,9 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
                       label="Input pseudo-subtomograms",
                       important=True,
                       allowsNull=False)
-        # form.addParam('inputTrajectory')
+        form.addParam('inputTrajectory', StringParam,
+                      label="Particle trajectories set (optional)",
+                      allowsNull=True)
 
     @staticmethod
     def _insertBoxSizeForEstimationParam(form):
@@ -78,6 +81,14 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
         # Find index of minimum value
         ind = np.where(validVals == np.amin(validVals - self.boxSize.get()))[0].tolist()[0]
         self._boxSize4Est = BOX_SIZE_VALS[ind]
+
+    def _genIOCommand(self):
+        cmd = '--p %s ' % self.inputPseudoSubtomos.get().getStarFile()
+        cmd += '--t %s ' % getFileFromDataPrepProt(self, OUT_TOMOS_STAR)
+        cmd += '--o %s ' % self._getExtraPath()
+        if self.inputTrajectory.get():
+            cmd += '--m %s ' % self.inputTrajectory.get()
+
 
 
 

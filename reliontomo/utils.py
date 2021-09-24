@@ -41,3 +41,7 @@ def genSymmetryTable():
                '{"group": "Icosahedral", "notation": "I<n>", "origin": "Intersection of symm axes", "orientation": "**"}]'
 
     return json.loads(jsonData)
+
+
+def getFileFromDataPrepProt(prot, fileName):
+    return prot.inputPrepareDataProt.get()._getExtraPath(fileName)

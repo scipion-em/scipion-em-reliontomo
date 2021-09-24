@@ -24,9 +24,10 @@
 # **************************************************************************
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
-from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, FloatParam
+from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, FloatParam, StringParam
 from pyworkflow.utils import Message
 from reliontomo.constants import OUT_TOMOS_STAR, OUT_SUBTOMOS_STAR
+from reliontomo.utils import getFileFromDataPrepProt
 
 
 class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
@@ -44,6 +45,9 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
                       label="Data preparation protocol",
                       important=True,
                       allowsNull=False)
+        form.addParam('inputTrajectory', StringParam,
+                      label="Particle trajectories set (optional)",
+                      allowsNull=True)
         group = form.addGroup('Reconstruct')
         group.addParam('boxSize', IntParam,
                        label='Box size (pix.)',
@@ -89,8 +93,10 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
     # # --------------------------- UTILS functions -----------------------------
     def _genCommonCmd(self):
         cmd = ''
-        cmd += '--t %s ' % self._getFileFromDataPrepProt(OUT_TOMOS_STAR)
-        cmd += '--p %s ' % self._getFileFromDataPrepProt(OUT_SUBTOMOS_STAR)
+        cmd += '--t %s ' % getFileFromDataPrepProt(self, OUT_TOMOS_STAR)
+        cmd += '--p %s ' % getFileFromDataPrepProt(self, OUT_SUBTOMOS_STAR)
+        if self.inputTrajectory.get():
+            cmd += '--m %s ' % self.inputTrajectory.get()
         cmd += '--b %i ' % self.boxSize.get()
         cmd += '--crop %i ' % self.croppedBoxSize.get()
         cmd += '--bin %.1f ' % self.binningFactor.get()
@@ -98,6 +104,6 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
         cmd += '--j %i ' % self.numberOfThreads.get()
         return cmd
 
-    def _getFileFromDataPrepProt(self, fileName):
-        return self.inputPrepareDataProt.get()._getExtraPath(fileName)
+    # def _getFileFromDataPrepProt(self, fileName):
+    #     return self.inputPrepareDataProt.get()._getExtraPath(fileName)
 

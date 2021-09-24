@@ -22,7 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-from pyworkflow.protocol import IntParam,  BooleanParam, GE, LE
+from pyworkflow.protocol import IntParam, BooleanParam, GE, LE, FloatParam
 from reliontomo.protocols.protocol_base_per_part_per_tilt import ProtRelionPerParticlePerTiltBase
 from tomo.protocols import ProtTomoBase
 
@@ -45,7 +45,7 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
                       default=5,
                       allowsNull=False,
                       validators=[GE(0), LE(64)],
-                      help="maximal assumed error in the initial 2D particle-positions (distances between the "
+                      help="Maximal assumed error in the initial 2D particle-positions (distances between the "
                            "projected 3D positions and their true positions in the images), given in pixels.")
         form.addParam('doFlexAlign', BooleanParam,
                       label="Allow flexible alignment?",
@@ -58,6 +58,38 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
                       condition='not doFlexAlign',
                       help="If set to Yes, it estimates the rigid shift by aligning only the particles instead of by "
                            "predicting the entire micrographs.")
+        form.addParam('doPolish', BooleanParam,
+                      label="Fit per-particle motion?",
+                      default=False,
+                      condition='doFlexAlign',
+                      help="If set to Yes, then the subtomogram version of Bayesian polishing will be used to fit "
+                           "per-particle (3D) motion tracks, besides the rigid part of the motion in the tilt series.")
+        form.addParam('sigmaVel', FloatParam,
+                      label='Sigma for velocity (Å/dose)',
+                      condition='doPolish',
+                      default=0.2,
+                      validators=[GE(0.1), LE(10)],
+                      help="The expected amount of motion (i.e. the std. deviation of particle positions in Angstroms "
+                           "after 1 electron per A^2 of radiation).")
+        form.addParam('sigmaDiv', IntParam,
+                      label='Sigma for divergence (Å)',
+                      default=5000,
+                      condition='doPolish',
+                      validators=[GE(0), LE(10000)],
+                      help="The expected spatial smoothness of the particle trajectories in angstroms (a greater value "
+                           "means spatially smoother motion.")
+        form.addParam('doGaussianDecay', BooleanParam,
+                      label="Use Gaussian decay?",
+                      default=False,
+                      condition='doPolish',
+                      help="If set to Yes, then it's assumed that the correlation of the velocities of two particles "
+                           "decays as a Gaussian over their distance, instead of as an exponential. This will produce "
+                           "spatially smoother motion and result in a shorter program runtime.")
+
+
+
+
+
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
