@@ -96,7 +96,7 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
         cmd += '--t %s ' % getFileFromDataPrepProt(self, OUT_TOMOS_STAR)
         cmd += '--p %s ' % getFileFromDataPrepProt(self, OUT_SUBTOMOS_STAR)
         if self.inputTrajectory.get():
-            cmd += '--m %s ' % self.inputTrajectory.get()
+            cmd += '--mot %s ' % self.inputTrajectory.get()
         cmd += '--b %i ' % self.boxSize.get()
         cmd += '--crop %i ' % self.croppedBoxSize.get()
         cmd += '--bin %.1f ' % self.binningFactor.get()

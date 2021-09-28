@@ -26,7 +26,7 @@ import numpy as np
 
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
-from pyworkflow.protocol import PointerParam, IntParam, GE, LE, StringParam
+from pyworkflow.protocol import PointerParam, IntParam, GE, LE, PathParam
 from pyworkflow.utils import Message
 from reliontomo.constants import BOX_SIZE_VALS, OUT_TOMOS_STAR
 from reliontomo.utils import getFileFromDataPrepProt
@@ -48,14 +48,27 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
                       label="Data preparation protocol",
                       important=True,
                       allowsNull=False)
-        form.addParam('inputPseudoSubtomos', PointerParam,
+        form.addParam('inPseudoSubtomos', PointerParam,
                       pointerClass='SetOfPseudoSubtomograms',
                       label="Input pseudo-subtomograms",
                       important=True,
                       allowsNull=False)
-        form.addParam('inputTrajectory', StringParam,
+        form.addParam('inputTrajectory', PathParam,
                       label="Particle trajectories set (optional)",
                       allowsNull=True)
+        form.addParam('half1map', PathParam,
+                      label='Path to half map 1',
+                      help="Provide one of the two reference half-reconstructions MRC map files.")
+        form.addParam('half2map', PathParam,
+                      label='Path to half map 2',
+                      help="Provide one of the two reference half-reconstructions MRC map files.")
+        form.addParam('inRefMask', PointerParam,
+                      pointerClass='Mask',
+                      label="Input reference mask")
+        form.addParam('inputPostProcess', PathParam,
+                      label="Reference FSC (postprocess.star)",
+                      allowsNull=True,
+                      help="Input STAR file from a relion_postprocess job.")
 
     @staticmethod
     def _insertBoxSizeForEstimationParam(form):
@@ -83,11 +96,16 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
         self._boxSize4Est = BOX_SIZE_VALS[ind]
 
     def _genIOCommand(self):
-        cmd = '--p %s ' % self.inputPseudoSubtomos.get().getStarFile()
+        cmd = '--p %s ' % self.inPseudoSubtomos.get().getStarFile()
         cmd += '--t %s ' % getFileFromDataPrepProt(self, OUT_TOMOS_STAR)
         cmd += '--o %s ' % self._getExtraPath()
         if self.inputTrajectory.get():
-            cmd += '--m %s ' % self.inputTrajectory.get()
+            cmd += '--mot %s ' % self.inputTrajectory.get()
+        cmd += '--ref1 %s ' % self.half1map1.get()
+        cmd += '--ref2 %s ' % self.half1map2.get()
+        cmd += '--mask %s ' % self.inRefMask.get().getFileName()
+        if self.inputPostProcess.get():
+            cmd += '--fsc %s ' % self.inputPostProcess.get()
 
 
 

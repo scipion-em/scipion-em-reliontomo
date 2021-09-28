@@ -23,7 +23,9 @@
 # *
 # **************************************************************************
 from pyworkflow.protocol import IntParam, BooleanParam, GE, LE, FloatParam
+from reliontomo import Plugin
 from reliontomo.protocols.protocol_base_per_part_per_tilt import ProtRelionPerParticlePerTiltBase
+from reliontomo.utils import getProgram
 from tomo.protocols import ProtTomoBase
 
 
@@ -86,23 +88,35 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
                            "decays as a Gaussian over their distance, instead of as an exponential. This will produce "
                            "spatially smoother motion and result in a shorter program runtime.")
 
-
-
-
-
-
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        pass
-        # self._insertFunctionStep(self._relionMakePseudoSubtomos)
+        self._insertFunctionStep(self._relionTomoFrameAlign)
         # self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
+    def _relionTomoFrameAlign(self):
+        Plugin.runRelionTomo(self, getProgram('relion_tomo_align', self.numberOfMpi.get()),
+                             self._genTomoFrameAlignCmd(), numberOfMpi=self.numberOfMpi.get())
 
-    # # -------------------------- INFO functions -------------------------------
+    # -------------------------- INFO functions -------------------------------
     def _validate(self):
         pass
 
-    # # --------------------------- UTILS functions -----------------------------
+    # --------------------------- UTILS functions -----------------------------
+    def _genTomoFrameAlignCmd(self):
+        cmd = self._genIOCommand()
+        cmd += '--b %i ' % self.boxSize.get()
+        cmd += '--r %i ' % self.maxPosErr.get()
+        if self.doFlexAlign.get():
+            if self.doPolish.get():
+                cmd += '--motion '
+                cmd += '--s_vel %.1f ' % self.sigmaVel.get()
+                cmd += '--s_div %i ' + self.sigmaDiv.get()
+                if self.doGaussianDecay.get():
+                    cmd += '--sq_exp_ker '
+        else:
+            cmd += '--shift_only '
+            if self.doGlobalRigidAlign.get():
+                cmd += '--shift_only_by_particles '
 
-
+        return cmd
