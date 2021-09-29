@@ -105,7 +105,6 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
     # --------------------------- UTILS functions -----------------------------
     def _genTomoFrameAlignCmd(self):
         cmd = self._genIOCommand()
-        cmd += '--b %i ' % self.boxSize.get()
         cmd += '--r %i ' % self.maxPosErr.get()
         if self.doFlexAlign.get():
             if self.doPolish.get():

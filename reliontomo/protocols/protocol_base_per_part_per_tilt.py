@@ -106,6 +106,7 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
         cmd += '--mask %s ' % self.inRefMask.get().getFileName()
         if self.inputPostProcess.get():
             cmd += '--fsc %s ' % self.inputPostProcess.get()
+        cmd += '--b %i ' % self.boxSize.get()
 
 
 

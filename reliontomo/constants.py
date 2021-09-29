@@ -100,3 +100,7 @@ SYMMETRY_HELP_MSG = 'Symmetry libraries have been copied from XMIPP. As such, wi
 
 # Per particle per tilt box size values
 BOX_SIZE_VALS = list(range(32, 512, 16))
+
+# Aberration orders to be estimated in CTF refine
+ABERRATION_ORDERS_EVEN = [4, 6, 8]
+ABERRATION_ORDERS_ODD = [3, 5, 7]
