@@ -22,22 +22,29 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-from reliontomo.protocols import ProtRelionRefineSubtomograms, ProtRelionDeNovoInitialModel
+from os import remove, listdir
+from os.path import abspath, exists, isfile, join
+
+from emtable import Table
+
+from pyworkflow.object import Float
+from pyworkflow.utils import moveFile
+from reliontomo.protocols import ProtRelionRefineSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
-from os import listdir
-from os.path import isfile, join
-from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, StringParam, BooleanParam, EnumParam, \
-    LEVEL_NORMAL, GE, LE
-from pyworkflow.utils import moveFile
-from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG
+from pyworkflow.protocol import FloatParam, BooleanParam, GE, LE
 from reliontomo.utils import getProgram
+from tomo.objects import SetOfClassesSubTomograms, SetOfAverageSubTomograms
 
 
 class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
     """3D Classification of subtomograms."""
 
     _label = '3D Classification of subtomograms'
+    modelTable = Table()
+    classesTable = Table()
+    opticsTable = Table()
+    particlesTable = Table()
 
     def __init__(self, **args):
         ProtRelionRefineSubtomograms.__init__(self, **args)
@@ -125,7 +132,34 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genCl3dCommand(), numberOfMpi=nMpi)
 
     def createOutputStep(self):
-        pass
+        # self._manageGeneratedFiles()
+        subtomoSet = self.inputPseudoSubtomos.get()
+        classes3D = self._createSetOfClassesSubTomograms(subtomoSet)
+        self._fillClassesFromIter(classes3D, self.nIterations.get())
+
+        self._defineOutputs(outputClasses=classes3D)
+        self._defineSourceRelation(subtomoSet, classes3D)
+
+        # Create a SetOfVolumes and define its relations
+        volumes = SetOfAverageSubTomograms.create(self._getPath(),
+                                                  template='avgSubtomograms%s.sqlite',
+                                                  suffix='')
+        volumes.setSamplingRate(subtomoSet.getSamplingRate())
+
+        for class3D in classes3D:
+            vol = class3D.getRepresentative()
+            vol.setObjId(class3D.getObjId())
+            volumes.append(vol)
+
+        self._defineOutputs(outputVolumes=volumes)
+        self._defineSourceRelation(subtomoSet, volumes)
+
+        # if not self.doContinue:
+        #     self._defineSourceRelation(self.referenceVolume, classes3D)
+        #     self._defineSourceRelation(self.referenceVolume, volumes)
+
+        if self.keepOnlyLastIterFiles.get():
+            self._cleanUndesiredFiles()
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -186,15 +220,96 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
 
         return cmd
 
-    # def _getModelName(self):
-    #     """generate the name of the volume following this pattern extra_it002_class001.mrc"""
-    #     return 'it{:03d}_class001.mrc'.format(self.maxNumberOfIterations.get())
-    #
-    # def _manageGeneratedFiles(self):
-    #     """There's some kind of bug in relion4 which makes it generate the file in the protocol base directory
-    #     instead of the extra directory. It uses extra as a prefix of each generated file instead. Hence, until
-    #     it's solved, the files will be moved to the extra directory and the prefix extra_ will be removed"""
-    #     prefix = '_extra'
-    #     genFiles = [f for f in listdir(self._getPath()) if isfile(join(self._getPath(), f))]
-    #     for f in genFiles:
-    #         moveFile(self._getPath(f), self._getExtraPath(f.replace(prefix, '')))
+    def _createSetOfClassesSubTomograms(self, subTomograms, suffix=''):
+        classes = SetOfClassesSubTomograms.create(self._getPath(),
+                                                  template='subtomogramClasses%s.sqlite',
+                                                  suffix=suffix)
+        classes.setImages(subTomograms)
+        return classes
+
+    def _fillClassesFromIter(self, clsSet, iteration):
+        """ Create the SetOfClasses3D from a given iteration. """
+        self._loadClassifyInfo(iteration)
+        clsSet.classifyItems(updateItemCallback=self._updateParticle,
+                             updateClassCallback=self._updateClass,
+                             itemDataIterator=self.particlesTable.__iter__())
+
+    def _loadClassifyInfo(self, iteration):
+        """ Read some information about the produced Relion 3D classes
+        from the *model.star file.
+        """
+        self._classesInfo = {}  # store classes info, indexed by class id
+        modelStar = self._getIterGenFileName('model', iteration)
+        with open(modelStar) as fid:
+            self.modelTable.readStar(fid, 'model_general')
+            self.classesTable.readStar(fid, 'model_classes')
+        dataStar = self._getIterGenFileName('data', iteration)
+        with open(dataStar) as fid:
+            self.opticsTable.readStar(fid, 'optics')
+            self.particlesTable.readStar(fid, 'particles')
+
+        # Model table has only one row, while classes table has the same number of rows as classes found
+        self.nClasses = int(self.modelTable._rows[0].rlnNrClasses)
+        # Adapt data to the format expected by classifyItems and its callbacks
+        for i, row in zip(range(self.nClasses), self.classesTable.__iter__()):
+            self._classesInfo[i + 1] = (i + 1, row)
+
+    @staticmethod
+    def _updateParticle(item, row):
+        item.setClassId(row.rlnClassNumber)#rlnGroupNumber))
+        item._rlnLogLikeliContribution = Float(row.rlnLogLikeliContribution)
+        item._rlnMaxValueProbDistribution = Float(row.rlnMaxValueProbDistribution)
+
+    def _updateClass(self, item):
+        classId = item.getObjId()
+        if classId in self._classesInfo:
+            _, row = self._classesInfo[classId]
+            fn = row.rlnReferenceImage + ":mrc"
+            item.setAlignment3D()
+            item.getRepresentative().setLocation(fn)
+            item._rlnclassDistribution = Float(row.rlnClassDistribution)
+            item._rlnAccuracyRotations = Float(row.rlnAccuracyRotations)
+            item._rlnAccuracyTranslations = Float(row.rlnAccuracyTranslationsAngst)
+
+    def _cleanUndesiredFiles(self):
+        """Remove all files generated by relion_classify 3d excepting the ones which
+        correspond to the last iteration. Example for iteration 25:
+        relion_it025_class002.mrc
+        relion_it025_class001.mrc
+        relion_it025_model.star
+        relion_it025_sampling.star
+        relion_it025_optimiser.star
+        relion_it025_data.star
+        """
+        itPref = 'relion_it'
+        clPref = 'class'
+        starExt = '.star'
+        mrcExt = '.mrc'
+        # Classify calculations related files
+        calcFiles = ['data', 'model', 'optimiser', 'sampling']
+        for i in range(self._lastIter()):
+            for calcFile in calcFiles:
+                fn = abspath(self._getExtraPath('{}{:03d}_{}{}'.format(
+                    itPref, i, calcFile, starExt)))
+                if exists(fn):
+                    remove(fn)
+            # Classes related files
+            for itr in range(1, self.nClasses + 1):
+                fn = abspath(self._getExtraPath('{}{:03d}_{}{:03d}{}'.format(
+                    itPref, i, clPref, itr, mrcExt)))
+                if exists(fn):
+                    remove(fn)
+
+    def _manageGeneratedFiles(self):
+        """There's some kind of bug in relion4 which makes it generate the file in the protocol base directory
+        instead of the extra directory. It uses extra as a prefix of each generated file instead. Hence, until
+        it's solved, the files will be moved to the extra directory and the prefix extra_ will be removed"""
+        prefix = 'extra_'
+        genFiles = [f for f in listdir(self._getPath()) if isfile(join(self._getPath(), f))]
+        for f in genFiles:
+            if f.startswith(prefix):
+                moveFile(self._getPath(f), self._getExtraPath(f.replace(prefix, '')))
+
+    def _getIterGenFileName(self, fileType, iteration):
+        # Pattern to reproduce is it[3 digit number]_[file type].star
+        return self._getExtraPath('it%03d_%s.star' % (iteration, fileType))
