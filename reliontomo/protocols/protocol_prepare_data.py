@@ -197,7 +197,7 @@ class ProtRelionPrepareData(EMProtocol):
             return self.eTomoFilesPath.get()
 
     def _genImportTomosCmd(self):
-        acq = self.tomoSet.getAcquisition()
+        acq = self.TsSet.getAcquisition()
         cmd = '--i %s ' % self._getStarFilename(IN_TOMOS_STAR)
         cmd += '--o %s ' % self._getStarFilename(OUT_TOMOS_STAR)
         cmd += '--hand %s ' % self._decodeHandeness()
