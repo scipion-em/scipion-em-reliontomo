@@ -145,7 +145,9 @@ class ProtRelionPrepareData(EMProtocol):
         for ctfTomo in self.inputCtfTs.get():
             defocusPath = self._getExtraPath(DEFOCUS, ctfTomo.getTsId())
             mkdir(defocusPath)
-            generateDefocusIMODFileFromObject(ctfTomo, join(defocusPath, ctfTomo.getTsId() + '.' + DEFOCUS))
+            generateDefocusIMODFileFromObject(ctfTomo,
+                                              join(defocusPath, ctfTomo.getTsId() + '.' + DEFOCUS),
+                                              isRelion=True)
         # Write the tomograms star file
         writeSetOfTomograms(self.tomoSet,
                             self._getStarFilename(IN_TOMOS_STAR),
