@@ -109,7 +109,7 @@ class Writer(WriterBase):
     def _getPrecedentTsIdFromSubtomo(subtomo, precedentsSet):
         tsId = None
         precedentFileList = [tomo.getFileName() for tomo in precedentsSet]
-        precedent = subtomo.getVolume()
+        precedent = subtomo.getCoordinate3D().getVolume()
         if precedent:
             tsId = precedent.getTsId()
         if not tsId and subtomo.getVolName() in precedentFileList:
