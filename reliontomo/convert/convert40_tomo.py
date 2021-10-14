@@ -107,11 +107,18 @@ class Writer(WriterBase):
 
     @staticmethod
     def _getPrecedentTsIdFromSubtomo(subtomo, precedentsSet):
-        for tomo in precedentsSet:
-            if subtomo.getVolName() in tomo.getFileName():
-                return tomo.getTsId()
+        tsId = None
+        precedentFileList = [tomo.getFileName() for tomo in precedentsSet]
+        precedent = subtomo.getVolume()
+        if precedent:
+            tsId = precedent.getTsId()
+        if not tsId and subtomo.getVolName() in precedentFileList:
+            tsId = precedentsSet[precedentFileList.index(subtomo.getVolName()) + 1].getTsId()
 
-        raise Exception('Not able to read TsId for subtomogram %s' % subtomo.getVolName())
+        if tsId:
+            return tsId
+        else:
+            raise Exception('Not able to read TsId for subtomogram %s' % subtomo.getVolName())
 
     @ staticmethod
     def _getCTFFileFromSubtomo(subtomo):

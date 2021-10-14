@@ -85,7 +85,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         self._manageGeneratedFiles()
         vol = AverageSubTomogram()
         vol.setFileName(self._getExtraPath(INITIAL_MODEL))
-        vol.setSamplingRate(8.83)  # TODO: check how to get the sampling rate at this point of the pipeline
+        vol.setSamplingRate(self.inputPseudoSubtomos.get().getSamplingRate())
         self._defineOutputs(outputVolume=vol)
 
     # -------------------------- INFO functions -------------------------------
