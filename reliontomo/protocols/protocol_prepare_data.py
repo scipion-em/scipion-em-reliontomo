@@ -136,7 +136,9 @@ class ProtRelionPrepareData(EMProtocol):
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
-        mkdir(self._getExtraPath(DEFOCUS))
+        defocusDir = self._getExtraPath(DEFOCUS)
+        if not exists(defocusDir):  # It can exists in case of Continue execution
+            mkdir(defocusDir)
         self.TsSet = self.inputCtfTs.get().getSetOfTiltSeries()
         self.tomoSet = self.inputSubtomos.get().getCoordinates3D().get().getPrecedents()
 
@@ -144,7 +146,8 @@ class ProtRelionPrepareData(EMProtocol):
         # Generate defocus files
         for ctfTomo in self.inputCtfTs.get():
             defocusPath = self._getExtraPath(DEFOCUS, ctfTomo.getTsId())
-            mkdir(defocusPath)
+            if not exists(defocusPath):  # It can exist in case of mode Continue execution
+                mkdir(defocusPath)
             generateDefocusIMODFileFromObject(ctfTomo,
                                               join(defocusPath, ctfTomo.getTsId() + '.' + DEFOCUS),
                                               isRelion=True)
