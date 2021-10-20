@@ -107,13 +107,17 @@ class Writer(WriterBase):
 
     @staticmethod
     def _getPrecedentTsIdFromSubtomo(subtomo, precedentsSet):
-        tsId = None
         precedentFileList = [tomo.getFileName() for tomo in precedentsSet]
         precedent = subtomo.getCoordinate3D().getVolume()
-        if precedent:
-            tsId = precedent.getTsId()
-        if not tsId and subtomo.getVolName() in precedentFileList:
-            tsId = precedentsSet[precedentFileList.index(subtomo.getVolName()) + 1].getTsId()
+        # Get from the coordinate associated to the current subtomogram
+        tsId = subtomo.getCoordinate3D.getTomoId()
+        if not tsId:
+            # Get from the tomogram in which that subtomo was picked
+            if precedent:
+                tsId = precedent.getTsId()
+            # Match by filename
+            if not tsId and subtomo.getVolName() in precedentFileList:
+                tsId = precedentsSet[precedentFileList.index(subtomo.getVolName()) + 1].getTsId()
 
         if tsId:
             return tsId
