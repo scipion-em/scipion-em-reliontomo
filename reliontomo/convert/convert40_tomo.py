@@ -110,7 +110,7 @@ class Writer(WriterBase):
         precedentFileList = [tomo.getFileName() for tomo in precedentsSet]
         precedent = subtomo.getCoordinate3D().getVolume()
         # Get from the coordinate associated to the current subtomogram
-        tsId = subtomo.getCoordinate3D.getTomoId()
+        tsId = subtomo.getCoordinate3D().getTomoId()
         if not tsId:
             # Get from the tomogram in which that subtomo was picked
             if precedent:
