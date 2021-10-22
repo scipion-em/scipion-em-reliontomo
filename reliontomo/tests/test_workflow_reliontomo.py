@@ -35,6 +35,8 @@ from pyworkflow.utils import magentaStr
 from reliontomo.protocols.protocol_ctf_3d_estimation import CTF3D_PER_SUBVOLUME
 from tomo.protocols import ProtImportTomograms, ProtImportCoordinates3D, ProtImportTs
 from dynamo.protocols import DynamoExtraction
+
+from tomo.protocols.protocol_import_coordinates import IMPORT_FROM_DYNAMO, IMPORT_FROM_CHOICES
 from ..protocols import *
 
 
@@ -73,7 +75,7 @@ class TestWorkflowRelionTomo(TestWorkflow):
         print(magentaStr("\n==> Importing data - coordinates 3D:"))
         protImportCoords3D = self.newProtocol(
             ProtImportCoordinates3D,
-            importFrom=3,  # IMPORT_FROM_DYNAMO
+            importFrom=IMPORT_FROM_CHOICES.index(IMPORT_FROM_DYNAMO),
             filesPath=self.ds.getPath(),
             filesPattern='*.tbl',
             samplingRate=self.samplingRate,

@@ -498,9 +498,9 @@ class ProtRelionBaseTomo(EMProtocol):
     def _insertAllSteps(self):
 
         self._initialize()
-        self._insertFunctionStep('convertInputStep')
+        self._insertFunctionStep(self.convertInputStep)
         self._insertRelionStep()
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.createOutputStep)
 
     def _insertRelionStep(self):
         """ Prepare the command line arguments before calling Relion. """

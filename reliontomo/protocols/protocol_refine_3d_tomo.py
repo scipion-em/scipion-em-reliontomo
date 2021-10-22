@@ -33,7 +33,7 @@ from pwem import ALIGN_PROJ
 from pwem.objects import FSC, Integer
 from pwem.protocols import ProtRefine3D
 from pyworkflow import BETA
-from relion.convert import Table, convert31
+from relion.convert import Table, convert30
 from reliontomo import Plugin
 
 from tomo.objects import AverageSubTomogram
@@ -228,7 +228,7 @@ leads to objective and high-quality results.
             item.setAlignmentProj()
         # with open(dataStar) as fid:
         #     self.dataTable.readStar(fid)
-        self.reader = convert31.Reader(alignType=ALIGN_PROJ,
+        self.reader = convert30.Reader(alignType=ALIGN_PROJ,
                                        pixelSize=subtomoClassesSet.getSamplingRate())
 
         mdIter = Table.iterRows(dataStar, key='rlnImageName')

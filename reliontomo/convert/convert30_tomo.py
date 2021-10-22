@@ -25,7 +25,6 @@
 
 from pwem.emlib.image import ImageHandler
 import pyworkflow.utils as pwutils
-from pyworkflow.object import String
 from relion.convert.convert_base import WriterBase
 from scipion.install.funcs import mkdir
 import numpy as np
@@ -180,11 +179,12 @@ class Writer(WriterBase):
 
         if T:  # Alignment performed before
             M = subtomo.getTransform().getMatrix()
-            shifts = translation_from_matrix(M)
+            # shifts = translation_from_matrix(M)
             if calcInv:
-                shifts = -shifts
+                # shifts = -shifts
                 M = np.linalg.inv(M)
 
             angles = -np.rad2deg(euler_from_matrix(M, axes='szyz'))
+            shifts = translation_from_matrix(M)
 
         return angles, shifts
