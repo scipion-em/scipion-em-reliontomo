@@ -28,7 +28,10 @@ This module contains the protocol for 3d classification with relion.
 from os import remove
 from os.path import abspath, exists
 
+from pwem import ALIGN_PROJ
 from pwem.protocols import ProtClassify3D, params
+from relion.convert import convert31
+
 from pyworkflow import BETA
 
 from .protocol_base_tomo import ProtRelionBaseTomo
@@ -89,7 +92,7 @@ class ProtRelionSubtomoClassif3D(ProtClassify3D, ProtRelionBaseTomo, ProtTomoBas
         self._defineOutputs(outputVolumes=volumes)
         self._defineSourceRelation(subtomoSet, volumes)
 
-        if not self.doContinue:
+        if not self.doContinue and not self.referenceVolume.hasValue():
             self._defineSourceRelation(self.referenceVolume, classes3D)
             self._defineSourceRelation(self.referenceVolume, volumes)
 
@@ -182,6 +185,10 @@ class ProtRelionSubtomoClassif3D(ProtClassify3D, ProtRelionBaseTomo, ProtTomoBas
     def _fillClassesFromIter(self, clsSet, iteration):
         """ Create the SetOfClasses3D from a given iteration. """
         self._loadClassifyInfo(iteration)
+
+        self.reader = convert31.Reader(alignType=ALIGN_PROJ,
+                                       pixelSize=clsSet.getSamplingRate())
+
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
                              itemDataIterator=self.dataTable.__iter__())
@@ -190,6 +197,8 @@ class ProtRelionSubtomoClassif3D(ProtClassify3D, ProtRelionBaseTomo, ProtTomoBas
         item.setClassId(int(row.rlnClassNumber))#rlnGroupNumber))
         item._rlnLogLikeliContribution = params.Float(row.rlnLogLikeliContribution)
         item._rlnMaxValueProbDistribution = params.Float(row.rlnMaxValueProbDistribution)
+
+        self.reader.setParticleTransform(item, row)
 
     def _updateClass(self, item):
         classId = item.getObjId()
