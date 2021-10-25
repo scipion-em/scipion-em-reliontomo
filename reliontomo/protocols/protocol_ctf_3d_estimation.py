@@ -116,11 +116,11 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
     def _insertAllSteps(self):
         program = "relion_reconstruct" if self.numberOfMpi == 1 else "relion_reconstruct_mpi"
         # Insert the steps
-        writeDeps = self._insertFunctionStep("writeStarCtf3DStep")
+        writeDeps = self._insertFunctionStep(self.writeStarCtf3DStep)
         for ctfStarFile, ctfMRCFile in zip(self.ctfStarFileList, self.ctfMRCFileList):
-            self._insertFunctionStep("reconstructCtf3DStep",  program, ctfStarFile, ctfMRCFile,
+            self._insertFunctionStep(self.reconstructCtf3DStep,  program, ctfStarFile, ctfMRCFile,
                                      prerequisites=[writeDeps])
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.createOutputStep)
 
     # --------------------------- STEPS functions --------------------------------------------
     def writeStarCtf3DStep(self):
@@ -168,6 +168,7 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                 coord._3dcftMrcFile = String(ctfMrc)
                 out_coords.append(coord)
 
+        out_coords.setBoxSize(self.boxSzie.get())
         self._defineOutputs(outputCoordinates=out_coords)
         self._defineTransformRelation(self.inputCoordinates, out_coords)
 
