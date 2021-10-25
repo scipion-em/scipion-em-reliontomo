@@ -38,7 +38,10 @@ def createWriterTomo(**kwargs):
     the format='30' argument.
     """
     if Plugin.isRe40():
-        Writer = convert40_tomo.Writer
+        if Plugin.isReconstringParticleFromSubtomos():
+            Writer = convert30_tomo.Writer
+        else:
+            Writer = convert40_tomo.Writer
     else:
         Writer = convert30_tomo.Writer
 

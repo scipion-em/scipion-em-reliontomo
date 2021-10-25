@@ -32,9 +32,9 @@ from tomo.objects import AverageSubTomogram
 
 
 class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBase):
-    """Reconstruct particle"""
+    """Reconstruct particle from the original 2D tilt series images"""
 
-    _label = 'Reconstruct particle'
+    _label = 'Reconstruct particle from the original 2D tilt series images'
 
     def __init__(self, **args):
         ProtRelionMakePseudoSubtomoAndRecParticleBase.__init__(self, **args)

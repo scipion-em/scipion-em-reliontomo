@@ -25,10 +25,10 @@
 
 from .protocol_prepare_data import ProtRelionPrepareData
 from .protocol_make_pseudo_subtomos import ProtRelionMakePseudoSubtomograms
-from .protocol_rec_particle import ProtRelionReconstructParticle
+from .protocol_reconstruc_particle_from_ts import ProtRelionReconstructParticle
 from .protocol_de_novo_initial_model import ProtRelionDeNovoInitialModel
 from .protocol_refine_subtomograms import ProtRelionRefineSubtomograms
 from .protocol_3d_classify_subtomograms import ProtRelion3DClassifySubtomograms
 from .protocol_tomo_frame_align import ProtRelionTomoFrameAlign
 from .protocol_ctf_refine import ProtRelionCtfRefine
-
+from .protocol_rec_particle_from_subtomograms import ProtRelionSubTomoReconstructAvg

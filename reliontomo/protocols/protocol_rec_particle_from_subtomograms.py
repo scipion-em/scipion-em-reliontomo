@@ -28,19 +28,19 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         EnumParam, IntParam, LEVEL_ADVANCED)
 
 from pwem.protocols import ProtReconstruct3D
-from tomo.objects import Tomogram, AverageSubTomogram
 from reliontomo import Plugin
+from tomo.objects import AverageSubTomogram
 from reliontomo.convert import writeSetOfSubtomograms
-from reliontomo.constants import V30_VALIDATION_MSG
 
-class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
+
+class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
     """ This protocol reconstructs a volume using Relion.
 
     Reconstruct a volume from a given set of particles.
     The alignment parameters will be converted to a Relion star file
     and used as direction projections to reconstruct.
     """
-    _label = 'tomo reconstruct'
+    _label = 'Reconstruct particle averaging a set of subtomograms'
     _devStatus = BETA
     inStarName = 'input_particles'
     outTomoName = 'output_volume'
@@ -92,10 +92,23 @@ class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
+        # JORGE
+        import os
+        fname = "/home/jjimenez/Desktop/test_JJ.txt"
+        if os.path.exists(fname):
+            os.remove(fname)
+        fjj = open(fname, "a+")
+        fjj.write('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
+        fjj.close()
+        print('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
+        import time
+        time.sleep(10)
+        # JORGE_END
+        Plugin._isReconstringParticleFromSubtomos = True
         self._createFilenameTemplates()
-        self._insertFunctionStep('convertInputStep')
+        self._insertFunctionStep(self.convertInputStep)
         self._insertReconstructStep()
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.createOutputStep)
 
     def _getProgram(self, program='relion_reconstruct'):
         """ Get the program name depending on the MPI use or not. """
@@ -160,10 +173,7 @@ class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
     
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
-        errors = []
-        if not Plugin.IS_30():
-            errors.append(V30_VALIDATION_MSG)
-        return errors
+        pass
     
     def _summary(self):
         summary = []
