@@ -198,11 +198,11 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         cmd = self._genBaseCommand()
         cmd += '--auto_refine --split_random_halves --low_resol_join_halves 40 --norm --scale '
         # I/O args
-        cmd += '--ref %s ' % self.referenceVolume.get()
+        cmd += '--ref %s ' % self.referenceVolume.get().getFileName()
         if self.solventMask.get():
-            cmd += '--solvent_mask %s ' % self.solventMask.get()
+            cmd += '--solvent_mask %s ' % self.solventMask.get().getFileName()
         if self.solventMask2.get():
-            cmd += '--solvent_mask2 %s ' % self.solventMask2.get()
+            cmd += '--solvent_mask2 %s ' % self.solventMask2.get().getFileName()
         # Reference args
         if self.isMapAbsoluteGreyScale.get():
             cmd += 'firstiter_cc '
