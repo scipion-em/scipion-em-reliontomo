@@ -27,7 +27,8 @@ from pyworkflow.protocol import StringParam
 from reliontomo import Plugin
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
-from reliontomo.utils import getProgram, genSymmetryTable
+from reliontomo.utils import genSymmetryTable
+from tomo.objects import AverageSubTomogram
 
 
 class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBase):
@@ -55,17 +56,25 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._insertFunctionStep(self._relionReconstructParticle)
+        self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
     def _relionReconstructParticle(self):
         Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_particle', self._genRecParticleCmd(),
                              numberOfMpi=self.numberOfMpi.get())
 
-    # # -------------------------- INFO functions -------------------------------
+    def createOutputStep(self):
+        protPrepDataInputSubtomos = self.inputPrepareDataProt.get().inputSubtomos.get()
+        vol = AverageSubTomogram()
+        vol.setFileName(self._getExtraPath('merged.mrc'))
+        vol.setSamplingRate(protPrepDataInputSubtomos.getSamplingRate())
+        self._defineOutputs(outputVolume=vol)
+
+    # -------------------------- INFO functions -------------------------------
     def _validate(self):
         pass
 
-    # # --------------------------- UTILS functions -----------------------------
+    # --------------------------- UTILS functions -----------------------------
     def _genRecParticleCmd(self):
         cmd = self._genCommonCmd()
         cmd += '--o %s ' % self._getExtraPath()
