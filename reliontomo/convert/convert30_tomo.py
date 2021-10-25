@@ -185,6 +185,6 @@ class Writer(WriterBase):
                 M = np.linalg.inv(M)
 
             angles = -np.rad2deg(euler_from_matrix(M, axes='szyz'))
-            shifts = translation_from_matrix(M)
+            shifts = -translation_from_matrix(M)
 
         return angles, shifts
