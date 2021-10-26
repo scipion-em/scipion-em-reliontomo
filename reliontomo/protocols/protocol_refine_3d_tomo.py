@@ -104,7 +104,7 @@ leads to objective and high-quality results.
 
         self._defineOutputs(outputVolume=vol)
         self._defineSourceRelation(subtomoSet, vol)
-        self._defineOutputs(outputParticles=outSubtomoSet)
+        self._defineOutputs(outputSetOfSubtomogram=outSubtomoSet)
         self._defineTransformRelation(subtomoSet, outSubtomoSet)
 
         fsc = FSC(objLabel=self.getRunName())
@@ -128,13 +128,13 @@ leads to objective and high-quality results.
             volumeDim = self.referenceVolume.get().getDim()
 
             if particlesDim is None:
-                errors.append('Can not get dimensions from input particles!!!')
+                errors.append('Can not get dimensions from input particles.')
 
             elif volumeDim is None:
-                errors.append('Can not get dimensions from reference volume!!!')
+                errors.append('Can not get dimensions from reference volume.')
 
             elif particlesDim[0] != volumeDim[0]:
-                errors.append('Volume and particles dimensions must be equal!!!')
+                errors.append('Volume and particles dimensions must be equal.')
 
         return errors
 

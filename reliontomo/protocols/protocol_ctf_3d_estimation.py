@@ -168,7 +168,7 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                 coord._3dcftMrcFile = String(ctfMrc)
                 out_coords.append(coord)
 
-        out_coords.setBoxSize(self.boxSzie.get())
+        out_coords.setBoxSize(self.boxSize.get())
         self._defineOutputs(outputCoordinates=out_coords)
         self._defineTransformRelation(self.inputCoordinates, out_coords)
 

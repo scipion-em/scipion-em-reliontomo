@@ -45,108 +45,116 @@ GPUS = os.environ.get('SCIPION_TEST_GPUS', 2)
 
 
 class TestWorkflowRelionTomo(TestWorkflow):
+
+    boxSize = None
+    ds = None
+    samplingRate = None
+    protImportTomo = None
+    protImportCoords3D = None
+    protImportTS = None
+    protTSCtfEstimationImod = None
+    protEstimateCTF3D = None
+    protExtractSubtomo = None
+    protImportRefVol = None
+    protImportMask = None
+
     @classmethod
     def setUpClass(cls):
         pwtests.setupTestProject(cls)
         cls.ds = pwtests.DataSet.getDataSet('reliontomo')
         cls.samplingRate = 4.4
         cls.boxSize = 72
+        cls.protImportTomo = cls._importTomograms()
+        cls.protImportCoords3D = cls._importCoordinates3D()
+        cls.protImportTS = cls._importTiltSeries()
+        cls.protTSCtfEstimationImod = cls._tSCtfEstimateImod()
+        cls.protEstimateCTF3D = cls._estimateCTF3D()
+        cls.protImportRefVol = cls._importVolume()
+        cls.protImportMask = cls._importMask()
+        cls.protExtractSubtomo = cls._extractSubtomograms()
 
-    def _importTomograms(self):
+    @ classmethod
+    def _importTomograms(cls):
         print(magentaStr("\n==> Importing data - tomograms:"))
-        protImportTomo = self.newProtocol(
+        protImportTomo = cls.newProtocol(
             ProtImportTomograms,
-            filesPath=self.ds.getPath(),
+            filesPath=cls.ds.getPath(),
             filesPattern='*Binned1.mrc',
-            samplingRate=self.samplingRate
+            samplingRate=cls.samplingRate
         )
         protImportTomo.setObjLabel('import 2 tomograms')
-        protImportTomo = self.launchProtocol(protImportTomo)
-        tomoSet = getattr(protImportTomo, 'outputTomograms', None)
-
-        # Validate output tomograms
-        self.assertSetSize(tomoSet, size=2)
-        self.assertEqual(tomoSet.getSamplingRate(), self.samplingRate)
-        self.assertEqual(tomoSet.getDim(), (1919, 1854, 500))
+        protImportTomo = cls.launchProtocol(protImportTomo)
 
         return protImportTomo
 
-    def _importCoordinates3D(self, protImportTomo):
+    @classmethod
+    def _importCoordinates3D(cls):
         print(magentaStr("\n==> Importing data - coordinates 3D:"))
-        protImportCoords3D = self.newProtocol(
+        protImportCoords3D = cls.newProtocol(
             ProtImportCoordinates3D,
             importFrom=IMPORT_FROM_CHOICES.index(IMPORT_FROM_DYNAMO),
-            filesPath=self.ds.getPath(),
+            filesPath=cls.ds.getPath(),
             filesPattern='*.tbl',
-            samplingRate=self.samplingRate,
-            boxSize=self.boxSize,
-            importTomograms=getattr(protImportTomo, 'outputTomograms', None)
+            samplingRate=cls.samplingRate,
+            boxSize=cls.boxSize,
+            importTomograms=getattr(cls.protImportTomo, 'outputTomograms', None)
         )
         protImportCoords3D.setObjLabel('import 3D coordinates')
-        protImportCoords3D = self.launchProtocol(protImportCoords3D)
-        coord3DSet = getattr(protImportCoords3D, 'outputCoordinates', None)
-
-        # Validate output tomograms
-        self.assertSetSize(coord3DSet, size=150)
-        self.assertEqual(coord3DSet.getSamplingRate(), self.samplingRate)
-        self.assertEqual(coord3DSet.getBoxSize(), self.boxSize)
+        protImportCoords3D = cls.launchProtocol(protImportCoords3D)
 
         return protImportCoords3D
 
-    def _importTiltSeries(self):
+    @classmethod
+    def _importTiltSeries(cls):
         print(magentaStr("\n==> Importing data - tilt series:"))
-        protImportTS = self.newProtocol(
+        protImportTS = cls.newProtocol(
             ProtImportTs,
-            filesPath=self.ds.getPath(),
+            filesPath=cls.ds.getPath(),
             filesPattern='{TS}_bin1_ali_bin1.mrcs',
             anglesFrom=2,  # ANGLES_FROM_TLT
             magnification=10000,
-            samplingRate=self.samplingRate,
+            samplingRate=cls.samplingRate,
             voltage=300,
             dosePerFrame=2.1,
             tiltAxisAngle=87.2
         )
         protImportTS.setObjLabel('import tilt series')
-        protImportTS = self.launchProtocol(protImportTS)
-        tsSet = getattr(protImportTS, 'outputTiltSeries', None)
-
-        # Validate output tomograms
-        self.assertSetSize(tsSet, size=2)
-        self.assertEqual(tsSet.getSamplingRate(), self.samplingRate)
-        self.assertEqual(tsSet.getDim(), (1854, 1920, 1))
+        protImportTS = cls.launchProtocol(protImportTS)
 
         return protImportTS
 
-    def _tSCtfEstimateImod(self, protImportTS):
+    @classmethod
+    def _tSCtfEstimateImod(cls):
         print(magentaStr("\n==> Calculating the tilt series ctf:"))
-        protTSCtfImod = self.newProtocol(
+        protTSCtfImod = cls.newProtocol(
             ProtImodAutomaticCtfEstimation,
-            inputSet=getattr(protImportTS, 'outputTiltSeries', None),
+            inputSet=getattr(cls.protImportTS, 'outputTiltSeries', None),
             angleRange=10
         )
         protTSCtfImod.setObjLabel('calculate TS CTF')
-        protTSCtfImod = self.launchProtocol(protTSCtfImod)
-        ctfSeriesSet = getattr(protTSCtfImod, 'outputSetOfCTFTomoSeries', None)
-
-        # Validate output tomograms
-        self.assertSetSize(ctfSeriesSet, size=2)
+        cls.launchProtocol(protTSCtfImod)
 
         return protTSCtfImod
 
-    def _estimateCTF3D(self, protImportCoords3D, protTSCtfImod):
+    @classmethod
+    def _estimateCTF3D(cls):
         print(magentaStr("\n==> Estimating the 3D CTF:"))
-        protEstimateCTF3D = self.newProtocol(
+        protEstimateCTF3D = cls.newProtocol(
             ProtRelionEstimateCTF3D,
-            inputCoordinates=getattr(protImportCoords3D, 'outputCoordinates', None),
-            inputSetCTFTomoSeries=getattr(protTSCtfImod, 'outputSetOfCTFTomoSeries', None),
-            doseFilesPath=self.ds.getPath(),
+            inputCoordinates=getattr(cls.protImportCoords3D, 'outputCoordinates', None),
+            inputSetCTFTomoSeries=getattr(cls.protTSCtfEstimationImod, 'outputSetOfCTFTomoSeries', None),
+            doseFilesPath=cls.ds.getPath(),
             filesPattern='*ExpDose.txt',
             boxSize=72,
             ctf3dMode=CTF3D_PER_SUBVOLUME,
         )
         protEstimateCTF3D.setObjLabel('Estimate CTF 3D')
-        protEstimateCTF3D = self.launchProtocol(protEstimateCTF3D)
-        coord3DSet = getattr(protEstimateCTF3D, 'outputCoordinates', None)
+        protEstimateCTF3D = cls.launchProtocol(protEstimateCTF3D)
+
+        return protEstimateCTF3D
+
+    def testEstimateCTF3D(self):
+        coord3DSet = getattr(self.protEstimateCTF3D, 'outputCoordinates', None)
 
         # Validate output tomograms
         self.assertSetSize(coord3DSet, size=150)
@@ -157,77 +165,61 @@ class TestWorkflowRelionTomo(TestWorkflow):
         for coord3d in coord3DSet:
             self.assertTrue(exists(coord3d._3dcftMrcFile.get()))
 
-        return protEstimateCTF3D
-
-    def _importVolume(self):
+    @classmethod
+    def _importVolume(cls):
         print(magentaStr("\n==> Importing reference volume:"))
-        protImportVol = self.newProtocol(
+        protImportVol = cls.newProtocol(
             ProtImportVolumes,
             emdbId=0,  # IMPORT_FROM_FILES
-            filesPath=self.ds.getFile('refVol'),
-            samplingRate=self.samplingRate,
+            filesPath=cls.ds.getFile('refVol'),
+            samplingRate=cls.samplingRate,
         )
         protImportVol.setObjLabel('Import reference volume')
-        protImportVol = self.launchProtocol(protImportVol)
-        outVol = getattr(protImportVol, 'outputVolume', None)
-
-        # Validate output tomograms
-        self.assertEqual(outVol.getDim(), (self.boxSize, self.boxSize, self.boxSize))
-        self.assertEqual(outVol.getSamplingRate(), self.samplingRate)
+        protImportVol = cls.launchProtocol(protImportVol)
 
         return protImportVol
 
-    def _importMask(self):
+    @classmethod
+    def _importMask(cls):
         print(magentaStr("\n==> Importing the mask:"))
-        protImportMask = self.newProtocol(
+        protImportMask = cls.newProtocol(
             ProtImportMask,
-            maskPath=self.ds.getFile('mask'),
-            samplingRate=self.samplingRate,
+            maskPath=cls.ds.getFile('mask'),
+            samplingRate=cls.samplingRate,
         )
         protImportMask.setObjLabel('Import mask')
-        protImportMask = self.launchProtocol(protImportMask)
-        outVol = getattr(protImportMask, 'outputMask', None)
-
-        # Validate output tomograms
-        self.assertEqual(outVol.getDim(), (self.boxSize, self.boxSize, self.boxSize))
-        self.assertEqual(outVol.getSamplingRate(), self.samplingRate)
+        protImportMask = cls.launchProtocol(protImportMask)
 
         return protImportMask
 
-    def _extractSubtomograms(self, protImportTomo, protEstimateCTF3D):
+    @classmethod
+    def _extractSubtomograms(cls):
         print(magentaStr("\n==> Extracting subtomograms:"))
-        protDynamoExtract = self.newProtocol(
+        protDynamoExtract = cls.newProtocol(
             DynamoExtraction,
-            inputCoordinates=getattr(protEstimateCTF3D, 'outputCoordinates', None),
+            inputCoordinates=getattr(cls.protEstimateCTF3D, 'outputCoordinates', None),
             tomoSource=1,  # OTHER
-            boxSize=self.boxSize,
+            boxSize=cls.boxSize,
             doInvert=True,
-            inputTomograms=getattr(protImportTomo, 'outputTomograms', None)
+            inputTomograms=getattr(cls.protImportTomo, 'outputTomograms', None)
         )
         protDynamoExtract.setObjLabel('extract subtomograms')
-        protDynamoExtract = self.launchProtocol(protDynamoExtract)
-        subtomoSet = getattr(protDynamoExtract, 'outputSetOfSubtomogram', None)
-
-        # Validate output tomograms
-        self.assertSetSize(subtomoSet, size=150)
-        self.assertEqual(subtomoSet.getSamplingRate(), self.samplingRate)
-        self.assertEqual(subtomoSet.getDim(), (self.boxSize, self.boxSize, self.boxSize))
-
+        protDynamoExtract = cls.launchProtocol(protDynamoExtract)
         return protDynamoExtract
 
-    def _classifySubtomograms(self, protExtractSubtomo, protImportRefVol, protImportMask):
+    def testClassifySubtomograms(self):
         print(magentaStr("\n==> Classifying subtomograms:"))
         protClassifSubtomo = self.newProtocol(
             ProtRelionSubtomoClassif3D,
             threads=1,
             mpi=4,
-            inputSubtomograms=getattr(protExtractSubtomo, 'outputSetOfSubtomogram', None),
+            inputSubtomograms=getattr(self.protExtractSubtomo, 'outputSetOfSubtomogram', None),
             numberOfClasses=1,
-            referenceVolume=getattr(protImportRefVol, 'outputVolume', None),
+            referenceVolume=getattr(self.protImportRefVol, 'outputVolume', None),
             doCTF=False,
             hasReferenceCTFCorrected=True,
             ctfMultiplied=True,
-            referenceMask=getattr(protImportMask, 'outputMask', None),
+            referenceMask=getattr(self.protImportMask, 'outputMask', None),
             pooledSubtomos=3,
             numberOfIterations=5
         )
@@ -246,19 +238,19 @@ class TestWorkflowRelionTomo(TestWorkflow):
 
         return protClassifSubtomo
 
-    def _refineSubtomograms(self, protExtractSubtomo, protImportRefVol, protImportMask):
+    def testRefineSubtomograms(self):
         print(magentaStr("\n==> Refining subtomograms:"))
         protRefineSubtomo = self.newProtocol(
             ProtRelionSubtomoRefine3D,
             threads=3,
             mpi=5,
-            inputSubtomograms=getattr(protExtractSubtomo, 'outputSetOfSubtomogram', None),
+            inputSubtomograms=getattr(self.protExtractSubtomo, 'outputSetOfSubtomogram', None),
             numberOfClasses=1,
-            referenceVolume=getattr(protImportRefVol, 'outputVolume', None),
+            referenceVolume=getattr(self.protImportRefVol, 'outputVolume', None),
             doCTF=False,
             hasReferenceCTFCorrected=True,
             ctfMultiplied=True,
-            referenceMask=getattr(protImportMask, 'outputMask', None),
+            referenceMask=getattr(self.protImportMask, 'outputMask', None),
             pooledSubtomos=10,
             doGpu=True,
             gpusToUse='0',
@@ -267,7 +259,7 @@ class TestWorkflowRelionTomo(TestWorkflow):
         )
         protRefineSubtomo.setObjLabel('refine subtomogram')
         protRefineSubtomo = self.launchProtocol(protRefineSubtomo)
-        subTomoSet = getattr(protRefineSubtomo, 'outputParticles', None)
+        subTomoSet = getattr(protRefineSubtomo, 'outputSubtomograms', None)
         avgSubTomo = getattr(protRefineSubtomo, 'outputVolume', None)
 
         # Validate output subtomograms
@@ -281,13 +273,13 @@ class TestWorkflowRelionTomo(TestWorkflow):
 
         return protRefineSubtomo
 
-    def _reconstructSubtomograms(self, protExtractSubtomo):
+    def testReconstructSubtomograms(self):
         print(magentaStr("\n==> Reconstructing subtomograms:"))
         protReconstructSubtomo = self.newProtocol(
             ProtRelionSubTomoReconstruct,
             threads=3,
             mpi=5,
-            inputSubtomos=getattr(protExtractSubtomo, 'outputSetOfSubtomogram', None),
+            inputSubtomos=getattr(self.protExtractSubtomo, 'outputSetOfSubtomogram', None),
             maxRes=40
         )
         protReconstructSubtomo.setObjLabel('reconstruct subtomograms')
@@ -297,16 +289,3 @@ class TestWorkflowRelionTomo(TestWorkflow):
         # Validate output average subtomograms
         self.assertEqual(recTomo.getSamplingRate(), self.samplingRate)
         self.assertEqual(recTomo.getDim(), (self.boxSize, self.boxSize, self.boxSize))
-
-    def test_workflow(self):
-        protImportTomo = self._importTomograms()
-        protImportCoords3D = self._importCoordinates3D(protImportTomo)
-        protImportTS = self._importTiltSeries()
-        protTSCtfEstimationImod = self._tSCtfEstimateImod(protImportTS)
-        protEstimateCTF3D = self._estimateCTF3D(protImportCoords3D, protTSCtfEstimationImod)
-        protExtractSubtomo = self._extractSubtomograms(protImportTomo, protEstimateCTF3D)
-        protImportRefVol = self._importVolume()
-        protImportMask = self._importMask()
-        self._classifySubtomograms(protExtractSubtomo, protImportRefVol, protImportMask)
-        self._refineSubtomograms(protExtractSubtomo, protImportRefVol, protImportMask)
-        self. _reconstructSubtomograms(protExtractSubtomo)
