@@ -104,7 +104,7 @@ leads to objective and high-quality results.
 
         self._defineOutputs(outputVolume=vol)
         self._defineSourceRelation(subtomoSet, vol)
-        self._defineOutputs(outputSetOfSubtomogram=outSubtomoSet)
+        self._defineOutputs(outputSetOfSubtomograms=outSubtomoSet)
         self._defineTransformRelation(subtomoSet, outSubtomoSet)
 
         fsc = FSC(objLabel=self.getRunName())

@@ -93,9 +93,9 @@ class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._createFilenameTemplates()
-        self._insertFunctionStep('convertInputStep')
+        self._insertFunctionStep(self.convertInputStep)
         self._insertReconstructStep()
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.createOutputStep)
 
     def _getProgram(self, program='relion_reconstruct'):
         """ Get the program name depending on the MPI use or not. """
@@ -136,15 +136,13 @@ class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
     def _createFilenameTemplates(self):
         """ Centralize how files are called for iterations and references. """
         myDict = {
-            'input_particles': self._getTmpPath(self.inStarName + '.star'),
+            'input_particles': self._getPath(self.inStarName + '.star'),
             'output_volume': self._getExtraPath(self.outTomoName + '.mrc')
             }
         self._updateFilenamesDict(myDict)
 
     def convertInputStep(self):
-        """ Create the input file in STAR format as expected by Relion.
-        """
-        # TODO: If the input particles comes from Relion, just link the file.
+        """ Create the input file in STAR format as expected by Relion."""
         imgSet = self.inputSubtomos.get()
         imgStar = self._getFileName(self.inStarName)
         writeSetOfSubtomograms(imgSet, imgStar)

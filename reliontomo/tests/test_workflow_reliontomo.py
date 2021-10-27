@@ -57,6 +57,9 @@ class TestWorkflowRelionTomo(TestWorkflow):
     protExtractSubtomo = None
     protImportRefVol = None
     protImportMask = None
+    protClassify = None
+    protRefine = None
+    protReconstruct = None
 
     @classmethod
     def setUpClass(cls):
@@ -236,7 +239,7 @@ class TestWorkflowRelionTomo(TestWorkflow):
         self.assertEqual(avgSubTomoSet.getSamplingRate(), self.samplingRate)
         self.assertEqual(avgSubTomoSet.getDim(), (self.boxSize, self.boxSize, self.boxSize))
 
-        return protClassifSubtomo
+        self.protClassify = protClassifSubtomo
 
     def testRefineSubtomograms(self):
         print(magentaStr("\n==> Refining subtomograms:"))
@@ -271,7 +274,7 @@ class TestWorkflowRelionTomo(TestWorkflow):
         self.assertEqual(avgSubTomo.getSamplingRate(), self.samplingRate)
         self.assertEqual(avgSubTomo.getDim(), (self.boxSize, self.boxSize, self.boxSize))
 
-        return protRefineSubtomo
+        self.protRefine = protRefineSubtomo
 
     def testReconstructSubtomograms(self):
         print(magentaStr("\n==> Reconstructing subtomograms:"))
@@ -279,7 +282,7 @@ class TestWorkflowRelionTomo(TestWorkflow):
             ProtRelionSubTomoReconstruct,
             threads=3,
             mpi=5,
-            inputSubtomos=getattr(self.protExtractSubtomo, 'outputSetOfSubtomogram', None),
+            inputSubtomos=getattr(self.protRefine, 'outputSetOfSubtomograms', None),
             maxRes=40
         )
         protReconstructSubtomo.setObjLabel('reconstruct subtomograms')
@@ -289,3 +292,8 @@ class TestWorkflowRelionTomo(TestWorkflow):
         # Validate output average subtomograms
         self.assertEqual(recTomo.getSamplingRate(), self.samplingRate)
         self.assertEqual(recTomo.getDim(), (self.boxSize, self.boxSize, self.boxSize))
+
+    def testCheckTransformationMatrix(self):
+        """The output of the refine protocol (convertOutputStep) must be the same as the input of the reconstruct
+        protocol (convertInputStep). This way, the bidirectional equivalence can be guaranteed."""
+

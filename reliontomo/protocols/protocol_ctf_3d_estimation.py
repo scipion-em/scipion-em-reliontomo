@@ -68,6 +68,7 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
         self._doseFromMdoc = None
         self.ctfMRCFileList = []
         self.ctfStarFileList = []
+        self.coordsSampling = []
 
     # --------------------------- DEFINE param functions --------------------------------------------
     def _defineParams(self, form):
@@ -115,6 +116,7 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
     # --------------------------- INSERT steps functions --------------------------------------------
     def _insertAllSteps(self):
         program = "relion_reconstruct" if self.numberOfMpi == 1 else "relion_reconstruct_mpi"
+        self.coordsSampling = self.inputCoordinates.get().getPrecedents().getSamplingRate()
         # Insert the steps
         writeDeps = self._insertFunctionStep(self.writeStarCtf3DStep)
         for ctfStarFile, ctfMRCFile in zip(self.ctfStarFileList, self.ctfMRCFileList):
@@ -141,7 +143,7 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                 self._estimateCTF3DPerSubvolume(ts, setTsInfo)
 
     def reconstructCtf3DStep(self, program, ctfStarFile, ctfMRCFile):
-        param = {"sampling": self.getTSSetFromCTFSeries().getSamplingRate(),
+        param = {"sampling": self.coordsSampling,
                  "ctfStar": abspath(ctfStarFile),
                  "ctf3D": abspath(ctfMRCFile),
                  "boxSize": self.boxSize.get()
@@ -401,8 +403,8 @@ class ProtRelionEstimateCTF3D(EMProtocol, ProtTomoBase):
                 avgDefocus = (ctf.getDefocusU() + ctf.getDefocusV()) / 2
                 tiltAngleDegs = ti.getTiltAngle()
                 tiltAngleRads = np.deg2rad(tiltAngleDegs)
-                xTomo = float(coord.getX(BOTTOM_LEFT_CORNER) - (sizeX / 2)) * setTsInfo[SRATE]
-                zTomo = float(coord.getZ(BOTTOM_LEFT_CORNER) - (sizeZ / 2)) * setTsInfo[SRATE]
+                xTomo = float(coord.getX(BOTTOM_LEFT_CORNER) - (sizeX / 2)) * setTsInfo[SRATE]/self.coordsSampling
+                zTomo = float(coord.getZ(BOTTOM_LEFT_CORNER) - (sizeZ / 2)) * setTsInfo[SRATE]/self.coordsSampling
                 # Calculating the height difference of the particle from the tilt axis
                 xImg = (xTomo * (math.cos(tiltAngleRads))) + (zTomo * (math.sin(tiltAngleRads)))
                 deltaD = xImg * math.sin(tiltAngleRads)
