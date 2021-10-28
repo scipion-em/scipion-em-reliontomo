@@ -105,3 +105,10 @@ class SetOfPseudoSubtomograms(SetOfSubTomograms, ProtTomoBase):
 
     def setOpticsGroupStr(self, particlesStarFile):
         self.getAcquisition().opticsGroupInfo.set(OpticsGroups.fromStar(particlesStarFile).toString())
+
+    def copyInfo(self, other):
+        """ Copy basic information (sampling rate and ctf)
+        from other set of images to current one"""
+        super().copyInfo(other)
+        if hasattr(other, '_starFile'):
+            self.copyAttributes(other, '_starFile')

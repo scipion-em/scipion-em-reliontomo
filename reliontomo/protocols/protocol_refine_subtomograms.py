@@ -27,6 +27,7 @@ import re
 
 from emtable import Table
 
+from pwem.objects import FSC
 from pyworkflow.object import Integer
 from reliontomo.convert import convert40_tomo
 from reliontomo.objects import SetOfPseudoSubtomograms
