@@ -28,6 +28,7 @@ import re
 from emtable import Table
 
 from pwem.objects import FSC
+from pyworkflow import BETA
 from pyworkflow.object import Integer
 from reliontomo.convert import convert40_tomo
 from reliontomo.objects import SetOfPseudoSubtomograms
@@ -47,7 +48,9 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     """Auto-refinement of subtomograms."""
 
     _label = 'Auto-refinement of subtomograms'
+    _devStatus = BETA
     FILE_KEYS = ['data', 'optimiser', 'sampling']
+    PREFIXES = ['half1_', 'half2_']
 
     def __init__(self, **args):
         ProtRelionRefineBase.__init__(self, **args)
