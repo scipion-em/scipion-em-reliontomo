@@ -195,11 +195,57 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
+        """ This function is mean to be called after the
+        working dir for the protocol have been set. (maybe after recovery from mapper)
+        """
+        self._createFilenameTemplates()
+        self._createIterTemplates()
+        self.ClassFnTemplate = '%(rootDir)s/relion_it%(iter)03d_class%(ref)03d.mrc:mrc'
+
+    def _createFilenameTemplates(self):
+        """ Centralize how files are called for iterations and references. """
+        self.extraIter = self._getExtraPath('relion_it%(iter)03d_')
+        myDict = {
+            'input_star': self._getPath('input_particles.star'),
+            'input_mrcs': self._getPath('input_particles.mrcs'),
+            'data_scipion': self.extraIter + 'data_scipion.sqlite',
+            'projections': self.extraIter + '%(half)sclass%(ref3d)03d_projections.sqlite',
+            'classes_scipion': self.extraIter + 'classes_scipion.sqlite',
+            'data': self.extraIter + 'data.star',
+            'model': self.extraIter + 'model.star',
+            'optimiser': self.extraIter + 'optimiser.star',
+            'angularDist_xmipp': self.extraIter + 'angularDist_xmipp.xmd',
+            'all_avgPmax': self._getPath('iterations_avgPmax.star'),
+            'all_changes': self._getPath('iterations_changes.star'),
+            'selected_volumes': self._getPath('selected_volumes_xmipp.xmd'),
+            'dataFinal': self._getExtraPath("relion_data.star"),
+            'modelFinal': self._getExtraPath("relion_model.star"),
+            'finalvolume': self._getExtraPath("relion_class%(ref3d)03d.mrc:mrc"),
+            'final_half1_volume': self._getExtraPath("relion_half1_class%(ref3d)03d_unfil.mrc:mrc"),
+            'final_half2_volume': self._getExtraPath("relion_half2_class%(ref3d)03d_unfil.mrc:mrc"),
+            'finalSGDvolume': self._getExtraPath("relion_it%(iter)03d_class%(ref3d)03d.mrc:mrc"),
+            'preprocess_particles': self._getPath("preprocess_particles.mrcs"),
+            'preprocess_particles_star': self._getPath("preprocess_particles.star"),
+            'preprocess_particles_prefix': "preprocess_particles"
+        }
+        # add to keys, data.star, optimiser.star and sampling.star
+        for key in self.FILE_KEYS:
+            myDict[key] = self.extraIter + '%s.star' % key
+            key_xmipp = key + '_xmipp'
+            myDict[key_xmipp] = self.extraIter + '%s.xmd' % key
+        # add other keys that depends on prefixes
+        for p in self.PREFIXES:
+            myDict['%smodel' % p] = self.extraIter + '%smodel.star' % p
+            myDict['%svolume' % p] = self.extraIter + p + 'class%(ref3d)03d.mrc:mrc'
+
+        self._updateFilenamesDict(myDict)
+
+    def _createIterTemplates(self):
         """ Setup the regex on how to find iterations. """
         self._iterTemplate = self._getFileName('data', iter=0).replace('000', '???')
         # Iterations will be identify by _itXXX_ where XXX is the iteration number
         # and is restricted to only 3 digits.
-        self._iterRegex = re.compile('_it(\d{3,3})_')
+        self._iterRegex = re.compile('_it(\d{3})_')
 
     def _autoRefine(self):
         nMpi = self.numberOfMpi.get()
