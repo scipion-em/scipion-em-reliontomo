@@ -47,6 +47,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     """Auto-refinement of subtomograms."""
 
     _label = 'Auto-refinement of subtomograms'
+    FILE_KEYS = ['data', 'optimiser', 'sampling']
 
     def __init__(self, **args):
         ProtRelionRefineBase.__init__(self, **args)
