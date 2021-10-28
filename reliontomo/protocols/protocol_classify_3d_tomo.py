@@ -30,7 +30,7 @@ from os.path import abspath, exists
 
 from pwem import ALIGN_PROJ
 from pwem.protocols import ProtClassify3D, params
-from relion.convert import convert31
+from relion.convert import convert30
 
 from pyworkflow import BETA
 
@@ -186,7 +186,7 @@ class ProtRelionSubtomoClassif3D(ProtClassify3D, ProtRelionBaseTomo, ProtTomoBas
         """ Create the SetOfClasses3D from a given iteration. """
         self._loadClassifyInfo(iteration)
 
-        self.reader = convert31.Reader(alignType=ALIGN_PROJ,
+        self.reader = convert30.Reader(alignType=ALIGN_PROJ,
                                        pixelSize=clsSet.getSamplingRate())
 
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
@@ -197,7 +197,6 @@ class ProtRelionSubtomoClassif3D(ProtClassify3D, ProtRelionBaseTomo, ProtTomoBas
         item.setClassId(int(row.rlnClassNumber))#rlnGroupNumber))
         item._rlnLogLikeliContribution = params.Float(row.rlnLogLikeliContribution)
         item._rlnMaxValueProbDistribution = params.Float(row.rlnMaxValueProbDistribution)
-
         self.reader.setParticleTransform(item, row)
 
     def _updateClass(self, item):

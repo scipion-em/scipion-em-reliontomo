@@ -51,6 +51,7 @@ PSI_PRIOR = 'rlnAnglePsiPrior'
 SHIFTX = 'rlnOriginX'
 SHIFTY = 'rlnOriginY'
 SHIFTZ = 'rlnOriginZ'
+NOT_FOUND = 'NotFound'
 
 RELION_TOMO_LABELS = [TOMO_NAME,
                       COORD_X,
@@ -126,17 +127,17 @@ class Writer(WriterBase):
                            rlnOriginZ]
             if isPyseg:
                 fieldsToAdd = [rlnMicrographName,
-                              rlnCoordinateX,
-                              rlnCoordinateY,
-                              rlnCoordinateZ,
-                              rlnImageName,
-                              rlnCtfImage,
-                              rlnAngleRot,
-                              rlnAngleTilt,
-                              rlnAnglePsi,
-                              rlnOriginX,
-                              rlnOriginY,
-                              rlnOriginZ]
+                               rlnCoordinateX,
+                               rlnCoordinateY,
+                               rlnCoordinateZ,
+                               rlnImageName,
+                               rlnCtfImage,
+                               rlnAngleRot,
+                               rlnAngleTilt,
+                               rlnAnglePsi,
+                               rlnOriginX,
+                               rlnOriginY,
+                               rlnOriginZ]
 
             tomoTable.addRow(*fieldsToAdd)
 
@@ -167,9 +168,10 @@ class Writer(WriterBase):
     @ staticmethod
     def _getCTFFileFromSubtomo(subtomo):
         try:
-            return subtomo.getCoordinate3D()._3dcftMrcFile.get()
+            ctfFile = subtomo.getCoordinate3D()._3dcftMrcFile.get()
+            return ctfFile if ctfFile else NOT_FOUND
         except:
-            return ''
+            return NOT_FOUND
 
     @staticmethod
     def _getTransformInfoFromSubtomo(subtomo, calcInv=True):

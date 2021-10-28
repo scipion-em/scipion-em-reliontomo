@@ -294,6 +294,6 @@ class TestWorkflowRelionTomo(TestWorkflow):
         self.assertEqual(recTomo.getDim(), (self.boxSize, self.boxSize, self.boxSize))
 
     def testCheckTransformationMatrix(self):
-        """The output of the refine protocol (convertOutputStep) must be the same as the input of the reconstruct
+        """The output of refine protocol (convertOutputStep) must be the same as the input of reconstruct
         protocol (convertInputStep). This way, the bidirectional equivalence can be guaranteed."""
 
