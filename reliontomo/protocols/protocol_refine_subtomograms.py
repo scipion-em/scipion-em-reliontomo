@@ -191,7 +191,6 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     def _insertAllSteps(self):
         self._initialize()
         self._insertFunctionStep(self._autoRefine)
-        self._insertFunctionStep(self.createOutputStep1)
         self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
@@ -205,9 +204,6 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     def _autoRefine(self):
         nMpi = self.numberOfMpi.get()
         Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genAutoRefineCommand(), numberOfMpi=nMpi)
-
-    def createOutputStep1(self):
-        pass
 
     def createOutputStep(self):
         subtomoSet = self.inputPseudoSubtomos.get()
