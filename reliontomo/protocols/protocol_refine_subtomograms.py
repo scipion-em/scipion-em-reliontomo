@@ -22,17 +22,27 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+import glob
+import re
+
+from emtable import Table
+
+from pyworkflow.object import Integer
+from reliontomo.convert import convert40_tomo
+from reliontomo.objects import SetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
 from os import listdir
-from os.path import isfile, join
+from os.path import isfile, join, getmtime
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, StringParam, BooleanParam, EnumParam
 from pyworkflow.utils import moveFile
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG
 from reliontomo.utils import getProgram
+from tomo.objects import AverageSubTomogram
+from tomo.protocols import ProtTomoBase
 
 
-class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
+class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     """Auto-refinement of subtomograms."""
 
     _label = 'Auto-refinement of subtomograms'
@@ -178,16 +188,54 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
+        self._initialize()
         self._insertFunctionStep(self._autoRefine)
+        self._insertFunctionStep(self.createOutputStep1)
         self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
+    def _initialize(self):
+        """ Setup the regex on how to find iterations. """
+        self._iterTemplate = self._getFileName('data', iter=0).replace('000', '???')
+        # Iterations will be identify by _itXXX_ where XXX is the iteration number
+        # and is restricted to only 3 digits.
+        self._iterRegex = re.compile('_it(\d{3,3})_')
+
     def _autoRefine(self):
         nMpi = self.numberOfMpi.get()
         Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genAutoRefineCommand(), numberOfMpi=nMpi)
 
-    def createOutputStep(self):
+    def createOutputStep1(self):
         pass
+
+    def createOutputStep(self):
+        subtomoSet = self.inputPseudoSubtomos.get()
+        vol = AverageSubTomogram()
+        vol.setFileName(self._getExtraPath('relion_class001.mrc'))
+        vol.setSamplingRate(subtomoSet.getSamplingRate())
+        pattern = '*it*half%s_class*.mrc'
+        half1 = self._getLastFileName(self._getExtraPath(pattern % 1))
+        half2 = self._getLastFileName(self._getExtraPath(pattern % 2))
+        vol.setHalfMaps([half1, half2])
+
+        outSubtomoSet = self._createSet(SetOfPseudoSubtomograms, 'pseudosubtomograms%s.sqlite', '')
+        outSubtomoSet.copyInfo(subtomoSet)
+        self._fillDataFromIter(outSubtomoSet, self._lastIter())
+
+        self._defineOutputs(outputVolume=vol)
+        self._defineSourceRelation(subtomoSet, vol)
+        self._defineOutputs(outputParticles=outSubtomoSet)
+        self._defineTransformRelation(subtomoSet, outSubtomoSet)
+
+        fsc = FSC(objLabel=self.getRunName())
+        fn = self._getExtraPath("relion_model.star")
+        table = Table(fileName=fn, tableName='model_class_1')
+        resolution_inv = table.getColumnValues('rlnResolution')
+        frc = table.getColumnValues('rlnGoldStandardFsc')
+        fsc.setData(resolution_inv, frc)
+
+        self._defineOutputs(outputFSC=fsc)
+        self._defineSourceRelation(vol, fsc)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -224,14 +272,52 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         return cmd
 
     def _getModelName(self):
-        '''generate the name of the volume following this pattern extra_it002_class001.mrc'''
+        """generate the name of the volume following this pattern extra_it002_class001.mrc"""
         return 'it{:03d}_class001.mrc'.format(self.maxNumberOfIterations.get())
 
     def _manageGeneratedFiles(self):
-        '''There's some kind of bug in relion4 which makes it generate the file in the protocol base directory
+        """There's some kind of bug in relion4 which makes it generate the file in the protocol base directory
         instead of the extra directory. It uses extra as a prefix of each generated file instead. Hence, until
-        it's solved, the files will be moved to the extra directory and the prefix extra_ will be removed'''
+        it's solved, the files will be moved to the extra directory and the prefix extra_ will be removed"""
         prefix = '_extra'
         genFiles = [f for f in listdir(self._getPath()) if isfile(join(self._getPath(), f))]
         for f in genFiles:
             moveFile(self._getPath(f), self._getExtraPath(f.replace(prefix, '')))
+
+    @staticmethod
+    def _getLastFileName(pattern):
+        files = glob.glob(pattern)
+        files.sort(key=getmtime)
+        return files[-1]
+
+    def _fillDataFromIter(self, subtomoClassesSet, iteration):
+        dataStar = self._getFileName('data', iter=iteration)
+        for item in subtomoClassesSet:
+            item.setAlignmentProj()
+        self.reader = convert40_tomo.Reader()
+
+        mdIter = Table.iterRows(dataStar, key='rlnImageName')
+        subtomoClassesSet.copyItems(self.inputSubtomograms.get(),
+                                    doClone=False,
+                                    updateItemCallback=self._updateParticle,
+                                    itemDataIterator=mdIter)
+
+    def _updateParticle(self, particle, row):
+        self.reader.setParticleTransform(particle, row)
+        if not hasattr(particle, '_rlnRandomSubset'):
+            particle._rlnRandomSubset = Integer()
+        particle._rlnRandomSubset.set(row.rlnRandomSubset)
+
+    def _getIterNumber(self, index):
+        """ Return the list of iteration files, give the iterTemplate. """
+        result = -1
+        files = sorted(glob.glob(self._iterTemplate))
+        if files:
+            f = files[index]
+            s = self._iterRegex.search(f)
+            if s:
+                result = int(s.group(1))  # group 1 is 3 digits iteration number
+        return result
+
+    def _lastIter(self):
+        return self._getIterNumber(-1)

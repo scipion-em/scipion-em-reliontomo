@@ -122,8 +122,8 @@ def readSetOfParticles(starFile, partsSet, **kwargs):
     return createReader(**kwargs).readSetOfParticles(starFile, partsSet, **kwargs)
 
 
-def readSetOfPseudoSubtomograms(starFile, precedents, outputSet, invert):
-    return createReaderTomo().readPseudoSubtomgramsStarFile(starFile, precedents, outputSet, invert=invert)
+def readSetOfPseudoSubtomograms(starFile, precedents, outputSet):
+    return createReaderTomo().readPseudoSubtomgramsStarFile(starFile, precedents, outputSet)
 
 
 class ClassesLoader:

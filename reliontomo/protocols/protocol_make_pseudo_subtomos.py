@@ -96,7 +96,7 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
         outputSet.setStarFileAndOptics(starFile)
         outputSet.setSamplingRate(protPrepDataInputSubtomos.getSamplingRate())
         precedents = protPrepDataInputSubtomos.getCoordinates3D().get().getPrecedents()
-        readSetOfPseudoSubtomograms(starFile, precedents, outputSet, invert=True)
+        readSetOfPseudoSubtomograms(starFile, precedents, outputSet)
         self._defineOutputs(outputSetOfPseudoSubtomogram=outputSet)
 
     # # -------------------------- INFO functions -------------------------------

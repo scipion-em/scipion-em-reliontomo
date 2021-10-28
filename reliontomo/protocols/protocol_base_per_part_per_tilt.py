@@ -63,7 +63,7 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
                       label='Path to half map 2',
                       help="Provide one of the two reference half-reconstructions MRC map files.")
         form.addParam('inRefMask', PointerParam,
-                      pointerClass='Mask',
+                      pointerClass='VolumeMask',
                       label="Input reference mask")
         form.addParam('inputPostProcess', PathParam,
                       label="Reference FSC (postprocess.star)",

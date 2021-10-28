@@ -25,12 +25,12 @@
 import csv
 from os import mkdir
 
+from pwem import ALIGN_NONE, ALIGN_2D, ALIGN_PROJ
 from pwem.emlib.image import ImageHandler
 import pyworkflow.utils as pwutils
 from pwem.objects import Transform
-from pyworkflow.object import Float, String
-from pyworkflow.utils import getParentFolder
-from relion.convert.convert_base import WriterBase, ReaderBase
+from pyworkflow.object import Float
+from relion.convert.convert_base import WriterBase
 from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, IMOD_DIR, FRACTIONAL_DOSE, \
     ACQ_ORDER_FILE, CULLED_FILE, SUBTOMO_NAME, COORD_X, COORD_Y, COORD_Z, SHIFTX, SHIFTY, SHIFTZ, ROT, \
     TILT, PSI, TILT_PRIOR, PSI_PRIOR, CLASS_NUMBER, TOMO_PARTICLE_NAME, RANDOM_SUBSET, OPTICS_GROUP, SHIFTX_ANGST, \
@@ -235,7 +235,24 @@ class Writer(WriterBase):
 
 
 class Reader:
-    def readPseudoSubtomgramsStarFile(self, starFile, precedents, outputSet, invert=True):
+
+    ALIGNMENT_LABELS = [
+        "rlnOriginX",
+        "rlnOriginY",
+        "rlnOriginZ",
+        "rlnAngleRot",
+        "rlnAngleTilt",
+        "rlnAnglePsi",
+    ]
+
+    def __init__(self, **kwargs):
+        self.setParticleTransform = None
+        self._shifts = None
+        self._angles = None
+        self._alignType = kwargs.get('alignType', ALIGN_NONE)
+        self._pixelSize = kwargs.get('pixelSize', 1.0)
+
+    def readPseudoSubtomgramsStarFile(self, starFile, precedents, outputSet):
         tomoTable = Table()
         tomoTable.read(starFile, tableName='particles')
         ih = ImageHandler()
@@ -263,8 +280,7 @@ class Reader:
             coordinate3d.setX(float(x), BOTTOM_LEFT_CORNER)
             coordinate3d.setY(float(y), BOTTOM_LEFT_CORNER)
             coordinate3d.setZ(float(z), BOTTOM_LEFT_CORNER)
-            M = self._getTransformMatrixFromTableRow(row, invert)
-            transform.setMatrix(M)
+            self.__setParticleTransformProj(psubtomo, row)
 
             psubtomo.setVolName(precedentFileList[tomoInd])
             psubtomo.setFileName(subtomoFilename)
@@ -308,26 +324,59 @@ class Reader:
 
         return zDim, fileName
 
+    def setParticleTransform(self, particle, row):
+        """ Set the transform values from the row. """
+
+        if (self._alignType == ALIGN_NONE) or not row.hasAnyColumn(self.ALIGNMENT_LABELS):
+            self.setParticleTransform = self.__setParticleTransformNone
+        else:
+            # Ensure the Transform object exists
+            self._angles = np.zeros(3)
+            self._shifts = np.zeros(3)
+
+            particle.setTransform(Transform())
+
+            if self._alignType == ALIGN_2D:
+                self.setParticleTransform = self.__setParticleTransform2D
+            elif self._alignType == ALIGN_PROJ:
+                self.setParticleTransform = self.__setParticleTransformProj
+            else:
+                raise TypeError("Unexpected alignment type: %s"
+                                % self._alignType)
+
+        # Call again the modified function
+        self.setParticleTransform(particle, row)
+
     @staticmethod
-    def _getTransformMatrixFromTableRow(row, invert):
-        shiftx = row.get(SHIFTX, 0)
-        shifty = row.get(SHIFTY, 0)
-        shiftz = row.get(SHIFTZ, 0)
-        tilt = row.get(TILT, 0)
-        psi = row.get(PSI, 0)
-        rot = row.get(ROT, 0)
-        shifts = (float(shiftx), float(shifty), float(shiftz))
-        angles = (float(rot), float(tilt), float(psi))
+    def __setParticleTransformNone(particle, row):
+        particle.setTransform(None)
+
+    def __setParticleTransform2D(self, particle, row):
+        angles = self._angles
+        shifts = self._shifts
+
+        shifts[0] = float(row.get(SHIFTX, 0))
+        shifts[1] = float(row.get(SHIFTY, 0))
+        angles[2] = float(row.get(PSI, 0))
         radAngles = -np.deg2rad(angles)
         M = tfs.euler_matrix(radAngles[0], radAngles[1], radAngles[2], 'szyz')
-        if invert:
-            M[0, 3] = -shifts[0]
-            M[1, 3] = -shifts[1]
-            M[2, 3] = -shifts[2]
-            M = np.linalg.inv(M)
-        else:
-            M[0, 3] = shifts[0]
-            M[1, 3] = shifts[1]
-            M[2, 3] = shifts[2]
+        M[:3, 3] = shifts[:3]
+        particle.getTransform().setMatrix(M)
 
-        return M
+    def __setParticleTransformProj(self, particle, row):
+        angles = self._angles
+        shifts = self._shifts
+
+        shifts[0] = float(row.get(SHIFTX, 0))
+        shifts[1] = float(row.get(SHIFTY, 0))
+        shifts[2] = float(row.get(SHIFTZ, 0))
+
+        angles[0] = float(row.get(ROT, 0))
+        angles[1] = float(row.get(TILT, 0))
+        angles[2] = float(row.get(PSI, 0))
+
+        radAngles = -np.deg2rad(angles)
+        M = tfs.euler_matrix(radAngles[0], radAngles[1], radAngles[2], 'szyz')
+        M[:3, 3] = -shifts[:3]
+        M = np.linalg.inv(M)
+        particle.getTransform().setMatrix(M)

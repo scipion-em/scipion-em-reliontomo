@@ -36,9 +36,9 @@ contrastScaleRefineCond = 'not %s' % defocusRefineCond
 
 
 class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
-    """Tomo frame align"""
+    """Tomo CTF refine"""
 
-    _label = 'Tomo frame align'
+    _label = 'Tomo CTF refine'
 
     def __init__(self, **args):
         ProtRelionPerParticlePerTiltBase.__init__(self, **args)
@@ -67,7 +67,7 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
                            "the defocus value precisely. The regularisation forces the estimated defoci to assume "
                            "similar values within a given tilt series, which prevents those high-tilt images from "
                            "overfitting.")
-        form.addParam('regParam', IntParam,
+        form.addParam('regParam', FloatParam,
                       label="Defocus regularisation parameter",
                       condition='doDefocusReg',
                       default=0.1,
@@ -98,7 +98,7 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
                       label='Max order of even aberrations',
                       condition='refineEvenAbe',
                       choices=[4, 6, 8],
-                      default=4)
+                      default=0)
         form.addParam('refineOddAbe', BooleanParam,
                       label="Refine odd aberrations?",
                       default=True,
@@ -107,7 +107,7 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
                       label='Max order of odd aberrations',
                       condition='refineOddAbe',
                       choices=[3, 5, 7],
-                      default=3)
+                      default=0)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
