@@ -328,7 +328,11 @@ class ProtRelionRefineBase(EMProtocol):
         return cmd
 
     def _genOptimisationBaseCmd(self):
-        return '--particle_diameter %i ' % self.maskDiameter.get()
+        cmd = ''
+        cmd += '--particle_diameter %i ' % self.maskDiameter.get()
+        if self.zeroMask.get():
+            cmd += '--zero_mask '
+        return cmd
 
     def _genComputeBaseCmd(self):
         cmd = ''
