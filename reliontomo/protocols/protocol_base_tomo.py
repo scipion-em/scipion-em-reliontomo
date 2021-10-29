@@ -794,7 +794,7 @@ class ProtRelionBaseTomo(EMProtocol):
             args['--ctf_multiplied'] = ''
         if self.ctfPhaseFlipped.get():
             # --ctf_phase_flipped (false) : Have the data been CTF phase-flipped?
-            args['--ctf_multiplied'] = ''
+            args['--ctf_phase_flipped'] = ''
         if self.ctfFlipPhases.get():
             # --only_flip_phases (false) : Only perform CTF phase-flipping?
             # (default is full amplitude-correction)
