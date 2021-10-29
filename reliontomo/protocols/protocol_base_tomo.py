@@ -40,7 +40,7 @@ from reliontomo.constants import V30_VALIDATION_MSG
 from relion.convert import convertBinaryVol, MASK_FILL_ZERO, Table
 from relion import ANGULAR_SAMPLING_LIST
 from reliontomo import Plugin
-from reliontomo.convert import writeSetOfSubtomograms
+from reliontomo.convert import convert30_tomo
 
 
 class ProtRelionBaseTomo(EMProtocol):
@@ -526,7 +526,8 @@ class ProtRelionBaseTomo(EMProtocol):
         subtomoSet = self._getInputParticles()
         subtomosStar = self._getFileName('input_star')
         self.info("Converting set from '%s' into '%s'" % (subtomoSet.getFileName(), subtomosStar))
-        writeSetOfSubtomograms(subtomoSet, subtomosStar)
+        writer = convert30_tomo.Writer()
+        writer.writeSetOfSubtomograms(subtomoSet, subtomosStar)
 
     def runRelionStep(self, params):
         """ Execute the relion steps with the give params. """

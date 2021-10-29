@@ -28,10 +28,11 @@ from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         EnumParam, IntParam, LEVEL_ADVANCED)
 
 from pwem.protocols import ProtReconstruct3D
-from tomo.objects import Tomogram, AverageSubTomogram
+from reliontomo.convert import convert30_tomo
+from tomo.objects import AverageSubTomogram
 from reliontomo import Plugin
-from reliontomo.convert import writeSetOfSubtomograms
 from reliontomo.constants import V30_VALIDATION_MSG
+
 
 class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
     """ This protocol reconstructs a volume using Relion.
@@ -145,7 +146,8 @@ class ProtRelionSubTomoReconstruct(ProtReconstruct3D):
         """ Create the input file in STAR format as expected by Relion."""
         imgSet = self.inputSubtomos.get()
         imgStar = self._getFileName(self.inStarName)
-        writeSetOfSubtomograms(imgSet, imgStar)
+        writer = convert30_tomo.Writer()
+        writer.writeSetOfSubtomograms(imgSet, imgStar)
 
     def createOutputStep(self):
         imgSet = self.inputSubtomos.get()
