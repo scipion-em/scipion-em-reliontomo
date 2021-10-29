@@ -208,7 +208,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
 
     def _createFilenameTemplates(self):
         """ Centralize how files are called for iterations and references. """
-        self.extraIter = self._getExtraPath('relion_it%(iter)03d_')
+        self.extraIter = self._getExtraPath('extra_relion_it%(iter)03d_')
         myDict = {
             'input_star': self._getPath('input_particles.star'),
             'input_mrcs': self._getPath('input_particles.mrcs'),
