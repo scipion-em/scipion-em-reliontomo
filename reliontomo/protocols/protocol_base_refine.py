@@ -309,7 +309,7 @@ class ProtRelionRefineBase(EMProtocol):
 
     def _genIOBaseCmd(self):
         cmd = '--i %s ' % self.inputPseudoSubtomos.get().getStarFile()
-        cmd += '--o %s ' % self._getExtraPath()  # If not, Relion will concatenate it directly converting the
+        cmd += '--o %s ' % (self._getExtraPath() + '/')  # If not, Relion will concatenate it directly converting the
         cmd += '--j %i ' % self.numberOfThreads
         return cmd
 

@@ -258,11 +258,11 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     def createOutputStep(self):
         subtomoSet = self.inputPseudoSubtomos.get()
         vol = AverageSubTomogram()
-        vol.setFileName(self._getExtraPath('relion_class001.mrc'))
+        vol.setFileName(self._getPath('scipion3relion_class001.mrc'))
         vol.setSamplingRate(subtomoSet.getSamplingRate())
         pattern = '*it*half%s_class*.mrc'
-        half1 = self._getLastFileName(self._getExtraPath(pattern % 1))
-        half2 = self._getLastFileName(self._getExtraPath(pattern % 2))
+        half1 = self._getLastFileName(self._getPath(pattern % 1))
+        half2 = self._getLastFileName(self._getPath(pattern % 2))
         vol.setHalfMaps([half1, half2])
 
         outSubtomoSet = self._createSet(SetOfPseudoSubtomograms, 'pseudosubtomograms%s.sqlite', '')
