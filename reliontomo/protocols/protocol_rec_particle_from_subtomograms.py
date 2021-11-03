@@ -92,18 +92,6 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        # JORGE
-        import os
-        fname = "/home/jjimenez/Desktop/test_JJ.txt"
-        if os.path.exists(fname):
-            os.remove(fname)
-        fjj = open(fname, "a+")
-        fjj.write('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
-        fjj.close()
-        print('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
-        import time
-        time.sleep(10)
-        # JORGE_END
         Plugin._isReconstringParticleFromSubtomos = True
         self._createFilenameTemplates()
         self._insertFunctionStep(self.convertInputStep)
