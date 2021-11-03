@@ -238,7 +238,7 @@ class Reader:
         # tomoSet = getattr(protImportTomo, 'outputTomograms', None)
         # return tomoSet
         imgh = ImageHandler()
-        filesPath = '/media/jjimenez/ExtraDisk/extraDataSets/re4_tutorial/relion40_sta_tutorial_data/tomograms'
+        filesPath = '/ExtraDisk/extraDataSets/re4_tutorial/relion40_sta_tutorial_data/tomograms'
         filesPattern = '*/*.mrc'
         samplingRate = 1.35
         fileList = glob.glob(join(filesPath, filesPattern))
@@ -247,7 +247,7 @@ class Reader:
         tomo = Tomogram()
         tomo.setSamplingRate(samplingRate)
 
-        protPath = '/media/jjimenez/ExtraDisk/Scipion/ScipionUserData/projects/jj_re4/Runs/004936_ProtRelionMakePseudoSubtomograms/'
+        protPath = '/ExtraDisk/Scipion/ScipionUserData/projects/jj_re4/Runs/004936_ProtRelionMakePseudoSubtomograms/'
         tomoSet = SetOfTomograms.create(protPath, template='tomograms%s.sqlite')
         tomoSet.setSamplingRate(samplingRate)
         tomoSet.setAcquisition(acq)

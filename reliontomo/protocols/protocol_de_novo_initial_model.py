@@ -22,6 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from pwem.convert.headers import fixVolume
 from reliontomo.constants import INITIAL_MODEL
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from tomo.objects import AverageSubTomogram
@@ -82,9 +83,10 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         Plugin.runRelionTomo(self, 'relion_align_symmetry', self._genApplySymCmd())
 
     def createOutputStep(self):
-        self._manageGeneratedFiles()
         vol = AverageSubTomogram()
-        vol.setFileName(self._getExtraPath(INITIAL_MODEL))
+        iniModel = self._getExtraPath(INITIAL_MODEL)
+        fixVolume(iniModel)  # Fix header to make it interpreted as volume instead of a stack by xmipp
+        vol.setFileName(iniModel)
         vol.setSamplingRate(self.inputPseudoSubtomos.get().getSamplingRate())
         self._defineOutputs(outputVolume=vol)
 
@@ -113,7 +115,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         return cmd
 
     def _genApplySymCmd(self):
-        cmd = '--i %s ' % self._getExtraPath('..', self._getModelName())
+        cmd = '--i %s ' % self._getExtraPath(self._getModelName())
         cmd += '--o %s ' % self._getExtraPath(INITIAL_MODEL)
         if self.doInC1AndApplySymLater.get() and 'c1' not in self.symmetry.get().lower():
             cmd += '--sym %s ' % self.symmetry.get()
@@ -123,14 +125,5 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         return cmd
 
     def _getModelName(self):
-        """generate the name of the volume following this pattern extra_it002_model.star"""
-        return 'extra_it{:03d}_model.star'.format(self.nVdamMiniBatches.get())
-
-    def _manageGeneratedFiles(self):
-        """There's some kind of bug in relion4 which makes it generate the file in the protocol base directory
-        instead of the extra directory. It uses extra as a prefix of each generated file instead. Hence, until
-        it's solved, the files will be moved to the extra directory and the prefix extra_ will be removed"""
-        prefix = 'extra_'
-        genFiles = [f for f in listdir(self._getPath()) if isfile(join(self._getPath(), f))]
-        for f in genFiles:
-            moveFile(self._getPath(f), self._getExtraPath(f.replace(prefix, '')))
+        """generate the name of the volume following this pattern _it002_model.star"""
+        return '_it{:03d}_model.star'.format(self.nVdamMiniBatches.get())

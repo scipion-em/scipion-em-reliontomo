@@ -42,7 +42,7 @@ from pwem.convert.transformations import translation_from_matrix, euler_from_mat
 from relion.convert import Table, OpticsGroups
 from reliontomo.objects import PseudoSubtomogram
 from tomo.constants import BOTTOM_LEFT_CORNER
-from tomo.objects import SubTomogram, Coordinate3D, TomoAcquisition
+from tomo.objects import Coordinate3D, TomoAcquisition
 
 
 class Writer(WriterBase):
@@ -237,16 +237,16 @@ class Writer(WriterBase):
 class Reader:
 
     ALIGNMENT_LABELS = [
-        "rlnOriginX",
-        "rlnOriginY",
-        "rlnOriginZ",
-        "rlnAngleRot",
-        "rlnAngleTilt",
-        "rlnAnglePsi",
+        SHIFTX,
+        SHIFTY,
+        SHIFTZ,
+        ROT,
+        TILT,
+        PSI,
     ]
 
     def __init__(self, **kwargs):
-        self.setParticleTransform = None
+        # self.setParticleTransform = None
         self._shifts = None
         self._angles = None
         self._alignType = kwargs.get('alignType', ALIGN_NONE)

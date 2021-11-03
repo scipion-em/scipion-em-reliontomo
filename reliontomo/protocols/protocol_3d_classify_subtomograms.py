@@ -189,6 +189,8 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
 
         # Optimisation args
         cmd += self._genOptimisationBaseCmd()
+        if self.zeroMask.get():
+            cmd += '--zero_mask '
         cmd += '--K %i ' % self.numberOfClasses.get()
         cmd += '--tau2_fudge %d ' % self.regularisation.get()
         cmd += '--iter %i ' % self.nIterations.get()

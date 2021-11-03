@@ -309,7 +309,7 @@ class ProtRelionRefineBase(EMProtocol):
 
     def _genIOBaseCmd(self):
         cmd = '--i %s ' % self.inputPseudoSubtomos.get().getStarFile()
-        cmd += '--o %s ' % (self._getExtraPath() + '/')  # If not, Relion will concatenate it directly converting the
+        cmd += '--o %s ' % (self._getExtraPath() + '/')  # If not, Relion will concatenate it directly as a prefix
         cmd += '--j %i ' % self.numberOfThreads
         return cmd
 
@@ -330,8 +330,6 @@ class ProtRelionRefineBase(EMProtocol):
     def _genOptimisationBaseCmd(self):
         cmd = ''
         cmd += '--particle_diameter %i ' % self.maskDiameter.get()
-        if self.zeroMask.get():
-            cmd += '--zero_mask '
         return cmd
 
     def _genComputeBaseCmd(self):
@@ -352,7 +350,7 @@ class ProtRelionRefineBase(EMProtocol):
         return cmd
 
     def _genAddiotionalBaseCmd(self):
-        cmd = 'oversampling %i' % self.oversampling.get()
+        cmd = 'oversampling %i ' % self.oversampling.get()
         if self.extraParams.get():
             cmd += ' ' + self.extraParams.get()
         return cmd

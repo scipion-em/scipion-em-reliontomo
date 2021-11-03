@@ -27,6 +27,8 @@ import re
 
 from emtable import Table
 
+from pwem import ALIGN_PROJ
+from pwem.convert.headers import fixVolume
 from pwem.objects import FSC
 from pyworkflow import BETA
 from pyworkflow.object import Integer
@@ -54,6 +56,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
 
     def __init__(self, **args):
         ProtRelionRefineBase.__init__(self, **args)
+        self.reader = None
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -204,11 +207,10 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         """
         self._createFilenameTemplates()
         self._createIterTemplates()
-        self.ClassFnTemplate = '%(rootDir)s/relion_it%(iter)03d_class%(ref)03d.mrc:mrc'
 
     def _createFilenameTemplates(self):
         """ Centralize how files are called for iterations and references. """
-        self.extraIter = self._getExtraPath('extra_relion_it%(iter)03d_')
+        self.extraIter = self._getExtraPath('_it%(iter)03d_')
         myDict = {
             'input_star': self._getPath('input_particles.star'),
             'input_mrcs': self._getPath('input_particles.mrcs'),
@@ -222,12 +224,12 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
             'all_avgPmax': self._getPath('iterations_avgPmax.star'),
             'all_changes': self._getPath('iterations_changes.star'),
             'selected_volumes': self._getPath('selected_volumes_xmipp.xmd'),
-            'dataFinal': self._getExtraPath("relion_data.star"),
-            'modelFinal': self._getExtraPath("relion_model.star"),
-            'finalvolume': self._getExtraPath("relion_class%(ref3d)03d.mrc:mrc"),
-            'final_half1_volume': self._getExtraPath("relion_half1_class%(ref3d)03d_unfil.mrc:mrc"),
-            'final_half2_volume': self._getExtraPath("relion_half2_class%(ref3d)03d_unfil.mrc:mrc"),
-            'finalSGDvolume': self._getExtraPath("relion_it%(iter)03d_class%(ref3d)03d.mrc:mrc"),
+            'dataFinal': self._getExtraPath("_data.star"),
+            'modelFinal': self._getExtraPath("_model.star"),
+            'finalvolume': self._getExtraPath("_class%(ref3d)03d.mrc"),
+            'final_half1_volume': self._getExtraPath("_half1_class%(ref3d)03d_unfil.mrc"),
+            'final_half2_volume': self._getExtraPath("_half2_class%(ref3d)03d_unfil.mrc"),
+            'finalSGDvolume': self._getExtraPath("r_it%(iter)03d_class%(ref3d)03d.mrc"),
             'preprocess_particles': self._getPath("preprocess_particles.mrcs"),
             'preprocess_particles_star': self._getPath("preprocess_particles.star"),
             'preprocess_particles_prefix': "preprocess_particles"
@@ -240,7 +242,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         # add other keys that depends on prefixes
         for p in self.PREFIXES:
             myDict['%smodel' % p] = self.extraIter + '%smodel.star' % p
-            myDict['%svolume' % p] = self.extraIter + p + 'class%(ref3d)03d.mrc:mrc'
+            myDict['%svolume' % p] = self.extraIter + p + 'class%(ref3d)03d.mrc'
 
         self._updateFilenamesDict(myDict)
 
@@ -258,15 +260,18 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     def createOutputStep(self):
         subtomoSet = self.inputPseudoSubtomos.get()
         vol = AverageSubTomogram()
-        vol.setFileName(self._getPath('scipion3relion_class001.mrc'))
+        volName = self._getExtraPath('_class001.mrc')
+        fixVolume(volName)  # Fix header for xmipp to consider it a volume instead of a stack
+        vol.setFileName(volName)
         vol.setSamplingRate(subtomoSet.getSamplingRate())
         pattern = '*it*half%s_class*.mrc'
-        half1 = self._getLastFileName(self._getPath(pattern % 1))
-        half2 = self._getLastFileName(self._getPath(pattern % 2))
+        half1 = self._getLastFileName(self._getExtraPath(pattern % 1))
+        half2 = self._getLastFileName(self._getExtraPath(pattern % 2))
         vol.setHalfMaps([half1, half2])
 
         outSubtomoSet = self._createSet(SetOfPseudoSubtomograms, 'pseudosubtomograms%s.sqlite', '')
         outSubtomoSet.copyInfo(subtomoSet)
+        self.reader = convert40_tomo.Reader(alignType=ALIGN_PROJ, pixelSize=outSubtomoSet.getSamplingRate())
         self._fillDataFromIter(outSubtomoSet, self._lastIter())
 
         self._defineOutputs(outputVolume=vol)
@@ -275,7 +280,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         self._defineTransformRelation(subtomoSet, outSubtomoSet)
 
         fsc = FSC(objLabel=self.getRunName())
-        fn = self._getExtraPath("relion_model.star")
+        fn = self._getExtraPath("_model.star")
         table = Table(fileName=fn, tableName='model_class_1')
         resolution_inv = table.getColumnValues('rlnResolution')
         frc = table.getColumnValues('rlnGoldStandardFsc')
@@ -291,7 +296,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     # --------------------------- UTILS functions -----------------------------
     def _genAutoRefineCommand(self):
         cmd = self._genBaseCommand()
-        cmd += '--auto_refine --split_random_halves --low_resol_join_halves 40 --norm --scale '
+        cmd += ' --auto_refine --split_random_halves --low_resol_join_halves 40 --norm --scale '
         # I/O args
         cmd += '--ref %s ' % self.referenceVolume.get().getFileName()
         if self.solventMask.get():
@@ -306,6 +311,8 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         # Optimisation args
         if self.solventCorrectFSC.get():
             cmd += '--solvent_correct_fsc '
+        if self.zeroMask.get():
+            cmd += '--zero_mask '
         # Angular sampling args
         if self.localSearchAutoSampling.get():
             cmd += '--auto_local_healpix_order %i ' % self.localSearchAutoSampling.get()
@@ -314,7 +321,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         if self.useFinerAngularSampling.get():
             cmd += '--auto_ignore_angles --auto_resol_angles '
         # Compute args
-        cmd += '--pad %i' % (1 if self.skipPadding.get() else 2)
+        cmd += '--pad %i ' % (1 if self.skipPadding.get() else 2)
 
         return cmd
 
@@ -338,22 +345,22 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         return files[-1]
 
     def _fillDataFromIter(self, subtomoClassesSet, iteration):
-        dataStar = self._getFileName('data', iter=iteration)
+        tableName = 'particles'
+        dataStar = tableName + '@' + self._getFileName('data', iter=iteration)
         for item in subtomoClassesSet:
             item.setAlignmentProj()
-        self.reader = convert40_tomo.Reader()
 
-        mdIter = Table.iterRows(dataStar, key='rlnImageName')
-        subtomoClassesSet.copyItems(self.inputSubtomograms.get(),
+        mdIter = Table.iterRows(dataStar, key='rlnTomoParticleId')
+        subtomoClassesSet.copyItems(self.inputPseudoSubtomos.get(),
                                     doClone=False,
                                     updateItemCallback=self._updateParticle,
                                     itemDataIterator=mdIter)
 
     def _updateParticle(self, particle, row):
         self.reader.setParticleTransform(particle, row)
-        if not hasattr(particle, '_rlnRandomSubset'):
-            particle._rlnRandomSubset = Integer()
-        particle._rlnRandomSubset.set(row.rlnRandomSubset)
+        if not hasattr(particle, '_randomSubset'):
+            particle._randomSubset = Integer()
+            particle._randomSubset.set(row.rlnRandomSubset)
 
     def _getIterNumber(self, index):
         """ Return the list of iteration files, give the iterTemplate. """
