@@ -228,7 +228,6 @@ class ProtRelionRefineBase(EMProtocol):
                       label='GPUs to use:',
                       help='It can be used to provide a list of which GPUs (e. g. "0:1:2:3") to use. MPI-processes are '
                            'separated by ":", threads by ",". For example: "0,0:1,1:0,0:1,1"')
-        form.addParallelSection(threads=1, mpi=1)
 
     # ADDITIONAL PARAMS ------------------------------------------------------------------------------------------------
     @staticmethod
@@ -253,6 +252,7 @@ class ProtRelionRefineBase(EMProtocol):
                            "may be useful for testing developmental options and/or expert use of the program, e.g: \n"
                            "--verb 1\n"
                            "--pad 2\n")
+        form.addParallelSection(threads=1, mpi=1)
 
     # ANGULAR SAMPLING PARAMS ------------------------------------------------------------------------------------------
     @staticmethod
