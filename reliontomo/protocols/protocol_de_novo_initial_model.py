@@ -100,7 +100,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         cmd = self._genBaseCommand()
 
         # Initial model specific commands
-        cmd += '--denovo_3dref --grad --zero_mask --auto_sampling --pad 1 '
+        cmd += ' --denovo_3dref --grad --zero_mask --auto_sampling --pad 1 '
         #   Optimisation args
         cmd += '--iter %i ' % self.nVdamMiniBatches.get()
         cmd += '--tau2_fudge %d ' % self.regularisation.get()
