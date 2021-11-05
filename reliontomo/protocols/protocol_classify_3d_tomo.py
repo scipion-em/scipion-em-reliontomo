@@ -28,6 +28,8 @@ This module contains the protocol for 3d classification with relion.
 from os import remove
 from os.path import abspath, exists
 
+from emtable import Table
+
 from pwem import ALIGN_PROJ
 from pwem.protocols import ProtClassify3D, params
 from relion.convert import convert30
@@ -73,6 +75,9 @@ class ProtRelionSubtomoClassif3D(ProtClassify3D, ProtRelionBaseTomo, ProtTomoBas
 
     # --------------------------- STEPS functions --------------------------------------------
     def createOutputStep(self):
+
+        import time
+        time.sleep(10)
         subtomoSet = self._getInputParticles()
         classes3D = self._createSetOfClassesSubTomograms(subtomoSet)
         self._fillClassesFromIter(classes3D, self._lastIter())
@@ -172,9 +177,6 @@ class ProtRelionSubtomoClassif3D(ProtClassify3D, ProtRelionBaseTomo, ProtTomoBas
         with open(modelStar) as fid:
             self.modelTable.readStar(fid, 'model_general')
             self.claasesTable.readStar(fid, 'model_classes')
-        dataStar = self._getFileName('data', iter=iteration)
-        with open(dataStar) as fid:
-            self.dataTable.readStar(fid)
 
         # Model table has only one row, while classes table has the same number of rows as classes found
         self.nClasses = int(self.modelTable._rows[0].rlnNrClasses)
@@ -189,14 +191,19 @@ class ProtRelionSubtomoClassif3D(ProtClassify3D, ProtRelionBaseTomo, ProtTomoBas
         self.reader = convert30.Reader(alignType=ALIGN_PROJ,
                                        pixelSize=clsSet.getSamplingRate())
 
+        dataStar = self._getFileName('data', iter=iteration)
+        dataIter = Table.iterRows(fileName =dataStar, key='rlnImageName')
         clsSet.classifyItems(updateItemCallback=self._updateParticle,
                              updateClassCallback=self._updateClass,
-                             itemDataIterator=self.dataTable.__iter__())
+                             itemDataIterator=dataIter,
+                             iterParams={"orderBy": "_filename"})
 
     def _updateParticle(self, item, row):
         item.setClassId(int(row.rlnClassNumber))#rlnGroupNumber))
         item._rlnLogLikeliContribution = params.Float(row.rlnLogLikeliContribution)
         item._rlnMaxValueProbDistribution = params.Float(row.rlnMaxValueProbDistribution)
+        if item.getFileName() != row.rlnImageName:
+            raise Exception("File missmatch: item has %s and row has %s" % (item.getFileName(), row.rlnImageName))
         self.reader.setParticleTransform(item, row)
 
     def _updateClass(self, item):
