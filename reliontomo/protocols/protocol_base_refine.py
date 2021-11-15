@@ -346,7 +346,7 @@ class ProtRelionRefineBase(EMProtocol):
         if self.scratchDir.get():
             cmd += '--scratch_dir %s ' % self.scratchDir.get()
         if self.doGpu.get():
-            cmd += '--gpu %s ' % self.gpusToUse.get()
+            cmd += '--gpu "%s" ' % self.gpusToUse.get()
         return cmd
 
     def _genAddiotionalBaseCmd(self):
