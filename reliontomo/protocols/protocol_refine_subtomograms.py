@@ -308,6 +308,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
             cmd += 'firstiter_cc '
         if self.initialLowPassFilterA.get():
             cmd += '--ini_high %.2f ' % self.initialLowPassFilterA.get()
+        cmd += '--sym %s ' % self.symmetry.get()
         # Optimisation args
         if self.solventCorrectFSC.get():
             cmd += '--solvent_correct_fsc '
