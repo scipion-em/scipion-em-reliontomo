@@ -132,6 +132,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         ProtRelionRefineSubtomograms._insertOptimisationSection(form)
         ProtRelionRefineBase._insertMaskDiameterParam(form)
         ProtRelionRefineBase._insertZeroMaskParam(form)
+        ProtRelionRefineBase._insertFlattenSolventParam(form)
         form.addParam('solventCorrectFSC', BooleanParam,
                       default=False,
                       condition='solventMask',
@@ -305,7 +306,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
             cmd += '--solvent_mask2 %s ' % self.solventMask2.get().getFileName()
         # Reference args
         if self.isMapAbsoluteGreyScale.get():
-            cmd += 'firstiter_cc '
+            cmd += '--firstiter_cc '
         if self.initialLowPassFilterA.get():
             cmd += '--ini_high %.2f ' % self.initialLowPassFilterA.get()
         cmd += '--sym %s ' % self.symmetry.get()
@@ -314,9 +315,13 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
             cmd += '--solvent_correct_fsc '
         if self.zeroMask.get():
             cmd += '--zero_mask '
+        if self.flattenSolvent.get():
+            cmd += '--flatten_solvent '
         # Angular sampling args
-        if self.localSearchAutoSampling.get():
-            cmd += '--auto_local_healpix_order %i ' % self.localSearchAutoSampling.get()
+        cmd += '--healpix_order %i ' % (self.angularSamplingDeg.get() - self.oversampling.get())
+        cmd += '--offset_range %i ' % self.offsetSearchRangePix.get()
+        cmd += '--offset_step %i ' % (self.offsetSearchStepPix.get() ** self.oversampling.get())
+        cmd += '--auto_local_healpix_order %i ' % (self.localSearchAutoSampling.get() - self.oversampling.get())
         if self.relaxSym.get():
             cmd += '--relax_sym %s ' % self.relaxSym.get()
         if self.useFinerAngularSampling.get():

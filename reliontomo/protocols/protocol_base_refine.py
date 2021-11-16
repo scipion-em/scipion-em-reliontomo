@@ -262,7 +262,7 @@ class ProtRelionRefineBase(EMProtocol):
                       default=angSampling,
                       condition=condition,
                       choices=ANGULAR_SAMPLING_LIST,
-                      label='Angular sampling interval (deg)',
+                      label='Initial angular sampling interval (deg)',
                       expertLevel=expertLevel,
                       help='There are only a few discrete angular samplings possible because '
                            'we use the HealPix library to generate the sampling of the first '
@@ -271,7 +271,7 @@ class ProtRelionRefineBase(EMProtocol):
         form.addParam('offsetSearchRangePix', IntParam,
                       default=offsetRange,
                       condition=condition,
-                      label='Offset search range (pix.)',
+                      label='Initial offset search range (pix.)',
                       expertLevel=expertLevel,
                       validators=[GE(0.1), LE(30)],
                       help='Probabilities will be calculated only for translations in a circle '
@@ -281,7 +281,7 @@ class ProtRelionRefineBase(EMProtocol):
         form.addParam('offsetSearchStepPix', FloatParam,
                       default=offsetStep,
                       condition=condition,
-                      label='Offset search step (pix.)',
+                      label='Initial offset search step (pix.)',
                       expertLevel=expertLevel,
                       validators=[GE(0.1), LE(5)],
                       help='Translations will be sampled with this step-size (in pixels). '
