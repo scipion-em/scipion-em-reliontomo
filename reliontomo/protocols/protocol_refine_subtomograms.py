@@ -318,10 +318,10 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         if self.flattenSolvent.get():
             cmd += '--flatten_solvent '
         # Angular sampling args
-        cmd += '--healpix_order %i ' % (self.angularSamplingDeg.get() - self.oversampling.get())
+        cmd += '--healpix_order %i ' % self.angularSamplingDeg.get()  # - self.oversampling.get())
         cmd += '--offset_range %i ' % self.offsetSearchRangePix.get()
         cmd += '--offset_step %i ' % (self.offsetSearchStepPix.get() ** self.oversampling.get())
-        cmd += '--auto_local_healpix_order %i ' % (self.localSearchAutoSampling.get() - self.oversampling.get())
+        cmd += '--auto_local_healpix_order %i ' % self.localSearchAutoSampling.get()  # - self.oversampling.get())
         if self.relaxSym.get():
             cmd += '--relax_sym %s ' % self.relaxSym.get()
         if self.useFinerAngularSampling.get():
