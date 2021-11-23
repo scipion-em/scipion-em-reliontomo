@@ -97,9 +97,9 @@ class ProtRelionSubtomoClassif3D(ProtClassify3D, ProtRelionBaseTomo, ProtTomoBas
         self._defineOutputs(outputVolumes=volumes)
         self._defineSourceRelation(subtomoSet, volumes)
 
-        if not self.doContinue and not self.referenceVolume.hasValue():
-            self._defineSourceRelation(self.referenceVolume, classes3D)
-            self._defineSourceRelation(self.referenceVolume, volumes)
+        # if not self.doContinue and not self.referenceVolume.hasValue():
+        #     self._defineSourceRelation(self.referenceVolume, classes3D)
+        #     self._defineSourceRelation(self.referenceVolume, volumes)
 
         if self.keepOnlyLastIterFiles:
             self._cleanUndesiredFiles()
