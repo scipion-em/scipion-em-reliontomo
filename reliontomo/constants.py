@@ -45,6 +45,12 @@ FRACTIONAL_DOSE = 'rlnTomoImportFractionalDose'
 ACQ_ORDER_FILE = 'rlnTomoImportOrderList'
 CULLED_FILE = 'rlnTomoImportCulledFile'
 
+# Relion 3 specific star file fields
+TOMO_NAME_30 = 'rlnMicrographName'
+CTF_MISSING_WEDGE = 'rlnCtfImage'
+MAGNIFICATION = 'rlnMagnification'
+PIXEL_SIZE = 'rlnDetectorPixelSize'
+
 # Relion 4 subtomogram star file fields
 SUBTOMO_NAME = 'rlnImageName'
 COORD_X = 'rlnCoordinateX'
@@ -69,7 +75,7 @@ SHIFTY_ANGST = 'rlnOriginYAngst'
 SHIFTZ_ANGST = 'rlnOriginZAngst'
 CTF_IMAGE = 'rlnCtfImage'
 
-FILE_NOT_FOUND = 'File not found'
+FILE_NOT_FOUND = 'FileNotFound'
 
 # IMOD's eTomo files
 NEWST_COM = 'newst.com'

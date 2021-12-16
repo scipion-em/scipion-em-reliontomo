@@ -23,6 +23,7 @@
 # *
 # **************************************************************************
 import json
+from os.path import isabs, abspath
 
 
 def getProgram(program, nMpi):
@@ -45,3 +46,19 @@ def genSymmetryTable():
 
 def getFileFromDataPrepProt(prot, fileName):
     return prot.inputPrepareDataProt.get()._getExtraPath(fileName)
+
+
+def manageDims(fileName, z, n):
+    if fileName.endswith('.mrc') or fileName.endswith('.map'):
+        if z == 1 and n != 1:
+            zDim = n
+        else:
+            zDim = z
+    else:
+        zDim = z
+
+    return zDim
+
+
+def _getAbsPath(tomoFile):
+    return tomoFile if isabs(tomoFile) else abspath(tomoFile)
