@@ -24,6 +24,7 @@
 # **************************************************************************
 import reliontomo
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
+from pyworkflow.utils import magentaStr
 
 
 class TestTomoImportSetOfCoordinates3D(BaseTest):
@@ -33,12 +34,13 @@ class TestTomoImportSetOfCoordinates3D(BaseTest):
     def setUpClass(cls):
         setupTestProject(cls)
         cls.dataset = DataSet.getDataSet('reliontomo')
+        cls.samplingRate = 13.68
 
-    def testImportCoords3dFromStarFile(self):
+    def _runImportCoords3dFromStarFile(self, starFile, samplingRate=None):
         boxSize = 44
-        samplingRate = 13.68
+        tomoId = 'emd_10439'
         protImportCoords3dFromStar = self.newProtocol(reliontomo.protocols.ProtImportCoordinates3DFromStar,
-                                                      starFile=self.dataset.getFile('coords3dStarFile'),
+                                                      starFile=starFile,
                                                       samplingRate=samplingRate,
                                                       boxSize=boxSize)
 
@@ -46,9 +48,26 @@ class TestTomoImportSetOfCoordinates3D(BaseTest):
         outputTomoSet = getattr(protImportCoords3dFromStar, 'outputSetOfTomograms', None)
         outputCoordsSet = getattr(protImportCoords3dFromStar, 'outputCoordinates', None)
 
-        # Check output set of coordinates
-        self.assertTrue(outputCoordsSet, 'There was a problem with coordinates 3d output')
+        # Check the output set of 3D coordinates
+        self.assertTrue(outputCoordsSet, 'No 3D coordinates were registered in the protocol output.')
         self.assertSetSize(outputCoordsSet, size=2339)
         self.assertEqual(outputCoordsSet.getBoxSize(), boxSize)
-        self.assertEqual(outputCoordsSet.getSamplingRate(), samplingRate)
+        self.assertEqual(outputCoordsSet.getSamplingRate(), self.samplingRate)
         self.assertTrue(outputCoordsSet.getPrecedents(), outputTomoSet)
+        [self.assertEqual(coord.getTomoId(), tomoId) for coord in outputCoordsSet]
+
+        # Check the output set of tomograms
+        self.assertTrue(outputTomoSet, 'No tomograms were registered in the protocol output.')
+        self.assertSetSize(outputTomoSet, size=1)
+        self.assertEqual(outputTomoSet.getSamplingRate(), self.samplingRate)
+        [self.assertEqual(tomo.getTsId(), tomoId) for tomo in outputTomoSet]
+
+    def testImport3dCoordsFromStarFile_01(self):
+        print(magentaStr("\n==> Importing coordinates 3D from a star file. Sampling rate read from protocol form:"))
+        self._runImportCoords3dFromStarFile(self.dataset.getFile('coords3dStarFile'), self.samplingRate)
+
+    def testImport3dCoordsFromStarFile_02(self):
+        print(magentaStr("\n==> Importing coordinates 3D from a star file. Sampling rate read from the star file "
+                         "(field rlnDetectorPixelSize):"))
+        self._runImportCoords3dFromStarFile(self.dataset.getFile('coords3dStarFileWithSRate'))
+

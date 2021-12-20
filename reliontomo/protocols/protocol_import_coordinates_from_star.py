@@ -41,7 +41,6 @@ from tomo.objects import SetOfTomograms, TomoAcquisition, Tomogram
 class ProtImportCoordinates3DFromStar(EMProtocol, ProtTomoBase):
     """Protocol to import a set of 3D coordinates from a star file"""
 
-    _outputClassName = 'SetOfCoordinates3D'
     _label = 'import coordinates 3D from a star file'
     _devStatus = BETA
 
@@ -92,7 +91,7 @@ class ProtImportCoordinates3DFromStar(EMProtocol, ProtTomoBase):
         tomoPrecedentsSet.setSamplingRate(self.sRate)
         tomoPrecedentsSet.setAcquisition(TomoAcquisition(angleMin=-60, angleMax=60, step=3))  # Generic values
         self._fillPrecedentsSet(tomoPrecedentsSet)
-        self._defineOutputs(outputSetOfTomogrmas=tomoPrecedentsSet)
+        self._defineOutputs(outputSetOfTomograms=tomoPrecedentsSet)
 
         # Read the star file and generate the corresponding set
         coordSet = self._createSetOfCoordinates3D(tomoPrecedentsSet)
@@ -128,12 +127,9 @@ class ProtImportCoordinates3DFromStar(EMProtocol, ProtTomoBase):
     def _summary(self):
         summary = []
         if self.isFinished():
-            if not self.inTomos.get():
-                summary.append('The output set of tomogrmas was generated using the data read from the star file.')
-                if not self.samplingRate.get():
-                    summary.append('The sampling rate considered was the one read from the star file.')
-            else:
-                summary.append('The sampling rate considered was the one from the input set of tomograms.')
+            summary.append('The output set of tomogrmas was generated using the data read from the star file.')
+            if not self.samplingRate.get():
+                summary.append('The sampling rate considered was the one read from the star file.')
 
         return summary
 

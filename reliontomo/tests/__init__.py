@@ -38,4 +38,5 @@ DataSet(name='reliontomo', folder='reliontomo',
                'coordsFromStarDir': 'importFromStarFiles',
                'tomoEmd10439': 'importFromStarFiles/tomograms/emd_10439.mrc',
                'coords3dStarFile': 'importFromStarFiles/picking_001_parts.star',
+               'coords3dStarFileWithSRate': 'importFromStarFiles/picking_001_parts_with_sRate.star',
         })
