@@ -23,7 +23,7 @@
 # *
 # **************************************************************************
 import json
-from os.path import isabs, abspath
+from os.path import isabs, abspath, join
 
 
 def getProgram(program, nMpi):
@@ -60,5 +60,11 @@ def manageDims(fileName, z, n):
     return zDim
 
 
-def _getAbsPath(tomoFile):
-    return tomoFile if isabs(tomoFile) else abspath(tomoFile)
+def _getAbsPath(starFilePath, tomoFile):
+    """If the paths of the files pointed from a star file are relative, they'll be referred to the path of the
+    star file. This method is used to consider that case."""
+    if isabs(tomoFile):
+        return tomoFile
+    else:
+        return join(starFilePath, tomoFile)
+

@@ -22,7 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-
+from .protocol_import_coordinates_from_star import ProtImportCoordinates3DFromStar
 from .protocol_prepare_data import ProtRelionPrepareData
 from .protocol_make_pseudo_subtomos import ProtRelionMakePseudoSubtomograms
 from .protocol_reconstruc_particle_from_ts import ProtRelionReconstructParticle

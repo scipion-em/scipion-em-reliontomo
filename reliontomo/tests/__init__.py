@@ -34,5 +34,8 @@ DataSet(name='reliontomo', folder='reliontomo',
                'tomograms': '*ali_bin1.mrc',
                'tlts': '*.tlt',
                'doseFiles': '*.txt',
-               'dynamoTables': '*.tbl'
+               'dynamoTables': '*.tbl',
+               'coordsFromStarDir': 'importFromStarFiles',
+               'tomoEmd10439': 'importFromStarFiles/tomograms/emd_10439.mrc',
+               'coords3dStarFile': 'importFromStarFiles/picking_001_parts.star',
         })
