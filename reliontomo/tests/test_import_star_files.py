@@ -22,45 +22,46 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-import reliontomo
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
+from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtImportSubtomogramsFromStar
 
 
-class TestTomoImportSetOfCoordinates3D(BaseTest):
-    """This class check if the protocol to import set of coordinates 3d works properly."""
+class TestImportFromStarFile(BaseTest):
 
     @classmethod
     def setUpClass(cls):
         setupTestProject(cls)
         cls.dataset = DataSet.getDataSet('reliontomo')
         cls.samplingRate = 13.68
+        cls.boxSize = 44
+        cls.tomoId = 'emd_10439'
 
     def _runImportCoords3dFromStarFile(self, starFile, samplingRate=None):
-        boxSize = 44
-        tomoId = 'emd_10439'
-        protImportCoords3dFromStar = self.newProtocol(reliontomo.protocols.ProtImportCoordinates3DFromStar,
+        protImportCoords3dFromStar = self.newProtocol(ProtImportCoordinates3DFromStar,
                                                       starFile=starFile,
                                                       samplingRate=samplingRate,
-                                                      boxSize=boxSize)
+                                                      boxSize=self.boxSize)
 
         self.launchProtocol(protImportCoords3dFromStar)
-        outputTomoSet = getattr(protImportCoords3dFromStar, 'outputSetOfTomograms', None)
-        outputCoordsSet = getattr(protImportCoords3dFromStar, 'outputCoordinates', None)
+        self._checkCoordinatesAndTomograms(protImportCoords3dFromStar, coordSetSize=2339)
 
+    def _checkCoordinatesAndTomograms(self, prot, coordSetSize=None):
+        outputTomoSet = getattr(prot, 'outputSetOfTomograms', None)
+        outputCoordsSet = getattr(prot, 'outputCoordinates', None)
         # Check the output set of 3D coordinates
         self.assertTrue(outputCoordsSet, 'No 3D coordinates were registered in the protocol output.')
-        self.assertSetSize(outputCoordsSet, size=2339)
-        self.assertEqual(outputCoordsSet.getBoxSize(), boxSize)
+        self.assertSetSize(outputCoordsSet, size=coordSetSize)
+        self.assertEqual(outputCoordsSet.getBoxSize(), self.boxSize)
         self.assertEqual(outputCoordsSet.getSamplingRate(), self.samplingRate)
         self.assertTrue(outputCoordsSet.getPrecedents(), outputTomoSet)
-        [self.assertEqual(coord.getTomoId(), tomoId) for coord in outputCoordsSet]
+        [self.assertEqual(coord.getTomoId(), self.tomoId) for coord in outputCoordsSet]
 
         # Check the output set of tomograms
         self.assertTrue(outputTomoSet, 'No tomograms were registered in the protocol output.')
         self.assertSetSize(outputTomoSet, size=1)
         self.assertEqual(outputTomoSet.getSamplingRate(), self.samplingRate)
-        [self.assertEqual(tomo.getTsId(), tomoId) for tomo in outputTomoSet]
+        [self.assertEqual(tomo.getTsId(), self.tomoId) for tomo in outputTomoSet]
 
     def testImport3dCoordsFromStarFile_01(self):
         print(magentaStr("\n==> Importing coordinates 3D from a star file. Sampling rate read from protocol form:"))
@@ -70,4 +71,27 @@ class TestTomoImportSetOfCoordinates3D(BaseTest):
         print(magentaStr("\n==> Importing coordinates 3D from a star file. Sampling rate read from the star file "
                          "(field rlnDetectorPixelSize):"))
         self._runImportCoords3dFromStarFile(self.dataset.getFile('coords3dStarFileWithSRate'))
+
+    def _runImportSubtomogramsFromStarFile(self, starFile, samplingRate=None):
+        protImporSubtomogramsFromStar = self.newProtocol(ProtImportSubtomogramsFromStar,
+                                                         starFile=starFile,
+                                                         samplingRate=samplingRate,
+                                                         boxSize=self.boxSize)
+
+        self.launchProtocol(protImporSubtomogramsFromStar)
+        self._checkCoordinatesAndTomograms(protImporSubtomogramsFromStar, coordSetSize=7)
+        self._checkSubtomograms(protImporSubtomogramsFromStar)
+
+    def _checkSubtomograms(self, prot):
+        subtomoSet = getattr(prot, 'outputSetOfSubtomograms', None)
+        self.assertSetSize(subtomoSet, size=7)
+        self.assertEqual(subtomoSet.getSamplingRate(), self.samplingRate)
+        self.assertEqual(subtomoSet.getDim(), (self.boxSize, self.boxSize, self.boxSize))
+
+    def testImportSubtomogramsFromStarFile(self):
+        print(magentaStr("\n==> Importing coordinates 3D from a star file. Sampling rate read from protocol form:"))
+        self._runImportSubtomogramsFromStarFile(self.dataset.getFile('subtomogramsStarFile'), self.samplingRate)
+
+
+
 

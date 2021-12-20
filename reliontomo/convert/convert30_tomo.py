@@ -32,8 +32,9 @@ from pyworkflow.object import Float
 from pyworkflow.utils import removeBaseExt
 from relion.convert.convert_base import WriterBase, ReaderBase
 from reliontomo.constants import FILE_NOT_FOUND, COORD_X, COORD_Y, COORD_Z, SUBTOMO_NAME, ROT, TILT, \
-    TILT_PRIOR, PSI, PSI_PRIOR, SHIFTX, SHIFTY, SHIFTZ, TOMO_NAME_30, CTF_MISSING_WEDGE, MAGNIFICATION, PIXEL_SIZE
-from reliontomo.utils import manageDims, _getAbsPath
+    TILT_PRIOR, PSI, PSI_PRIOR, SHIFTX, SHIFTY, SHIFTZ, TOMO_NAME_30, CTF_MISSING_WEDGE, MAGNIFICATION, PIXEL_SIZE, \
+    CLASS_NUMBER
+from reliontomo.utils import _getAbsPath
 from scipion.install.funcs import mkdir
 import numpy as np
 from os.path import abspath, join, basename
@@ -138,7 +139,6 @@ class Reader(ReaderBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.dataTable = Table()
-        # self.precedentDict = {}
 
     def read(self, starFile):
         self.dataTable.read(starFile)
@@ -166,9 +166,9 @@ class Reader(ReaderBase):
         for row in self.dataTable:
             coordsSet.append(self.gen3dCoordFromStarRow(row, precedentsSet, precedentTomoIdList))
 
-    def starFile2Subtomograms(self, samplingRate, extraPath, outputSet):
-        ih = ImageHandler()
-        for row in self.dataTable:
+    def starFile2Subtomograms(self, subtomoSet, coordSet, linkedSubtomosDir, starFilePath):
+        samplingRate = subtomoSet.getSamplingRate()
+        for row, coordinate3d in zip(self.dataTable, coordSet):
             subtomo = SubTomogram()
             transform = Transform()
             origin = Transform()
@@ -176,34 +176,30 @@ class Reader(ReaderBase):
             # Files
             tomoName = row.get(TOMO_NAME_30, FILE_NOT_FOUND)
             subtomoName = row.get(SUBTOMO_NAME, FILE_NOT_FOUND)
-            linkedSubtomoName = join(extraPath, basename(subtomoName))
-            symlink(_getAbsPath(subtomoName), linkedSubtomoName)  # Make link to the subtomograms in the extra folder
-
-            # Coordinates
-            coordinate3d = self.gen3dCoordFromStarRow(row)
+            linkedSubtomoName = join(linkedSubtomosDir, basename(subtomoName))
+            symlink(_getAbsPath(starFilePath, subtomoName), linkedSubtomoName)  # Link the subtomos to the extra folder
 
             # Subtomograms
             tiltPrior = row.get(TILT_PRIOR, 0)
             psiPrior = row.get(PSI_PRIOR, 0)
-            M = _getTransformMatrix(row)
-            transform.setMatrix(M)
-            x, y, z, n = ih.getDimensions(linkedSubtomoName)
-            zDim, filename = manageDims(linkedSubtomoName, z, n)
-            origin.setShifts(x / -2. * samplingRate, y / -2. * samplingRate, zDim / -2. * samplingRate)
+            transform.setMatrix(coordinate3d.getMatrix())
 
             subtomo.setVolName(tomoName)
             subtomo.setFileName(linkedSubtomoName)
             subtomo.setCoordinate3D(coordinate3d)
             subtomo.setTransform(transform)
             subtomo.setAcquisition(TomoAcquisition())
-            subtomo.setClassId(row.get('rlnClassNumber', 0))
+            subtomo.setClassId(row.get(CLASS_NUMBER, 0))
             subtomo.setSamplingRate(samplingRate)
             subtomo._tiltPriorAngle = Float(tiltPrior)
             subtomo._psiPriorAngle = Float(psiPrior)
             subtomo.setOrigin(origin)
 
             # Add current subtomogram to the output set
-            outputSet.append(subtomo)
+            subtomoSet.append(subtomo)
+
+        # Set the set of coordinates which corresponds to the current set of subtomograms
+        subtomoSet.setCoordinates3D(coordSet)
 
 
 def _createStarTomoTable(isPyseg):

@@ -22,12 +22,11 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-import json
 from pyworkflow.protocol import StringParam
 from reliontomo import Plugin
+from reliontomo.constants import SYMMETRY_HELP_MSG
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
-from reliontomo.utils import genSymmetryTable
 from tomo.objects import AverageSubTomogram
 
 
@@ -47,11 +46,7 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
         form.addParam('symmetry', StringParam,
                       label='Symmetry group',
                       default='C1',
-                      help='Symmetry libraries have been copied from XMIPP. As such, with the exception of tetrahedral '
-                           'symmetry, they comply with '
-                           'https://relion.readthedocs.io/en/latest/Reference/Bibliography.html#id23. '
-                           'Possible values [notation label] are described below:\n\n'
-                           '%s' % json.dumps(genSymmetryTable(), indent=1))
+                      help=SYMMETRY_HELP_MSG)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
