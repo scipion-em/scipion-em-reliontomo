@@ -32,7 +32,7 @@ class TestImportFromStarFile(BaseTest):
     @classmethod
     def setUpClass(cls):
         setupTestProject(cls)
-        cls.dataset = DataSet.getDataSet('reliontomo')
+        cls.dataset = DataSet.getDataSet('emd_10439')
         cls.samplingRate = 13.68
         cls.boxSize = 44
         cls.tomoId = 'emd_10439'

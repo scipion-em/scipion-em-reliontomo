@@ -34,22 +34,3 @@ class ProtImportCoordinates3DFromStar(ProtBaseImportFromStar):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.linkedStarFileName = 'in3dCoordinates.star'
-
-    # --------------------------- STEPS functions -----------------------------
-
-    # def _importStep(self):
-    #     # Generate the precedents (set of tomograms which the coordinates are referred to) if necessary
-    #     tomoPrecedentsSet = SetOfTomograms.create(self._getPath(), template='tomograms%s.sqlite')
-    #     tomoPrecedentsSet.setSamplingRate(self.sRate)
-    #     tomoPrecedentsSet.setAcquisition(TomoAcquisition(angleMin=-60, angleMax=60, step=3))  # Generic values
-    #     self._fillPrecedentsSet(tomoPrecedentsSet)
-    #     self._defineOutputs(outputSetOfTomograms=tomoPrecedentsSet)
-    #
-    #     # Read the star file and generate the corresponding set
-    #     coordSet = self._createSetOfCoordinates3D(tomoPrecedentsSet)
-    #     coordSet.setSamplingRate(self.sRate)
-    #     coordSet.setBoxSize(self.boxSize.get())
-    #     self.reader.starFile2Coords3D(coordSet, tomoPrecedentsSet)
-    #
-    #     self._defineOutputs(outputCoordinates=coordSet)
-    #     self._defineSourceRelation(tomoPrecedentsSet, coordSet)
