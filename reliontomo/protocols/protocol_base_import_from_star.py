@@ -192,7 +192,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
                     tomoFileNotFound = self._fileNotFound(row, TOMO_NAME_30, starFilePath)
                     subtomoFileNotFound = self._fileNotFound(row, SUBTOMO_NAME, starFilePath)
                     if tomoFileNotFound or subtomoFileNotFound:
-                        errorsFound += filesPattern % (counter, tomoFileNotFound. subtomoFileNotFound)
+                        errorsFound += filesPattern % (counter, tomoFileNotFound, subtomoFileNotFound)
             else:
                 filesErrorMsgHead = 'The following files were not found [row, tomoFile]:\n'
                 for counter, row in enumerate(dataTable):

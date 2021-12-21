@@ -89,7 +89,7 @@ class TestImportFromStarFile(BaseTest):
         self.assertEqual(subtomoSet.getDim(), (self.boxSize, self.boxSize, self.boxSize))
 
     def testImportSubtomogramsFromStarFile(self):
-        print(magentaStr("\n==> Importing coordinates 3D from a star file. Sampling rate read from protocol form:"))
+        print(magentaStr("\n==> Importing subtomograms from a star file:"))
         self._runImportSubtomogramsFromStarFile(self.dataset.getFile('subtomogramsStarFile'), self.samplingRate)
 
 
