@@ -22,14 +22,15 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-from .protocol_import_coordinates_from_star import ProtImportCoordinates3DFromStar
-from .protocol_import_subtomograms_from_star import ProtImportSubtomogramsFromStar
-from .protocol_prepare_data import ProtRelionPrepareData
-from .protocol_make_pseudo_subtomos import ProtRelionMakePseudoSubtomograms
-from .protocol_reconstruc_particle_from_ts import ProtRelionReconstructParticle
-from .protocol_de_novo_initial_model import ProtRelionDeNovoInitialModel
-from .protocol_refine_subtomograms import ProtRelionRefineSubtomograms
-from .protocol_3d_classify_subtomograms import ProtRelion3DClassifySubtomograms
-from .protocol_tomo_frame_align import ProtRelionTomoFrameAlign
-from .protocol_ctf_refine import ProtRelionCtfRefine
-from .protocol_rec_particle_from_subtomograms import ProtRelionSubTomoReconstructAvg
+from reliontomo.protocols.protocol_base_import_from_star import ProtBaseImportFromStar
+from tomo.objects import SetOfTomograms, TomoAcquisition
+
+
+class ProtImportCoordinates3DFromStar(ProtBaseImportFromStar):
+    """Protocol to import a set of 3D coordinates from a star file"""
+
+    _label = 'import coordinates 3D from a star file'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.linkedStarFileName = 'in3dCoordinates.star'

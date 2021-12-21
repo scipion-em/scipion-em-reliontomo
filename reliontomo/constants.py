@@ -24,8 +24,6 @@
 # **************************************************************************
 import json
 
-from reliontomo.utils import genSymmetryTable
-
 RELION = 'relion'
 V4_0 = '4.0'
 RELIONTOMO_HOME = 'RELIONTOMO_HOME'
@@ -44,6 +42,12 @@ IMOD_DIR = 'rlnTomoImportImodDir'
 FRACTIONAL_DOSE = 'rlnTomoImportFractionalDose'
 ACQ_ORDER_FILE = 'rlnTomoImportOrderList'
 CULLED_FILE = 'rlnTomoImportCulledFile'
+
+# Relion 3 specific star file fields
+TOMO_NAME_30 = 'rlnMicrographName'
+CTF_MISSING_WEDGE = 'rlnCtfImage'
+MAGNIFICATION = 'rlnMagnification'
+PIXEL_SIZE = 'rlnDetectorPixelSize'
 
 # Relion 4 subtomogram star file fields
 SUBTOMO_NAME = 'rlnImageName'
@@ -69,7 +73,7 @@ SHIFTY_ANGST = 'rlnOriginYAngst'
 SHIFTZ_ANGST = 'rlnOriginZAngst'
 CTF_IMAGE = 'rlnCtfImage'
 
-FILE_NOT_FOUND = 'File not found'
+FILE_NOT_FOUND = 'FileNotFound'
 
 # IMOD's eTomo files
 NEWST_COM = 'newst.com'
@@ -91,11 +95,19 @@ ANGULAR_SAMPLING_LIST = ['30', '15', '7.5', '3.7', '1.8', '0.9', '0.5',
                          '0.2', '0.1', '0.06', '0.03', '0.01', '0.007', '0.004']
 
 # Symmetry description
+jsonData = '[{"group": "Asymmetric", "notation": "C1", "origin": "User-defined", "orientation": "User-defined"},' \
+           '{"group": "Cyclic", "notation": "C<n>", "origin": "On symm axis, Z user-defined", "orientation": "Symm axis on Z"},' \
+           '{"group": "Dihedral", "notation": "D<n>", "origin": "Intersection of symm axes", "orientation": "principle symm axis on Z, 2-fold on X"},' \
+           '{"group": "Tetrahedral", "notation": "T", "origin": "Intersection of symm axes", "orientation": "3-fold axis on Z (deviating from Heymann et al!)"},' \
+           '{"group": "Octahedral", "notation": "O", "origin": "Intersection of symm axes", "orientation": "4-fold axes on X, Y, Z"},' \
+           '{"group": "Icosahedral", "notation": "I<n>", "origin": "Intersection of symm axes", "orientation": "**"}]'
+SYMMETRY_TABLE = json.loads(jsonData)
+
 SYMMETRY_HELP_MSG = 'Symmetry libraries have been copied from XMIPP. As such, with the exception of tetrahedral ' \
                     'symmetry, they comply with ' \
                     'https://relion.readthedocs.io/en/latest/Reference/Bibliography.html#id23. Possible values ' \
                     '[notation label] are described below:\n\n' \
-                    '%s' % json.dumps(genSymmetryTable(), indent=1)
+                    '%s' % json.dumps(SYMMETRY_TABLE, indent=1)
 
 
 # Per particle per tilt box size values

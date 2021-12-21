@@ -24,12 +24,13 @@
 # **************************************************************************
 import csv
 from os import mkdir
-
+from emtable import Table
 from pwem import ALIGN_NONE, ALIGN_2D, ALIGN_PROJ
 from pwem.emlib.image import ImageHandler
 import pyworkflow.utils as pwutils
 from pwem.objects import Transform
 from pyworkflow.object import Float
+from relion.convert import OpticsGroups
 from relion.convert.convert_base import WriterBase
 from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, IMOD_DIR, FRACTIONAL_DOSE, \
     ACQ_ORDER_FILE, CULLED_FILE, SUBTOMO_NAME, COORD_X, COORD_Y, COORD_Z, SHIFTX, SHIFTY, SHIFTZ, ROT, \
@@ -39,8 +40,7 @@ import pwem.convert.transformations as tfs
 import numpy as np
 from os.path import join
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
-from relion.convert import Table, OpticsGroups
-from reliontomo.objects import PseudoSubtomogram
+from reliontomo.utils import manageDims
 from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.objects import Coordinate3D, TomoAcquisition
 
@@ -253,6 +253,7 @@ class Reader:
         self._pixelSize = kwargs.get('pixelSize', 1.0)
 
     def readPseudoSubtomgramsStarFile(self, starFile, precedents, outputSet):
+        from reliontomo.objects import PseudoSubtomogram
         tomoTable = Table()
         tomoTable.read(starFile, tableName='particles')
         ih = ImageHandler()
@@ -295,7 +296,7 @@ class Reader:
 
             # Set the origin and the dimensions of the current subtomogram
             x, y, z, n = ih.getDimensions(subtomoFilename)
-            zDim, filename = self._manageIhDims(subtomoFilename, z, n)
+            zDim, filename = manageDims(subtomoFilename, z, n)
             origin.setShifts(x / -2. * samplingRate, y / -2. * samplingRate, zDim / -2. * samplingRate)
             psubtomo.setOrigin(origin)
 
@@ -310,19 +311,6 @@ class Reader:
 
             # Add current subtomogram to the output set
             outputSet.append(psubtomo)
-
-    @staticmethod
-    def _manageIhDims(fileName, z, n):
-        if fileName.endswith('.mrc') or fileName.endswith('.map'):
-            fileName += ':mrc'
-            if z == 1 and n != 1:
-                zDim = n
-            else:
-                zDim = z
-        else:
-            zDim = z
-
-        return zDim, fileName
 
     def setParticleTransform(self, particle, row):
         """ Set the transform values from the row. """
