@@ -247,8 +247,8 @@ class Reader:
 
     def __init__(self, **kwargs):
         # self.setParticleTransform = None
-        self._shifts = None
-        self._angles = None
+        self._shifts = [0, 0, 0]
+        self._angles = [0, 0, 0]
         self._alignType = kwargs.get('alignType', ALIGN_NONE)
         self._pixelSize = kwargs.get('pixelSize', 1.0)
 
