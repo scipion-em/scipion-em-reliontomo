@@ -281,7 +281,6 @@ class Reader:
             coordinate3d.setX(float(x), BOTTOM_LEFT_CORNER)
             coordinate3d.setY(float(y), BOTTOM_LEFT_CORNER)
             coordinate3d.setZ(float(z), BOTTOM_LEFT_CORNER)
-            self.__setParticleTransformProj(psubtomo, row)
 
             psubtomo.setVolName(precedentFileList[tomoInd])
             psubtomo.setFileName(subtomoFilename)
@@ -293,6 +292,7 @@ class Reader:
             psubtomo.setSamplingRate(samplingRate)
             psubtomo._tiltPriorAngle = Float(tiltPrior)
             psubtomo._psiPriorAngle = Float(psiPrior)
+            self.__setParticleTransformProj(psubtomo, row)
 
             # Set the origin and the dimensions of the current subtomogram
             x, y, z, n = ih.getDimensions(subtomoFilename)
