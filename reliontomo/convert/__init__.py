@@ -46,14 +46,6 @@ def createReaderTomo40(**kwargs):
     return Reader(**kwargs)
 
 
-def readSetOfSubtomograms(starFile, samplingRate, extraPath, outputSet):
-    """ Convenience function to write a SetOfSubtomograms as Relion metadata using a Reader."""
-    # Subtomogras are represented in Relion 4 as Pseudosubtomograms
-    reader = createReaderTomo30()
-    reader.read(starFile)
-    return reader.starFile2Subtomograms(samplingRate, extraPath, outputSet)
-
-
 # def readSetOfCoordinates3D(starFile, prot):
 #     """ Convenience function to write a SetOfSubtomograms as Relion metadata using a Reader."""
 #     # SetOfPseudoSubtomograms don't exist in Relion3

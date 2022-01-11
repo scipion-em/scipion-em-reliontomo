@@ -22,7 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-from os.path import isabs, join, exists
+from os.path import isabs, join
 
 
 def getProgram(program, nMpi):
@@ -65,59 +65,3 @@ def _gen2LevelBaseName(fullFileName):
         return fullFileName
     else:
         return parts[-2] + '_' + parts[-1]
-
-
-# def _checkFilesPointedFromStarFile(starFilePath, dataTable, isSubtomoStarFile=False):
-#     from reliontomo.constants import TOMO_NAME_30, SUBTOMO_NAME
-#     errorsFound = ''
-#     # Check if the corresponding fields exists in the introduced star file
-#     fields2check = [TOMO_NAME_30]
-#     filesPattern = '\tRow %i - %s\n'
-#     if isSubtomoStarFile:
-#         fields2check = [TOMO_NAME_30, SUBTOMO_NAME]
-#         filesPattern = '\tRow %i - %s - %s\n'
-#
-#     errorsFound += _checkFieldsInDataTable(dataTable, fields2check)
-#     # Check if the files pointed from those fields exist
-#     if not errorsFound:
-#         if isSubtomoStarFile:
-#             filesErrorMsgHead = 'The following files were not found [row, tomoFile, subtomoFile]:\n'
-#             for counter, row in enumerate(dataTable):
-#                 tomoFileNotFound = _fileNotFound(row, TOMO_NAME_30, starFilePath)
-#                 subtomoFileNotFound = _fileNotFound(row, SUBTOMO_NAME, starFilePath)
-#                 if tomoFileNotFound or subtomoFileNotFound:
-#                     errorsFound += filesPattern % (counter, tomoFileNotFound. subtomoFileNotFound)
-#         else:
-#             filesErrorMsgHead = 'The following files were not found [row, tomoFile]:\n'
-#             for counter, row in enumerate(dataTable):
-#                 fileNotFound = _fileNotFound(row, TOMO_NAME_30, starFilePath)
-#                 if fileNotFound:
-#                     errorsFound += filesPattern % (counter, fileNotFound)
-#
-#         if errorsFound:
-#             errorsFound = filesErrorMsgHead + errorsFound
-#
-#     return errorsFound
-#
-#
-# def _checkFieldsInDataTable(dataTable, fieldList):
-#     fieldErrors = ''
-#     fieldNotFoundPattern = 'Fields %s were not found in the star file introduced.\n'
-#     notFoundFields = [field for field in fieldList if not dataTable.hasColumn(field)]
-#     if notFoundFields:
-#         pattern = '[%s]' % (' '.join(notFoundFields))
-#         fieldErrors = (fieldNotFoundPattern % pattern)
-#
-#     return fieldErrors
-#
-#
-# def _fileNotFound(row, field, starFilePath):
-#     from reliontomo.constants import FILE_NOT_FOUND
-#     statusMsg = ''
-#     tomoFile = row.get(field, FILE_NOT_FOUND)
-#     tomoFileAbs = _getAbsPath(starFilePath, tomoFile)
-#     if not exists(tomoFileAbs):
-#         statusMsg = tomoFile
-#
-#     return statusMsg
-

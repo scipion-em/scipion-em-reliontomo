@@ -157,7 +157,7 @@ class Reader(ReaderBase):
         coordinate3d.setY(float(y), BOTTOM_LEFT_CORNER)
         coordinate3d.setZ(float(z), BOTTOM_LEFT_CORNER)
         coordinate3d._3dcftMrcFile = ctf3d  # Used for the ctf3d generation in Relion
-        coordinate3d.setMatrix(_getTransformMatrix(row))
+        coordinate3d.setMatrix(getTransformMatrix(row))
 
         return coordinate3d
 
@@ -251,7 +251,7 @@ def _getTransformInfoFromSubtomo(subtomo, calcInv=True):
 #     return tomoFile if isabs(tomoFile) else abspath(tomoFile)
 
 
-def _getTransformMatrix(row, invert=True):
+def getTransformMatrix(row, invert=True):
     shiftx = row.get(SHIFTX, 0)
     shifty = row.get(SHIFTY, 0)
     shiftz = row.get(SHIFTZ, 0)
