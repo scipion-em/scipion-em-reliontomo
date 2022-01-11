@@ -98,7 +98,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         coordSet.setBoxSize(self.boxSize.get())
         self.reader.starFile2Coords3D(coordSet, tomoPrecedentsSet)
 
-        self._defineOutputs(outputSetOfTomograms=tomoPrecedentsSet)
+        self._defineOutputs(outputTomograms=tomoPrecedentsSet)
         self._defineOutputs(outputCoordinates=coordSet)
         self._defineSourceRelation(tomoPrecedentsSet, coordSet)
 

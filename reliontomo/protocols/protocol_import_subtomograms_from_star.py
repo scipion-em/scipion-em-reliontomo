@@ -51,12 +51,12 @@ class ProtImportSubtomogramsFromStar(ProtBaseImportFromStar):
         # Generate the corresponding precedents and 3d coordinates
         super()._importStep()
         # Generate the set of subtomograms
-        outputTomoSet = getattr(self, 'outputSetOfTomograms', None)
+        outputTomoSet = getattr(self, 'outputTomograms', None)
         outputCoordsSet = getattr(self, 'outputCoordinates', None)
         subtomoSet = SetOfSubTomograms.create(self._getPath(), template='setOfSubTomograms%s.sqlite')
         subtomoSet.setSamplingRate(self.sRate)
         subtomoSet.setAcquisition(outputTomoSet.getAcquisition())
         self.reader.starFile2Subtomograms(subtomoSet, outputCoordsSet, self._getExtraPath(self.linkedSubtomosDirName),
                                           getParentFolder(self.starFile.get()))
-        self._defineOutputs(outputSetOfSubtomograms=subtomoSet)
+        self._defineOutputs(outputSubtomograms=subtomoSet)
 

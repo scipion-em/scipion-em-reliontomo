@@ -47,7 +47,7 @@ class TestImportFromStarFile(BaseTest):
         self._checkCoordinatesAndTomograms(protImportCoords3dFromStar, coordSetSize=2339)
 
     def _checkCoordinatesAndTomograms(self, prot, coordSetSize=None):
-        outputTomoSet = getattr(prot, 'outputSetOfTomograms', None)
+        outputTomoSet = getattr(prot, 'outputTomograms', None)
         outputCoordsSet = getattr(prot, 'outputCoordinates', None)
         # Check the output set of 3D coordinates
         self.assertTrue(outputCoordsSet, 'No 3D coordinates were registered in the protocol output.')
@@ -73,17 +73,17 @@ class TestImportFromStarFile(BaseTest):
         self._runImportCoords3dFromStarFile(self.dataset.getFile('coords3dStarFileWithSRate'))
 
     def _runImportSubtomogramsFromStarFile(self, starFile, samplingRate=None):
-        protImporSubtomogramsFromStar = self.newProtocol(ProtImportSubtomogramsFromStar,
-                                                         starFile=starFile,
-                                                         samplingRate=samplingRate,
-                                                         boxSize=self.boxSize)
+        protImportSubtomogramsFromStar = self.newProtocol(ProtImportSubtomogramsFromStar,
+                                                          starFile=starFile,
+                                                          samplingRate=samplingRate,
+                                                          boxSize=self.boxSize)
 
-        self.launchProtocol(protImporSubtomogramsFromStar)
-        self._checkCoordinatesAndTomograms(protImporSubtomogramsFromStar, coordSetSize=7)
-        self._checkSubtomograms(protImporSubtomogramsFromStar)
+        self.launchProtocol(protImportSubtomogramsFromStar)
+        self._checkCoordinatesAndTomograms(protImportSubtomogramsFromStar, coordSetSize=7)
+        self._checkSubtomograms(protImportSubtomogramsFromStar)
 
     def _checkSubtomograms(self, prot):
-        subtomoSet = getattr(prot, 'outputSetOfSubtomograms', None)
+        subtomoSet = getattr(prot, 'outputSubtomograms', None)
         self.assertSetSize(subtomoSet, size=7)
         self.assertEqual(subtomoSet.getSamplingRate(), self.samplingRate)
         self.assertEqual(subtomoSet.getDim(), (self.boxSize, self.boxSize, self.boxSize))
