@@ -34,7 +34,7 @@ from relion.convert.convert_base import WriterBase, ReaderBase
 from reliontomo.constants import FILE_NOT_FOUND, COORD_X, COORD_Y, COORD_Z, SUBTOMO_NAME, ROT, TILT, \
     TILT_PRIOR, PSI, PSI_PRIOR, SHIFTX, SHIFTY, SHIFTZ, TOMO_NAME_30, CTF_MISSING_WEDGE, MAGNIFICATION, PIXEL_SIZE, \
     CLASS_NUMBER
-from reliontomo.utils import _getAbsPath
+from reliontomo.utils import _getAbsPath, _gen2LevelBaseName
 from scipion.install.funcs import mkdir
 import numpy as np
 from os.path import abspath, join, basename
@@ -176,7 +176,7 @@ class Reader(ReaderBase):
             # Files
             tomoName = row.get(TOMO_NAME_30, FILE_NOT_FOUND)
             subtomoName = row.get(SUBTOMO_NAME, FILE_NOT_FOUND)
-            linkedSubtomoName = join(linkedSubtomosDir, basename(subtomoName))
+            linkedSubtomoName = join(linkedSubtomosDir, _gen2LevelBaseName(subtomoName))
             symlink(_getAbsPath(starFilePath, subtomoName), linkedSubtomoName)  # Link the subtomos to the extra folder
 
             # Subtomograms

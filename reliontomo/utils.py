@@ -57,6 +57,16 @@ def _getAbsPath(starFilePath, tomoFile):
         return join(starFilePath, tomoFile)
 
 
+def _gen2LevelBaseName(fullFileName):
+    """This function generates a new basename composed of the original basename preceded by the parent folder
+    followed by '_'. This will reduce the probabilities of non-uniqueness of the name when creating links."""
+    parts = fullFileName.split('/')
+    if len(parts) == 1:
+        return fullFileName
+    else:
+        return parts[-2] + '_' + parts[-1]
+
+
 # def _checkFilesPointedFromStarFile(starFilePath, dataTable, isSubtomoStarFile=False):
 #     from reliontomo.constants import TOMO_NAME_30, SUBTOMO_NAME
 #     errorsFound = ''
