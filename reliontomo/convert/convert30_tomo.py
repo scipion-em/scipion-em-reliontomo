@@ -150,7 +150,9 @@ class Reader(ReaderBase):
         x = row.get(COORD_X, 0)
         y = row.get(COORD_Y, 0)
         z = row.get(COORD_Z, 0)
-        coordinate3d.setVolume(precedentsSet[precedentTomoIdList.index(tomoId) + 1])  # Set indices begin in 1
+        volId = precedentTomoIdList.index(tomoId) + 1  # Set indices begin in 1
+        coordinate3d.setVolume(precedentsSet[volId])
+        coordinate3d.setVolId(volId)
         ctf3d = row.get(CTF_MISSING_WEDGE, FILE_NOT_FOUND)
         coordinate3d.setTomoId(tomoId)
         coordinate3d.setX(float(x), BOTTOM_LEFT_CORNER)
@@ -187,6 +189,7 @@ class Reader(ReaderBase):
             subtomo.setVolName(tomoName)
             subtomo.setFileName(linkedSubtomoName)
             subtomo.setCoordinate3D(coordinate3d)
+            subtomo.setVolId(coordinate3d.getVolId())
             subtomo.setTransform(transform)
             subtomo.setAcquisition(TomoAcquisition())
             subtomo.setClassId(row.get(CLASS_NUMBER, 0))
