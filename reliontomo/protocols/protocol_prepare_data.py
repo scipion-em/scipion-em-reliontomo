@@ -45,10 +45,11 @@ class ProtRelionPrepareData(EMProtocol):
     """
     _label = 'Prepare data for Relion 4'
     _devStatus = BETA
-    tomoSet = None
-    acquisition = None
-    inTomosStar = 'inTomos.star'
-    inSubtomosStar = 'inSubtomos.star'
+
+    def __init__(self, **args):
+        EMProtocol.__init__(self, **args)
+        self.tsSet = None
+        self.tomoSet = None
 
     # -------------------------- DEFINE param functions -----------------------
 
@@ -128,19 +129,19 @@ class ProtRelionPrepareData(EMProtocol):
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._initialize()
-        self._insertFunctionStep(self._convertInputStep)
-        self._insertFunctionStep(self._relionImportTomograms)
-        self._insertFunctionStep(self._relionImportParticles)
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.relionImportTomograms)
+        self._insertFunctionStep(self.relionImportParticles)
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
         defocusDir = self._getExtraPath(DEFOCUS)
         if not exists(defocusDir):  # It can exist in case of Continue execution
             mkdir(defocusDir)
-        self.TsSet = self.inputCtfTs.get().getSetOfTiltSeries()
+        self.tsSet = self.inputCtfTs.get().getSetOfTiltSeries()
         self.tomoSet = self.inputCoords.get().getPrecedents()
 
-    def _convertInputStep(self):
+    def convertInputStep(self):
         # Generate defocus files
         for ctfTomo in self.inputCtfTs.get():
             defocusPath = self._getExtraPath(DEFOCUS, ctfTomo.getTsId())
@@ -153,17 +154,18 @@ class ProtRelionPrepareData(EMProtocol):
         writeSetOfTomograms(self.tomoSet,
                             self._getStarFilename(IN_TOMOS_STAR),
                             prot=self,
-                            tsSet=self.TsSet,
+                            tsSet=self.tsSet,
                             ctfPlotterParentDir=self._getExtraPath(DEFOCUS),
                             eTomoParentDir=self._getEtomoParentDir())
         # Write the particles star file
         writeSetOfSubtomograms(self.inputCoords.get(),
-                               self._getStarFilename(IN_SUBTOMOS_STAR))
+                               self._getStarFilename(IN_SUBTOMOS_STAR),
+                               coordsScale=self.tomoSet.getSamplingRate() / self.tsSet.getSamplingRate())
 
-    def _relionImportTomograms(self):
+    def relionImportTomograms(self):
         Plugin.runRelionTomo(self, 'relion_tomo_import_tomograms', self._genImportTomosCmd())
 
-    def _relionImportParticles(self):
+    def relionImportParticles(self):
         Plugin.runRelionTomo(self, 'relion_tomo_import_particles', self._genImportSubtomosCmd())
 
     # -------------------------- INFO functions -------------------------------
@@ -192,6 +194,15 @@ class ProtRelionPrepareData(EMProtocol):
 
         return errorMsg
 
+    def _summary(self):
+        summary = []
+        if self.isFinished():
+            sRate = self.inputCoords.get().getPrecedents().getSamplingRate() / \
+                    self.inputCtfTs.get().getSetOfTiltSeries().getSamplingRate()
+            summary.append('Coordinates scaled to factor TS_SamplingRate / Coords_SamplingRate = %.2f' % sRate)
+
+        return summary
+
     # --------------------------- UTILS functions -----------------------------
     def _getEtomoParentDir(self):
         if self.eTomoDataFrom.get() == ETOMO_FROM_PROT:
@@ -200,11 +211,11 @@ class ProtRelionPrepareData(EMProtocol):
             return self.eTomoFilesPath.get()
 
     def _genImportTomosCmd(self):
-        acq = self.TsSet.getAcquisition()
+        acq = self.tsSet.getAcquisition()
         cmd = '--i %s ' % self._getStarFilename(IN_TOMOS_STAR)
         cmd += '--o %s ' % self._getStarFilename(OUT_TOMOS_STAR)
         cmd += '--hand %s ' % self._decodeHandeness()
-        cmd += '--angpix %s ' % self.TsSet.getSamplingRate()
+        cmd += '--angpix %s ' % self.tsSet.getSamplingRate()
         cmd += '--voltage %s ' % acq.getVoltage()
         cmd += '--Cs %s ' % acq.getSphericalAberration()
         cmd += '--Q0 %s ' % acq.getAmplitudeContrast()

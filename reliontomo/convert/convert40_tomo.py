@@ -67,7 +67,8 @@ class Writer(WriterBase):
         # Write the STAR file
         tomoTable.write(outStarFileName)
 
-    def writeSetOfSubtomograms(self, coordSet, subtomosStar):
+    def writeSetOfSubtomograms(self, coordSet, subtomosStar, coordsScale=1):
+        """Input coordsScale is used to scale the coordinates so they are expressed in bin 1, as expected by Relion 4"""
         tomoTable = Table(columns=self._getSubtomogramStarFileLabels())
         precedentsSet = coordSet.getPrecedents()
         sRate = precedentsSet.getSamplingRate()
@@ -79,9 +80,11 @@ class Writer(WriterBase):
                     coord.getTomoId(),                                           # 1 _rlnTomoName
                     coord.getObjId(),                                            # 2 _rlnTomoParticleId
                     coord.getGroupId(),                                          # 3 _rlnTomoManifoldIndex
-                    coord.getX(BOTTOM_LEFT_CORNER),                              # 4 _rlnCoordinateX
-                    coord.getY(BOTTOM_LEFT_CORNER),                              # 5 _rlnCoordinateY
-                    coord.getZ(BOTTOM_LEFT_CORNER),                              # 6 _rlnCoordinateZ
+                    # coord in pix at scale of bin1
+                    coord.getX(BOTTOM_LEFT_CORNER) * coordsScale,                # 4 _rlnCoordinateX
+                    coord.getY(BOTTOM_LEFT_CORNER) * coordsScale,                # 5 _rlnCoordinateY
+                    coord.getZ(BOTTOM_LEFT_CORNER) * coordsScale,                # 6 _rlnCoordinateZ
+                    # pix * Å/pix = [shifts in Å]
                     shifts[0] * sRate,                                           # 7 _rlnOriginXAngst
                     shifts[1] * sRate,                                           # 8 _rlnOriginYAngst
                     shifts[2] * sRate,                                           # 9 _rlnOriginZAngst
@@ -182,25 +185,6 @@ class Writer(WriterBase):
             CULLED_FILE
         ]
 
-    # @staticmethod
-    # def _getSubtomogramStarFileLabels30():
-    #     return [
-    #         TOMO_NAME_30,
-    #         SUBTOMO_NAME,
-    #         COORD_X,
-    #         COORD_Y,
-    #         COORD_Z,
-    #         SHIFTX,
-    #         SHIFTY,
-    #         SHIFTZ,
-    #         ROT,
-    #         TILT,
-    #         PSI,
-    #         TILT_PRIOR,
-    #         PSI_PRIOR,
-    #         CLASS_NUMBER
-    #     ]
-
     @staticmethod
     def _getSubtomogramStarFileLabels():
         return [
@@ -215,9 +199,7 @@ class Writer(WriterBase):
             SHIFTZ_ANGST,
             ROT,
             TILT,
-            PSI,
-            # CLASS_NUMBER,
-            # RANDOM_SUBSET
+            PSI
         ]
 
     @staticmethod
@@ -328,7 +310,7 @@ class Reader:
             # Set the origin and the dimensions of the current subtomogram
             x, y, z, n = ih.getDimensions(subtomoFilename)
             zDim = manageDims(subtomoFilename, z, n)
-            origin.setShifts(x / -2. * samplingRate, y / -2. * samplingRate, zDim / -2. * samplingRate)
+            origin.setShifts(x / -2., y / -2., zDim / -2.)
             psubtomo.setOrigin(origin)
 
             # Update values of current pseudo subtomogram
@@ -340,7 +322,7 @@ class Reader:
             coordinate3d.setX(float(x), BOTTOM_LEFT_CORNER)                                # 4 _rlnCoordinateX
             coordinate3d.setY(float(y), BOTTOM_LEFT_CORNER)                                # 5 _rlnCoordinateX
             coordinate3d.setZ(float(z), BOTTOM_LEFT_CORNER)                                # 6 _rlnCoordinateX
-            self.__setParticleTransformProj(psubtomo, row)                                 # 7 - 12 rlnOriginAngst and rlnAngles
+            self.__setParticleTransformProj(psubtomo, row, samplingRate)                   # 7 - 12 rlnOriginAngst and rlnAngles
             psubtomo.setClassId(row.get(CLASS_NUMBER, -1))                                 # 13 _rlnClassNumber
             randomSubset = row.get(RANDOM_SUBSET, None)
             if randomSubset:
@@ -396,9 +378,9 @@ class Reader:
         angles = self._angles
         shifts = self._shifts
 
-        shifts[0] = float(row.get(SHIFTX_ANGST / sRate, 0))
-        shifts[1] = float(row.get(SHIFTY_ANGST / sRate, 0))
-        shifts[2] = float(row.get(SHIFTZ_ANGST / sRate, 0))
+        shifts[0] = float(row.get(SHIFTX_ANGST, 0)) / sRate
+        shifts[1] = float(row.get(SHIFTY_ANGST, 0)) / sRate
+        shifts[2] = float(row.get(SHIFTZ_ANGST, 0)) / sRate
 
         angles[0] = float(row.get(ROT, 0))
         angles[1] = float(row.get(TILT, 0))

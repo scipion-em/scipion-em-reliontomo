@@ -23,12 +23,13 @@
 # *
 # **************************************************************************
 from pyworkflow.protocol import LEVEL_ADVANCED, IntParam, FloatParam, BooleanParam
+from relion.convert import OpticsGroups
 from reliontomo import Plugin
 from reliontomo.constants import OUT_SUBTOMOS_STAR
 from reliontomo.convert import readSetOfPseudoSubtomograms
-from reliontomo.objects import SetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
+from tomo.objects import SetOfSubTomograms
 from tomo.protocols import ProtTomoBase
 
 
@@ -36,9 +37,6 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
     """Make pseudo-subtomograms"""
 
     _label = 'Make pseudo-subtomograms'
-
-    def __init__(self, **args):
-        ProtRelionMakePseudoSubtomoAndRecParticleBase.__init__(self, **args)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -81,23 +79,26 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
+        self._initialize()
+        self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self._relionMakePseudoSubtomos)
         self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
+
     def _relionMakePseudoSubtomos(self):
         Plugin.runRelionTomo(self, 'relion_tomo_subtomo', self._genMakePseudoSubtomoCmd(),
                              numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
         starFile = self._getExtraPath(OUT_SUBTOMOS_STAR)
-        protPrepDataInputSubtomos = self.inputPrepareDataProt.get().inputSubtomos.get()
-        outputSet = self._createSet(SetOfPseudoSubtomograms, 'pseudosubtomograms%s.sqlite', '')
-        outputSet.setStarFileAndOptics(starFile)
-        outputSet.setSamplingRate(protPrepDataInputSubtomos.getSamplingRate())
-        precedents = protPrepDataInputSubtomos.getCoordinates3D().get().getPrecedents()
-        readSetOfPseudoSubtomograms(starFile, precedents, outputSet)
-        self._defineOutputs(outputSetOfPseudoSubtomogram=outputSet)
+        protPrepData = self.inputPrepareDataProt.get()
+        outputSet = self._createSet(SetOfSubTomograms, 'subtomograms%s.sqlite', '')
+        outputSet.getAcquisition().opticsGroupInfo.set(OpticsGroups.fromStar(starFile).toString())
+        outputSet.setSamplingRate(protPrepData.inputCtfTs.get().getSetOfTiltSeries().getSamplingRate())
+        precedents = protPrepData.inputCoords.get().getPrecedents()
+        readSetOfPseudoSubtomograms(starFile, precedents, outputSet)  # Tomograms are necessary for coordinates in Scipion data model
+        self._defineOutputs(outputPseudoSubtomogram=outputSet)
 
     # # -------------------------- INFO functions -------------------------------
     def _validate(self):

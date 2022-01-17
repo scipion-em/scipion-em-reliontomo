@@ -25,8 +25,9 @@
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, FloatParam, StringParam
-from pyworkflow.utils import Message
-from reliontomo.constants import OUT_TOMOS_STAR, OUT_SUBTOMOS_STAR
+from pyworkflow.utils import Message, createLink
+from reliontomo.constants import OUT_TOMOS_STAR, OUT_SUBTOMOS_STAR, IN_SUBTOMOS_STAR
+from reliontomo.convert import writeSetOfSubtomograms
 from reliontomo.utils import getFileFromDataPrepProt
 
 
@@ -37,6 +38,10 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
     _devStatus = BETA
 
     # -------------------------- DEFINE param functions -----------------------
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.inParticlesStar = None
+
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
 
@@ -45,6 +50,12 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
                       label="Data preparation protocol",
                       important=True,
                       allowsNull=False)
+        form.addParam('inputParticles', PointerParam,
+                      pointerClass='SetOfPseudoSubtomograms',
+                      label='Input particles (opt.)',
+                      allowsNull=True,
+                      help='Set of particles considered. If empty, the particles considered will be the '
+                           'initial ones contained in the data preparation protocol.')
         form.addParam('inputTrajectory', StringParam,
                       label="Particle trajectories set (optional)",
                       allowsNull=True)
@@ -86,6 +97,18 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
     def _insertAllSteps(self):
         pass
 
+    def _initialize(self):
+        self.inParticlesStar = self._getExtraPath(IN_SUBTOMOS_STAR)
+        # self.InParticles =
+
+    def convertInputStep(self):
+        if self.inputParticles.get():
+            # write star file
+            writeSetOfSubtomograms(self.inputParticles.get(), self.inParticlesStar)
+        else:
+            # Create a symbolic link
+            createLink(getFileFromDataPrepProt(self, OUT_SUBTOMOS_STAR), self.inParticlesStar)
+
     # # -------------------------- INFO functions -------------------------------
     def _validate(self):
         pass
@@ -104,6 +127,4 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
         cmd += '--j %i ' % self.numberOfThreads.get()
         return cmd
 
-    # def _getFileFromDataPrepProt(self, fileName):
-    #     return self.inputPrepareDataProt.get()._getExtraPath(fileName)
 
