@@ -27,22 +27,22 @@ from os import mkdir
 from emtable import Table
 from pwem import ALIGN_NONE, ALIGN_2D, ALIGN_PROJ
 from pwem.emlib.image import ImageHandler
-import pyworkflow.utils as pwutils
 from pwem.objects import Transform
-from pyworkflow.object import Float
+from pyworkflow.object import Integer, String
+from pyworkflow.utils import getParentFolder, getExt, removeBaseExt, replaceBaseExt
 from relion.convert import OpticsGroups
 from relion.convert.convert_base import WriterBase
 from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, IMOD_DIR, FRACTIONAL_DOSE, \
     ACQ_ORDER_FILE, CULLED_FILE, SUBTOMO_NAME, COORD_X, COORD_Y, COORD_Z, SHIFTX, SHIFTY, SHIFTZ, ROT, \
     TILT, PSI, TILT_PRIOR, PSI_PRIOR, CLASS_NUMBER, TOMO_PARTICLE_NAME, RANDOM_SUBSET, OPTICS_GROUP, SHIFTX_ANGST, \
-    SHIFTY_ANGST, SHIFTZ_ANGST, CTF_IMAGE, FILE_NOT_FOUND
+    SHIFTY_ANGST, SHIFTZ_ANGST, CTF_IMAGE, FILE_NOT_FOUND, TOMO_PARTICLE_ID, MANIFOLD_INDEX
 import pwem.convert.transformations as tfs
 import numpy as np
 from os.path import join
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from reliontomo.utils import manageDims
 from tomo.constants import BOTTOM_LEFT_CORNER
-from tomo.objects import Coordinate3D, TomoAcquisition
+from tomo.objects import Coordinate3D, TomoAcquisition, SubTomogram
 
 
 class Writer(WriterBase):
@@ -67,21 +67,48 @@ class Writer(WriterBase):
         # Write the STAR file
         tomoTable.write(outStarFileName)
 
-    def writeSetOfSubtomograms(self, subtomoSet, subtomosStar):
+    def writeSetOfSubtomograms(self, coordSet, subtomosStar):
+        tomoTable = Table(columns=self._getSubtomogramStarFileLabels())
+        precedentsSet = coordSet.getPrecedents()
+        sRate = precedentsSet.getSamplingRate()
+        for tomo in precedentsSet:
+            for coord in coordSet.iterCoordinates(volume=tomo):
+                angles, shifts = self._getTransformInfoFromCoordOrSubtomo(coord)
+                # Add row to the table which will be used to generate the STAR file
+                tomoTable.addRow(
+                    coord.getTomoId(),                                           # 1 _rlnTomoName
+                    coord.getObjId(),                                            # 2 _rlnTomoParticleId
+                    coord.getGroupId(),                                          # 3 _rlnTomoManifoldIndex
+                    coord.getX(BOTTOM_LEFT_CORNER),                              # 4 _rlnCoordinateX
+                    coord.getY(BOTTOM_LEFT_CORNER),                              # 5 _rlnCoordinateY
+                    coord.getZ(BOTTOM_LEFT_CORNER),                              # 6 _rlnCoordinateZ
+                    shifts[0] * sRate,                                           # 7 _rlnOriginXAngst
+                    shifts[1] * sRate,                                           # 8 _rlnOriginYAngst
+                    shifts[2] * sRate,                                           # 9 _rlnOriginZAngst
+                    angles[0],                                                   # 10 _rlnAngleRot
+                    angles[1],                                                   # 11 _rlnAngleTilt
+                    angles[2],                                                   # 12 _rlnAnglePsi
+                )
+
+        # Write the STAR file
+        tomoTable.write(subtomosStar)
+
+    def writeSetOfPsudoSubtomograms(self, pSubtomoSet, subtomosStar):
+        # TODO: adapt the getters to the subtomograms extended instead of objects of type PseudoSubtomograms
         currentTomo = ''
         MRC = 'mrc'
         ih = ImageHandler()
-        tomoTable = Table(columns=self._getSubtomogramStarFileLabels())
-        tmpDir = pwutils.getParentFolder(subtomosStar)
-        precedentsSet = subtomoSet.getCoordinates3D().get().getPrecedents()
-        for subtomo in subtomoSet:
-            if pwutils.getExt(subtomo.getFileName().replace(':' + MRC, '')) != '.' + MRC:
-                mrcDir = join(tmpDir, pwutils.removeBaseExt(subtomo.getVolName()))
+        tomoTable = Table(columns=self._getSubtomogramStarFileLabels30())
+        tmpDir = getParentFolder(subtomosStar)
+        precedentsSet = pSubtomoSet.getCoordinates3D().get().getPrecedents()
+        for subtomo in pSubtomoSet:
+            if getExt(subtomo.getFileName().replace(':' + MRC, '')) != '.' + MRC:
+                mrcDir = join(tmpDir, removeBaseExt(subtomo.getVolName()))
                 if currentTomo != subtomo.getVolName():
                     mkdir(mrcDir)
-                mrcFile = join(mrcDir, pwutils.replaceBaseExt(subtomo.getFileName(), MRC))
+                mrcFile = join(mrcDir, replaceBaseExt(subtomo.getFileName(), MRC))
                 ih.convert(subtomo.getFileName(), mrcFile)
-            angles, shifts = self._getTransformInfoFromSubtomo(subtomo)
+            angles, shifts = self._getTransformInfoFromCoordOrSubtomo(subtomo)
             rlnAngleTilt = angles[1]
             rlnAnglePsi = angles[2]
             # Add row to the table which will be used to generate the STAR file
@@ -132,19 +159,14 @@ class Writer(WriterBase):
             return 'Unavailable'
 
     @staticmethod
-    def _getTransformInfoFromSubtomo(subtomo, calcInv=True):
-        angles = [0, 0, 0]
-        shifts = [0, 0, 0]
-        T = subtomo.getTransform()
+    def _getTransformInfoFromCoordOrSubtomo(obj, calcInv=True):
+        M = obj.getMatrix() if type(obj) is Coordinate3D else obj.getTransform().getMatrix()
+        shifts = translation_from_matrix(M)
+        if calcInv:
+            shifts = -shifts
+            M = np.linalg.inv(M)
 
-        if T:  # Alignment performed before
-            M = subtomo.getTransform().getMatrix()
-            shifts = translation_from_matrix(M)
-            if calcInv:
-                shifts = -shifts
-                M = np.linalg.inv(M)
-
-            angles = -np.rad2deg(euler_from_matrix(M, axes='szyz'))
+        angles = -np.rad2deg(euler_from_matrix(M, axes='szyz'))
 
         return angles, shifts
 
@@ -160,23 +182,42 @@ class Writer(WriterBase):
             CULLED_FILE
         ]
 
+    # @staticmethod
+    # def _getSubtomogramStarFileLabels30():
+    #     return [
+    #         TOMO_NAME_30,
+    #         SUBTOMO_NAME,
+    #         COORD_X,
+    #         COORD_Y,
+    #         COORD_Z,
+    #         SHIFTX,
+    #         SHIFTY,
+    #         SHIFTZ,
+    #         ROT,
+    #         TILT,
+    #         PSI,
+    #         TILT_PRIOR,
+    #         PSI_PRIOR,
+    #         CLASS_NUMBER
+    #     ]
+
     @staticmethod
     def _getSubtomogramStarFileLabels():
         return [
             TOMO_NAME,
-            SUBTOMO_NAME,
+            TOMO_PARTICLE_ID,
+            MANIFOLD_INDEX,
             COORD_X,
             COORD_Y,
             COORD_Z,
-            SHIFTX,
-            SHIFTY,
-            SHIFTZ,
+            SHIFTX_ANGST,
+            SHIFTY_ANGST,
+            SHIFTZ_ANGST,
             ROT,
             TILT,
             PSI,
-            TILT_PRIOR,
-            PSI_PRIOR,
-            CLASS_NUMBER
+            # CLASS_NUMBER,
+            # RANDOM_SUBSET
         ]
 
     @staticmethod
@@ -237,9 +278,9 @@ class Writer(WriterBase):
 class Reader:
 
     ALIGNMENT_LABELS = [
-        SHIFTX,
-        SHIFTY,
-        SHIFTZ,
+        SHIFTX_ANGST,
+        SHIFTY_ANGST,
+        SHIFTZ_ANGST,
         ROT,
         TILT,
         PSI,
@@ -252,8 +293,7 @@ class Reader:
         self._alignType = kwargs.get('alignType', ALIGN_NONE)
         self._pixelSize = kwargs.get('pixelSize', 1.0)
 
-    def readPseudoSubtomgramsStarFile(self, starFile, precedents, outputSet):
-        from reliontomo.objects import PseudoSubtomogram
+    def starFile2PseudoSubtomograms(self, starFile, precedents, outputSet):
         tomoTable = Table()
         tomoTable.read(starFile, tableName='particles')
         ih = ImageHandler()
@@ -264,7 +304,7 @@ class Reader:
         opticsGroupStr = OpticsGroups.fromImages(outputSet).toString()
 
         for counter, row in enumerate(tomoTable):
-            psubtomo = PseudoSubtomogram()
+            psubtomo = SubTomogram()
             coordinate3d = Coordinate3D()
             transform = Transform()
             origin = Transform()
@@ -273,26 +313,17 @@ class Reader:
             tomoInd = tsIdList.index(tomoName)
             subtomoFilename = row.get(SUBTOMO_NAME, FILE_NOT_FOUND)
             coordinate3d.setVolume(precedents[tomoInd + 1])  # 3D coord must be referred to a volume to get its origin
-            x = row.get(COORD_X, 0)
-            y = row.get(COORD_Y, 0)
-            z = row.get(COORD_Z, 0)
-            tiltPrior = row.get(TILT_PRIOR, 0)
-            psiPrior = row.get(PSI_PRIOR, 0)
-            coordinate3d.setX(float(x), BOTTOM_LEFT_CORNER)
-            coordinate3d.setY(float(y), BOTTOM_LEFT_CORNER)
-            coordinate3d.setZ(float(z), BOTTOM_LEFT_CORNER)
+            # tiltPrior = row.get(TILT_PRIOR, 0)
+            # psiPrior = row.get(PSI_PRIOR, 0)
 
             psubtomo.setVolName(precedentFileList[tomoInd])
-            psubtomo.setFileName(subtomoFilename)
             psubtomo.setCoordinate3D(coordinate3d)
             psubtomo.setTransform(transform)
             psubtomo.setAcquisition(TomoAcquisition())
             psubtomo.getAcquisition().opticsGroupInfo.set(opticsGroupStr)
-            psubtomo.setClassId(row.get(CLASS_NUMBER, 0))
             psubtomo.setSamplingRate(samplingRate)
-            psubtomo._tiltPriorAngle = Float(tiltPrior)
-            psubtomo._psiPriorAngle = Float(psiPrior)
-            self.__setParticleTransformProj(psubtomo, row)
+            # psubtomo._tiltPriorAngle = Float(tiltPrior)
+            # psubtomo._psiPriorAngle = Float(psiPrior)
 
             # Set the origin and the dimensions of the current subtomogram
             x, y, z, n = ih.getDimensions(subtomoFilename)
@@ -300,19 +331,29 @@ class Reader:
             origin.setShifts(x / -2. * samplingRate, y / -2. * samplingRate, zDim / -2. * samplingRate)
             psubtomo.setOrigin(origin)
 
-            # Set the pseudosubtomogram specific values
-            psubtomo.setTomoParticleName(row.get(TOMO_PARTICLE_NAME, FILE_NOT_FOUND))
-            psubtomo.setRandomSubset(row.get(RANDOM_SUBSET, 0))
-            psubtomo.setOpticsGroupId(row.get(OPTICS_GROUP, 0))
-            psubtomo.setShiftXAngst(row.get(SHIFTX_ANGST, 0))
-            psubtomo.setShiftYAngst(row.get(SHIFTY_ANGST, 0))
-            psubtomo.setShiftZAngst(row.get(SHIFTZ_ANGST, 0))
-            psubtomo.setCtfImage(row.get(CTF_IMAGE, FILE_NOT_FOUND))
+            # Update values of current pseudo subtomogram
+            coordinate3d.setTomoId(row.get(TOMO_NAME))                                     # 1 _rlnTomoName
+            particleId = row.get(TOMO_PARTICLE_ID, counter + 1)                            # 2 _rlnTomoParticleId
+            manifoldInd = row.get(MANIFOLD_INDEX, None)
+            if manifoldInd:
+                psubtomo._manifoldIndex = Integer(manifoldInd)                             # 3 _rlnTomoManifoldIndex
+            coordinate3d.setX(float(x), BOTTOM_LEFT_CORNER)                                # 4 _rlnCoordinateX
+            coordinate3d.setY(float(y), BOTTOM_LEFT_CORNER)                                # 5 _rlnCoordinateX
+            coordinate3d.setZ(float(z), BOTTOM_LEFT_CORNER)                                # 6 _rlnCoordinateX
+            self.__setParticleTransformProj(psubtomo, row)                                 # 7 - 12 rlnOriginAngst and rlnAngles
+            psubtomo.setClassId(row.get(CLASS_NUMBER, -1))                                 # 13 _rlnClassNumber
+            randomSubset = row.get(RANDOM_SUBSET, None)
+            if randomSubset:
+                psubtomo._randomSubset = Integer(randomSubset)                             # 14 _rlnRandomSubset
+            psubtomo._particleName = String(row.get(TOMO_PARTICLE_NAME, FILE_NOT_FOUND))   # 15 _rlnTomoParticleName
+            psubtomo._opticsGroupId = Integer(row.get(OPTICS_GROUP, 1))                    # 16 _rlnOpticsGroup
+            psubtomo.setLocation((particleId, subtomoFilename))                            # 17 _rlnImageName
+            psubtomo._ctfImage = String(row.get(CTF_IMAGE, FILE_NOT_FOUND))                # 18 _rlnCtfImage
 
             # Add current subtomogram to the output set
             outputSet.append(psubtomo)
 
-    def setParticleTransform(self, particle, row):
+    def setParticleTransform(self, particle, row, sRate):
         """ Set the transform values from the row. """
 
         if (self._alignType == ALIGN_NONE) or not row.hasAnyColumn(self.ALIGNMENT_LABELS):
@@ -333,31 +374,31 @@ class Reader:
                                 % self._alignType)
 
         # Call again the modified function
-        self.setParticleTransform(particle, row)
+        self.setParticleTransform(particle, row, sRate)
 
     @staticmethod
-    def __setParticleTransformNone(particle, row):
+    def __setParticleTransformNone(particle, row, sRate):
         particle.setTransform(None)
 
-    def __setParticleTransform2D(self, particle, row):
+    def __setParticleTransform2D(self, particle, row, sRate):
         angles = self._angles
         shifts = self._shifts
 
-        shifts[0] = float(row.get(SHIFTX, 0))
-        shifts[1] = float(row.get(SHIFTY, 0))
+        shifts[0] = float(row.get(SHIFTX_ANGST / sRate, 0))
+        shifts[1] = float(row.get(SHIFTY_ANGST / sRate, 0))
         angles[2] = float(row.get(PSI, 0))
         radAngles = -np.deg2rad(angles)
         M = tfs.euler_matrix(radAngles[0], radAngles[1], radAngles[2], 'szyz')
         M[:3, 3] = shifts[:3]
         particle.getTransform().setMatrix(M)
 
-    def __setParticleTransformProj(self, particle, row):
+    def __setParticleTransformProj(self, particle, row, sRate):
         angles = self._angles
         shifts = self._shifts
 
-        shifts[0] = float(row.get(SHIFTX, 0))
-        shifts[1] = float(row.get(SHIFTY, 0))
-        shifts[2] = float(row.get(SHIFTZ, 0))
+        shifts[0] = float(row.get(SHIFTX_ANGST / sRate, 0))
+        shifts[1] = float(row.get(SHIFTY_ANGST / sRate, 0))
+        shifts[2] = float(row.get(SHIFTZ_ANGST / sRate, 0))
 
         angles[0] = float(row.get(ROT, 0))
         angles[1] = float(row.get(TILT, 0))

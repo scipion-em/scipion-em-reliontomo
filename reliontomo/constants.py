@@ -65,7 +65,9 @@ PSI_PRIOR = 'rlnAnglePsiPrior'
 CLASS_NUMBER = 'rlnClassNumber'
 
 # Relion pseudo-subtomograms
+TOMO_PARTICLE_ID = 'rlnTomoParticleId'
 TOMO_PARTICLE_NAME = 'rlnTomoParticleName'
+MANIFOLD_INDEX = 'rlnTomoManifoldIndex'
 RANDOM_SUBSET = 'rlnRandomSubset'
 OPTICS_GROUP = 'rlnOpticsGroup'
 SHIFTX_ANGST = 'rlnOriginXAngst'

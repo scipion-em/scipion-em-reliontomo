@@ -59,8 +59,7 @@ class ProtRelionPrepareData(EMProtocol):
                       pointerClass='SetOfCTFTomoSeries',
                       label="Input CTF tomo series",
                       important=True,
-                      allowsNull=False,
-                      help='Select the input set of CTF tomo series from the project.')
+                      allowsNull=False)
         form.addParam('handeness', BooleanParam,
                       label='Does focues decrease with Z distance?',
                       default=True,
@@ -114,13 +113,12 @@ class ProtRelionPrepareData(EMProtocol):
                        help='Same as above, in case the Z axis has been flipped. This can be used together with '
                             'the flipYZ option.')
 
-        form.addSection(label='Subtomograms')
-        form.addParam('inputSubtomos', PointerParam,
-                      pointerClass='SetOfSubTomograms',
-                      label="Input set of subtomograms",
+        form.addSection(label='Coordinates')
+        form.addParam('inputCoords', PointerParam,
+                      pointerClass='SetOfCoordinates3D',
+                      label="Input coordinates",
                       important=True,
-                      allowsNull=False,
-                      help='Select the input set of subtomograms from the project.')
+                      allowsNull=False)
         form.addParam('flipZCoords', BooleanParam,
                       label='Flip Z coordinate?',
                       default=False,
@@ -137,10 +135,10 @@ class ProtRelionPrepareData(EMProtocol):
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
         defocusDir = self._getExtraPath(DEFOCUS)
-        if not exists(defocusDir):  # It can exists in case of Continue execution
+        if not exists(defocusDir):  # It can exist in case of Continue execution
             mkdir(defocusDir)
         self.TsSet = self.inputCtfTs.get().getSetOfTiltSeries()
-        self.tomoSet = self.inputSubtomos.get().getCoordinates3D().get().getPrecedents()
+        self.tomoSet = self.inputCoords.get().getPrecedents()
 
     def _convertInputStep(self):
         # Generate defocus files
@@ -159,7 +157,7 @@ class ProtRelionPrepareData(EMProtocol):
                             ctfPlotterParentDir=self._getExtraPath(DEFOCUS),
                             eTomoParentDir=self._getEtomoParentDir())
         # Write the particles star file
-        writeSetOfSubtomograms(self.inputSubtomos.get(),
+        writeSetOfSubtomograms(self.inputCoords.get(),
                                self._getStarFilename(IN_SUBTOMOS_STAR))
 
     def _relionImportTomograms(self):
@@ -206,7 +204,7 @@ class ProtRelionPrepareData(EMProtocol):
         cmd = '--i %s ' % self._getStarFilename(IN_TOMOS_STAR)
         cmd += '--o %s ' % self._getStarFilename(OUT_TOMOS_STAR)
         cmd += '--hand %s ' % self._decodeHandeness()
-        cmd += '--angpix %s ' % self.inputSubtomos.get().getSamplingRate()
+        cmd += '--angpix %s ' % self.TsSet.getSamplingRate()
         cmd += '--voltage %s ' % acq.getVoltage()
         cmd += '--Cs %s ' % acq.getSphericalAberration()
         cmd += '--Q0 %s ' % acq.getAmplitudeContrast()
