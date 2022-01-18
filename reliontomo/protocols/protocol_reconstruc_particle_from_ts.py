@@ -50,19 +50,21 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self._relionReconstructParticle)
+        self._initialize()
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.relionReconstructParticle)
         self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
-    def _relionReconstructParticle(self):
+    def relionReconstructParticle(self):
         Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_particle', self._genRecParticleCmd(),
                              numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
-        protPrepDataInputSubtomos = self.inputPrepareDataProt.get().inputSubtomos.get()
+        protPrepDataInputTs = self.inputPrepareDataProt.get().inputCtfTs.get().getSetOfTiltSeries()
         vol = AverageSubTomogram()
         vol.setFileName(self._getExtraPath('merged.mrc'))
-        vol.setSamplingRate(protPrepDataInputSubtomos.getSamplingRate())
+        vol.setSamplingRate(protPrepDataInputTs.getSamplingRate())
         self._defineOutputs(outputVolume=vol)
 
     # -------------------------- INFO functions -------------------------------

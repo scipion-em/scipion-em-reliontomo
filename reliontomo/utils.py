@@ -65,3 +65,7 @@ def _gen2LevelBaseName(fullFileName):
         return fullFileName
     else:
         return parts[-2] + '_' + parts[-1]
+
+
+def isPseudoSubtomogram(subtomo):
+    return hasattr(subtomo, '_ctfImage')

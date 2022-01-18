@@ -29,7 +29,7 @@ from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, PathParam, BooleanParam, LEVEL_ADVANCED, EnumParam
 from reliontomo import Plugin
-from reliontomo.constants import IN_TOMOS_STAR, IN_SUBTOMOS_STAR, OUT_TOMOS_STAR
+from reliontomo.constants import IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR
 from reliontomo.convert import writeSetOfTomograms, writeSetOfSubtomograms
 
 # eTomo data source choices
@@ -159,7 +159,7 @@ class ProtRelionPrepareData(EMProtocol):
                             eTomoParentDir=self._getEtomoParentDir())
         # Write the particles star file
         writeSetOfSubtomograms(self.inputCoords.get(),
-                               self._getStarFilename(IN_SUBTOMOS_STAR),
+                               self._getStarFilename(IN_COORDS_STAR),
                                coordsScale=self.tomoSet.getSamplingRate() / self.tsSet.getSamplingRate())
 
     def relionImportTomograms(self):
@@ -227,7 +227,7 @@ class ProtRelionPrepareData(EMProtocol):
         return cmd
 
     def _genImportSubtomosCmd(self):
-        cmd = '--i %s ' % self._getStarFilename(IN_SUBTOMOS_STAR)
+        cmd = '--i %s ' % self._getStarFilename(IN_COORDS_STAR)
         cmd += '--o %s ' % self._getExtraPath()
         cmd += '--t %s ' % self._getStarFilename(OUT_TOMOS_STAR)
         if self.flipZCoords.get():

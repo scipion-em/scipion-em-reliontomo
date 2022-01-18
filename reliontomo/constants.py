@@ -84,6 +84,8 @@ TILT_COM = 'tilt.com'
 # Data preparation
 IN_TOMOS_STAR = 'inTomos.star'
 OUT_TOMOS_STAR = 'outTomos.star'
+IN_COORDS_STAR = 'inCoords.star'
+OUT_COORDS_STAR = 'outCoords.star'
 IN_SUBTOMOS_STAR = 'inSubtomos.star'
 OUT_SUBTOMOS_STAR = 'particles.star'
 

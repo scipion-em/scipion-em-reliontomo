@@ -67,9 +67,9 @@ class Writer(WriterBase):
         # Write the STAR file
         tomoTable.write(outStarFileName)
 
-    def writeSetOfSubtomograms(self, coordSet, subtomosStar, coordsScale=1):
+    def SetOfCoordinates2Star(self, coordSet, subtomosStar, coordsScale=1):
         """Input coordsScale is used to scale the coordinates so they are expressed in bin 1, as expected by Relion 4"""
-        tomoTable = Table(columns=self._getSubtomogramStarFileLabels())
+        tomoTable = Table(columns=self._getCoordinatesStarFileLabels())
         precedentsSet = coordSet.getPrecedents()
         sRate = precedentsSet.getSamplingRate()
         for tomo in precedentsSet:
@@ -88,6 +88,7 @@ class Writer(WriterBase):
                     shifts[0] * sRate,                                           # 7 _rlnOriginXAngst
                     shifts[1] * sRate,                                           # 8 _rlnOriginYAngst
                     shifts[2] * sRate,                                           # 9 _rlnOriginZAngst
+                    # Angles in degrees
                     angles[0],                                                   # 10 _rlnAngleRot
                     angles[1],                                                   # 11 _rlnAngleTilt
                     angles[2],                                                   # 12 _rlnAnglePsi
@@ -96,40 +97,38 @@ class Writer(WriterBase):
         # Write the STAR file
         tomoTable.write(subtomosStar)
 
-    def writeSetOfPsudoSubtomograms(self, pSubtomoSet, subtomosStar):
-        # TODO: adapt the getters to the subtomograms extended instead of objects of type PseudoSubtomograms
-        currentTomo = ''
+    def SetOfPsudoSubtomograms2Star(self, pSubtomoSet, subtomosStar):
         MRC = 'mrc'
-        ih = ImageHandler()
-        tomoTable = Table(columns=self._getSubtomogramStarFileLabels30())
-        tmpDir = getParentFolder(subtomosStar)
+        sRate = pSubtomoSet.getSamplingRate()
+        tomoTable = Table(columns=self._getPseudoSubtomogramStarFileLabels())
         precedentsSet = pSubtomoSet.getCoordinates3D().get().getPrecedents()
         for subtomo in pSubtomoSet:
-            if getExt(subtomo.getFileName().replace(':' + MRC, '')) != '.' + MRC:
-                mrcDir = join(tmpDir, removeBaseExt(subtomo.getVolName()))
-                if currentTomo != subtomo.getVolName():
-                    mkdir(mrcDir)
-                mrcFile = join(mrcDir, replaceBaseExt(subtomo.getFileName(), MRC))
-                ih.convert(subtomo.getFileName(), mrcFile)
+            coord = subtomo.getCoordinate3D()
             angles, shifts = self._getTransformInfoFromCoordOrSubtomo(subtomo)
-            rlnAngleTilt = angles[1]
-            rlnAnglePsi = angles[2]
             # Add row to the table which will be used to generate the STAR file
             tomoTable.addRow(
                 self._getPrecedentTsIdFromSubtomo(subtomo, precedentsSet),   # _rlnTomoName #1
-                subtomo.getFileName().replace(':' + MRC, ''),                # _rlnImageName #2
-                subtomo.getCoordinate3D().getX(BOTTOM_LEFT_CORNER),          # _rlnCoordinateX #3
-                subtomo.getCoordinate3D().getY(BOTTOM_LEFT_CORNER),          # _rlnCoordinateY #4
-                subtomo.getCoordinate3D().getZ(BOTTOM_LEFT_CORNER),          # _rlnCoordinateZ #5
-                shifts[0],                                                   # _rlnOriginX #6
-                shifts[1],                                                   # _rlnOriginY #7
-                shifts[2],                                                   # _rlnOriginZ #8
-                angles[0],                                                   # _rlnAngleRot #9
-                rlnAngleTilt,                                                # _rlnAngleTilt #10
-                rlnAnglePsi,                                                 # _rlnAnglePsi #11
-                getattr(subtomo, '_tiltPriorAngle', rlnAngleTilt),           # _rlnAngleTiltPrior #12
-                getattr(subtomo, '_psiPriorAngle', rlnAnglePsi),             # _rlnAnglePsiPrior #13
-                getattr(subtomo, '_getClassId', 0)                           # _rlnClassNumber #14
+                subtomo.getObjId(),                                          # rlnTomoParticleId #2
+                coord.getGroupId(),                                          # rlnTomoManifoldIndex #3
+                # Coords in pixels
+                coord.getX(BOTTOM_LEFT_CORNER),                              # _rlnCoordinateX #4
+                coord.getY(BOTTOM_LEFT_CORNER),                              # _rlnCoordinateY #5
+                coord.getZ(BOTTOM_LEFT_CORNER),                              # _rlnCoordinateZ #6
+                # pix * Å/pix = [shifts in Å]
+                shifts[0] * sRate,                                           # _rlnOriginXAngst #7
+                shifts[1] * sRate,                                           # _rlnOriginYAngst #8
+                shifts[2] * sRate,                                           # _rlnOriginZAngst #9
+                # Angles in degrees
+                angles[0],                                                   # _rlnAngleRot #10
+                angles[1],                                                   # _rlnAngleTilt #11
+                angles[2],                                                   # _rlnAnglePsi #12
+
+                getattr(subtomo, '_getClassId', 0),                          # _rlnClassNumber #13
+                subtomo._randomSubset,                                       # _rlnRandomSubset #14
+                subtomo._particleName,                                       # _rlnTomoParticleName #15
+                subtomo._opticsGroup,                                        # _rlnOpticsGroup #16
+                subtomo.getFileName().replace(':' + MRC, ''),                # _rlnImageName #17
+                subtomo._ctfImage                                            # _rlnCtfImage #18
             )
 
         # Write the STAR file
@@ -186,7 +185,7 @@ class Writer(WriterBase):
         ]
 
     @staticmethod
-    def _getSubtomogramStarFileLabels():
+    def _getCoordinatesStarFileLabels():
         return [
             TOMO_NAME,
             TOMO_PARTICLE_ID,
@@ -204,29 +203,16 @@ class Writer(WriterBase):
 
     @staticmethod
     def _getPseudoSubtomogramStarFileLabels():
-        return [
-            TOMO_NAME,
-            SUBTOMO_NAME,
-            COORD_X,
-            COORD_Y,
-            COORD_Z,
-            SHIFTX,
-            SHIFTY,
-            SHIFTZ,
-            ROT,
-            TILT,
-            PSI,
-            TILT_PRIOR,
-            PSI_PRIOR,
+        pSubtomosLabels = Writer._getCoordinatesStarFileLabels()
+        pSubtomosLabels.extend([
             CLASS_NUMBER,
-            TOMO_PARTICLE_NAME,
             RANDOM_SUBSET,
+            TOMO_PARTICLE_NAME,
             OPTICS_GROUP,
-            SHIFTX_ANGST,
-            SHIFTY_ANGST,
-            SHIFTZ_ANGST,
+            SUBTOMO_NAME,
             CTF_IMAGE
-        ]
+        ])
+        return pSubtomosLabels
 
     @staticmethod
     def _getCtfPlotterFile(tsId, ctfPlotterDir):

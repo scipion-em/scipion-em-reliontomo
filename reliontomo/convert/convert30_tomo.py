@@ -66,7 +66,8 @@ class Writer(WriterBase):
      interface as the new Writer class.
     """
 
-    def writeSetOfSubtomograms(self, subtomoSet, subtomosStar, isPyseg=False, **kwargs):
+    @staticmethod
+    def writeSetOfSubtomograms(subtomoSet, subtomosStar, isPyseg=False):
         currentTomo = ''
         MRC = 'mrc'
         ih = ImageHandler()

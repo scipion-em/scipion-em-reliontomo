@@ -98,7 +98,7 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
         outputSet.setSamplingRate(protPrepData.inputCtfTs.get().getSetOfTiltSeries().getSamplingRate())
         precedents = protPrepData.inputCoords.get().getPrecedents()
         readSetOfPseudoSubtomograms(starFile, precedents, outputSet)  # Tomograms are necessary for coordinates in Scipion data model
-        self._defineOutputs(outputPseudoSubtomogram=outputSet)
+        self._defineOutputs(outputPseudoSubtomograms=outputSet)
 
     # # -------------------------- INFO functions -------------------------------
     def _validate(self):

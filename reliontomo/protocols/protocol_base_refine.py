@@ -29,7 +29,8 @@ from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, StringParam, BooleanParam, \
     EnumParam, PathParam, FloatParam, LEVEL_NORMAL, GE, LE
 from pyworkflow.utils import Message
-from reliontomo.constants import ANGULAR_SAMPLING_LIST, OUT_SUBTOMOS_STAR, SYMMETRY_HELP_MSG
+from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, IN_SUBTOMOS_STAR
+from reliontomo.convert import writeSetOfPseudoSubtomograms
 
 
 class ProtRelionRefineBase(EMProtocol):
@@ -39,6 +40,10 @@ class ProtRelionRefineBase(EMProtocol):
 
     # -------------------------- DEFINE param functions -----------------------
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.inParticlesStar = self._getExtraPath(IN_SUBTOMOS_STAR)
+
     def _defineParams(self, form):
         pass
 
@@ -47,8 +52,8 @@ class ProtRelionRefineBase(EMProtocol):
     def _defineIOParams(form):
         form.addSection(label=Message.LABEL_INPUT)
         form.addParam('inputPseudoSubtomos', PointerParam,
-                      pointerClass='SetOfPseudoSubtomograms',
-                      label="Input pseudo-subtomograms",
+                      pointerClass='SetOfSubtomograms',
+                      label="Input subtomograms",
                       important=True,
                       allowsNull=False)
 
@@ -293,6 +298,9 @@ class ProtRelionRefineBase(EMProtocol):
     def _insertAllSteps(self):
         pass
 
+    def convertInputStep(self):
+        writeSetOfPseudoSubtomograms(self.inputPseudoSubtomos.get(), self.inParticlesStar)
+
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
         pass
@@ -308,7 +316,7 @@ class ProtRelionRefineBase(EMProtocol):
         return cmd
 
     def _genIOBaseCmd(self):
-        cmd = '--i %s ' % self.inputPseudoSubtomos.get().getStarFile()
+        cmd = '--i %s ' % self.inParticlesStar
         cmd += '--o %s ' % (self._getExtraPath() + '/')  # If not, Relion will concatenate it directly as a prefix
         cmd += '--j %i ' % self.numberOfThreads
         return cmd

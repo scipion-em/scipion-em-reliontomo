@@ -26,9 +26,9 @@ from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, FloatParam, StringParam
 from pyworkflow.utils import Message, createLink
-from reliontomo.constants import OUT_TOMOS_STAR, OUT_SUBTOMOS_STAR, IN_SUBTOMOS_STAR
-from reliontomo.convert import writeSetOfSubtomograms
-from reliontomo.utils import getFileFromDataPrepProt
+from reliontomo.constants import OUT_TOMOS_STAR, OUT_SUBTOMOS_STAR, IN_SUBTOMOS_STAR, OUT_COORDS_STAR, IN_TOMOS_STAR
+from reliontomo.convert import writeSetOfPseudoSubtomograms
+from reliontomo.utils import getFileFromDataPrepProt, isPseudoSubtomogram
 
 
 class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
@@ -41,6 +41,7 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.inParticlesStar = None
+        self.inTomosStar = None
 
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
@@ -99,25 +100,31 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
 
     def _initialize(self):
         self.inParticlesStar = self._getExtraPath(IN_SUBTOMOS_STAR)
-        # self.InParticles =
+        self.inTomosStar = self._getExtraPath(IN_TOMOS_STAR)
+        createLink(getFileFromDataPrepProt(self, OUT_TOMOS_STAR), self.inTomosStar)
 
     def convertInputStep(self):
         if self.inputParticles.get():
             # write star file
-            writeSetOfSubtomograms(self.inputParticles.get(), self.inParticlesStar)
+            writeSetOfPseudoSubtomograms(self.inputParticles.get(), self.inParticlesStar)
         else:
             # Create a symbolic link
             createLink(getFileFromDataPrepProt(self, OUT_SUBTOMOS_STAR), self.inParticlesStar)
 
     # # -------------------------- INFO functions -------------------------------
     def _validate(self):
-        pass
+        errorMsg = []
+        if self.inputParticles.get():
+            if not isPseudoSubtomogram(self.inputParticles.get().getFirstElement()):
+                errorMsg.append('Introduced subtomograms do not contain the required data to be considered '
+                                'pseudosubtomograms. This set can be generated using the output of the protocol for '
+                                'preparing the data for Relion 4.')
 
     # # --------------------------- UTILS functions -----------------------------
     def _genCommonCmd(self):
         cmd = ''
-        cmd += '--t %s ' % getFileFromDataPrepProt(self, OUT_TOMOS_STAR)
-        cmd += '--p %s ' % getFileFromDataPrepProt(self, OUT_SUBTOMOS_STAR)
+        cmd += '--t %s ' % self.inTomosStar
+        cmd += '--p %s ' % self.inParticlesStar
         if self.inputTrajectory.get():
             cmd += '--mot %s ' % self.inputTrajectory.get()
         cmd += '--b %i ' % self.boxSize.get()
