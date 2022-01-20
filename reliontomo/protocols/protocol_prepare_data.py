@@ -49,7 +49,7 @@ class ProtRelionPrepareData(EMProtocol):
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)
         self.tsSet = None
-        self.tomoSet = None
+        self.coordScale = 1
 
     # -------------------------- DEFINE param functions -----------------------
 
@@ -138,8 +138,13 @@ class ProtRelionPrepareData(EMProtocol):
         defocusDir = self._getExtraPath(DEFOCUS)
         if not exists(defocusDir):  # It can exist in case of Continue execution
             mkdir(defocusDir)
-        self.tsSet = self.inputCtfTs.get().getSetOfTiltSeries()
-        self.tomoSet = self.inputCoords.get().getPrecedents()
+        tsSet = self.inputCtfTs.get().getSetOfTiltSeries()
+        tomoSet = self.inputCoords.get().getPrecedents()
+        self.tsSet = tsSet
+        # If coordinates are referred to a set of tomograms, they'll be rescaled to be expressed in bin 1, as the
+        # ts images
+        if tomoSet:
+            self.coordScale = tomoSet.getSamplingRate() / tsSet.getSamplingRate()
 
     def convertInputStep(self):
         # Generate defocus files
@@ -151,16 +156,16 @@ class ProtRelionPrepareData(EMProtocol):
                                               join(defocusPath, ctfTomo.getTsId() + '.' + DEFOCUS),
                                               isRelion=True)
         # Write the tomograms star file
-        writeSetOfTomograms(self.tomoSet,
+        writeSetOfTomograms(self.tsSet,
                             self._getStarFilename(IN_TOMOS_STAR),
                             prot=self,
-                            tsSet=self.tsSet,
                             ctfPlotterParentDir=self._getExtraPath(DEFOCUS),
                             eTomoParentDir=self._getEtomoParentDir())
         # Write the particles star file
         writeSetOfSubtomograms(self.inputCoords.get(),
                                self._getStarFilename(IN_COORDS_STAR),
-                               coordsScale=self.tomoSet.getSamplingRate() / self.tsSet.getSamplingRate())
+                               sRate=self.tsSet.getSamplingRate(),
+                               coordsScale=self.coordScale)
 
     def relionImportTomograms(self):
         Plugin.runRelionTomo(self, 'relion_tomo_import_tomograms', self._genImportTomosCmd())
@@ -194,14 +199,14 @@ class ProtRelionPrepareData(EMProtocol):
 
         return errorMsg
 
-    def _summary(self):
-        summary = []
-        if self.isFinished():
-            sRate = self.inputCoords.get().getPrecedents().getSamplingRate() / \
-                    self.inputCtfTs.get().getSetOfTiltSeries().getSamplingRate()
-            summary.append('Coordinates scaled to factor TS_SamplingRate / Coords_SamplingRate = %.2f' % sRate)
-
-        return summary
+    # def _summary(self):
+    #     summary = []
+    #     if self.isFinished():
+    #         sRate = self.inputCoords.get().getPrecedents().getSamplingRate() / \
+    #                 self.inputCtfTs.get().getSetOfTiltSeries().getSamplingRate()
+    #         summary.append('Coordinates scaled to factor TS_SamplingRate / Coords_SamplingRate = %.2f' % sRate)
+    #
+    #     return summary
 
     # --------------------------- UTILS functions -----------------------------
     def _getEtomoParentDir(self):

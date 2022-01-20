@@ -29,13 +29,13 @@ from pwem.emlib.image import ImageHandler
 from pwem.objects import Transform
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
-from pyworkflow.protocol import FileParam, FloatParam, IntParam
+from pyworkflow.protocol import FileParam, FloatParam, IntParam, PointerParam
 from pyworkflow.utils import Message, removeBaseExt, getParentFolder
-from reliontomo.constants import TOMO_NAME_30, PIXEL_SIZE, SUBTOMO_NAME, FILE_NOT_FOUND
-from reliontomo.convert import createReaderTomo30
+from reliontomo.constants import TOMO_NAME_30, PIXEL_SIZE, SUBTOMO_NAME, FILE_NOT_FOUND, TOMO_NAME
+from reliontomo.convert import createReaderTomo
 from reliontomo.utils import _getAbsPath, manageDims
 from tomo.protocols.protocol_base import ProtTomoBase
-from tomo.objects import SetOfTomograms, TomoAcquisition, Tomogram
+from tomo.objects import SetOfTomograms, TomoAcquisition, Tomogram, SetOfCoordinates3D
 
 
 class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
@@ -48,6 +48,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         self.linkedStarFileName = None
         self.linkedTomosDirName = 'tomograms'
         self.reader = None
+        self.isReader40 = None
         self.sRate = None
         self.starFilePath = None
         self.isSubtomoStarFile = False
@@ -56,6 +57,12 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         form.addSection(label=Message.LABEL_INPUT)
         form.addParam('starFile', FileParam,
                       label='Star file')
+        form.addParam('inTiltSeries', PointerParam,
+                      pointerClass='SetOfTiltSeries',
+                      label='Set of tilt series (opt.)',
+                      allowsNull=True,
+                      help='Only required if the coordinates are desired to be referred to the corresponding tilt, '
+                           'series, like in the case of per-particle per-tilt procedure.')
         form.addParam('samplingRate', FloatParam,
                       label='Sampling rate [Å/pix] (opt.)',
                       allowsNull=True,
@@ -77,7 +84,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         newStarName = self._getExtraPath(self.linkedStarFileName)
         symlink(self.starFile.get(), newStarName)
         # Read the star file
-        self.reader = createReaderTomo30(starFile=newStarName)
+        self.reader, self.isReader40 = createReaderTomo(starFile=newStarName)
         # Generate the firectoy in which the linked tomograms pointed from the star file will be stored
         mkdir(self._getExtraPath(self.linkedTomosDirName))
         if self.samplingRate.get():
@@ -86,35 +93,60 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
             self.sRate = float(self.reader.dataTable[0].get(PIXEL_SIZE))
 
     def _importStep(self):
+        coordSet = SetOfCoordinates3D.create(self._getPath(), template='coordinates%s.sqlite')
         # Generate the precedents (set of tomograms which the coordinates are referred to) if necessary
-        tomoPrecedentsSet = SetOfTomograms.create(self._getPath(), template='tomograms%s.sqlite')
-        tomoPrecedentsSet.setSamplingRate(self.sRate)
-        tomoPrecedentsSet.setAcquisition(TomoAcquisition(angleMin=-60, angleMax=60, step=3))  # Generic values
-        self._fillPrecedentsSet(tomoPrecedentsSet)
+        if self.isReader40:
+            precedentsSet = self.inTiltSeries.get()
+        else:
+            precedentsSet = SetOfTomograms.create(self._getPath(), template='tomograms%s.sqlite')
+            precedentsSet.setSamplingRate(self.sRate)
+            precedentsSet.setAcquisition(TomoAcquisition(angleMin=-60, angleMax=60, step=3))  # Generic values
+            self._fillPrecedentsSet(precedentsSet)
+            self._defineOutputs(outputTomograms=precedentsSet)
 
         # Read the star file and generate the corresponding set
-        coordSet = self._createSetOfCoordinates3D(tomoPrecedentsSet)
+        # coordSet = self._createSetOfCoordinates3D(precedentsSet)
         coordSet.setSamplingRate(self.sRate)
         coordSet.setBoxSize(self.boxSize.get())
-        self.reader.starFile2Coords3D(coordSet, tomoPrecedentsSet)
+        self.reader.starFile2Coords3D(coordSet, precedentsSet)
 
-        self._defineOutputs(outputTomograms=tomoPrecedentsSet)
         self._defineOutputs(outputCoordinates=coordSet)
-        self._defineSourceRelation(tomoPrecedentsSet, coordSet)
+        self._defineSourceRelation(precedentsSet, coordSet)
 
     # --------------------------- INFO functions ------------------------------
 
     def _validate(self):
+        # TODO: check the tsid and tomoname for reader40, CASE PARTIAL MATCHING --> VALIDATE OR WARNING IN SUMMARY
         errors = []
         if not exists(self.starFile.get()):
             errors.append('It was not possible to locate the introduced file. Please check the path.')
 
         # Check if the files referred in the star file exists
-        reader = createReaderTomo30(starFile=self.starFile.get())
+        reader, isReader40 = createReaderTomo(starFile=self.starFile.get())
         errorsInPointedFiles = self._checkFilesPointedFromStarFile(getParentFolder(self.starFile.get()),
-                                                                   reader.dataTable, self.isSubtomoStarFile)
+                                                                   reader.dataTable,
+                                                                   self.isSubtomoStarFile,
+                                                                   isReader40)
         if errorsInPointedFiles:
             errors.append(errorsInPointedFiles)
+
+        # In the case of a reader of type 40, the tomoName and the tilt series id must match
+        if isReader40:
+            if self.inTiltSeries.get():
+                tsIds = [ts.getTsId() for ts in self.inTiltSeries.get()]
+                if tsIds:
+                    coordTomoIds = list(set([row.get(TOMO_NAME) for row in reader.dataTable]))
+                    nonMatchingCoorTomoIds = [coordTomoId for coordTomoId in coordTomoIds if coordTomoId not in tsIds]
+                    if len(nonMatchingCoorTomoIds) == len(coordTomoIds):
+                        errors.append('No matchings were found between the\n'
+                                      '\t-Coordinates rlnTomoName [%s]\n'
+                                      '\t-Tilt series tsId [%s]' % (', '.join(coordTomoIds), ', '.join(tsIds)))
+                else:
+                    errors.append('TsId is empty in the introduced tilt series. It is not possible to match the '
+                                  'coordintates and the tilt series in that case.')
+            else:
+                errors.append('A valid set of tilt series is required to match the coordinates in the case of a star '
+                              'file of type Relion4.')
 
         # The sampling rate will be read from the star file if the corresponding field is present in case
         # the user didn't introduce a value for that parameter in the protocol form.
@@ -127,7 +159,8 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
     def _summary(self):
         summary = []
         if self.isFinished():
-            summary.append('The output set of tomogrmas was generated using the data read from the star file.')
+            if hasattr(self, 'outputTomograms'):
+                summary.append('The output set of tomogrmas was generated using the data read from the star file.')
             if not self.samplingRate.get():
                 summary.append('The sampling rate considered was the one read from the star file.')
 
@@ -174,31 +207,44 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         tomoSet.write()
         self._store(tomoSet)
 
-    def _checkFilesPointedFromStarFile(self, starFilePath, dataTable, isSubtomoStarFile=False):
+    def _checkFilesPointedFromStarFile(self, starFilePath, dataTable, isSubtomoStarFile=False, isReader40=True):
         errorsFound = ''
+        filesPattern = ''
+        fields2check = []
         # Check if the corresponding fields exists in the introduced star file
-        fields2check = [TOMO_NAME_30]
-        filesPattern = '\tRow %i - %s\n'
         if isSubtomoStarFile:
-            fields2check = [TOMO_NAME_30, SUBTOMO_NAME]
-            filesPattern = '\tRow %i - %s - %s\n'
+            if isReader40:
+                filesPattern = '\tRow %i - %s\n'
+                fields2check = [SUBTOMO_NAME]
+            else:
+                filesPattern = '\tRow %i - %s - %s\n'
+                fields2check = [TOMO_NAME_30, SUBTOMO_NAME]
+        else:
+            if not isReader40:
+                filesPattern = '\tRow %i - %s\n'
+                fields2check = [TOMO_NAME_30]
 
         errorsFound += self._checkFieldsInDataTable(dataTable, fields2check)
         # Check if the files pointed from those fields exist
-        if not errorsFound:
+        if errorsFound:
             if isSubtomoStarFile:
                 filesErrorMsgHead = 'The following files were not found [row, tomoFile, subtomoFile]:\n'
                 for counter, row in enumerate(dataTable):
-                    tomoFileNotFound = self._fileNotFound(row, TOMO_NAME_30, starFilePath)
                     subtomoFileNotFound = self._fileNotFound(row, SUBTOMO_NAME, starFilePath)
-                    if tomoFileNotFound or subtomoFileNotFound:
-                        errorsFound += filesPattern % (counter, tomoFileNotFound, subtomoFileNotFound)
+                    if isReader40:
+                        if subtomoFileNotFound:
+                            errorsFound += filesPattern % (counter, subtomoFileNotFound)
+                    else:
+                        tomoFileNotFound = self._fileNotFound(row, TOMO_NAME_30, starFilePath)
+                        if tomoFileNotFound or subtomoFileNotFound:
+                            errorsFound += filesPattern % (counter, tomoFileNotFound, subtomoFileNotFound)
             else:
                 filesErrorMsgHead = 'The following files were not found [row, tomoFile]:\n'
                 for counter, row in enumerate(dataTable):
-                    fileNotFound = self._fileNotFound(row, TOMO_NAME_30, starFilePath)
-                    if fileNotFound:
-                        errorsFound += filesPattern % (counter, fileNotFound)
+                    if not isReader40:
+                        fileNotFound = self._fileNotFound(row, TOMO_NAME_30, starFilePath)
+                        if fileNotFound:
+                            errorsFound += filesPattern % (counter, fileNotFound)
 
             if errorsFound:
                 errorsFound = filesErrorMsgHead + errorsFound
@@ -208,11 +254,12 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
     @staticmethod
     def _checkFieldsInDataTable(dataTable, fieldList):
         fieldErrors = ''
-        fieldNotFoundPattern = 'Fields %s were not found in the star file introduced.\n'
-        notFoundFields = [field for field in fieldList if not dataTable.hasColumn(field)]
-        if notFoundFields:
-            pattern = '[%s]' % (' '.join(notFoundFields))
-            fieldErrors = (fieldNotFoundPattern % pattern)
+        if fieldList:
+            fieldNotFoundPattern = 'Fields %s were not found in the star file introduced.\n'
+            notFoundFields = [field for field in fieldList if not dataTable.hasColumn(field)]
+            if notFoundFields:
+                pattern = '[%s]' % (' '.join(notFoundFields))
+                fieldErrors = (fieldNotFoundPattern % pattern)
 
         return fieldErrors
 

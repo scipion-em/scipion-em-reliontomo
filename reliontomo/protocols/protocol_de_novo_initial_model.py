@@ -37,7 +37,7 @@ from reliontomo.utils import getProgram
 class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
     """Generate a de novo 3D initial model from the pseudo-subtomograms."""
 
-    _label = 'Generate a de novo 3D initial model from the pseudo-subtomograms'
+    _label = 'De novo 3D initial model'
 
     def __init__(self, **args):
         ProtRelionRefineBase.__init__(self, **args)
@@ -70,16 +70,17 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self._generateDeNovo3DModel)
-        self._insertFunctionStep(self._alignSymmetry)
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.generateDeNovo3DModel)
+        self._insertFunctionStep(self.alignSymmetry)
         self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
-    def _generateDeNovo3DModel(self):
+    def generateDeNovo3DModel(self):
         Plugin.runRelionTomo(self, getProgram('relion_refine', self.numberOfMpi.get()), self._genInitModelCommand(),
                              numberOfMpi=self.numberOfMpi.get())
 
-    def _alignSymmetry(self):
+    def alignSymmetry(self):
         Plugin.runRelionTomo(self, 'relion_align_symmetry', self._genApplySymCmd())
 
     def createOutputStep(self):

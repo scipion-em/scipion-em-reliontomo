@@ -24,6 +24,10 @@
 # **************************************************************************
 from os.path import isabs, join
 
+import numpy as np
+
+from pwem.convert import transformations
+
 
 def getProgram(program, nMpi):
     """ Get the program name depending on the MPI use or not."""
@@ -69,3 +73,22 @@ def _gen2LevelBaseName(fullFileName):
 
 def isPseudoSubtomogram(subtomo):
     return hasattr(subtomo, '_ctfImage')
+
+
+def getTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, invert):
+    shifts = (float(shiftx), float(shifty), float(shiftz))
+    angles = (float(rot), float(tilt), float(psi))
+    radAngles = -np.deg2rad(angles)
+    M = transformations.euler_matrix(radAngles[0], radAngles[1], radAngles[2], 'szyz')
+    if invert:
+        M[0, 3] = -shifts[0]
+        M[1, 3] = -shifts[1]
+        M[2, 3] = -shifts[2]
+        M = np.linalg.inv(M)
+    else:
+        M[0, 3] = shifts[0]
+        M[1, 3] = shifts[1]
+        M[2, 3] = shifts[2]
+
+    return M
+

@@ -96,8 +96,7 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
         outputSet = self._createSet(SetOfSubTomograms, 'subtomograms%s.sqlite', '')
         outputSet.getAcquisition().opticsGroupInfo.set(OpticsGroups.fromStar(starFile).toString())
         outputSet.setSamplingRate(protPrepData.inputCtfTs.get().getSetOfTiltSeries().getSamplingRate())
-        precedents = protPrepData.inputCoords.get().getPrecedents()
-        readSetOfPseudoSubtomograms(starFile, precedents, outputSet)  # Tomograms are necessary for coordinates in Scipion data model
+        readSetOfPseudoSubtomograms(starFile, outputSet)
         self._defineOutputs(outputPseudoSubtomograms=outputSet)
 
     # # -------------------------- INFO functions -------------------------------

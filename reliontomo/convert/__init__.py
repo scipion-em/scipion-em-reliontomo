@@ -1,4 +1,7 @@
+from emtable import Table
+
 from reliontomo import Plugin
+from reliontomo.constants import TOMO_NAME_30
 from reliontomo.convert import convert40_tomo, convert30_tomo
 
 
@@ -19,13 +22,13 @@ def createWriterTomo40(**kwargs):
 
 
 def writeSetOfPseudoSubtomograms(imgSet, starFile, **kwargs):
-    return createWriterTomo40(**kwargs).SetOfPsudoSubtomograms2Star(imgSet, starFile)
+    return createWriterTomo40(**kwargs).pseudoSubtomograms2Star(imgSet, starFile)
 
 
 def writeSetOfSubtomograms(imgSet, starFile, **kwargs):
     """ Convenience function to write a SetOfSubtomograms as Relion metadata using a Writer."""
     if Plugin.isRe40():
-        return createWriterTomo40(**kwargs).SetOfCoordinates2Star(imgSet, starFile, **kwargs)
+        return createWriterTomo40(**kwargs).coordinates2Star(imgSet, starFile, **kwargs)
     else:
         return createWriterTomo30(**kwargs).writeSetOfSubtomograms(imgSet, starFile, **kwargs)
 
@@ -33,22 +36,44 @@ def writeSetOfSubtomograms(imgSet, starFile, **kwargs):
 def writeSetOfTomograms(imgSet, starFile, **kwargs):
     """ Convenience function to write a SetOfTomograms as Relion metadata using a Writer."""
     # There's no tomogram star file in Relion3
-    return createWriterTomo40(**kwargs).writeSetOfTomograms(imgSet, starFile, **kwargs)
+    return createWriterTomo40(**kwargs).tiltSeries2Star(imgSet, starFile, **kwargs)
 
 
-def createReaderTomo30(starFile=None, **kwargs):
-    """ Create a new Reader instance for Relion 3."""
-    reader = convert30_tomo.Reader(**kwargs)
+# def createReaderTomo30(starFile=None, **kwargs):
+#     """ Create a new Reader instance for Relion 3."""
+#     reader = convert30_tomo.Reader(**kwargs)
+#     if starFile:
+#         reader.read(starFile)
+#     return reader
+#
+#
+# def createReaderTomo40(**kwargs):
+#     """ Create a new Reader instance for Relion 4."""
+#     Reader = convert40_tomo.Reader
+#     return Reader(**kwargs)
+
+
+def createReaderTomo(starFile=None, **kwargs):
     if starFile:
+        dataTable = Table()
+        dataTable.read(starFile)
+        labels = dataTable.getColumnNames()
+        if TOMO_NAME_30 in labels:
+            reader = convert30_tomo.Reader(**kwargs)
+            isReader40 = False
+        else:
+            reader = convert40_tomo.Reader(**kwargs)
+            isReader40 = True
         reader.read(starFile)
-    return reader
+    else:
+        if Plugin.isRe40():
+            reader = convert40_tomo.Reader(**kwargs)
+            isReader40 = True
+        else:
+            reader = convert30_tomo.Reader(**kwargs)
+            isReader40 = False
 
-
-def createReaderTomo40(**kwargs):
-    """ Create a new Reader instance for Relion 4."""
-    Reader = convert40_tomo.Reader
-    return Reader(**kwargs)
-
+    return reader, isReader40
 
 # def readSetOfCoordinates3D(starFile, prot):
 #     """ Convenience function to write a SetOfSubtomograms as Relion metadata using a Reader."""
@@ -57,10 +82,11 @@ def createReaderTomo40(**kwargs):
 #     return reader.starFile2Coords3D(prot)
 
 
-def readSetOfPseudoSubtomograms(starFile, precedents, outputSet):
+def readSetOfPseudoSubtomograms(starFile, outputSet):
     """ Convenience function to write a SetOfPseudoSubtomograms as Relion metadata using a Reader."""
     # Subtomogras are represented in Relion 4 as Pseudosubtomograms
-    return createReaderTomo40().starFile2PseudoSubtomograms(starFile, precedents, outputSet)
+    reader, _ = createReaderTomo()
+    return reader.starFile2PseudoSubtomograms(starFile, outputSet)
 
 
 # class ClassesLoader:

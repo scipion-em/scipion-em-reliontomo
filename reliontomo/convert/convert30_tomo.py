@@ -34,7 +34,7 @@ from relion.convert.convert_base import WriterBase, ReaderBase
 from reliontomo.constants import FILE_NOT_FOUND, COORD_X, COORD_Y, COORD_Z, SUBTOMO_NAME, ROT, TILT, \
     TILT_PRIOR, PSI, PSI_PRIOR, SHIFTX, SHIFTY, SHIFTZ, TOMO_NAME_30, CTF_MISSING_WEDGE, MAGNIFICATION, PIXEL_SIZE, \
     CLASS_NUMBER
-from reliontomo.utils import _getAbsPath, _gen2LevelBaseName
+from reliontomo.utils import _getAbsPath, _gen2LevelBaseName, getTransformMatrix
 from scipion.install.funcs import mkdir
 import numpy as np
 from os.path import abspath, join, basename
@@ -145,13 +145,13 @@ class Reader(ReaderBase):
         self.dataTable.read(starFile)
 
     @staticmethod
-    def gen3dCoordFromStarRow(row, precedentsSet, precedentTomoIdList):
+    def gen3dCoordFromStarRow(row, precedentsSet, precedentIdList):
         coordinate3d = Coordinate3D()
         tomoId = removeBaseExt(row.get(TOMO_NAME_30))
         x = row.get(COORD_X, 0)
         y = row.get(COORD_Y, 0)
         z = row.get(COORD_Z, 0)
-        volId = precedentTomoIdList.index(tomoId) + 1  # Set indices begin in 1
+        volId = precedentIdList.index(tomoId) + 1  # Set indices begin in 1
         coordinate3d.setVolume(precedentsSet[volId])
         coordinate3d.setVolId(volId)
         ctf3d = row.get(CTF_MISSING_WEDGE, FILE_NOT_FOUND)
@@ -160,14 +160,14 @@ class Reader(ReaderBase):
         coordinate3d.setY(float(y), BOTTOM_LEFT_CORNER)
         coordinate3d.setZ(float(z), BOTTOM_LEFT_CORNER)
         coordinate3d._3dcftMrcFile = ctf3d  # Used for the ctf3d generation in Relion
-        coordinate3d.setMatrix(getTransformMatrix(row))
+        coordinate3d.setMatrix(getTransformMatrixFromRow(row))
 
         return coordinate3d
 
     def starFile2Coords3D(self, coordsSet, precedentsSet):
-        precedentTomoIdList = [tomo.getTsId() for tomo in precedentsSet]
+        precedentIdList = [tomo.getTsId() for tomo in precedentsSet]
         for row in self.dataTable:
-            coordsSet.append(self.gen3dCoordFromStarRow(row, precedentsSet, precedentTomoIdList))
+            coordsSet.append(self.gen3dCoordFromStarRow(row, precedentsSet, precedentIdList))
 
     def starFile2Subtomograms(self, subtomoSet, coordSet, linkedSubtomosDir, starFilePath):
         samplingRate = subtomoSet.getSamplingRate()
@@ -255,25 +255,13 @@ def _getTransformInfoFromSubtomo(subtomo, calcInv=True):
 #     return tomoFile if isabs(tomoFile) else abspath(tomoFile)
 
 
-def getTransformMatrix(row, invert=True):
+def getTransformMatrixFromRow(row, invert=True):
     shiftx = row.get(SHIFTX, 0)
     shifty = row.get(SHIFTY, 0)
     shiftz = row.get(SHIFTZ, 0)
     tilt = row.get(TILT, 0)
     psi = row.get(PSI, 0)
     rot = row.get(ROT, 0)
-    shifts = (float(shiftx), float(shifty), float(shiftz))
-    angles = (float(rot), float(tilt), float(psi))
-    radAngles = -np.deg2rad(angles)
-    M = transformations.euler_matrix(radAngles[0], radAngles[1], radAngles[2], 'szyz')
-    if invert:
-        M[0, 3] = -shifts[0]
-        M[1, 3] = -shifts[1]
-        M[2, 3] = -shifts[2]
-        M = np.linalg.inv(M)
-    else:
-        M[0, 3] = shifts[0]
-        M[1, 3] = shifts[1]
-        M[2, 3] = shifts[2]
 
-    return M
+    return getTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, invert)
+

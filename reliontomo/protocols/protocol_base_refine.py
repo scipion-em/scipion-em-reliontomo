@@ -52,7 +52,7 @@ class ProtRelionRefineBase(EMProtocol):
     def _defineIOParams(form):
         form.addSection(label=Message.LABEL_INPUT)
         form.addParam('inputPseudoSubtomos', PointerParam,
-                      pointerClass='SetOfSubtomograms',
+                      pointerClass='SetOfSubTomograms',
                       label="Input subtomograms",
                       important=True,
                       allowsNull=False)
