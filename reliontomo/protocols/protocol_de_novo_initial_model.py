@@ -27,10 +27,7 @@ from reliontomo.constants import INITIAL_MODEL
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from tomo.objects import AverageSubTomogram
 from reliontomo import Plugin
-from os import listdir
-from os.path import isfile, join
 from pyworkflow.protocol import LEVEL_ADVANCED
-from pyworkflow.utils import moveFile
 from reliontomo.utils import getProgram
 
 

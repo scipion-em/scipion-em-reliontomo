@@ -42,7 +42,7 @@ class ProtRelionRefineBase(EMProtocol):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.inParticlesStar = self._getExtraPath(IN_SUBTOMOS_STAR)
+        self.inParticlesStar = None
 
     def _defineParams(self, form):
         pass
@@ -299,6 +299,7 @@ class ProtRelionRefineBase(EMProtocol):
         pass
 
     def convertInputStep(self):
+        self.inParticlesStar = self._getExtraPath(IN_SUBTOMOS_STAR)
         writeSetOfPseudoSubtomograms(self.inputPseudoSubtomos.get(), self.inParticlesStar)
 
     # -------------------------- INFO functions -------------------------------

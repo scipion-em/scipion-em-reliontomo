@@ -197,6 +197,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._initialize()
+        self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self._autoRefine)
         self._insertFunctionStep(self.createOutputStep)
 
@@ -360,7 +361,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
                                     itemDataIterator=mdIter)
 
     def _updateParticle(self, particle, row):
-        self.reader.setParticleTransform(particle, row)
+        self.reader.setParticleTransform(particle, row, particle.getSamplingRate())
         if not hasattr(particle, '_randomSubset'):
             particle._randomSubset = Integer()
             particle._randomSubset.set(row.rlnRandomSubset)
