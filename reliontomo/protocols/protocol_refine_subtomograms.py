@@ -42,7 +42,7 @@ from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, String
 from pyworkflow.utils import moveFile
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG
 from reliontomo.utils import getProgram
-from tomo.objects import AverageSubTomogram
+from tomo.objects import AverageSubTomogram, SetOfSubTomograms
 from tomo.protocols import ProtTomoBase
 
 
@@ -270,7 +270,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         half2 = self._getLastFileName(self._getExtraPath(pattern % 2))
         vol.setHalfMaps([half1, half2])
 
-        outSubtomoSet = self._createSet(SetOfPseudoSubtomograms, 'pseudosubtomograms%s.sqlite', '')
+        outSubtomoSet = self._createSet(SetOfSubTomograms, 'pseudosubtomograms%s.sqlite', '')
         outSubtomoSet.copyInfo(subtomoSet)
         self.reader = convert40_tomo.Reader(alignType=ALIGN_PROJ, pixelSize=outSubtomoSet.getSamplingRate())
         self._fillDataFromIter(outSubtomoSet, self._lastIter())

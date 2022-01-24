@@ -292,9 +292,9 @@ class Reader:
             if manifoldInd:
                 coordinate3d.setGroupId(manifoldInd)
                 psubtomo._manifoldIndex = Integer(manifoldInd)                             # 3 _rlnTomoManifoldIndex
-            coordinate3d.setX(float(x), SCIPION)                                           # 4 _rlnCoordinateX
-            coordinate3d.setY(float(y), SCIPION)                                           # 5 _rlnCoordinateX
-            coordinate3d.setZ(float(z), SCIPION)                                           # 6 _rlnCoordinateX
+            coordinate3d.setX(float(row.get(COORD_X, 0)), SCIPION)                         # 4 _rlnCoordinateX
+            coordinate3d.setY(float(row.get(COORD_Y, 0)), SCIPION)                         # 5 _rlnCoordinateX
+            coordinate3d.setZ(float(row.get(COORD_Z, 0)), SCIPION)                         # 6 _rlnCoordinateX
             self.__setParticleTransformProj(psubtomo, row, samplingRate)                   # 7 - 12 rlnOriginAngst and rlnAngles
             psubtomo.setClassId(row.get(CLASS_NUMBER, -1))                                 # 13 _rlnClassNumber
             randomSubset = row.get(RANDOM_SUBSET, None)

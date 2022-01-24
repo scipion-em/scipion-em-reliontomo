@@ -52,7 +52,7 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
                       important=True,
                       allowsNull=False)
         form.addParam('inputParticles', PointerParam,
-                      pointerClass='SetOfSubtomograms',
+                      pointerClass='SetOfSubTomograms',
                       label='Input particles (opt.)',
                       allowsNull=True,
                       help='Set of particles considered. If empty, the particles considered will be the '
