@@ -29,6 +29,7 @@ from reliontomo.constants import OUT_SUBTOMOS_STAR
 from reliontomo.convert import readSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
+from reliontomo.utils import getProgram
 from tomo.objects import SetOfSubTomograms
 from tomo.protocols import ProtTomoBase
 
@@ -59,23 +60,22 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
                       help='It is the (full) opening angle of the cone to be suppressed, given in degrees. This angle '
                            'should  include both the uncertainty about the membrane orientation and its variation '
                            'across the region represented in the subtomogram.')
-        form.addParam('coneWidthZ0', IntParam,
-                      label='Cone width at Z = 0 (pix.)',
-                      condition='applyConeWeight',
-                      default=2,
-                      expertLevel=LEVEL_ADVANCED)
-        form.addParam('keepParticlesDark', BooleanParam,
-                      label='Do not invert contrast (keep particles dark)',
+        form.addParam('rotateVolumes', BooleanParam,
+                      label='Rotate volumes?',
                       default=False,
-                      expertLevel=LEVEL_ADVANCED)
-        form.addParam('write3DCtfs', BooleanParam,
-                      label='Write 3D CTFs?',
+                      help='If set to Yes, rlnAngle<Rot/Tilt/Psi> orientations are added to '
+                           'rlnTomoSubtomogram<Rot/Tilt/Psi> to construct rotated volumes.')
+        form.addParam('restoreOrientations', BooleanParam,
+                      label='Restore orientations?',
                       default=False,
-                      expertLevel=LEVEL_ADVANCED)
-        form.addParam('writeCtfCorrectedSubtomos', BooleanParam,
-                      label='Write CTF-corrected subtomograms?',
-                      default=False,
-                      expertLevel=LEVEL_ADVANCED)
+                      help='If set to Yes, rlnTomoSubtomogram<Rot/Tilt/Psi> orientations are added to '
+                           'rlnAngle<Rot/Tilt/Psi>. Particles are not constructed.')
+        form.addParam('outputInFloat16', BooleanParam,
+                      label='Write output in float16?',
+                      default=True,
+                      help='If set to Yes, this program will write output images in float16 MRC format. This will '
+                           'save a factor of two in disk space compared to the default of writing in float32. Note '
+                           'that RELION and CCPEM will read float16 images, but other programs may not (yet) do so.')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -87,8 +87,8 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
     # -------------------------- STEPS functions ------------------------------
 
     def _relionMakePseudoSubtomos(self):
-        Plugin.runRelionTomo(self, 'relion_tomo_subtomo', self._genMakePseudoSubtomoCmd(),
-                             numberOfMpi=self.numberOfMpi.get())
+        Plugin.runRelionTomo(self, getProgram('relion_tomo_subtomo', self.numberOfMpi.get()),
+                             self._genMakePseudoSubtomoCmd(), numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
         starFile = self._getExtraPath(OUT_SUBTOMOS_STAR)
@@ -101,7 +101,11 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
 
     # # -------------------------- INFO functions -------------------------------
     def _validate(self):
-        pass
+        validationMsg = []
+        if self.rotateVolumes.get() and self.restoreOrientations.get():
+            validationMsg.append('Restore angles and rotate p-subtomos cannot be applied simultaneously.')
+
+        return validationMsg
 
     # # --------------------------- UTILS functions -----------------------------
     def _genMakePseudoSubtomoCmd(self):
@@ -110,11 +114,10 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
         if self.applyConeWeight.get():
             cmd += '--cone_weight '
             cmd += '--cone_angle %.2f ' % self.coneAngle.get()
-            cmd += '--cone_sig0 %i ' % self.coneWidthZ0.get()
-        if self.keepParticlesDark.get():
-            cmd += ' --no_ic '
-        if self.write3DCtfs.get():
-            cmd += '--ctf '
-        if self.writeCtfCorrectedSubtomos.get():
-            cmd += '--div '
+        if self.outputInFloat16.get():
+            cmd += '--float16 '
+        if self.rotateVolumes.get():
+            cmd += '--apply_angles '
+        if self.restoreOrientations.get():
+            cmd += '--restore '
         return cmd

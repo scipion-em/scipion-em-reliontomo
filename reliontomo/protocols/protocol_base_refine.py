@@ -74,18 +74,6 @@ class ProtRelionRefineBase(EMProtocol):
                            'of each CTF onward. This can be useful if the CTF model is inadequate at the lowest '
                            'resolution. Still, in general using higher amplitude contrast on the CTFs (e.g. 10-20%) '
                            'often yields better results. Therefore, this option is not generally recommended.')
-        form.addParam('ctfPhaseFlipped', BooleanParam,
-                      default=False,
-                      label='Has the data been CTF phase-flipped?',
-                      expertLevel=LEVEL_ADVANCED)
-        form.addParam('padCtf', BooleanParam,
-                      default=False,
-                      label='Perform CTF padding to treat CTF aliaising better?',
-                      expertLevel=LEVEL_ADVANCED)
-        form.addParam('ctfUncorrectedRef', BooleanParam,
-                      default=False,
-                      label='Have the input references not been CTF-amplitude corrected?',
-                      expertLevel=LEVEL_ADVANCED)
 
     # OPTIMIZATION PARAMS ----------------------------------------------------------------------------------------------
     @staticmethod
@@ -328,12 +316,6 @@ class ProtRelionRefineBase(EMProtocol):
             cmd += '--ctf '
         if self.ignoreCTFUntilFirstPeak.get():
             cmd += '--ctf_intact_first_peak '
-        if self.ctfPhaseFlipped.get():
-            cmd += '--ctf_phase_flipped '
-        if self.padCtf.get():
-            cmd += '--pad_ctf '
-        if self.ctfUncorrectedRef.get():
-            cmd += '--ctf_uncorrected_ref '
         return cmd
 
     def _genOptimisationBaseCmd(self):

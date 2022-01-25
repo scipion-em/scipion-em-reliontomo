@@ -84,6 +84,9 @@ class Writer(WriterBase):
                 angles[0],                                                   # 10 _rlnAngleRot
                 angles[1],                                                   # 11 _rlnAngleTilt
                 angles[2],                                                   # 12 _rlnAnglePsi
+                # Extended fields
+                coord._classNumber.get(),                                    # 13_rlnClassNumber
+                coord._randomSubset.get()                                    # 14 _rlnRandomSubset
             )
         # Write the STAR file
         tomoTable.write(subtomosStar)
@@ -122,7 +125,7 @@ class Writer(WriterBase):
                     angles[1],                                                   # _rlnAngleTilt #11
                     angles[2],                                                   # _rlnAnglePsi #12
 
-                    getattr(subtomo, '_getClassId', 0),                          # _rlnClassNumber #13
+                    subtomo.getClassId(),                                        # _rlnClassNumber #13
                     subtomo._randomSubset.get(),                                 # _rlnRandomSubset #14
                     subtomo._particleName.get(),                                 # _rlnTomoParticleName #15
                     subtomo._opticsGroupId.get(),                                # _rlnOpticsGroup #16
@@ -168,7 +171,9 @@ class Writer(WriterBase):
             SHIFTZ_ANGST,
             ROT,
             TILT,
-            PSI
+            PSI,
+            CLASS_NUMBER,
+            RANDOM_SUBSET
         ]
 
     @staticmethod
@@ -250,6 +255,9 @@ class Reader:
         coordinate3d.setZ(float(z), SCIPION)
         coordinate3d.setMatrix(getTransformMatrixFromRow(row, sRate))
         coordinate3d.setGroupId(row.get(MANIFOLD_INDEX, 1))
+        # Extended fields
+        coordinate3d._classNumber = Integer(row.get(CLASS_NUMBER, -1))
+        coordinate3d._randomSubset = Integer(row.get(RANDOM_SUBSET, 1))
 
         return coordinate3d
 

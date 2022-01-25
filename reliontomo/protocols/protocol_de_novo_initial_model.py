@@ -105,7 +105,10 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         cmd += '--K %i ' % self.numberOfClasses.get()
         if self.flattenSolvent.get():
             cmd += '--flatten_solvent '
-        cmd += '--sym %s ' % self.symmetry.get()
+        if self.doInC1AndApplySymLater.get():
+            cmd += '--sym C1 '
+        else:
+            cmd += '--sym %s ' % self.symmetry.get()
         cmd += '--healpix_order %i ' % self.angularSamplingDeg.get()
         cmd += '--offset_step %i ' % self.offsetSearchStepPix.get()
         cmd += '--offset_range %d ' % self.offsetSearchRangePix.get()
