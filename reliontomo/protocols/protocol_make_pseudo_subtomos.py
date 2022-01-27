@@ -93,9 +93,10 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
     def createOutputStep(self):
         starFile = self._getExtraPath(OUT_SUBTOMOS_STAR)
         protPrepData = self.inputPrepareDataProt.get()
+        tsSamplingRate = protPrepData.inputCtfTs.get().getSetOfTiltSeries().getSamplingRate()  # bin1
         outputSet = self._createSet(SetOfSubTomograms, 'subtomograms%s.sqlite', '')
         outputSet.getAcquisition().opticsGroupInfo.set(OpticsGroups.fromStar(starFile).toString())
-        outputSet.setSamplingRate(protPrepData.inputCtfTs.get().getSetOfTiltSeries().getSamplingRate())
+        outputSet.setSamplingRate(tsSamplingRate * self.binningFactor.get())
         readSetOfPseudoSubtomograms(starFile, outputSet)
         self._defineOutputs(outputPseudoSubtomograms=outputSet)
 
