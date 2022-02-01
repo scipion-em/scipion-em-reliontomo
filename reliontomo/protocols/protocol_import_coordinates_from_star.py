@@ -22,14 +22,21 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from enum import Enum
 from reliontomo.protocols.protocol_base_import_from_star import ProtBaseImportFromStar
-from tomo.objects import SetOfTomograms, TomoAcquisition
+from tomo.objects import SetOfTomograms, SetOfCoordinates3D
+
+
+class outputObjects(Enum):
+    outputTomograms = SetOfTomograms()
+    outputCoordinates = SetOfCoordinates3D()
 
 
 class ProtImportCoordinates3DFromStar(ProtBaseImportFromStar):
     """Protocol to import a set of 3D coordinates from a star file"""
 
     _label = 'import coordinates 3D from a star file'
+    _possibleOutputs = outputObjects
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

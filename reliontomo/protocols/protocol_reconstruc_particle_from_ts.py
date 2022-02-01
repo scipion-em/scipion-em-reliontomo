@@ -22,6 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from enum import Enum
 from pyworkflow.protocol import StringParam
 from reliontomo import Plugin
 from reliontomo.constants import SYMMETRY_HELP_MSG
@@ -30,10 +31,15 @@ from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle imp
 from tomo.objects import AverageSubTomogram
 
 
+class outputObjects(Enum):
+    outputVolume = AverageSubTomogram()
+
+
 class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBase):
     """Reconstruct particle from the original tilt series images"""
 
     _label = 'Reconstruct particle from tilt series'
+    _possibleOutputs = outputObjects
 
     def __init__(self, **args):
         ProtRelionMakePseudoSubtomoAndRecParticleBase.__init__(self, **args)
@@ -61,11 +67,10 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
                              numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
-        protPrepDataInputTs = self.inputPrepareDataProt.get().inputCtfTs.get().getSetOfTiltSeries()
         vol = AverageSubTomogram()
         vol.setFileName(self._getExtraPath('merged.mrc'))
-        vol.setSamplingRate(protPrepDataInputTs.getSamplingRate())
-        self._defineOutputs(outputVolume=vol)
+        vol.setSamplingRate(self.inputParticles.get().getSamplingRate())
+        self._defineOutputs(**{outputObjects.outputVolume.name: vol})
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):

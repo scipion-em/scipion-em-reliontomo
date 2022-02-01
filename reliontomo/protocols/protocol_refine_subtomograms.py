@@ -24,16 +24,15 @@
 # **************************************************************************
 import glob
 import re
+from enum import Enum
 
 from emtable import Table
-
 from pwem import ALIGN_PROJ
 from pwem.convert.headers import fixVolume
 from pwem.objects import FSC
 from pyworkflow import BETA
 from pyworkflow.object import Integer
 from reliontomo.convert import convert40_tomo
-from reliontomo.objects import SetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
 from os import listdir
@@ -46,11 +45,18 @@ from tomo.objects import AverageSubTomogram, SetOfSubTomograms
 from tomo.protocols import ProtTomoBase
 
 
+class outputObjects(Enum):
+    outputSubtomograms = SetOfSubTomograms()
+    outputVolume = AverageSubTomogram()
+    outputFSC = FSC()
+
+
 class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     """Auto-refinement of subtomograms."""
 
     _label = 'Auto-refinement of subtomograms'
     _devStatus = BETA
+    _possibleOutputs = outputObjects
     FILE_KEYS = ['data', 'optimiser', 'sampling']
     PREFIXES = ['half1_', 'half2_']
 
@@ -275,11 +281,6 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         self.reader = convert40_tomo.Reader(alignType=ALIGN_PROJ, pixelSize=outSubtomoSet.getSamplingRate())
         self._fillDataFromIter(outSubtomoSet, self._lastIter())
 
-        self._defineOutputs(outputVolume=vol)
-        self._defineSourceRelation(subtomoSet, vol)
-        self._defineOutputs(outputParticles=outSubtomoSet)
-        self._defineTransformRelation(subtomoSet, outSubtomoSet)
-
         fsc = FSC(objLabel=self.getRunName())
         fn = self._getExtraPath("_model.star")
         table = Table(fileName=fn, tableName='model_class_1')
@@ -287,8 +288,13 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         frc = table.getColumnValues('rlnGoldStandardFsc')
         fsc.setData(resolution_inv, frc)
 
-        self._defineOutputs(outputFSC=fsc)
+        outputDict = {outputObjects.outputSubtomograms.name: outSubtomoSet,
+                      outputObjects.outputVolume.name: vol,
+                      outputObjects.outputFSC.name: fsc}
+        self._defineOutputs(**outputDict)
         self._defineSourceRelation(vol, fsc)
+        self._defineSourceRelation(subtomoSet, vol)
+        self._defineTransformRelation(subtomoSet, outSubtomoSet)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):

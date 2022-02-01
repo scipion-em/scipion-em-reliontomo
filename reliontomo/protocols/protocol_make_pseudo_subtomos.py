@@ -22,7 +22,8 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-from pyworkflow.protocol import LEVEL_ADVANCED, IntParam, FloatParam, BooleanParam
+from enum import Enum
+from pyworkflow.protocol import FloatParam, BooleanParam
 from relion.convert import OpticsGroups
 from reliontomo import Plugin
 from reliontomo.constants import OUT_SUBTOMOS_STAR
@@ -34,10 +35,15 @@ from tomo.objects import SetOfSubTomograms
 from tomo.protocols import ProtTomoBase
 
 
+class outputObjects(Enum):
+    outputSubtomograms = SetOfSubTomograms()
+
+
 class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticleBase, ProtTomoBase):
     """Make pseudo-subtomograms"""
 
     _label = 'Make pseudo-subtomograms'
+    _possibleOutputs = outputObjects
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -98,9 +104,9 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
         outputSet.getAcquisition().opticsGroupInfo.set(OpticsGroups.fromStar(starFile).toString())
         outputSet.setSamplingRate(tsSamplingRate * self.binningFactor.get())
         readSetOfPseudoSubtomograms(starFile, outputSet)
-        self._defineOutputs(outputPseudoSubtomograms=outputSet)
+        self._defineOutputs(**{outputObjects.outputSubtomograms.name: outputSet})
 
-    # # -------------------------- INFO functions -------------------------------
+    # -------------------------- INFO functions -------------------------------
     def _validate(self):
         validationMsg = []
         if self.rotateVolumes.get() and self.restoreOrientations.get():

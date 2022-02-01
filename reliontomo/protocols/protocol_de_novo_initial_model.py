@@ -22,6 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from enum import Enum
 from pwem.convert.headers import fixVolume
 from reliontomo.constants import INITIAL_MODEL
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
@@ -31,10 +32,15 @@ from pyworkflow.protocol import LEVEL_ADVANCED
 from reliontomo.utils import getProgram
 
 
+class outputObjects(Enum):
+    outputVolume = AverageSubTomogram()
+
+
 class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
     """Generate a de novo 3D initial model from the pseudo-subtomograms."""
 
     _label = 'De novo 3D initial model'
+    _possibleOutputs = outputObjects
 
     def __init__(self, **args):
         ProtRelionRefineBase.__init__(self, **args)
@@ -86,7 +92,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         fixVolume(iniModel)  # Fix header to make it interpreted as volume instead of a stack by xmipp
         vol.setFileName(iniModel)
         vol.setSamplingRate(self.inputPseudoSubtomos.get().getSamplingRate())
-        self._defineOutputs(outputVolume=vol)
+        self._defineOutputs(**{outputObjects.outputVolume.name: vol})
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):

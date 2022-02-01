@@ -22,6 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from enum import Enum
 from pyworkflow import BETA
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         StringParam, BooleanParam,
@@ -33,9 +34,12 @@ from tomo.objects import AverageSubTomogram
 from reliontomo.convert import writeSetOfSubtomograms
 
 
+class outputObjects(Enum):
+    outputVolume = AverageSubTomogram()
+
+
 class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
     """ This protocol reconstructs a volume using Relion.
-
     Reconstruct a volume from a given set of particles.
     The alignment parameters will be converted to a Relion star file
     and used as direction projections to reconstruct.
@@ -44,6 +48,7 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
     _devStatus = BETA
     inStarName = 'input_particles'
     outTomoName = 'output_volume'
+    _possibleOutputs = outputObjects
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -156,7 +161,7 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
         volume.setFileName(self._getFileName(self.outTomoName))
         volume.setSamplingRate(imgSet.getSamplingRate())
         
-        self._defineOutputs(outputAvgSubtomogram=volume)
+        self._defineOutputs(**{outputObjects.outputVolume.name: volume})
         self._defineSourceRelation(self.inputSubtomos, volume)
     
     # -------------------------- INFO functions -------------------------------
