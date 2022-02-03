@@ -202,7 +202,7 @@ class Writer(WriterBase):
         :param ts: TiltSeries object"""
         outputFilename = prot._getExtraPath(ts.getTsId() + '_order_list.csv')
         tiList = [ti.clone() for ti in ts]
-        ind = np.argsort([ti.getTiltAngle() for ti in tiList])  # Indices to get the data sorted by acqOrder
+        ind = np.argsort([ti.getAcquisitionOrder() for ti in tiList])  # Indices to get the data sorted by acqOrder
         with open(outputFilename, mode='w') as acqOrderFile:
             acqOrderFileWriter = csv.writer(acqOrderFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             acqOrderList = [ti.getAcquisitionOrder() for ti in tiList]
