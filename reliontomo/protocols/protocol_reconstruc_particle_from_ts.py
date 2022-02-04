@@ -23,7 +23,7 @@
 # *
 # **************************************************************************
 from enum import Enum
-from pyworkflow.protocol import StringParam
+from pyworkflow.protocol import StringParam, PointerParam
 from reliontomo import Plugin
 from reliontomo.constants import SYMMETRY_HELP_MSG
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
@@ -53,6 +53,11 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
                       label='Symmetry group',
                       default='C1',
                       help=SYMMETRY_HELP_MSG)
+        form.addParam('solventMask', PointerParam,
+                      pointerClass='VolumeMask',
+                      label='FSC solvent mask (opt.)',
+                      allowsNull=True,
+                      help='Provide a soft mask to automatically estimate the postprocess FSC.')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -63,8 +68,11 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
 
     # -------------------------- STEPS functions ------------------------------
     def relionReconstructParticle(self):
-        Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_particle', self._genRecParticleCmd(),
-                             numberOfMpi=self.numberOfMpi.get())
+        cmd = self._genRecParticleCmd()
+        if self.solventMask.get():
+            cmd += '&& `which relion_tomo_make_reference` --rec %s --o %s --mask %s ' % (
+                self._getExtraPath(), self._getExtraPath(), self.solventMask.get().getFileName())
+        Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_particle', cmd, numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
         vol = AverageSubTomogram()
