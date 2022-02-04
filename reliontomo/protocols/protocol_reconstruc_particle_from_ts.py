@@ -69,7 +69,7 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
     def createOutputStep(self):
         vol = AverageSubTomogram()
         vol.setFileName(self._getExtraPath('merged.mrc'))
-        vol.setSamplingRate(self.inputParticles.get().getSamplingRate())
+        vol.setSamplingRate(self.getNewSamplingRate())
         self._defineOutputs(**{outputObjects.outputVolume.name: vol})
 
     # -------------------------- INFO functions -------------------------------
@@ -94,3 +94,8 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
         cmd += '--j_out %i ' % self.numberOfThreads.get()
         cmd += '--j_in %i ' % 1
         return cmd
+
+    def getNewSamplingRate(self):
+        """It will be the tilt series sampling rate (bin 1) multiplied by the binning factor introduced"""
+        tsSamplingRate = self.inputPrepareDataProt.get().inputCtfTs.get().getSetOfTiltSeries().getSamplingRate()
+        return tsSamplingRate * self.binningFactor.get()
