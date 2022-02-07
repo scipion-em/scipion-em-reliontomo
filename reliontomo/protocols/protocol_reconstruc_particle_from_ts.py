@@ -64,15 +64,23 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
         self._initialize()
         self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self.relionReconstructParticle)
+        if self.solventMask.get():
+            self._insertFunctionStep(self.relionTomoMaskReference)
         self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
     def relionReconstructParticle(self):
         cmd = self._genRecParticleCmd()
-        if self.solventMask.get():
-            cmd += '&& `which relion_tomo_make_reference` --rec %s --o %s --mask %s ' % (
-                self._getExtraPath(), self._getExtraPath(), self.solventMask.get().getFileName())
-        Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_particle', cmd, numberOfMpi=self.numberOfMpi.get())
+        try:
+            Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_particle', cmd, numberOfMpi=self.numberOfMpi.get())
+        except:
+            # The --mem argument should also be set using around 80-90% to keep a safety margin
+            Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_particle', cmd + '--mem 50 ',
+                                 numberOfMpi=self.numberOfMpi.get())
+
+    def relionTomoMaskReference(self):
+        Plugin.runRelionTomo(self, 'relion_tomo_make_reference', self._genTomoMaskRefCmd(),
+                             numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
         vol = AverageSubTomogram()
@@ -101,6 +109,16 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
         #        available.
         cmd += '--j_out %i ' % self.numberOfThreads.get()
         cmd += '--j_in %i ' % 1
+        return cmd
+
+    def _genTomoMaskRefCmd(self):
+        cmd = ''
+        cmd += '--t %s ' % self.inTomosStar
+        cmd += '--p %s ' % self.inParticlesStar
+        cmd += '--rec %s ' % self._getExtraPath()
+        cmd += '--o %s ' % self._getExtraPath()
+        cmd += '--mask %s ' % self.solventMask.get().getFileName()
+
         return cmd
 
     def getNewSamplingRate(self):
