@@ -85,8 +85,8 @@ class Writer(WriterBase):
                 angles[1],                                                   # 11 _rlnAngleTilt
                 angles[2],                                                   # 12 _rlnAnglePsi
                 # Extended fields
-                coord._classNumber.get(),                                    # 13_rlnClassNumber
-                coord._randomSubset.get()                                    # 14 _rlnRandomSubset
+                getattr(coord, '_classNumber', -1),                          # 13_rlnClassNumber
+                getattr(coord, '_randomSubset', -1)                          # 14 _rlnRandomSubset
             )
         # Write the STAR file
         tomoTable.write(subtomosStar)
