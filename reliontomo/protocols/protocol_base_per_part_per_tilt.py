@@ -49,7 +49,7 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
                       important=True,
                       allowsNull=False)
         form.addParam('inPseudoSubtomos', PointerParam,
-                      pointerClass='SetOfPseudoSubtomograms',
+                      pointerClass='SetOfSubtomograms',
                       label="Input pseudo-subtomograms",
                       important=True,
                       allowsNull=False)
