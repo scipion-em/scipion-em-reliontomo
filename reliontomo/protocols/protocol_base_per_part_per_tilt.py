@@ -28,7 +28,8 @@ from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, IntParam, GE, LE, PathParam
 from pyworkflow.utils import Message
-from reliontomo.constants import BOX_SIZE_VALS, OUT_TOMOS_STAR
+from reliontomo.constants import BOX_SIZE_VALS, OUT_TOMOS_STAR, IN_SUBTOMOS_STAR
+from reliontomo.convert import writeSetOfPseudoSubtomograms
 from reliontomo.utils import getFileFromDataPrepProt
 
 
@@ -40,6 +41,10 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
     _boxSize4Est = None
 
     # -------------------------- DEFINE param functions -----------------------
+
+    def __init__(self, **kwargs):
+        super().__init__(kwargs)
+        self.inParticlesStar = None
 
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
@@ -89,6 +94,10 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
     def _initialize(self):
         self._findClosestAdmittedVal()
 
+    def convertInputStep(self):
+        self.inParticlesStar = self._getExtraPath(IN_SUBTOMOS_STAR)
+        writeSetOfPseudoSubtomograms(self.inputPseudoSubtomos.get(), self.inParticlesStar)
+
     def _findClosestAdmittedVal(self):
         validVals = np.array(BOX_SIZE_VALS)
         # Find index of minimum value
@@ -96,7 +105,7 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
         self._boxSize4Est = BOX_SIZE_VALS[ind]
 
     def _genIOCommand(self):
-        cmd = '--p %s ' % self.inPseudoSubtomos.get().getStarFile()
+        cmd = '--p %s ' % self.inParticlesStar
         cmd += '--t %s ' % getFileFromDataPrepProt(self, OUT_TOMOS_STAR)
         cmd += '--o %s ' % self._getExtraPath()
         if self.inputTrajectory.get():
