@@ -156,7 +156,6 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
         cmd = self._genIOCommand()
         # Polish
         cmd += '--r %i ' % self.maxPosErr.get()
-        cmd += '--shift_only '
         if self.alignByShift.get():
             cmd += '--shift_only '
             if self.alignmentModel.get() == alignModels.onlyParticles.value:
