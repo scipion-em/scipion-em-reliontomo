@@ -103,6 +103,7 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
                       condition='refineOddAbe',
                       choices=[3, 5, 7],
                       default=0)
+        form.addParallelSection(threads=4, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

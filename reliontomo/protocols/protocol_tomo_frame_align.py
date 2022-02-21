@@ -134,6 +134,7 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
                        label='Refine deformations per frame?',
                        default=False,
                        help='If set to Yes, it models deformations per tilt frame instead of per tilt series.')
+        form.addParallelSection(threads=4, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
