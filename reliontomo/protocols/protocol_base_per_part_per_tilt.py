@@ -110,8 +110,8 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
         cmd += '--o %s ' % self._getExtraPath()
         if self.inputTrajectory.get():
             cmd += '--mot %s ' % self.inputTrajectory.get()
-        cmd += '--ref1 %s ' % self.half1map1.get()
-        cmd += '--ref2 %s ' % self.half1map2.get()
+        cmd += '--ref1 %s ' % self.half1map.get()
+        cmd += '--ref2 %s ' % self.half2map.get()
         cmd += '--mask %s ' % self.inRefMask.get().getFileName()
         if self.inputPostProcess.get():
             cmd += '--fsc %s ' % self.inputPostProcess.get()
