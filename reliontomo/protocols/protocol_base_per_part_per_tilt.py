@@ -110,7 +110,7 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
         starFile = self._getExtraPath(OUT_SUBTOMOS_STAR)
         outputSet = self._createSet(SetOfSubTomograms, 'subtomograms%s.sqlite', '')
         outputSet.getAcquisition().opticsGroupInfo.set(OpticsGroups.fromStar(starFile).toString())
-        outputSet.setSamplingRate(self.inPseudoSubtomos.get())
+        outputSet.setSamplingRate(self.inPseudoSubtomos.get().getSamplingRate())
         readSetOfPseudoSubtomograms(starFile, outputSet)
         self._defineOutputs(**{outputObjects.outputSubtomograms.name: outputSet})
 
