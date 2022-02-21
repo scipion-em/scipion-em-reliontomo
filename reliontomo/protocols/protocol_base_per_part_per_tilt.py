@@ -96,7 +96,7 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
 
     def convertInputStep(self):
         self.inParticlesStar = self._getExtraPath(IN_SUBTOMOS_STAR)
-        writeSetOfPseudoSubtomograms(self.inputPseudoSubtomos.get(), self.inParticlesStar)
+        writeSetOfPseudoSubtomograms(self.inPseudoSubtomos.get(), self.inParticlesStar)
 
     def _findClosestAdmittedVal(self):
         validVals = np.array(BOX_SIZE_VALS)
