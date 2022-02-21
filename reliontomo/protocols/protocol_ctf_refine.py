@@ -31,6 +31,7 @@ from tomo.protocols import ProtTomoBase
 oddAberrationOrders = [3, 5, 7]
 evenAberrationOrders = [4, 6, 8]
 
+
 class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
     """Tomo CTF refine"""
 
@@ -111,7 +112,7 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
     def _insertAllSteps(self):
         self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self._relionCTFRefine)
-        # self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
     def _relionCTFRefine(self):

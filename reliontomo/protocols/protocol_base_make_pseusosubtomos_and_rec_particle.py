@@ -26,7 +26,7 @@ from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, FloatParam, StringParam
 from pyworkflow.utils import Message, createLink
-from reliontomo.constants import OUT_TOMOS_STAR, OUT_SUBTOMOS_STAR, IN_SUBTOMOS_STAR, OUT_COORDS_STAR, IN_TOMOS_STAR
+from reliontomo.constants import OUT_TOMOS_STAR, OUT_SUBTOMOS_STAR, IN_SUBTOMOS_STAR, IN_TOMOS_STAR
 from reliontomo.convert import writeSetOfPseudoSubtomograms
 from reliontomo.utils import getFileFromDataPrepProt, isPseudoSubtomogram
 
@@ -47,7 +47,7 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
         form.addSection(label=Message.LABEL_INPUT)
 
         form.addParam('inputPrepareDataProt', PointerParam,
-                      pointerClass='ProtRelionPrepareData',
+                      pointerClass='ProtRelionPrepareData, ProtRelionCtfRefine, ProtRelionTomoFrameAlign',
                       label="Data preparation protocol",
                       important=True,
                       allowsNull=False)

@@ -140,7 +140,7 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
     def _insertAllSteps(self):
         self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self._relionTomoFrameAlign)
-        # self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
     def _relionTomoFrameAlign(self):

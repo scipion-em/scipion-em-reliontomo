@@ -22,15 +22,23 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from enum import Enum
+
 import numpy as np
 
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, IntParam, GE, LE, PathParam
 from pyworkflow.utils import Message
-from reliontomo.constants import BOX_SIZE_VALS, OUT_TOMOS_STAR, IN_SUBTOMOS_STAR
-from reliontomo.convert import writeSetOfPseudoSubtomograms
+from relion.convert import OpticsGroups
+from reliontomo.constants import BOX_SIZE_VALS, OUT_TOMOS_STAR, IN_SUBTOMOS_STAR, OUT_SUBTOMOS_STAR
+from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms
 from reliontomo.utils import getFileFromDataPrepProt
+from tomo.objects import SetOfSubTomograms
+
+
+class outputObjects(Enum):
+    outputSubtomograms = SetOfSubTomograms()
 
 
 class ProtRelionPerParticlePerTiltBase(EMProtocol):
@@ -97,6 +105,14 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
     def convertInputStep(self):
         self.inParticlesStar = self._getExtraPath(IN_SUBTOMOS_STAR)
         writeSetOfPseudoSubtomograms(self.inPseudoSubtomos.get(), self.inParticlesStar)
+
+    def createOutputStep(self):
+        starFile = self._getExtraPath(OUT_SUBTOMOS_STAR)
+        outputSet = self._createSet(SetOfSubTomograms, 'subtomograms%s.sqlite', '')
+        outputSet.getAcquisition().opticsGroupInfo.set(OpticsGroups.fromStar(starFile).toString())
+        outputSet.setSamplingRate(self.inPseudoSubtomos.get())
+        readSetOfPseudoSubtomograms(starFile, outputSet)
+        self._defineOutputs(**{outputObjects.outputSubtomograms.name: outputSet})
 
     def _findClosestAdmittedVal(self):
         validVals = np.array(BOX_SIZE_VALS)
