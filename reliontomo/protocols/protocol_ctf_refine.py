@@ -28,12 +28,6 @@ from reliontomo.protocols.protocol_base_per_part_per_tilt import ProtRelionPerPa
 from reliontomo.utils import getProgram
 from tomo.protocols import ProtTomoBase
 
-# Refine mode options coding
-DEFOCUS_REFINE = 0
-CONTRAST_SCALE_REFINE = 1
-defocusRefineCond = 'refineMode == %i' % DEFOCUS_REFINE
-contrastScaleRefineCond = 'not %s' % defocusRefineCond
-
 
 class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
     """Tomo CTF refine"""
@@ -48,53 +42,53 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
         ProtRelionPerParticlePerTiltBase._defineParams(self, form)
         form.addSection(label='Defocus')
         ProtRelionPerParticlePerTiltBase._insertBoxSizeForEstimationParam(form)
-        form.addParam('refineMode', EnumParam,
-                      choices=['Defocus', 'Contrast scale'],
-                      label='Choose refine mode',
-                      default=DEFOCUS_REFINE,
-                      help="*Refine defocus* estimates the defocus of the individual tilt images, while "
-                           "*refine contrast scale* estimates the signal scale or ice thickness.")
+        form.addParam('refineDefocus', BooleanParam,
+                      label='Refine defocus?',
+                      default=True,
+                      help='If set to Yes, then estimate the defoci of the individual tilt images.')
         form.addParam('defocusRange', IntParam,
                       label="Defocus search range (Å)",
-                      condition=defocusRefineCond,
+                      condition='refineDefocus',
                       default=3000,
                       validators=[GE(0), LE(10000)])
         form.addParam('doDefocusReg', BooleanParam,
                       label="Do defocus regularisation?",
-                      condition=defocusRefineCond,
+                      condition='refineDefocus',
                       default=False,
                       help="Apply defocus regularisation.\n\nHigh-tilt images do not offer enough signal to recover "
                            "the defocus value precisely. The regularisation forces the estimated defoci to assume "
                            "similar values within a given tilt series, which prevents those high-tilt images from "
                            "overfitting.")
         form.addParam('regParam', FloatParam,
-                      label="Defocus regularisation parameter",
+                      label="Defocus regularisation scale",
                       condition='doDefocusReg',
                       default=0.1,
                       validators=[GE(0), LE(1)])
-        form.addParam('refineScalePerFrame', BooleanParam,
-                      label="Refine scale per frame?",
-                      condition=contrastScaleRefineCond,
+        form.addParam('refineContrast', BooleanParam,
+                      label='Refine contrast scale?',
                       default=True,
-                      help="If set to Yes, then the signal-scale parameter will be estimated independently for each "
-                           "tilt. If not specified, the ice thickness, beam luminance and surface normal are estimated "
-                           "instead. Those three parameters then imply the signal intensity for each frame. Due to the "
-                           "smaller number of parameters, the ice thickness model is more robust to noise. By default, "
-                           "the ice thickness and surface normal will be estimated per tilt-series, and the beam "
-                           "luminance globally.")
+                      help='If set to Yes, then estimate the signal scale or ice thickness.')
+        form.addParam('refineScalePerFrame', BooleanParam,
+                      label='Refine scale per frame?',
+                      default=True,
+                      help='If set to Yes, then estimate the signal-scale parameter independently for each tilt. If '
+                           'not specified, the ice thickness, beam luminance and surface normal are estimated instead. '
+                           'Those three parameters then imply the signal intensity for each frame. Due to the smaller '
+                           'number of parameters, the ice thickness model is more robust to noise. By default, the ice '
+                           'thickness and surface normal will be estimated per tilt-series, and the beam luminance '
+                           'globally.')
         form.addParam('refineScalePerTomo', BooleanParam,
                       label="Refine scale per tomogram?",
-                      condition=contrastScaleRefineCond,
                       default=False,
                       help="If set to Yes, then the beam luminance will be estimated separately for each tilt series. "
                            "This is not recommended.")
-
         form.addSection(label='Aberrations')
         form.addParam('refineEvenAbe', BooleanParam,
                       label="Refine even aberrations?",
                       default=True,
                       help="If set to Yes, then even higher-order aberrations will be estimated.")
         form.addParam('maxAbeEvenOrder', EnumParam,
+                      display=EnumParam.DISPLAY_HLIST,
                       label='Max order of even aberrations',
                       condition='refineEvenAbe',
                       choices=[4, 6, 8],
@@ -104,6 +98,7 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
                       default=True,
                       help="If set to Yes, then odd higher-order aberrations will be estimated.")
         form.addParam('maxAbeOddOrder', EnumParam,
+                      display=EnumParam.DISPLAY_HLIST,
                       label='Max order of odd aberrations',
                       condition='refineOddAbe',
                       choices=[3, 5, 7],
@@ -111,28 +106,32 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self._relionTomoFrameAlign)
+        self._insertFunctionStep(self._relionCTFRefine)
         # self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
-    def _relionTomoFrameAlign(self):
+    def _relionCTFRefine(self):
         Plugin.runRelionTomo(self, getProgram('relion_tomo_refine_ctf', self.numberOfMpi.get()),
                              self._genTomoRefineCtfCmd(), numberOfMpi=self.numberOfMpi.get())
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
-        pass
+        errorMsgs = []
+        if self.refineContrast.get():
+            if self.refineScalePerFrame.get() and self.refineScalePerTomo.get():
+                errorMsgs.append('Per-tomogram scale estimation and per-frame scale estimation are mutually exclusive')
+        return errorMsgs
 
     # --------------------------- UTILS functions -----------------------------
     def _genTomoRefineCtfCmd(self):
         cmd = self._genIOCommand()
-        if self.refineMode.get() == DEFOCUS_REFINE:
+        if self.refineDefocus.get():
             cmd += '--do_defocus '
             cmd += '--d0 %i ' % self.defocusRange.get()
             cmd += '--d1 %i ' % self.defocusRange.get()
             if self.doDefocusReg.get():
                 cmd += '--do_reg_defocus --lambda %.2f ' % self.regParam.get()
-        else:
+        if self.refineContrast.get():
             cmd += '--do_scale '
             if self.refineScalePerFrame.get():
                 cmd += '--per_frame_scale '

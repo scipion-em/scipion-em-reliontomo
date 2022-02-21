@@ -22,11 +22,26 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-from pyworkflow.protocol import IntParam, BooleanParam, GE, LE, FloatParam
+from enum import Enum
+
+from pyworkflow.protocol import IntParam, BooleanParam, GE, LE, FloatParam, EnumParam
 from reliontomo import Plugin
 from reliontomo.protocols.protocol_base_per_part_per_tilt import ProtRelionPerParticlePerTiltBase
 from reliontomo.utils import getProgram
 from tomo.protocols import ProtTomoBase
+
+# class outputObjects(Enum):
+
+
+class alignModels(Enum):
+    tiltImages = 0
+    onlyParticles = 1
+
+
+class deformationModels(Enum):
+    linear = 0
+    spline = 1
+    fourier = 2
 
 
 class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
@@ -49,44 +64,76 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
                       validators=[GE(0), LE(64)],
                       help="Maximal assumed error in the initial 2D particle-positions (distances between the "
                            "projected 3D positions and their true positions in the images), given in pixels.")
-        form.addParam('doFlexAlign', BooleanParam,
-                      label="Allow flexible alignment?",
+        form.addParam('alignByShift', BooleanParam,
                       default=False,
-                      help="If set to No, only an optimal rigid shift will be applied to each frame (no iterative "
-                           "optimisation).")
-        form.addParam('doGlobalRigidAlign', BooleanParam,
-                      label="Do global rigid shift alignment?",
+                      label='Align by shift only?',
+                      help='If set to Yes, tilt series projection shifts are refined based on cross-correlation. '
+                           'Useful for very badly aligned frames. No iterative optimisation.')
+        form.addParam('alignmentModel', EnumParam,
+                      display=EnumParam.DISPLAY_HLIST,
+                      choices=[choice.name for choice in alignModels],
+                      label='Alignment model',
+                      condition='alignByShift',
+                      default=alignModels.tiltImages.value,
+                      help='If set to "Only particles", it estimates rigid shift by aligning only the particles '
+                           'instead of by predicting entire micrographs. In this case, only misalignments smaller than '
+                           'half the box size of the particle can be corrected.')
+
+        form.addSection(label='Motion')
+        form.addParam('fitPerParticleMotion', BooleanParam,
                       default=False,
-                      condition='not doFlexAlign',
-                      help="If set to Yes, it estimates the rigid shift by aligning only the particles instead of by "
-                           "predicting the entire micrographs.")
-        form.addParam('doPolish', BooleanParam,
-                      label="Fit per-particle motion?",
+                      label='Fit per particle motion?',
+                      help='If set to Yes, then the subtomogram version of Bayesian polishing will be used to fit '
+                           'per-particle (3D) motion tracks, besides the rigid part of the motion in the tilt series.')
+        group = form.addGroup('Per particle motion', condition='fitPerParticleMotion')
+        group.addParam('sigmaVel', FloatParam,
+                       label='Sigma for velocity (Å/dose)',
+                       default=0.2,
+                       validators=[GE(0.1), LE(10)],
+                       help='The expected amount of motion (i.e. the std. deviation of particle positions in Angstroms '
+                            'after 1 electron per A^2 of radiation).')
+        group.addParam('sigmaDiv', IntParam,
+                       label='Sigma for divergence (Å)',
+                       default=5000,
+                       validators=[GE(0), LE(10000)],
+                       help='The expected spatial smoothness of the particle trajectories in angstroms (a greater '
+                            'value means spatially smoother motion.')
+        group.addParam('doGaussianDecay', BooleanParam,
+                       label="Use Gaussian decay?",
+                       default=False,
+                       help='If set to Yes, then it is assumed that the correlation of the velocities of two particles '
+                            'decays as a Gaussian over their distance, instead of as an exponential. This will produce '
+                            'spatially smoother motion and result in a shorter program runtime.')
+        form.addParam('estimate2dDeformations', BooleanParam,
+                      label='Estimate 2D deformations?',
+                      condition='fitPerParticleMotion',
                       default=False,
-                      condition='doFlexAlign',
-                      help="If set to Yes, then the subtomogram version of Bayesian polishing will be used to fit "
-                           "per-particle (3D) motion tracks, besides the rigid part of the motion in the tilt series.")
-        form.addParam('sigmaVel', FloatParam,
-                      label='Sigma for velocity (Å/dose)',
-                      condition='doPolish',
-                      default=0.2,
-                      validators=[GE(0.1), LE(10)],
-                      help="The expected amount of motion (i.e. the std. deviation of particle positions in Angstroms "
-                           "after 1 electron per A^2 of radiation).")
-        form.addParam('sigmaDiv', IntParam,
-                      label='Sigma for divergence (Å)',
-                      default=5000,
-                      condition='doPolish',
-                      validators=[GE(0), LE(10000)],
-                      help="The expected spatial smoothness of the particle trajectories in angstroms (a greater value "
-                           "means spatially smoother motion.")
-        form.addParam('doGaussianDecay', BooleanParam,
-                      label="Use Gaussian decay?",
-                      default=False,
-                      condition='doPolish',
-                      help="If set to Yes, then it's assumed that the correlation of the velocities of two particles "
-                           "decays as a Gaussian over their distance, instead of as an exponential. This will produce "
-                           "spatially smoother motion and result in a shorter program runtime.")
+                      help='If set to Yes, then the subtomogram version of Bayesian polishing will be used to fit '
+                           'per-particle (3D) motion tracks, besides the rigid part of the motion in the tilt series.')
+        group = form.addGroup('2D deformation estimation', condition='estimate2dDeformations')
+        group.addParam('nHorizSamplingPts', IntParam,
+                       label='Horizontal sampling points',
+                       default=3,
+                       validators=[GE(0), LE(10)],
+                       help='Number of horizontal sampling points for the deformation grid.')
+        group.addParam('nVertSamplingPts', IntParam,
+                       label='Vertical sampling points',
+                       default=3,
+                       validators=[GE(0), LE(10)],
+                       help='Number of vertical sampling points for the deformation grid.')
+        group.addParam('deformationModel', EnumParam,
+                       choices=[choice.name for choice in deformationModels],
+                       label='Alignment model',
+                       default=deformationModels.spline.value,
+                       help='Type of model to use (linear, spline or Fourier).')
+        group.addParam('deformationRegularisation', FloatParam,
+                       label='Deformation regularisation scale',
+                       default=0,
+                       validators=[GE(0), LE(1)])
+        group.addParam('refineDefPerFrame', BooleanParam,
+                       label='Refine deformations per frame?',
+                       default=False,
+                       help='If set to Yes, it models deformations per tilt frame instead of per tilt series.')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -105,17 +152,28 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
     # --------------------------- UTILS functions -----------------------------
     def _genTomoFrameAlignCmd(self):
         cmd = self._genIOCommand()
+        # Polish
         cmd += '--r %i ' % self.maxPosErr.get()
-        if self.doFlexAlign.get():
-            if self.doPolish.get():
-                cmd += '--motion '
-                cmd += '--s_vel %.1f ' % self.sigmaVel.get()
-                cmd += '--s_div %i ' + self.sigmaDiv.get()
-                if self.doGaussianDecay.get():
-                    cmd += '--sq_exp_ker '
-        else:
+        cmd += '--shift_only '
+        if self.alignByShift.get():
             cmd += '--shift_only '
-            if self.doGlobalRigidAlign.get():
+            if self.alignmentModel.get() == alignModels.onlyParticles.value:
                 cmd += '--shift_only_by_particles '
+
+        # Motion
+        if self.fitPerParticleMotion.get():
+            cmd += '--motion '
+            cmd += '--s_vel %.1f ' % self.sigmaVel.get()
+            cmd += '--s_div %i ' % self.sigmaDiv.get()
+            if self.doGaussianDecay.get():
+                cmd += '--sq_exp_ker '
+            if self.estimate2dDeformations.get():
+                cmd += '--deformation '
+                cmd += '--def_w %i ' % self.nHorizSamplingPts.get()
+                cmd += '--def_h %i ' % self.nVertSamplingPts.get()
+                cmd += '--def_model %i ' % self.deformationModel.get()
+                cmd += '--def_reg %.2f ' % self.deformationRegularisation.get()
+                if self.refineDefPerFrame.get():
+                    cmd += '--per_frame_deformation '
 
         return cmd
