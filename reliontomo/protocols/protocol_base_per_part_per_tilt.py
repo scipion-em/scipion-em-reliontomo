@@ -43,7 +43,7 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
     # -------------------------- DEFINE param functions -----------------------
 
     def __init__(self, **kwargs):
-        super().__init__(kwargs)
+        super().__init__(**kwargs)
         self.inParticlesStar = None
 
     def _defineParams(self, form):
