@@ -116,6 +116,7 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
         if self.inputPostProcess.get():
             cmd += '--fsc %s ' % self.inputPostProcess.get()
         cmd += '--b %i ' % self.boxSize.get()
+        return cmd
 
 
 
