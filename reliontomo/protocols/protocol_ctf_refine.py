@@ -28,6 +28,8 @@ from reliontomo.protocols.protocol_base_per_part_per_tilt import ProtRelionPerPa
 from reliontomo.utils import getProgram
 from tomo.protocols import ProtTomoBase
 
+oddAberrationOrders = [3, 5, 7]
+evenAberrationOrders = [4, 6, 8]
 
 class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
     """Tomo CTF refine"""
@@ -91,7 +93,7 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
                       display=EnumParam.DISPLAY_HLIST,
                       label='Max order of even aberrations',
                       condition='refineEvenAbe',
-                      choices=[4, 6, 8],
+                      choices=evenAberrationOrders,
                       default=0)
         form.addParam('refineOddAbe', BooleanParam,
                       label="Refine odd aberrations?",
@@ -101,7 +103,7 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
                       display=EnumParam.DISPLAY_HLIST,
                       label='Max order of odd aberrations',
                       condition='refineOddAbe',
-                      choices=[3, 5, 7],
+                      choices=oddAberrationOrders,
                       default=0)
         form.addParallelSection(threads=4, mpi=1)
 
@@ -141,8 +143,8 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
                 cmd += '--per_tomo_scale '
 
         if self.refineEvenAbe.get():
-            cmd += '--do_even_aberrations --ne %i ' % self.maxAbeEvenOrder.get()
+            cmd += '--do_even_aberrations --ne %i ' % evenAberrationOrders[self.maxAbeEvenOrder.get()]
         if self.refineOddAbe.get():
-            cmd += '--do_odd_aberrations --no %i ' % self.maxAbeOddOrder.get()
+            cmd += '--do_odd_aberrations --no %i ' % oddAberrationOrders[self.maxAbeOddOrder.get()]
 
         return cmd
