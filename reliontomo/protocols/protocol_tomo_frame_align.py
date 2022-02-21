@@ -28,9 +28,12 @@ from pyworkflow.protocol import IntParam, BooleanParam, GE, LE, FloatParam, Enum
 from reliontomo import Plugin
 from reliontomo.protocols.protocol_base_per_part_per_tilt import ProtRelionPerParticlePerTiltBase
 from reliontomo.utils import getProgram
+from tomo.objects import SetOfSubTomograms
 from tomo.protocols import ProtTomoBase
 
-# class outputObjects(Enum):
+
+class outputObjects(Enum):
+    outputSubtomograms = SetOfSubTomograms()
 
 
 class alignModels(Enum):
