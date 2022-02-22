@@ -40,10 +40,6 @@ class ProtRelionRefineBase(EMProtocol):
 
     # -------------------------- DEFINE param functions -----------------------
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.inParticlesStar = None
-
     def _defineParams(self, form):
         pass
 
@@ -287,8 +283,7 @@ class ProtRelionRefineBase(EMProtocol):
         pass
 
     def convertInputStep(self):
-        self.inParticlesStar = self._getExtraPath(IN_SUBTOMOS_STAR)
-        writeSetOfPseudoSubtomograms(self.inputPseudoSubtomos.get(), self.inParticlesStar)
+        writeSetOfPseudoSubtomograms(self.inputPseudoSubtomos.get(), self._getExtraPath(IN_SUBTOMOS_STAR))
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -305,7 +300,7 @@ class ProtRelionRefineBase(EMProtocol):
         return cmd
 
     def _genIOBaseCmd(self):
-        cmd = '--i %s ' % self.inParticlesStar
+        cmd = '--i %s ' % self._getExtraPath(IN_SUBTOMOS_STAR)
         cmd += '--o %s ' % (self._getExtraPath() + '/')  # If not, Relion will concatenate it directly as a prefix
         cmd += '--j %i ' % self.numberOfThreads
         return cmd
