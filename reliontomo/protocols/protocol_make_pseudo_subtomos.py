@@ -28,6 +28,7 @@ from relion.convert import OpticsGroups
 from reliontomo import Plugin
 from reliontomo.constants import OUT_SUBTOMOS_STAR
 from reliontomo.convert import readSetOfPseudoSubtomograms
+from reliontomo.protocols import ProtRelionPrepareData
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
 from reliontomo.utils import getProgram
@@ -99,7 +100,10 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
     def createOutputStep(self):
         starFile = self._getExtraPath(OUT_SUBTOMOS_STAR)
         protPrepData = self.inputPrepareDataProt.get()
-        tsSamplingRate = protPrepData.inputCtfTs.get().getSetOfTiltSeries().getSamplingRate()  # bin1
+        if type(self.inputPrepareDataProt.get()) == ProtRelionPrepareData:
+            tsSamplingRate = protPrepData.inputCtfTs.get().getSetOfTiltSeries().getSamplingRate()  # bin1
+        else:
+            tsSamplingRate = self.inputPrepareDataProt.get().inPseudoSubtomos.get().getSamplingRate()
         outputSet = self._createSet(SetOfSubTomograms, 'subtomograms%s.sqlite', '')
         outputSet.getAcquisition().opticsGroupInfo.set(OpticsGroups.fromStar(starFile).toString())
         outputSet.setSamplingRate(tsSamplingRate * self.binningFactor.get())
