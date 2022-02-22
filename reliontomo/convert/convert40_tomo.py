@@ -65,8 +65,8 @@ class Writer(WriterBase):
     def coordinates2Star(self, coordSet, subtomosStar, sRate=1, coordsScale=1):
         """Input coordsScale is used to scale the coordinates so they are expressed in bin 1, as expected by Relion 4"""
         tomoTable = Table(columns=self._getCoordinatesStarFileLabels())
-        randomSubsetValues = [1, 2]
-        for i, coord in enumerate(coordSet):
+        i = 0
+        for coord in coordSet.iterCoordinates():
             angles, shifts = self._getTransformInfoFromCoordOrSubtomo(coord)
             # Add row to the table which will be used to generate the STAR file
             tomoTable.addRow(
@@ -87,8 +87,9 @@ class Writer(WriterBase):
                 angles[2],                                                   # 12 _rlnAnglePsi
                 # Extended fields
                 getattr(coord, '_classNumber', -1),                          # 13_rlnClassNumber
-                getattr(coord, '_randomSubset', randomSubsetValues[i % 2]),  # 14 _rlnRandomSubset
+                getattr(coord, '_randomSubset', (i % 2) +1),  # 14 _rlnRandomSubset
             )
+            i+=1
         # Write the STAR file
         tomoTable.write(subtomosStar)
 
