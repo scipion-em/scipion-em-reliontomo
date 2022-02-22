@@ -62,7 +62,7 @@ class ProtRelionPrepareData(EMProtocol):
                       important=True,
                       allowsNull=False)
         form.addParam('handeness', BooleanParam,
-                      label='Does focues decrease with Z distance?',
+                      label='Does focus decrease with Z distance?',
                       default=True,
                       expertLevel=LEVEL_ADVANCED,
                       help='It is the handedness of the tilt geometry and it is used to describe '

@@ -39,7 +39,7 @@ import numpy as np
 from os.path import join
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from reliontomo.utils import manageDims, getTransformMatrix
-from tomo.constants import SCIPION
+from tomo.constants import SCIPION, BOTTOM_LEFT_CORNER
 from tomo.objects import Coordinate3D, TomoAcquisition, SubTomogram
 
 
@@ -74,9 +74,9 @@ class Writer(WriterBase):
                 coord.getObjId(),                                            # 2 _rlnTomoParticleId
                 coord.getGroupId() if coord.getGroupId() else 1,             # 3 _rlnTomoManifoldIndex
                 # coord in pix at scale of bin1
-                coord.getX(SCIPION) * coordsScale,                           # 4 _rlnCoordinateX
-                coord.getY(SCIPION) * coordsScale,                           # 5 _rlnCoordinateY
-                coord.getZ(SCIPION) * coordsScale,                           # 6 _rlnCoordinateZ
+                coord.getX(BOTTOM_LEFT_CORNER) * coordsScale,                           # 4 _rlnCoordinateX
+                coord.getY(BOTTOM_LEFT_CORNER) * coordsScale,                           # 5 _rlnCoordinateY
+                coord.getZ(BOTTOM_LEFT_CORNER) * coordsScale,                           # 6 _rlnCoordinateZ
                 # pix * Å/pix = [shifts in Å]
                 shifts[0] * sRate,                                           # 7 _rlnOriginXAngst
                 shifts[1] * sRate,                                           # 8 _rlnOriginYAngst
