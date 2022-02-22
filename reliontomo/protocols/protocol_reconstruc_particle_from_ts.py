@@ -26,6 +26,7 @@ from enum import Enum
 from pyworkflow.protocol import StringParam, PointerParam
 from reliontomo import Plugin
 from reliontomo.constants import SYMMETRY_HELP_MSG
+from reliontomo.protocols import ProtRelionPrepareData
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
 from tomo.objects import AverageSubTomogram
@@ -123,5 +124,8 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
 
     def getNewSamplingRate(self):
         """It will be the tilt series sampling rate (bin 1) multiplied by the binning factor introduced"""
-        tsSamplingRate = self.inputPrepareDataProt.get().inputCtfTs.get().getSetOfTiltSeries().getSamplingRate()
-        return tsSamplingRate * self.binningFactor.get()
+        if type(self.inputPrepareDataProt.get()) == ProtRelionPrepareData:
+            tsSamplingRate = self.inputPrepareDataProt.get().inputCtfTs.get().getSetOfTiltSeries().getSamplingRate()
+            return tsSamplingRate * self.binningFactor.get()
+        else:
+            return self.inputPrepareDataProt.get().inPseudoSubtomos.get().getSamplingRate()
