@@ -29,9 +29,9 @@ import numpy as np
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, IntParam, GE, LE, PathParam
-from pyworkflow.utils import Message
+from pyworkflow.utils import Message, createLink
 from relion.convert import OpticsGroups
-from reliontomo.constants import BOX_SIZE_VALS, OUT_TOMOS_STAR, IN_SUBTOMOS_STAR, OUT_SUBTOMOS_STAR
+from reliontomo.constants import BOX_SIZE_VALS, OUT_TOMOS_STAR, IN_SUBTOMOS_STAR, OUT_SUBTOMOS_STAR, IN_TOMOS_STAR
 from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms
 from reliontomo.utils import getFileFromDataPrepProt
 from tomo.objects import SetOfSubTomograms
@@ -45,7 +45,6 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
     """Base protocol used for the getting the frame alignment and ctf-refinment"""
 
     _devStatus = BETA
-
     _boxSize4Est = None
 
     # -------------------------- DEFINE param functions -----------------------
@@ -57,7 +56,7 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
         form.addParam('inputPrepareDataProt', PointerParam,
-                      pointerClass='ProtRelionPrepareData',
+                      pointerClass='ProtRelionPrepareData, ProtRelionTomoFrameAlign, ProtRelionCtfRefine',
                       label="Data preparation protocol",
                       important=True,
                       allowsNull=False)
@@ -101,6 +100,8 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
     # -------------------------- UTILS functions -----------------------------
     def _initialize(self):
         self._findClosestAdmittedVal()
+        self.inTomosStar = self._getExtraPath(IN_TOMOS_STAR)
+        createLink(getFileFromDataPrepProt(self, OUT_TOMOS_STAR), self.inTomosStar)
 
     def convertInputStep(self):
         self.inParticlesStar = self._getExtraPath(IN_SUBTOMOS_STAR)
