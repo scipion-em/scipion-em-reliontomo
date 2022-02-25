@@ -64,7 +64,7 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
                       pointerClass='SetOfSubTomograms',
                       label="Input pseudo-subtomograms",
                       important=True,
-                      allowsNull=False)
+                      allowsNull=True)
         form.addParam('inputTrajectory', PathParam,
                       label="Particle trajectories set (optional)",
                       allowsNull=True)
