@@ -49,7 +49,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         self.linkedTomosDirName = 'tomograms'
         self.reader = None
         self.isReader40 = None
-        self.sRate = None
+        self.sRate = None # Sampling rate of the tomograms where relion picked
         self.starFilePath = None
         self.isSubtomoStarFile = False
 
@@ -58,7 +58,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         form.addParam('starFile', FileParam,
                       label='Star file')
         form.addParam('inTiltSeries', PointerParam,
-                      pointerClass='SetOfTiltSeries',
+                      pointerClass='SetOfTomograms',
                       label='Set of tilt series (opt.)',
                       allowsNull=True,
                       help='Only required if the coordinates are desired to be referred to the corresponding tilt, '
@@ -85,7 +85,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         symlink(self.starFile.get(), newStarName)
         # Read the star file
         self.reader, self.isReader40 = createReaderTomo(starFile=newStarName)
-        # Generate the firectoy in which the linked tomograms pointed from the star file will be stored
+        # Generate the directory in which the linked tomograms pointed from the star file will be stored
         mkdir(self._getExtraPath(self.linkedTomosDirName))
         if self.samplingRate.get():
             self.sRate = self.samplingRate.get()
@@ -97,6 +97,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         # Generate the precedents (set of tomograms which the coordinates are referred to) if necessary
         if self.isReader40:
             precedentsSet = self.inTiltSeries.get()
+            coordSet.setPrecedents(precedentsSet)
         else:
             precedentsSet = SetOfTomograms.create(self._getPath(), template='tomograms%s.sqlite')
             precedentsSet.setSamplingRate(self.sRate)
@@ -106,9 +107,9 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
 
         # Read the star file and generate the corresponding set
         # coordSet = self._createSetOfCoordinates3D(precedentsSet)
-        coordSet.setSamplingRate(self.sRate)
+        coordSet.setSamplingRate(precedentsSet.getSamplingRate())
         coordSet.setBoxSize(self.boxSize.get())
-        self.reader.starFile2Coords3D(coordSet, precedentsSet)
+        self.reader.starFile2Coords3D(coordSet, precedentsSet, self.sRate)
 
         self._defineOutputs(outputCoordinates=coordSet)
         self._defineSourceRelation(precedentsSet, coordSet)

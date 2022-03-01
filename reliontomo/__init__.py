@@ -54,3 +54,7 @@ class Plugin(relion.Plugin):
     @classmethod
     def isReconstringParticleFromSubtomos(cls):
         return cls._isReconstringParticleFromSubtomos
+
+    @classmethod
+    def defineBinaries(cls, env):
+        pass

@@ -25,12 +25,12 @@ def writeSetOfPseudoSubtomograms(imgSet, starFile, **kwargs):
     return createWriterTomo40(**kwargs).pseudoSubtomograms2Star(imgSet, starFile)
 
 
-def writeSetOfSubtomograms(imgSet, starFile, **kwargs):
+def writeSetOfSubtomograms(coordSet, starFile, **kwargs):
     """ Convenience function to write a SetOfSubtomograms as Relion metadata using a Writer."""
     if Plugin.isRe40():
-        return createWriterTomo40(**kwargs).coordinates2Star(imgSet, starFile, **kwargs)
+        return createWriterTomo40(**kwargs).coordinates2Star(coordSet, starFile, **kwargs)
     else:
-        return createWriterTomo30(**kwargs).writeSetOfSubtomograms(imgSet, starFile, **kwargs)
+        return createWriterTomo30(**kwargs).writeSetOfSubtomograms(coordSet, starFile, **kwargs)
 
 
 def writeSetOfTomograms(imgSet, starFile, **kwargs):
