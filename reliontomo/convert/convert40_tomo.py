@@ -39,10 +39,10 @@ import numpy as np
 from os.path import join
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from reliontomo.utils import manageDims, getTransformMatrix
-from tomo.constants import SCIPION
+from tomo.constants import SCIPION, BOTTOM_LEFT_CORNER, TOP_LEFT_CORNER
 from tomo.objects import Coordinate3D, TomoAcquisition, SubTomogram
 
-
+RELION_3D_COORD_ORIGIN = BOTTOM_LEFT_CORNER
 class Writer(WriterBase):
     """ Helper class to convert from Scipion SetOfTomograms and SetOfSubTomograms to star files ."""
 
@@ -65,8 +65,8 @@ class Writer(WriterBase):
     def coordinates2Star(self, coordSet, subtomosStar, sRate=1, coordsScale=1):
         """Input coordsScale is used to scale the coordinates so they are expressed in bin 1, as expected by Relion 4"""
         tomoTable = Table(columns=self._getCoordinatesStarFileLabels())
-        randomSubsetValues = [1, 2]
-        for i, coord in enumerate(coordSet):
+        i = 0
+        for coord in coordSet.iterCoordinates():
             angles, shifts = self._getTransformInfoFromCoordOrSubtomo(coord)
             # Add row to the table which will be used to generate the STAR file
             tomoTable.addRow(
@@ -74,9 +74,9 @@ class Writer(WriterBase):
                 coord.getObjId(),                                            # 2 _rlnTomoParticleId
                 coord.getGroupId() if coord.getGroupId() else 1,             # 3 _rlnTomoManifoldIndex
                 # coord in pix at scale of bin1
-                coord.getX(SCIPION) * coordsScale,                           # 4 _rlnCoordinateX
-                coord.getY(SCIPION) * coordsScale,                           # 5 _rlnCoordinateY
-                coord.getZ(SCIPION) * coordsScale,                           # 6 _rlnCoordinateZ
+                coord.getX(RELION_3D_COORD_ORIGIN) * coordsScale,                           # 4 _rlnCoordinateX
+                coord.getY(RELION_3D_COORD_ORIGIN) * coordsScale,                           # 5 _rlnCoordinateY
+                coord.getZ(RELION_3D_COORD_ORIGIN) * coordsScale,                           # 6 _rlnCoordinateZ
                 # pix * Å/pix = [shifts in Å]
                 shifts[0] * sRate,                                           # 7 _rlnOriginXAngst
                 shifts[1] * sRate,                                           # 8 _rlnOriginYAngst
@@ -87,8 +87,9 @@ class Writer(WriterBase):
                 angles[2],                                                   # 12 _rlnAnglePsi
                 # Extended fields
                 getattr(coord, '_classNumber', -1),                          # 13_rlnClassNumber
-                getattr(coord, '_randomSubset', randomSubsetValues[i % 2]),  # 14 _rlnRandomSubset
+                getattr(coord, '_randomSubset', (i % 2) +1),  # 14 _rlnRandomSubset
             )
+            i+=1
         # Write the STAR file
         tomoTable.write(subtomosStar)
 
@@ -242,18 +243,20 @@ class Reader:
         self.dataTable.read(starFile)
 
     @staticmethod
-    def gen3dCoordFromStarRow(row, sRate, precedentIdList):
+    def gen3dCoordFromStarRow(row, sRate, precedentIdList, factor=1):
+        
         coordinate3d = Coordinate3D()
         tomoId = (row.get(TOMO_NAME))
         x = row.get(COORD_X, 0)
         y = row.get(COORD_Y, 0)
         z = row.get(COORD_Z, 0)
-        volId = precedentIdList.index(tomoId) + 1  # Set indices begin in 1
-        coordinate3d.setVolId(volId)
-        coordinate3d.setTomoId(tomoId)
-        coordinate3d.setX(float(x), SCIPION)
-        coordinate3d.setY(float(y), SCIPION)
-        coordinate3d.setZ(float(z), SCIPION)
+
+        vol = precedentIdList[tomoId]
+        coordinate3d.setVolume(vol)
+
+        coordinate3d.setX(float(x)*factor, RELION_3D_COORD_ORIGIN)
+        coordinate3d.setY(float(y)*factor, RELION_3D_COORD_ORIGIN)
+        coordinate3d.setZ(float(z)*factor, RELION_3D_COORD_ORIGIN)
         coordinate3d.setMatrix(getTransformMatrixFromRow(row, sRate))
         coordinate3d.setGroupId(row.get(MANIFOLD_INDEX, 1))
         # Extended fields
@@ -262,11 +265,16 @@ class Reader:
 
         return coordinate3d
 
-    def starFile2Coords3D(self, coordsSet, precedentsSet):
-        precedentIdList = [ts.getTsId() for ts in precedentsSet]
-        sRate = precedentsSet.getSamplingRate()
+    def starFile2Coords3D(self, coordsSet, precedentsSet, coordSamplingRate):
+        precedentIdList = {}
+        for tomo in precedentsSet:
+            precedentIdList[tomo.getTsId()] = tomo.clone()
+
+        # Calculate the factor to allow importing coordinates at different SR than the tomograms associated
+        factor = coordSamplingRate/precedentsSet.getSamplingRate()
+
         for row in self.dataTable:
-            coordsSet.append(self.gen3dCoordFromStarRow(row, sRate, precedentIdList))
+            coordsSet.append(self.gen3dCoordFromStarRow(row, coordSamplingRate, precedentIdList, factor= factor))
 
     def starFile2PseudoSubtomograms(self, starFile, outputSet):
         tomoTable = Table()
