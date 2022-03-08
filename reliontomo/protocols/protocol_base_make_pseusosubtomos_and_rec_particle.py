@@ -28,6 +28,7 @@ from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, FloatPar
 from pyworkflow.utils import Message, createLink
 from reliontomo.constants import OUT_TOMOS_STAR, OUT_SUBTOMOS_STAR, IN_SUBTOMOS_STAR, IN_TOMOS_STAR
 from reliontomo.convert import writeSetOfPseudoSubtomograms
+from reliontomo.protocols import ProtRelionPrepareData
 from reliontomo.utils import getFileFromDataPrepProt, isPseudoSubtomogram
 
 
@@ -42,6 +43,7 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
         super().__init__(**kwargs)
         self.inParticlesStar = None
         self.inTomosStar = None
+        self.inPrecedents = None
 
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
@@ -102,6 +104,8 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
         self.inParticlesStar = self._getExtraPath(IN_SUBTOMOS_STAR)
         self.inTomosStar = self._getExtraPath(IN_TOMOS_STAR)
         createLink(getFileFromDataPrepProt(self, OUT_TOMOS_STAR), self.inTomosStar)
+        if type(self.inputPrepareDataProt.get()) == ProtRelionPrepareData:
+            self.inPrecedents = self.inputPrepareDataProt.get().inputCoords.get().getPrecedents()
 
     def convertInputStep(self):
         if self.inputParticles.get():

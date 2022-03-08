@@ -39,10 +39,12 @@ import numpy as np
 from os.path import join
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from reliontomo.utils import manageDims, getTransformMatrix
-from tomo.constants import SCIPION, BOTTOM_LEFT_CORNER, TOP_LEFT_CORNER
-from tomo.objects import Coordinate3D, TomoAcquisition, SubTomogram
+from tomo.constants import BOTTOM_LEFT_CORNER
+from tomo.objects import Coordinate3D, TomoAcquisition, SubTomogram, Tomogram
 
 RELION_3D_COORD_ORIGIN = BOTTOM_LEFT_CORNER
+
+
 class Writer(WriterBase):
     """ Helper class to convert from Scipion SetOfTomograms and SetOfSubTomograms to star files ."""
 
@@ -65,8 +67,7 @@ class Writer(WriterBase):
     def coordinates2Star(self, coordSet, subtomosStar, sRate=1, coordsScale=1):
         """Input coordsScale is used to scale the coordinates so they are expressed in bin 1, as expected by Relion 4"""
         tomoTable = Table(columns=self._getCoordinatesStarFileLabels())
-        i = 0
-        for coord in coordSet.iterCoordinates():
+        for i, coord in enumerate(coordSet):
             angles, shifts = self._getTransformInfoFromCoordOrSubtomo(coord)
             # Add row to the table which will be used to generate the STAR file
             tomoTable.addRow(
@@ -74,9 +75,9 @@ class Writer(WriterBase):
                 coord.getObjId(),                                            # 2 _rlnTomoParticleId
                 coord.getGroupId() if coord.getGroupId() else 1,             # 3 _rlnTomoManifoldIndex
                 # coord in pix at scale of bin1
-                coord.getX(RELION_3D_COORD_ORIGIN) * coordsScale,                           # 4 _rlnCoordinateX
-                coord.getY(RELION_3D_COORD_ORIGIN) * coordsScale,                           # 5 _rlnCoordinateY
-                coord.getZ(RELION_3D_COORD_ORIGIN) * coordsScale,                           # 6 _rlnCoordinateZ
+                coord.getX(RELION_3D_COORD_ORIGIN) * coordsScale,            # 4 _rlnCoordinateX
+                coord.getY(RELION_3D_COORD_ORIGIN) * coordsScale,            # 5 _rlnCoordinateY
+                coord.getZ(RELION_3D_COORD_ORIGIN) * coordsScale,            # 6 _rlnCoordinateZ
                 # pix * Å/pix = [shifts in Å]
                 shifts[0] * sRate,                                           # 7 _rlnOriginXAngst
                 shifts[1] * sRate,                                           # 8 _rlnOriginYAngst
@@ -87,9 +88,9 @@ class Writer(WriterBase):
                 angles[2],                                                   # 12 _rlnAnglePsi
                 # Extended fields
                 getattr(coord, '_classNumber', -1),                          # 13_rlnClassNumber
-                getattr(coord, '_randomSubset', (i % 2) +1),  # 14 _rlnRandomSubset
+                # Alternated 1 and 2 values
+                getattr(coord, '_randomSubset', (i % 2) + 1),                # 14 _rlnRandomSubset
             )
-            i+=1
         # Write the STAR file
         tomoTable.write(subtomosStar)
 
@@ -115,9 +116,9 @@ class Writer(WriterBase):
                     subtomo.getObjId(),                                          # rlnTomoParticleId #2
                     coord.getGroupId(),                                          # rlnTomoManifoldIndex #3
                     # Coords in pixels
-                    coord.getX(SCIPION),                                         # _rlnCoordinateX #4
-                    coord.getY(SCIPION),                                         # _rlnCoordinateY #5
-                    coord.getZ(SCIPION),                                         # _rlnCoordinateZ #6
+                    coord.getX(RELION_3D_COORD_ORIGIN),                          # _rlnCoordinateX #4
+                    coord.getY(RELION_3D_COORD_ORIGIN),                          # _rlnCoordinateY #5
+                    coord.getZ(RELION_3D_COORD_ORIGIN),                          # _rlnCoordinateZ #6
                     # pix * Å/pix = [shifts in Å]
                     shifts[0] * sRate,                                           # _rlnOriginXAngst #7
                     shifts[1] * sRate,                                           # _rlnOriginYAngst #8
@@ -274,20 +275,24 @@ class Reader:
         factor = coordSamplingRate/precedentsSet.getSamplingRate()
 
         for row in self.dataTable:
-            coordsSet.append(self.gen3dCoordFromStarRow(row, coordSamplingRate, precedentIdList, factor= factor))
+            coordsSet.append(self.gen3dCoordFromStarRow(row, coordSamplingRate, precedentIdList, factor=factor))
 
-    def starFile2PseudoSubtomograms(self, starFile, outputSet):
+    def starFile2PseudoSubtomograms(self, starFile, outputSet, precedentSet, vTomoScaleFactor):
         tomoTable = Table()
         tomoTable.read(starFile, tableName='particles')
         ih = ImageHandler()
         samplingRate = outputSet.getSamplingRate()
         opticsGroupStr = OpticsGroups.fromImages(outputSet).toString()
+        virtualTomoDict = genVTomoDict(precedentSet, vTomoScaleFactor)
 
         for counter, row in enumerate(tomoTable):
             psubtomo = SubTomogram()
-            coordinate3d = Coordinate3D()
             transform = Transform()
             origin = Transform()
+
+            coordinate3d = Coordinate3D()
+            tomoId = row.get(TOMO_NAME)
+            coordinate3d.setVolume(virtualTomoDict[tomoId])
 
             psubtomo.setCoordinate3D(coordinate3d)
             psubtomo.setTransform(transform)
@@ -303,15 +308,15 @@ class Reader:
             psubtomo.setOrigin(origin)
 
             # Update values of current pseudo subtomogram
-            coordinate3d.setTomoId(row.get(TOMO_NAME))                                     # 1 _rlnTomoName
+            coordinate3d.setTomoId(tomoId)                                                 # 1 _rlnTomoName
             particleId = row.get(TOMO_PARTICLE_ID, counter + 1)                            # 2 _rlnTomoParticleId
             manifoldInd = row.get(MANIFOLD_INDEX, None)
             if manifoldInd:
                 coordinate3d.setGroupId(manifoldInd)
                 psubtomo._manifoldIndex = Integer(manifoldInd)                             # 3 _rlnTomoManifoldIndex
-            coordinate3d.setX(float(row.get(COORD_X, 0)), SCIPION)                         # 4 _rlnCoordinateX
-            coordinate3d.setY(float(row.get(COORD_Y, 0)), SCIPION)                         # 5 _rlnCoordinateX
-            coordinate3d.setZ(float(row.get(COORD_Z, 0)), SCIPION)                         # 6 _rlnCoordinateX
+            coordinate3d.setX(float(row.get(COORD_X, 0)), RELION_3D_COORD_ORIGIN)          # 4 _rlnCoordinateX
+            coordinate3d.setY(float(row.get(COORD_Y, 0)), RELION_3D_COORD_ORIGIN)          # 5 _rlnCoordinateX
+            coordinate3d.setZ(float(row.get(COORD_Z, 0)), RELION_3D_COORD_ORIGIN)          # 6 _rlnCoordinateX
             self.__setParticleTransformProj(psubtomo, row, samplingRate)                   # 7 - 12 rlnOriginAngst and rlnAngles
             psubtomo.setClassId(row.get(CLASS_NUMBER, -1))                                 # 13 _rlnClassNumber
             randomSubset = row.get(RANDOM_SUBSET, None)
@@ -392,3 +397,28 @@ def getTransformMatrixFromRow(row, sRate, invert=True):
     rot = row.get(ROT, 0)
 
     return getTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, invert)
+
+
+def genVTomoDict(precedentSet, vTomoScaleFactor):
+    """Generate a set of virtual tomograms with the attributes required to follow the 3D coordinates data model:
+    size, tsId, sampling rate and origin. This way, the metadata produced with this plugin can be represented properly
+    as Scipion metadata"""
+    virtualTomoDict = {}
+    for tomo in precedentSet:
+        vTomo = Tomogram()
+        tsId = tomo.getTsId()
+        vTomo.setSamplingRate(tomo.getSamplingRate() / vTomoScaleFactor)
+        vTomo.setTsId(tsId)
+        origDims = tomo._dim
+        vTomo._dim = (origDims[0] * vTomoScaleFactor,
+                      origDims[1] * vTomoScaleFactor,
+                      origDims[2] * vTomoScaleFactor)
+        t = tomo.getOrigin()
+        m = t.getMatrix()
+        m[0, 3] = m[0, 3] * vTomoScaleFactor
+        m[1, 3] = m[1, 3] * vTomoScaleFactor
+        m[2, 3] = m[2, 3] * vTomoScaleFactor
+        vTomo.setOrigin(newOrigin=t)
+        virtualTomoDict[tsId] = vTomo
+
+    return virtualTomoDict

@@ -98,16 +98,20 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
                              self._genMakePseudoSubtomoCmd(), numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
+        vTomoScaleFactor = 1
         starFile = self._getExtraPath(OUT_SUBTOMOS_STAR)
         protPrepData = self.inputPrepareDataProt.get()
         if type(self.inputPrepareDataProt.get()) == ProtRelionPrepareData:
             tsSamplingRate = protPrepData.inputCtfTs.get().getSetOfTiltSeries().getSamplingRate()  # bin1
+            precedentsSamplingRate = self.inPrecedents.getSamplingRate()
+            precedentsBinning = round(precedentsSamplingRate / tsSamplingRate)
+            vTomoScaleFactor = round(precedentsBinning / self.binningFactor.get())
         else:
             tsSamplingRate = self.inputPrepareDataProt.get().inPseudoSubtomos.get().getSamplingRate()
         outputSet = self._createSet(SetOfSubTomograms, 'subtomograms%s.sqlite', '')
         outputSet.getAcquisition().opticsGroupInfo.set(OpticsGroups.fromStar(starFile).toString())
         outputSet.setSamplingRate(tsSamplingRate * self.binningFactor.get())
-        readSetOfPseudoSubtomograms(starFile, outputSet)
+        readSetOfPseudoSubtomograms(starFile, outputSet, self.inPrecedents, vTomoScaleFactor)
         self._defineOutputs(**{outputObjects.outputSubtomograms.name: outputSet})
 
     # -------------------------- INFO functions -------------------------------

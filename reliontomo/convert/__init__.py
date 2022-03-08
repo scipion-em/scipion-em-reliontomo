@@ -27,7 +27,7 @@ def writeSetOfPseudoSubtomograms(imgSet, starFile, **kwargs):
 
 def writeSetOfSubtomograms(coordSet, starFile, **kwargs):
     """ Convenience function to write a SetOfSubtomograms as Relion metadata using a Writer."""
-    if Plugin.isRe40():
+    if Plugin.isRe40():  # TODO: check the file labels to avoid plugin version checking as re3 is expected to be deprecated in Scipion, but retrocomp may be kept
         return createWriterTomo40(**kwargs).coordinates2Star(coordSet, starFile, **kwargs)
     else:
         return createWriterTomo30(**kwargs).writeSetOfSubtomograms(coordSet, starFile, **kwargs)
@@ -82,11 +82,11 @@ def createReaderTomo(starFile=None, **kwargs):
 #     return reader.starFile2Coords3D(prot)
 
 
-def readSetOfPseudoSubtomograms(starFile, outputSet):
+def readSetOfPseudoSubtomograms(starFile, outputSet, precedentSet, vTomoScaleFactor):
     """ Convenience function to write a SetOfPseudoSubtomograms as Relion metadata using a Reader."""
     # Subtomogras are represented in Relion 4 as Pseudosubtomograms
     reader, _ = createReaderTomo()
-    return reader.starFile2PseudoSubtomograms(starFile, outputSet)
+    return reader.starFile2PseudoSubtomograms(starFile, outputSet, precedentSet, vTomoScaleFactor)
 
 
 # class ClassesLoader:
