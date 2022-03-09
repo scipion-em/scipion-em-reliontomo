@@ -73,7 +73,6 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self.generateDeNovo3DModel)
         self._insertFunctionStep(self.alignSymmetry)
         self._insertFunctionStep(self.createOutputStep)
@@ -91,7 +90,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         iniModel = self._getExtraPath(INITIAL_MODEL)
         fixVolume(iniModel)  # Fix header to make it interpreted as volume instead of a stack by xmipp
         vol.setFileName(iniModel)
-        vol.setSamplingRate(self.inputPseudoSubtomos.get().getSamplingRate())
+        vol.setSamplingRate(self.inOptSet.get().getSamplingRate())
         self._defineOutputs(**{outputObjects.outputVolume.name: vol})
 
     # -------------------------- INFO functions -------------------------------

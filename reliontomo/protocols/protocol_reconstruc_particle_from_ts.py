@@ -62,8 +62,6 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._initialize()
-        self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self.relionReconstructParticle)
         if self.solventMask.get():
             self._insertFunctionStep(self.relionTomoMaskReference)
@@ -121,11 +119,3 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
         cmd += '--mask %s ' % self.solventMask.get().getFileName()
 
         return cmd
-
-    def getNewSamplingRate(self):
-        """It will be the tilt series sampling rate (bin 1) multiplied by the binning factor introduced"""
-        if type(self.inputPrepareDataProt.get()) == ProtRelionPrepareData:
-            tsSamplingRate = self.inputPrepareDataProt.get().inputCtfTs.get().getSetOfTiltSeries().getSamplingRate()
-            return tsSamplingRate * self.binningFactor.get()
-        else:
-            return self.inputPrepareDataProt.get().inPseudoSubtomos.get().getSamplingRate()

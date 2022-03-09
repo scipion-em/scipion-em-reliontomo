@@ -26,16 +26,13 @@ from enum import Enum
 
 from pwem.objects import SetOfVolumes
 from pyworkflow.protocol import FloatParam, BooleanParam
-from relion.convert import OpticsGroups
 from reliontomo import Plugin
 from reliontomo.constants import OUT_SUBTOMOS_STAR, PSUBTOMOS_SQLITE, OPTIMISATION_SET_STAR
 from reliontomo.convert import readSetOfPseudoSubtomograms
 from reliontomo.objects import SetOfPseudoSubtomograms, RelionParticles
-from reliontomo.protocols import ProtRelionPrepareData
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
 from reliontomo.utils import getProgram
-from tomo.objects import SetOfSubTomograms
 from tomo.protocols import ProtTomoBase
 
 
@@ -90,18 +87,6 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        # # JORGE
-        # import os
-        # fname = "/home/jjimenez/Desktop/test_JJ.txt"
-        # if os.path.exists(fname):
-        #     os.remove(fname)
-        # fjj = open(fname, "a+")
-        # fjj.write('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
-        # fjj.close()
-        # print('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
-        # import time
-        # time.sleep(10)
-        # # JORGE_END
         self._insertFunctionStep(self._relionMakePseudoSubtomos)
         self._insertFunctionStep(self.createOutputStep)
 
@@ -112,13 +97,14 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
                              self._genMakePseudoSubtomoCmd(), numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
-        samplingRate = self.inOptSet.get().getSamplingRate() * self.binningFactor.get()
+        samplingRate = self.getNewSamplingRate()
         # Output pseudosubtomograms --> set of volumes for visualization purposes
         outputSet = self._createSet(SetOfVolumes, PSUBTOMOS_SQLITE, '')
         outputSet.setSamplingRate(samplingRate)
         readSetOfPseudoSubtomograms(self._getExtraPath(OUT_SUBTOMOS_STAR), outputSet)
         # Output RelionParticles
         relionParticles = RelionParticles(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
+                                          tsSamplingRate=self.inOptSet.get().getTsSamplingRate(),
                                           samplingRate=samplingRate,
                                           nParticles=outputSet.getSize())
 

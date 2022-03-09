@@ -109,4 +109,8 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
         cmd += '--j %i ' % self.numberOfThreads.get()
         return cmd
 
+    def getNewSamplingRate(self):
+        """It will be the tilt series sampling rate (bin 1) multiplied by the binning factor introduced"""
+        return self.inOptSet.get().getTsSamplingRate() * self.binningFactor.get()
+
 

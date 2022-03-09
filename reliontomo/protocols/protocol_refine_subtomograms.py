@@ -203,7 +203,6 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._initialize()
-        self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self._autoRefine)
         self._insertFunctionStep(self.createOutputStep)
 
@@ -265,12 +264,11 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genAutoRefineCommand(), numberOfMpi=nMpi)
 
     def createOutputStep(self):
-        subtomoSet = self.inputPseudoSubtomos.get()
         vol = AverageSubTomogram()
         volName = self._getExtraPath('_class001.mrc')
         fixVolume(volName)  # Fix header for xmipp to consider it a volume instead of a stack
         vol.setFileName(volName)
-        vol.setSamplingRate(subtomoSet.getSamplingRate())
+        vol.setSamplingRate(self.inOptSet.get().getSamplingRate())
         pattern = '*it*half%s_class*.mrc'
         half1 = self._getLastFileName(self._getExtraPath(pattern % 1))
         half2 = self._getLastFileName(self._getExtraPath(pattern % 2))

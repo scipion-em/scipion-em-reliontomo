@@ -55,6 +55,7 @@ class ProtRelionPrepareData(EMProtocol):
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)
         self.tsSet = None
+        self.tomoSet = None
         self.coordScale = 1
 
     # -------------------------- DEFINE param functions -----------------------
@@ -148,6 +149,7 @@ class ProtRelionPrepareData(EMProtocol):
         tsSet = self.inputCtfTs.get().getSetOfTiltSeries()
         tomoSet = self.inputCoords.get().getPrecedents()
         self.tsSet = tsSet
+        self.tomoSet = tomoSet
         # If coordinates are referred to a set of tomograms, they'll be rescaled to be expressed in bin 1, as the
         # ts images
         if tomoSet:
@@ -182,7 +184,8 @@ class ProtRelionPrepareData(EMProtocol):
 
     def createOutputStep(self):
         relionParticles = RelionParticles(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
-                                          samplingRate=self.tsSet.getSamplingRate(),  # Output coords were scaled to be at bin1
+                                          tsSamplingRate=self.tsSet.getSamplingRate(),
+                                          samplingRate=self.tomoSet.getSamplingRate(),
                                           nParticles=self.inputCoords.get().getSize())
 
         self._defineOutputs(**{outputObjects.outputRelionParticles.name: relionParticles})
@@ -212,15 +215,6 @@ class ProtRelionPrepareData(EMProtocol):
                 errorMsg.append(''.join(currentTsErrMsg))
 
         return errorMsg
-
-    # def _summary(self):
-    #     summary = []
-    #     if self.isFinished():
-    #         sRate = self.inputCoords.get().getPrecedents().getSamplingRate() / \
-    #                 self.inputCtfTs.get().getSetOfTiltSeries().getSamplingRate()
-    #         summary.append('Coordinates scaled to factor TS_SamplingRate / Coords_SamplingRate = %.2f' % sRate)
-    #
-    #     return summary
 
     # --------------------------- UTILS functions -----------------------------
     def _getEtomoParentDir(self):
