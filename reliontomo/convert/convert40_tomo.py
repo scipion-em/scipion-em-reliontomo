@@ -25,9 +25,9 @@
 import csv
 from emtable import Table
 from pwem import ALIGN_NONE, ALIGN_2D, ALIGN_PROJ
-from pwem.emlib.image import ImageHandler
+from pwem.convert.headers import fixVolume
 from pwem.objects import Transform
-from pyworkflow.object import Integer, String
+from pyworkflow.object import Integer
 from relion.convert import OpticsGroups
 from relion.convert.convert_base import WriterBase
 from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, IMOD_DIR, FRACTIONAL_DOSE, \
@@ -38,9 +38,10 @@ import pwem.convert.transformations as tfs
 import numpy as np
 from os.path import join
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
-from reliontomo.utils import manageDims, getTransformMatrix
+from reliontomo.objects import PSubtomogram
+from reliontomo.utils import getTransformMatrix
 from tomo.constants import BOTTOM_LEFT_CORNER
-from tomo.objects import Coordinate3D, TomoAcquisition, SubTomogram, Tomogram
+from tomo.objects import Coordinate3D, Tomogram
 
 RELION_3D_COORD_ORIGIN = BOTTOM_LEFT_CORNER
 
@@ -67,7 +68,8 @@ class Writer(WriterBase):
     def coordinates2Star(self, coordSet, subtomosStar, sRate=1, coordsScale=1):
         """Input coordsScale is used to scale the coordinates so they are expressed in bin 1, as expected by Relion 4"""
         tomoTable = Table(columns=self._getCoordinatesStarFileLabels())
-        for i, coord in enumerate(coordSet):
+        i = 0
+        for coord in coordSet.iterCoordinates():
             angles, shifts = self._getTransformInfoFromCoordOrSubtomo(coord)
             # Add row to the table which will be used to generate the STAR file
             tomoTable.addRow(
@@ -91,6 +93,7 @@ class Writer(WriterBase):
                 # Alternated 1 and 2 values
                 getattr(coord, '_randomSubset', (i % 2) + 1),                # 14 _rlnRandomSubset
             )
+            i += 1
         # Write the STAR file
         tomoTable.write(subtomosStar)
 
@@ -108,11 +111,11 @@ class Writer(WriterBase):
             partsWriter.writeTableName('particles')
             partsWriter.writeHeader(tomoTable.getColumns())
             for subtomo in pSubtomoSet:
-                coord = subtomo.getCoordinate3D()
+                coord = subtomo._coordinate
                 angles, shifts = self._getTransformInfoFromCoordOrSubtomo(subtomo)
                 # Add row to the table which will be used to generate the STAR file
                 partsWriter.writeRowValues([
-                    subtomo.getCoordinate3D().getTomoId(),                       # _rlnTomoName #1
+                    coord.getTomoId(),                                           # _rlnTomoName #1
                     subtomo.getObjId(),                                          # rlnTomoParticleId #2
                     coord.getGroupId(),                                          # rlnTomoManifoldIndex #3
                     # Coords in pixels
@@ -277,58 +280,82 @@ class Reader:
         for row in self.dataTable:
             coordsSet.append(self.gen3dCoordFromStarRow(row, coordSamplingRate, precedentIdList, factor=factor))
 
-    def starFile2PseudoSubtomograms(self, starFile, outputSet, precedentSet, vTomoScaleFactor):
+    @staticmethod
+    def starFile2PseudoSubtomograms(starFile, outputSet):
         tomoTable = Table()
         tomoTable.read(starFile, tableName='particles')
-        ih = ImageHandler()
         samplingRate = outputSet.getSamplingRate()
-        opticsGroupStr = OpticsGroups.fromImages(outputSet).toString()
-        virtualTomoDict = genVTomoDict(precedentSet, vTomoScaleFactor)
+        listOfFilesToFixVolume = []
 
         for counter, row in enumerate(tomoTable):
-            psubtomo = SubTomogram()
-            transform = Transform()
-            origin = Transform()
-
-            coordinate3d = Coordinate3D()
-            tomoId = row.get(TOMO_NAME)
-            coordinate3d.setVolume(virtualTomoDict[tomoId])
-
-            psubtomo.setCoordinate3D(coordinate3d)
-            psubtomo.setTransform(transform)
-            psubtomo.setAcquisition(TomoAcquisition())
-            psubtomo.getAcquisition().opticsGroupInfo.set(opticsGroupStr)
-            psubtomo.setSamplingRate(samplingRate)
-
-            # Set the origin and the dimensions of the current subtomogram
-            subtomoFilename = row.get(SUBTOMO_NAME, FILE_NOT_FOUND)
-            x, y, z, n = ih.getDimensions(subtomoFilename)
-            zDim = manageDims(subtomoFilename, z, n)
-            origin.setShifts(x / -2., y / -2., zDim / -2.)
-            psubtomo.setOrigin(origin)
-
-            # Update values of current pseudo subtomogram
-            coordinate3d.setTomoId(tomoId)                                                 # 1 _rlnTomoName
-            particleId = row.get(TOMO_PARTICLE_ID, counter + 1)                            # 2 _rlnTomoParticleId
-            manifoldInd = row.get(MANIFOLD_INDEX, None)
-            if manifoldInd:
-                coordinate3d.setGroupId(manifoldInd)
-                psubtomo._manifoldIndex = Integer(manifoldInd)                             # 3 _rlnTomoManifoldIndex
-            coordinate3d.setX(float(row.get(COORD_X, 0)), RELION_3D_COORD_ORIGIN)          # 4 _rlnCoordinateX
-            coordinate3d.setY(float(row.get(COORD_Y, 0)), RELION_3D_COORD_ORIGIN)          # 5 _rlnCoordinateX
-            coordinate3d.setZ(float(row.get(COORD_Z, 0)), RELION_3D_COORD_ORIGIN)          # 6 _rlnCoordinateX
-            self.__setParticleTransformProj(psubtomo, row, samplingRate)                   # 7 - 12 rlnOriginAngst and rlnAngles
-            psubtomo.setClassId(row.get(CLASS_NUMBER, -1))                                 # 13 _rlnClassNumber
-            randomSubset = row.get(RANDOM_SUBSET, None)
-            if randomSubset:
-                psubtomo._randomSubset = Integer(randomSubset)                             # 14 _rlnRandomSubset
-            psubtomo._particleName = String(row.get(TOMO_PARTICLE_NAME, FILE_NOT_FOUND))   # 15 _rlnTomoParticleName
-            psubtomo._opticsGroupId = Integer(row.get(OPTICS_GROUP, 1))                    # 16 _rlnOpticsGroup
-            psubtomo.setLocation((particleId, subtomoFilename))                            # 17 _rlnImageName
-            psubtomo._ctfImage = String(row.get(CTF_IMAGE, FILE_NOT_FOUND))                # 18 _rlnCtfImage
-
-            # Add current subtomogram to the output set
+            particleFile = row.get(SUBTOMO_NAME)
+            ctfFile = row.get(CTF_IMAGE)
+            psubtomo = PSubtomogram(fileName=particleFile,
+                                    samplingRate=samplingRate,
+                                    ctfFile=ctfFile,
+                                    tsId=row.get(TOMO_NAME),
+                                    classId=row.get(CLASS_NUMBER, -1))
+            # Add the files to the list of files whose header has to be corrected to be interpreted as volumes
+            listOfFilesToFixVolume.append(particleFile)
+            listOfFilesToFixVolume.append(ctfFile)
+            # Add current pseudosubtomogram to the output set
             outputSet.append(psubtomo)
+
+        # Fix volume headers
+        fixVolume(listOfFilesToFixVolume)
+
+    # def starFile2PseudoSubtomograms(self, starFile, outputSet, precedentSet, vTomoScaleFactor):
+    #     tomoTable = Table()
+    #     tomoTable.read(starFile, tableName='particles')
+    #     ih = ImageHandler()
+    #     samplingRate = outputSet.getSamplingRate()
+    #     opticsGroupStr = OpticsGroups.fromImages(outputSet).toString()
+    #     virtualTomoDict = genVTomoDict(precedentSet, vTomoScaleFactor)
+    #
+    #     for counter, row in enumerate(tomoTable):
+    #         psubtomo = SubTomogram()
+    #         transform = Transform()
+    #         origin = Transform()
+    #
+    #         coordinate3d = Coordinate3D()
+    #         tomoId = row.get(TOMO_NAME)
+    #         coordinate3d.setVolume(virtualTomoDict[tomoId])
+    #
+    #         psubtomo.setCoordinate3D(coordinate3d)
+    #         psubtomo.setTransform(transform)
+    #         psubtomo.setAcquisition(TomoAcquisition())
+    #         psubtomo.getAcquisition().opticsGroupInfo.set(opticsGroupStr)
+    #         psubtomo.setSamplingRate(samplingRate)
+    #
+    #         # Set the origin and the dimensions of the current subtomogram
+    #         subtomoFilename = row.get(SUBTOMO_NAME, FILE_NOT_FOUND)
+    #         x, y, z, n = ih.getDimensions(subtomoFilename)
+    #         zDim = manageDims(subtomoFilename, z, n)
+    #         origin.setShifts(x / -2., y / -2., zDim / -2.)
+    #         psubtomo.setOrigin(origin)
+    #
+    #         # Update values of current pseudo subtomogram
+    #         coordinate3d.setTomoId(tomoId)                                                 # 1 _rlnTomoName
+    #         particleId = row.get(TOMO_PARTICLE_ID, counter + 1)                            # 2 _rlnTomoParticleId
+    #         manifoldInd = row.get(MANIFOLD_INDEX, None)
+    #         if manifoldInd:
+    #             coordinate3d.setGroupId(manifoldInd)
+    #             psubtomo._manifoldIndex = Integer(manifoldInd)                             # 3 _rlnTomoManifoldIndex
+    #         coordinate3d.setX(float(row.get(COORD_X, 0)), RELION_3D_COORD_ORIGIN)          # 4 _rlnCoordinateX
+    #         coordinate3d.setY(float(row.get(COORD_Y, 0)), RELION_3D_COORD_ORIGIN)          # 5 _rlnCoordinateX
+    #         coordinate3d.setZ(float(row.get(COORD_Z, 0)), RELION_3D_COORD_ORIGIN)          # 6 _rlnCoordinateX
+    #         self.__setParticleTransformProj(psubtomo, row, samplingRate)                   # 7 - 12 rlnOriginAngst and rlnAngles
+    #         psubtomo.setClassId(row.get(CLASS_NUMBER, -1))                                 # 13 _rlnClassNumber
+    #         randomSubset = row.get(RANDOM_SUBSET, None)
+    #         if randomSubset:
+    #             psubtomo._randomSubset = Integer(randomSubset)                             # 14 _rlnRandomSubset
+    #         psubtomo._particleName = String(row.get(TOMO_PARTICLE_NAME, FILE_NOT_FOUND))   # 15 _rlnTomoParticleName
+    #         psubtomo._opticsGroupId = Integer(row.get(OPTICS_GROUP, 1))                    # 16 _rlnOpticsGroup
+    #         psubtomo.setLocation((particleId, subtomoFilename))                            # 17 _rlnImageName
+    #         psubtomo._ctfImage = String(row.get(CTF_IMAGE, FILE_NOT_FOUND))                # 18 _rlnCtfImage
+    #
+    #         # Add current subtomogram to the output set
+    #         outputSet.append(psubtomo)
 
     def setParticleTransform(self, particle, row, sRate):
         """ Set the transform values from the row. """
@@ -409,7 +436,7 @@ def genVTomoDict(precedentSet, vTomoScaleFactor):
         tsId = tomo.getTsId()
         vTomo.setSamplingRate(tomo.getSamplingRate() / vTomoScaleFactor)
         vTomo.setTsId(tsId)
-        origDims = tomo._dim
+        origDims = tomo.getDim()
         vTomo._dim = (origDims[0] * vTomoScaleFactor,
                       origDims[1] * vTomoScaleFactor,
                       origDims[2] * vTomoScaleFactor)

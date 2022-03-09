@@ -33,7 +33,6 @@ RELIONTOMO_DEFAULT = RELION + '-' + RELIONTOMO_DEFAULT_VERSION
 V30_VALIDATION_MSG = 'This version of Reliontomo plugin requires Relion 3.0 binaries. ' \
                      'Please install it if necessary via scipion3 installb relion-3.0'
 
-
 # Relion 4 tomogram star file fields
 TOMO_NAME = 'rlnTomoName'
 TILT_SERIES_NAME = 'rlnTomoTiltSeriesName'
@@ -64,7 +63,7 @@ TILT_PRIOR = 'rlnAngleTiltPrior'
 PSI_PRIOR = 'rlnAnglePsiPrior'
 CLASS_NUMBER = 'rlnClassNumber'
 
-# Relion pseudo-subtomograms
+# Relion pseudo-subtomograms fields
 TOMO_PARTICLE_ID = 'rlnTomoParticleId'
 TOMO_PARTICLE_NAME = 'rlnTomoParticleName'
 MANIFOLD_INDEX = 'rlnTomoManifoldIndex'
@@ -75,19 +74,28 @@ SHIFTY_ANGST = 'rlnOriginYAngst'
 SHIFTZ_ANGST = 'rlnOriginZAngst'
 CTF_IMAGE = 'rlnCtfImage'
 
+# Optimisation set fields
+OPT_PARTICLES_STAR = 'rlnTomoParticlesFile'
+OPT_TOMOS_STAR = 'rlnTomoTomogramsFile'
+OPT_TRAJECTORIES_STAR = 'rlnTomoTrajectoriesFile'
+OPT_MANIFOLDS_STAR = 'rlnTomoManifoldsFile'
+OPT_FSC_STAR = 'rlnTomoReferenceFscFile'
+
 FILE_NOT_FOUND = 'FileNotFound'
 
 # IMOD's eTomo files
 NEWST_COM = 'newst.com'
 TILT_COM = 'tilt.com'
 
-# Data preparation
+# Data files
 IN_TOMOS_STAR = 'inTomos.star'
 OUT_TOMOS_STAR = 'outTomos.star'
 IN_COORDS_STAR = 'inCoords.star'
 OUT_COORDS_STAR = 'outCoords.star'
 IN_SUBTOMOS_STAR = 'inSubtomos.star'
 OUT_SUBTOMOS_STAR = 'particles.star'
+OPTIMISATION_SET_STAR = 'optimisation_set.star'
+PSUBTOMOS_SQLITE = 'pseudosubtomograms%s.sqlite'
 
 # Initial models
 REC_PARTICLES_DIR = 'recParticles'

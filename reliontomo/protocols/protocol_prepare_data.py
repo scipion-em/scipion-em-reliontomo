@@ -22,6 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from enum import Enum
 from os import mkdir, listdir
 from os.path import join, exists
 from imod.utils import generateDefocusIMODFileFromObject
@@ -29,8 +30,9 @@ from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, PathParam, BooleanParam, LEVEL_ADVANCED, EnumParam
 from reliontomo import Plugin
-from reliontomo.constants import IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR
+from reliontomo.constants import IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR, OPTIMISATION_SET_STAR
 from reliontomo.convert import writeSetOfTomograms, writeSetOfSubtomograms
+from reliontomo.objects import RelionParticles
 
 # eTomo data source choices
 ETOMO_FROM_PROT = 0
@@ -38,6 +40,10 @@ ETOMO_FROM_DIR = 1
 
 # Other constants
 DEFOCUS = 'defocus'
+
+
+class outputObjects(Enum):
+    outputRelionParticles = RelionParticles()
 
 
 class ProtRelionPrepareData(EMProtocol):
@@ -132,6 +138,7 @@ class ProtRelionPrepareData(EMProtocol):
         self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self.relionImportTomograms)
         self._insertFunctionStep(self.relionImportParticles)
+        self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
@@ -172,6 +179,13 @@ class ProtRelionPrepareData(EMProtocol):
 
     def relionImportParticles(self):
         Plugin.runRelionTomo(self, 'relion_tomo_import_particles', self._genImportSubtomosCmd())
+
+    def createOutputStep(self):
+        relionParticles = RelionParticles(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
+                                          samplingRate=self.tsSet.getSamplingRate(),  # Output coords were scaled to be at bin1
+                                          nParticles=self.inputCoords.get().getSize())
+
+        self._defineOutputs(**{outputObjects.outputRelionParticles.name: relionParticles})
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):

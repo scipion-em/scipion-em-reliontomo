@@ -24,12 +24,8 @@
 # **************************************************************************
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
-from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, FloatParam, StringParam
-from pyworkflow.utils import Message, createLink
-from reliontomo.constants import OUT_TOMOS_STAR, OUT_SUBTOMOS_STAR, IN_SUBTOMOS_STAR, IN_TOMOS_STAR
-from reliontomo.convert import writeSetOfPseudoSubtomograms
-from reliontomo.protocols import ProtRelionPrepareData
-from reliontomo.utils import getFileFromDataPrepProt, isPseudoSubtomogram
+from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, FloatParam
+from pyworkflow.utils import Message
 
 
 class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
@@ -48,20 +44,9 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
 
-        form.addParam('inputPrepareDataProt', PointerParam,
-                      pointerClass='ProtRelionPrepareData, ProtRelionCtfRefine, ProtRelionTomoFrameAlign',
-                      label="Data preparation protocol",
-                      important=True,
-                      allowsNull=False)
-        form.addParam('inputParticles', PointerParam,
-                      pointerClass='SetOfSubTomograms',
-                      label='Input particles (opt.)',
-                      allowsNull=True,
-                      help='Set of particles considered. If empty, the particles considered will be the '
-                           'initial ones contained in the data preparation protocol.')
-        form.addParam('inputTrajectory', StringParam,
-                      label="Particle trajectories set (optional)",
-                      allowsNull=True)
+        form.addParam('inOptSet', PointerParam,
+                      pointerClass='RelionParticles',
+                      label='Input particles')
         group = form.addGroup('Reconstruct')
         group.addParam('boxSize', IntParam,
                        label='Box size (pix.)',
@@ -100,37 +85,23 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
     def _insertAllSteps(self):
         pass
 
-    def _initialize(self):
-        self.inParticlesStar = self._getExtraPath(IN_SUBTOMOS_STAR)
-        self.inTomosStar = self._getExtraPath(IN_TOMOS_STAR)
-        createLink(getFileFromDataPrepProt(self, OUT_TOMOS_STAR), self.inTomosStar)
-        if type(self.inputPrepareDataProt.get()) == ProtRelionPrepareData:
-            self.inPrecedents = self.inputPrepareDataProt.get().inputCoords.get().getPrecedents()
-
-    def convertInputStep(self):
-        if self.inputParticles.get():
-            # write star file
-            writeSetOfPseudoSubtomograms(self.inputParticles.get(), self.inParticlesStar)
-        else:
-            # Create a symbolic link
-            createLink(getFileFromDataPrepProt(self, OUT_SUBTOMOS_STAR), self.inParticlesStar)
-
     # # -------------------------- INFO functions -------------------------------
-    def _validate(self):
-        errorMsg = []
-        if self.inputParticles.get():
-            if not isPseudoSubtomogram(self.inputParticles.get().getFirstElement()):
-                errorMsg.append('Introduced subtomograms do not contain the required data to be considered '
-                                'pseudosubtomograms. This set can be generated using the output of the protocol for '
-                                'preparing the data for Relion 4.')
+    # def _validate(self):
+    #     errorMsg = []
+    #     if self.inputParticles.get():
+    #         if not isPseudoSubtomogram(self.inputParticles.get().getFirstElement()):
+    #             errorMsg.append('Introduced subtomograms do not contain the required data to be considered '
+    #                             'pseudosubtomograms. This set can be generated using the output of the protocol for '
+    #                             'preparing the data for Relion 4.')
 
     # # --------------------------- UTILS functions -----------------------------
     def _genCommonCmd(self):
+        inRelionParticles = self.inOptSet.get()
         cmd = ''
-        cmd += '--t %s ' % self.inTomosStar
-        cmd += '--p %s ' % self.inParticlesStar
-        if self.inputTrajectory.get():
-            cmd += '--mot %s ' % self.inputTrajectory.get()
+        cmd += '--t %s ' % inRelionParticles.getTomograms()
+        cmd += '--p %s ' % inRelionParticles.getParticles()
+        if inRelionParticles.getTrajectories():
+            cmd += '--mot %s ' % inRelionParticles.getTrajectories()
         cmd += '--b %i ' % self.boxSize.get()
         cmd += '--crop %i ' % self.croppedBoxSize.get()
         cmd += '--bin %.1f ' % self.binningFactor.get()
