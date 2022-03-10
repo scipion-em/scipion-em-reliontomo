@@ -29,7 +29,7 @@ from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, StringParam, BooleanParam, \
     EnumParam, PathParam, FloatParam, LEVEL_NORMAL, GE, LE
 from pyworkflow.utils import Message
-from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, IN_SUBTOMOS_STAR
+from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, IN_PARTICLES_STAR
 from reliontomo.convert import writeSetOfPseudoSubtomograms
 
 

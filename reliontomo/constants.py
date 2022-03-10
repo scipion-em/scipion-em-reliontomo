@@ -89,13 +89,17 @@ TILT_COM = 'tilt.com'
 
 # Data files
 IN_TOMOS_STAR = 'inTomos.star'
-OUT_TOMOS_STAR = 'outTomos.star'
+OUT_TOMOS_STAR = 'tomograms.star'
 IN_COORDS_STAR = 'inCoords.star'
-OUT_COORDS_STAR = 'outCoords.star'
-IN_SUBTOMOS_STAR = 'inSubtomos.star'
-OUT_SUBTOMOS_STAR = 'particles.star'
+IN_PARTICLES_STAR = 'inSubtomos.star'
+OUT_PARTICLES_STAR = 'particles.star'
+TRAJECTORIES_STAR = 'trajectories.star'
+MANIFOLDS_STAR = 'manifolds.star'
+FSC_REF_STAR = 'PostProcess/postprocess.star'
+RE4_INDIV_GEN_FILES = [OUT_TOMOS_STAR, OUT_PARTICLES_STAR, TRAJECTORIES_STAR, MANIFOLDS_STAR, FSC_REF_STAR]
 OPTIMISATION_SET_STAR = 'optimisation_set.star'
 PSUBTOMOS_SQLITE = 'pseudosubtomograms%s.sqlite'
+
 
 # Initial models
 REC_PARTICLES_DIR = 'recParticles'

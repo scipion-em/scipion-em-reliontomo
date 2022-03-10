@@ -31,7 +31,7 @@ from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, IntParam, GE, LE, PathParam
 from pyworkflow.utils import Message, createLink
 from relion.convert import OpticsGroups
-from reliontomo.constants import BOX_SIZE_VALS, OUT_TOMOS_STAR, IN_SUBTOMOS_STAR, OUT_SUBTOMOS_STAR, IN_TOMOS_STAR
+from reliontomo.constants import BOX_SIZE_VALS, OUT_TOMOS_STAR, IN_PARTICLES_STAR, OUT_PARTICLES_STAR, IN_TOMOS_STAR
 from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms
 from reliontomo.utils import getFileFromDataPrepProt
 from tomo.objects import SetOfSubTomograms
@@ -104,11 +104,11 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
         createLink(getFileFromDataPrepProt(self, OUT_TOMOS_STAR), self.inTomosStar)
 
     def convertInputStep(self):
-        self.inParticlesStar = self._getExtraPath(IN_SUBTOMOS_STAR)
+        self.inParticlesStar = self._getExtraPath(IN_PARTICLES_STAR)
         writeSetOfPseudoSubtomograms(self.inPseudoSubtomos.get(), self.inParticlesStar)
 
     def createOutputStep(self):
-        starFile = self._getExtraPath(OUT_SUBTOMOS_STAR)
+        starFile = self._getExtraPath(OUT_PARTICLES_STAR)
         outputSet = self._createSet(SetOfSubTomograms, 'subtomograms%s.sqlite', '')
         outputSet.getAcquisition().opticsGroupInfo.set(OpticsGroups.fromStar(starFile).toString())
         outputSet.setSamplingRate(self.inPseudoSubtomos.get().getSamplingRate())

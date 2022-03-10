@@ -27,12 +27,10 @@ import re
 from enum import Enum
 
 from emtable import Table
-from pwem import ALIGN_PROJ
 from pwem.convert.headers import fixVolume
 from pwem.objects import FSC
 from pyworkflow import BETA
-from pyworkflow.object import Integer
-from reliontomo.convert import convert40_tomo
+from reliontomo.objects import RelionParticles
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
 from os import listdir
@@ -40,13 +38,13 @@ from os.path import isfile, join, getmtime
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, StringParam, BooleanParam, EnumParam
 from pyworkflow.utils import moveFile
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG
-from reliontomo.utils import getProgram
-from tomo.objects import AverageSubTomogram, SetOfSubTomograms
+from reliontomo.utils import getProgram, genRelionParticles
+from tomo.objects import AverageSubTomogram
 from tomo.protocols import ProtTomoBase
 
 
 class outputObjects(Enum):
-    outputSubtomograms = SetOfSubTomograms()
+    outputRelionParticles = RelionParticles()
     outputVolume = AverageSubTomogram()
     outputFSC = FSC()
 
@@ -62,7 +60,6 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
 
     def __init__(self, **args):
         ProtRelionRefineBase.__init__(self, **args)
-        self.reader = None
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -264,21 +261,23 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genAutoRefineCommand(), numberOfMpi=nMpi)
 
     def createOutputStep(self):
+        # Output volume
+        samplingRate = self.inOptSet.get().getSamplingRate()
         vol = AverageSubTomogram()
         volName = self._getExtraPath('_class001.mrc')
         fixVolume(volName)  # Fix header for xmipp to consider it a volume instead of a stack
         vol.setFileName(volName)
-        vol.setSamplingRate(self.inOptSet.get().getSamplingRate())
+        vol.setSamplingRate(samplingRate)
         pattern = '*it*half%s_class*.mrc'
         half1 = self._getLastFileName(self._getExtraPath(pattern % 1))
         half2 = self._getLastFileName(self._getExtraPath(pattern % 2))
         vol.setHalfMaps([half1, half2])
+        # Output RelionParticles
+        relionParticles = genRelionParticles(self._getExtraPath(),
+                                             self.inOptSet.get(),
+                                             samplingRate)
 
-        outSubtomoSet = self._createSet(SetOfSubTomograms, 'pseudosubtomograms%s.sqlite', '')
-        outSubtomoSet.copyInfo(subtomoSet)
-        self.reader = convert40_tomo.Reader(alignType=ALIGN_PROJ, pixelSize=outSubtomoSet.getSamplingRate())
-        self._fillDataFromIter(outSubtomoSet, self._lastIter())
-
+        # Output FSC
         fsc = FSC(objLabel=self.getRunName())
         fn = self._getExtraPath("_model.star")
         table = Table(fileName=fn, tableName='model_class_1')
@@ -286,13 +285,10 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         frc = table.getColumnValues('rlnGoldStandardFsc')
         fsc.setData(resolution_inv, frc)
 
-        outputDict = {outputObjects.outputSubtomograms.name: outSubtomoSet,
+        outputDict = {outputObjects.outputRelionParticles.name: relionParticles,
                       outputObjects.outputVolume.name: vol,
                       outputObjects.outputFSC.name: fsc}
         self._defineOutputs(**outputDict)
-        self._defineSourceRelation(vol, fsc)
-        self._defineSourceRelation(subtomoSet, vol)
-        self._defineTransformRelation(subtomoSet, outSubtomoSet)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -352,34 +348,3 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         files.sort(key=getmtime)
         return files[-1]
 
-    def _fillDataFromIter(self, subtomoClassesSet, iteration):
-        tableName = 'particles'
-        dataStar = tableName + '@' + self._getFileName('data', iter=iteration)
-        for item in subtomoClassesSet:
-            item.setAlignmentProj()
-
-        mdIter = Table.iterRows(dataStar, key='rlnTomoParticleId')
-        subtomoClassesSet.copyItems(self.inputPseudoSubtomos.get(),
-                                    doClone=False,
-                                    updateItemCallback=self._updateParticle,
-                                    itemDataIterator=mdIter)
-
-    def _updateParticle(self, particle, row):
-        self.reader.setParticleTransform(particle, row, particle.getSamplingRate())
-        if not hasattr(particle, '_randomSubset'):
-            particle._randomSubset = Integer()
-            particle._randomSubset.set(row.rlnRandomSubset)
-
-    def _getIterNumber(self, index):
-        """ Return the list of iteration files, give the iterTemplate. """
-        result = -1
-        files = sorted(glob.glob(self._iterTemplate))
-        if files:
-            f = files[index]
-            s = self._iterRegex.search(f)
-            if s:
-                result = int(s.group(1))  # group 1 is 3 digits iteration number
-        return result
-
-    def _lastIter(self):
-        return self._getIterNumber(-1)

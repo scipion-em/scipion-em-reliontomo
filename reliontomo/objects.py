@@ -22,12 +22,24 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from enum import Enum
+from os.path import exists, join
+
 from emtable import Table
 from pwem import EMObject
 from pwem.objects import Volume, SetOfVolumes
 from pyworkflow.object import String, Integer, Float
 from reliontomo.constants import OPT_TOMOS_STAR, OPT_PARTICLES_STAR, OPT_TRAJECTORIES_STAR, OPT_MANIFOLDS_STAR, \
-    OPT_FSC_STAR
+    OPT_FSC_STAR, RE4_INDIV_GEN_FILES, OUT_TOMOS_STAR, OUT_PARTICLES_STAR, TRAJECTORIES_STAR, MANIFOLDS_STAR, \
+    FSC_REF_STAR
+
+
+class EnumRe4GenFilesProps(Enum):
+    _tomograms = OUT_TOMOS_STAR
+    _particles = OUT_PARTICLES_STAR
+    _trajectories = TRAJECTORIES_STAR
+    _manifolds = MANIFOLDS_STAR
+    _referenceFsc = FSC_REF_STAR
 
 
 class RelionParticles(EMObject):
@@ -66,6 +78,15 @@ class RelionParticles(EMObject):
         except FileNotFoundError:
             raise FileNotFoundError('Unable to find file %s' % optimSetStar)
 
+    def updateGenFiles(self, extraPath):
+        """Some protocols don't generate the optimisation_set.star file. In that case, the input Object which
+        represents it will be copied and, after that, this method will be used to update the corresponding
+        attributes with the generated files."""
+        for p in EnumRe4GenFilesProps:
+            currentFile = join(extraPath, p.value)
+            if exists(currentFile):
+                setattr(self, p.name, currentFile)
+
     def getTomograms(self):
         return self._tomograms.get()
 
@@ -99,6 +120,10 @@ class RelionParticles(EMObject):
         self._trajectories.set(rowObj.get(OPT_TRAJECTORIES_STAR, None))
         self._manifolds.set(rowObj.get(OPT_MANIFOLDS_STAR, None))
         self._referenceFsc.set(rowObj.get(OPT_FSC_STAR, None))
+
+    def copyInfo(self, other):
+        self.copyAttributes(other, '_nParticles', '_tomograms', '_particles', '_trajectories',
+                            '_manifolds', '_referenceFsc', '_samplingRate', '_tsSamplingRate')
 
 
 class PSubtomogram(Volume):

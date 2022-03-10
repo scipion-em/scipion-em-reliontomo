@@ -57,12 +57,10 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         form.addSection(label=Message.LABEL_INPUT)
         form.addParam('starFile', FileParam,
                       label='Star file')
-        form.addParam('inTiltSeries', PointerParam,
+        form.addParam('inTomos', PointerParam,
                       pointerClass='SetOfTomograms',
-                      label='Set of tilt series (opt.)',
-                      allowsNull=True,
-                      help='Only required if the coordinates are desired to be referred to the corresponding tilt, '
-                           'series, like in the case of per-particle per-tilt procedure.')
+                      label='Tomograms',
+                      help='Tomograms to which the coordinates will be referred.')
         form.addParam('samplingRate', FloatParam,
                       label='Sampling rate [Å/pix] (opt.)',
                       allowsNull=True,
@@ -96,7 +94,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         coordSet = SetOfCoordinates3D.create(self._getPath(), template='coordinates%s.sqlite')
         # Generate the precedents (set of tomograms which the coordinates are referred to) if necessary
         if self.isReader40:
-            precedentsSet = self.inTiltSeries.get()
+            precedentsSet = self.inTomos.get()
             coordSet.setPrecedents(precedentsSet)
         else:
             precedentsSet = SetOfTomograms.create(self._getPath(), template='tomograms%s.sqlite')
@@ -133,8 +131,8 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
 
         # In the case of a reader of type 40, the tomoName and the tilt series id must match
         if isReader40:
-            if self.inTiltSeries.get():
-                tsIds = [ts.getTsId() for ts in self.inTiltSeries.get()]
+            if self.inTomos.get():
+                tsIds = [ts.getTsId() for ts in self.inTomos.get()]
                 if tsIds:
                     coordTomoIds = list(set([row.get(TOMO_NAME) for row in reader.dataTable]))
                     nonMatchingCoorTomoIds = [coordTomoId for coordTomoId in coordTomoIds if coordTomoId not in tsIds]
