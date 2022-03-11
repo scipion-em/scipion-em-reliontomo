@@ -30,21 +30,20 @@ from emtable import Table
 from pwem.convert.headers import fixVolume
 from pwem.objects import FSC
 from pyworkflow import BETA
-from reliontomo.objects import RelionParticles
+from reliontomo.objects import relionTomoMetadata
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
-from os import listdir
-from os.path import isfile, join, getmtime
+from os.path import getmtime
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, StringParam, BooleanParam, EnumParam
-from pyworkflow.utils import moveFile
-from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG
+from pyworkflow.utils import createLink
+from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, OUT_PARTICLES_STAR
 from reliontomo.utils import getProgram, genRelionParticles
 from tomo.objects import AverageSubTomogram
 from tomo.protocols import ProtTomoBase
 
 
 class outputObjects(Enum):
-    outputRelionParticles = RelionParticles()
+    outputRelionParticles = relionTomoMetadata
     outputVolume = AverageSubTomogram()
     outputFSC = FSC()
 
@@ -261,6 +260,10 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genAutoRefineCommand(), numberOfMpi=nMpi)
 
     def createOutputStep(self):
+        # Rename the particles file generated (_data.star) to follow the name convention
+        createLink(self._getExtraPath('_data.star'), self._getExtraPath(OUT_PARTICLES_STAR))
+        #TODO: falta crear el set de volúmenes
+
         # Output volume
         samplingRate = self.inOptSet.get().getSamplingRate()
         vol = AverageSubTomogram()
@@ -328,19 +331,6 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         cmd += '--pad %i ' % (1 if self.skipPadding.get() else 2)
 
         return cmd
-
-    def _getModelName(self):
-        """generate the name of the volume following this pattern extra_it002_class001.mrc"""
-        return 'it{:03d}_class001.mrc'.format(self.maxNumberOfIterations.get())
-
-    def _manageGeneratedFiles(self):
-        """There's some kind of bug in relion4 which makes it generate the file in the protocol base directory
-        instead of the extra directory. It uses extra as a prefix of each generated file instead. Hence, until
-        it's solved, the files will be moved to the extra directory and the prefix extra_ will be removed"""
-        prefix = '_extra'
-        genFiles = [f for f in listdir(self._getPath()) if isfile(join(self._getPath(), f))]
-        for f in genFiles:
-            moveFile(self._getPath(f), self._getExtraPath(f.replace(prefix, '')))
 
     @staticmethod
     def _getLastFileName(pattern):

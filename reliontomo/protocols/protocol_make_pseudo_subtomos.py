@@ -29,7 +29,7 @@ from pyworkflow.protocol import FloatParam, BooleanParam
 from reliontomo import Plugin
 from reliontomo.constants import OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE, OPTIMISATION_SET_STAR
 from reliontomo.convert import readSetOfPseudoSubtomograms
-from reliontomo.objects import RelionParticles
+from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
 from reliontomo.utils import getProgram
@@ -37,7 +37,8 @@ from tomo.protocols import ProtTomoBase
 
 
 class outputObjects(Enum):
-    outputRelionParticles = RelionParticles()
+    outputRelionParticles = relionTomoMetadata
+    outputVolumes = SetOfPseudoSubtomograms
 
 
 class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticleBase, ProtTomoBase):
@@ -96,18 +97,18 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
                              self._genMakePseudoSubtomoCmd(), numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
-        samplingRate = self.getNewSamplingRate()
         # Output pseudosubtomograms --> set of volumes for visualization purposes
-        outputSet = self._createSet(SetOfVolumes, PSUBTOMOS_SQLITE, '')
-        outputSet.setSamplingRate(samplingRate)
+        outputSet = self._createSet(SetOfPseudoSubtomograms, PSUBTOMOS_SQLITE, '')
+        outputSet.setSamplingRate(self.getNewSamplingRate())
         readSetOfPseudoSubtomograms(self._getExtraPath(OUT_PARTICLES_STAR), outputSet)
         # Output RelionParticles
-        relionParticles = RelionParticles(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
-                                          tsSamplingRate=self.inOptSet.get().getTsSamplingRate(),
-                                          samplingRate=samplingRate,
-                                          nParticles=outputSet.getSize())
+        relionParticles = relionTomoMetadata(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
+                                             tsSamplingRate= self.inOptSet.get().getTsSamplingRate(),
+                                             relionBinning=self.binningFactor.get(),
+                                             nParticles=outputSet.getSize())
 
-        self._defineOutputs(**{outputObjects.outputRelionParticles.name: relionParticles})
+        self._defineOutputs(**{outputObjects.outputRelionParticles.name: relionParticles,
+                               outputObjects.outputVolumes.name: outputSet})
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):

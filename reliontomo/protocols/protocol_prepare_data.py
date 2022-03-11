@@ -28,11 +28,12 @@ from os.path import join, exists
 from imod.utils import generateDefocusIMODFileFromObject
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
+from pyworkflow.object import Float
 from pyworkflow.protocol import PointerParam, PathParam, BooleanParam, LEVEL_ADVANCED, EnumParam
 from reliontomo import Plugin
 from reliontomo.constants import IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR, OPTIMISATION_SET_STAR
 from reliontomo.convert import writeSetOfTomograms, writeSetOfSubtomograms
-from reliontomo.objects import RelionParticles
+from reliontomo.objects import relionTomoMetadata
 
 # eTomo data source choices
 ETOMO_FROM_PROT = 0
@@ -43,7 +44,7 @@ DEFOCUS = 'defocus'
 
 
 class outputObjects(Enum):
-    outputRelionParticles = RelionParticles()
+    outputRelionParticles = relionTomoMetadata
 
 
 class ProtRelionPrepareData(EMProtocol):
@@ -56,7 +57,7 @@ class ProtRelionPrepareData(EMProtocol):
         EMProtocol.__init__(self, **args)
         self.tsSet = None
         self.tomoSet = None
-        self.coordScale = 1
+        self.coordScale = Float(1)
 
     # -------------------------- DEFINE param functions -----------------------
 
@@ -153,7 +154,7 @@ class ProtRelionPrepareData(EMProtocol):
         # If coordinates are referred to a set of tomograms, they'll be rescaled to be expressed in bin 1, as the
         # ts images
         if tomoSet:
-            self.coordScale = tomoSet.getSamplingRate() / tsSet.getSamplingRate()
+            self.coordScale.set(tomoSet.getSamplingRate() / tsSet.getSamplingRate())
 
     def convertInputStep(self):
         # Generate defocus files
@@ -174,7 +175,7 @@ class ProtRelionPrepareData(EMProtocol):
         writeSetOfSubtomograms(self.inputCoords.get(),
                                self._getStarFilename(IN_COORDS_STAR),
                                sRate=self.tsSet.getSamplingRate(),
-                               coordsScale=self.coordScale)
+                               coordsScale=self.coordScale.get())
 
     def relionImportTomograms(self):
         Plugin.runRelionTomo(self, 'relion_tomo_import_tomograms', self._genImportTomosCmd())
@@ -183,12 +184,13 @@ class ProtRelionPrepareData(EMProtocol):
         Plugin.runRelionTomo(self, 'relion_tomo_import_particles', self._genImportSubtomosCmd())
 
     def createOutputStep(self):
-        relionParticles = RelionParticles(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
-                                          tsSamplingRate=self.tsSet.getSamplingRate(),
-                                          samplingRate=self.tomoSet.getSamplingRate(),
-                                          nParticles=self.inputCoords.get().getSize())
+        relionParticles = relionTomoMetadata(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
+                                             tsSamplingRate=self.tsSet.getSamplingRate(),
+                                             relionBinning=self.coordScale.get(),
+                                             nParticles=self.inputCoords.get().getSize())
 
         self._defineOutputs(**{outputObjects.outputRelionParticles.name: relionParticles})
+        self._store()
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -215,6 +217,15 @@ class ProtRelionPrepareData(EMProtocol):
                 errorMsg.append(''.join(currentTsErrMsg))
 
         return errorMsg
+
+    def _summary(self):
+        msg = []
+        if self.isFinished():
+            if self.coordScale.get():
+                msg.append('Coordinates were scaled using an scale factor of *%.2f* to be expressed considering the '
+                           'size of the introduced tilt series' % self.coordScale.get())
+
+        return msg
 
     # --------------------------- UTILS functions -----------------------------
     def _getEtomoParentDir(self):

@@ -28,7 +28,7 @@ import numpy as np
 
 from pwem.convert import transformations
 from reliontomo.constants import OPTIMISATION_SET_STAR
-from reliontomo.objects import RelionParticles
+from reliontomo.objects import relionTomoMetadata
 
 
 def getProgram(program, nMpi):
@@ -101,12 +101,12 @@ def genRelionParticles(extraPath, inOptSet, samplingRate, nParticles=None):
     be copied and, after that, this method will be used to update the corresponding attribute."""
     optimSetStar = join(extraPath, OPTIMISATION_SET_STAR)
     if exists(optimSetStar):
-        relionParticles = RelionParticles(optimSetStar=optimSetStar,
-                                          tsSamplingRate=inOptSet.getTsSamplingRate(),
-                                          samplingRate=samplingRate,
-                                          nParticles=nParticles if nParticles else inOptSet.getNumParticles())
+        relionParticles = relionTomoMetadata(optimSetStar=optimSetStar,
+                                             tsSamplingRate=inOptSet.getTsSamplingRate(),
+                                             samplingRate=samplingRate,
+                                             nParticles=nParticles if nParticles else inOptSet.getNumParticles())
     else:
-        relionParticles = RelionParticles()
+        relionParticles = relionTomoMetadata()
         relionParticles.copyInfo(inOptSet)
         relionParticles.updateGenFiles(extraPath)
 

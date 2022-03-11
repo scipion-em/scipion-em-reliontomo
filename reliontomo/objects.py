@@ -30,7 +30,7 @@ from pwem import EMObject
 from pwem.objects import Volume, SetOfVolumes
 from pyworkflow.object import String, Integer, Float
 from reliontomo.constants import OPT_TOMOS_STAR, OPT_PARTICLES_STAR, OPT_TRAJECTORIES_STAR, OPT_MANIFOLDS_STAR, \
-    OPT_FSC_STAR, RE4_INDIV_GEN_FILES, OUT_TOMOS_STAR, OUT_PARTICLES_STAR, TRAJECTORIES_STAR, MANIFOLDS_STAR, \
+    OPT_FSC_STAR, OUT_TOMOS_STAR, OUT_PARTICLES_STAR, TRAJECTORIES_STAR, MANIFOLDS_STAR, \
     FSC_REF_STAR
 
 
@@ -42,9 +42,9 @@ class EnumRe4GenFilesProps(Enum):
     _referenceFsc = FSC_REF_STAR
 
 
-class RelionParticles(EMObject):
+class relionTomoMetadata(EMObject):
 
-    def __init__(self, optimSetStar=None, samplingRate=None, tsSamplingRate=None, nParticles=0, **kwargs):
+    def __init__(self, optimSetStar=None, relionBinning=None, tsSamplingRate=None, nParticles=0, **kwargs):
         super().__init__(**kwargs)
         self._filesMaster = None
         self._nParticles = Integer(nParticles)
@@ -53,7 +53,7 @@ class RelionParticles(EMObject):
         self._trajectories = String()
         self._manifolds = String()
         self._referenceFsc = String()
-        self._samplingRate = Float(samplingRate)
+        self._relionBinning = Float(relionBinning)
         self._tsSamplingRate = Float(tsSamplingRate)
         if optimSetStar:
             self.filesMaster = optimSetStar
@@ -62,8 +62,10 @@ class RelionParticles(EMObject):
         strRep = ''
         if self.getNumParticles():
             strRep += '%i items, ' % self.getNumParticles()
-        if self.getSamplingRate():
-            strRep += '%.2f Å/px' % self.getSamplingRate()
+        if self.getRelionBinning():
+            strRep += 'binning %.1f' % self.getRelionBinning()
+        # if self.getTsSamplingRate():
+        #     strRep += 'TS Sampling Rate %.2f Å/px' % self.getTsSamplingRate()
         return self.getClassName() + ' %s' % ('(%s)' % strRep if strRep else '')
 
     @property
@@ -102,8 +104,8 @@ class RelionParticles(EMObject):
     def getReferenceFsc(self):
         return self._referenceFsc.get()
 
-    def getSamplingRate(self):
-        return self._samplingRate.get()
+    def getRelionBinning(self):
+        return self._relionBinning.get()
 
     def getTsSamplingRate(self):
         return self._tsSamplingRate.get()
@@ -141,4 +143,4 @@ class PSubtomogram(Volume):
 
 
 class SetOfPseudoSubtomograms(SetOfVolumes):
-    pass
+    ITEM_TYPE = PSubtomogram

@@ -26,14 +26,14 @@ from enum import Enum
 from pyworkflow.protocol import StringParam, PointerParam
 from reliontomo import Plugin
 from reliontomo.constants import SYMMETRY_HELP_MSG, OPTIMISATION_SET_STAR
-from reliontomo.objects import RelionParticles
+from reliontomo.objects import relionTomoMetadata
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
 from tomo.objects import AverageSubTomogram
 
 
 class outputObjects(Enum):
-    outputRelionParticles = RelionParticles()
+    outputRelionParticles = relionTomoMetadata()
     outputVolume = AverageSubTomogram()
 
 
@@ -89,10 +89,10 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
         vol.setFileName(self._getExtraPath('merged.mrc'))
         vol.setSamplingRate(samplingRate)
         # Output Relion Particles
-        relionParticles = RelionParticles(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
-                                          tsSamplingRate=self.inOptSet.get().getTsSamplingRate(),
-                                          samplingRate=samplingRate,
-                                          nParticles=self.inOptSet.get().getNumParticles())
+        relionParticles = relionTomoMetadata(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
+                                             tsSamplingRate=self.inOptSet.get().getTsSamplingRate(),
+                                             samplingRate=samplingRate,
+                                             nParticles=self.inOptSet.get().getNumParticles())
 
         self._defineOutputs(**{outputObjects.outputVolume.name: vol,
                                outputObjects.outputRelionParticles.name: relionParticles})

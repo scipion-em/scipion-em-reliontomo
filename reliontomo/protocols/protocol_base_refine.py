@@ -48,7 +48,7 @@ class ProtRelionRefineBase(EMProtocol):
     def _defineIOParams(form):
         form.addSection(label=Message.LABEL_INPUT)
         form.addParam('inOptSet', PointerParam,
-                      pointerClass='RelionParticles',
+                      pointerClass='relionTomoMetadata',
                       label="Input particles",
                       important=True,
                       allowsNull=False)
