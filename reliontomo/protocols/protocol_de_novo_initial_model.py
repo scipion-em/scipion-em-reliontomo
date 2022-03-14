@@ -33,7 +33,7 @@ from reliontomo.utils import getProgram
 
 
 class outputObjects(Enum):
-    outputVolume = AverageSubTomogram()
+    outputAverage = AverageSubTomogram()
 
 
 class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
@@ -90,8 +90,8 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         iniModel = self._getExtraPath(INITIAL_MODEL)
         fixVolume(iniModel)  # Fix header to make it interpreted as volume instead of a stack by xmipp
         vol.setFileName(iniModel)
-        vol.setSamplingRate(self.inOptSet.get().getSamplingRate())
-        self._defineOutputs(**{outputObjects.outputVolume.name: vol})
+        vol.setSamplingRate(self.inOptSet.get().getCurrentSamplingRate())
+        self._defineOutputs(**{outputObjects.outputAverage.name: vol})
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):

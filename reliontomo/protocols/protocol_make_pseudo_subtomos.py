@@ -23,16 +23,13 @@
 # *
 # **************************************************************************
 from enum import Enum
-
-from pwem.objects import SetOfVolumes
 from pyworkflow.protocol import FloatParam, BooleanParam
 from reliontomo import Plugin
-from reliontomo.constants import OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE, OPTIMISATION_SET_STAR
-from reliontomo.convert import readSetOfPseudoSubtomograms
+from reliontomo.constants import OPTIMISATION_SET_STAR
 from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
-from reliontomo.utils import getProgram
+from reliontomo.utils import getProgram, genOutputPseudoSubtomograms
 from tomo.protocols import ProtTomoBase
 
 
@@ -98,12 +95,11 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
 
     def createOutputStep(self):
         # Output pseudosubtomograms --> set of volumes for visualization purposes
-        outputSet = self._createSet(SetOfPseudoSubtomograms, PSUBTOMOS_SQLITE, '')
-        outputSet.setSamplingRate(self.getNewSamplingRate())
-        readSetOfPseudoSubtomograms(self._getExtraPath(OUT_PARTICLES_STAR), outputSet)
+        outputSet = genOutputPseudoSubtomograms(self)
+
         # Output RelionParticles
         relionParticles = relionTomoMetadata(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
-                                             tsSamplingRate= self.inOptSet.get().getTsSamplingRate(),
+                                             tsSamplingRate=self.inOptSet.get().getTsSamplingRate(),
                                              relionBinning=self.binningFactor.get(),
                                              nParticles=outputSet.getSize())
 

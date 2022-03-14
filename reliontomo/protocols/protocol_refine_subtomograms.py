@@ -30,22 +30,23 @@ from emtable import Table
 from pwem.convert.headers import fixVolume
 from pwem.objects import FSC
 from pyworkflow import BETA
-from reliontomo.objects import relionTomoMetadata
+from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
 from os.path import getmtime
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, StringParam, BooleanParam, EnumParam
 from pyworkflow.utils import createLink
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, OUT_PARTICLES_STAR
-from reliontomo.utils import getProgram, genRelionParticles
+from reliontomo.utils import getProgram, genRelionParticles, genOutputPseudoSubtomograms
 from tomo.objects import AverageSubTomogram
 from tomo.protocols import ProtTomoBase
 
 
 class outputObjects(Enum):
     outputRelionParticles = relionTomoMetadata
-    outputVolume = AverageSubTomogram()
-    outputFSC = FSC()
+    outputVolumes = SetOfPseudoSubtomograms
+    outputAverage = AverageSubTomogram
+    outputFSC = FSC
 
 
 class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
@@ -262,23 +263,23 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     def createOutputStep(self):
         # Rename the particles file generated (_data.star) to follow the name convention
         createLink(self._getExtraPath('_data.star'), self._getExtraPath(OUT_PARTICLES_STAR))
-        #TODO: falta crear el set de volúmenes
+
+        # Output pseudosubtomograms --> set of volumes for visualization purposes
+        outputSet = genOutputPseudoSubtomograms(self)
 
         # Output volume
-        samplingRate = self.inOptSet.get().getSamplingRate()
         vol = AverageSubTomogram()
         volName = self._getExtraPath('_class001.mrc')
         fixVolume(volName)  # Fix header for xmipp to consider it a volume instead of a stack
         vol.setFileName(volName)
-        vol.setSamplingRate(samplingRate)
+        vol.setSamplingRate(self.inOptSet.get().getCurrentSamplingRate())
         pattern = '*it*half%s_class*.mrc'
         half1 = self._getLastFileName(self._getExtraPath(pattern % 1))
         half2 = self._getLastFileName(self._getExtraPath(pattern % 2))
         vol.setHalfMaps([half1, half2])
         # Output RelionParticles
         relionParticles = genRelionParticles(self._getExtraPath(),
-                                             self.inOptSet.get(),
-                                             samplingRate)
+                                             self.inOptSet.get())
 
         # Output FSC
         fsc = FSC(objLabel=self.getRunName())
@@ -289,7 +290,8 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         fsc.setData(resolution_inv, frc)
 
         outputDict = {outputObjects.outputRelionParticles.name: relionParticles,
-                      outputObjects.outputVolume.name: vol,
+                      outputObjects.outputVolumes.name: outputSet,
+                      outputObjects.outputAverage.name: vol,
                       outputObjects.outputFSC.name: fsc}
         self._defineOutputs(**outputDict)
 

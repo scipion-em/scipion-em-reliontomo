@@ -23,12 +23,11 @@
 # *
 # **************************************************************************
 from os.path import isabs, join, exists
-
 import numpy as np
-
 from pwem.convert import transformations
-from reliontomo.constants import OPTIMISATION_SET_STAR
-from reliontomo.objects import relionTomoMetadata
+from reliontomo.constants import OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE
+from reliontomo.convert import convert40_tomo
+from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
 
 
 def getProgram(program, nMpi):
@@ -95,7 +94,7 @@ def getTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, invert):
     return M
 
 
-def genRelionParticles(extraPath, inOptSet, samplingRate, nParticles=None):
+def genRelionParticles(extraPath, inOptSet, binningFactor=None, nParticles=None):
     """Generate a relionParticles object containing the files involved for the next protocol, considering that some
     protocols don't generate the optimisation_set.star file. In that case, the input Object which represents it will
     be copied and, after that, this method will be used to update the corresponding attribute."""
@@ -103,7 +102,7 @@ def genRelionParticles(extraPath, inOptSet, samplingRate, nParticles=None):
     if exists(optimSetStar):
         relionParticles = relionTomoMetadata(optimSetStar=optimSetStar,
                                              tsSamplingRate=inOptSet.getTsSamplingRate(),
-                                             samplingRate=samplingRate,
+                                             relionBinning=binningFactor if binningFactor else inOptSet.getRelionBinning(),
                                              nParticles=nParticles if nParticles else inOptSet.getNumParticles())
     else:
         relionParticles = relionTomoMetadata()
@@ -111,3 +110,13 @@ def genRelionParticles(extraPath, inOptSet, samplingRate, nParticles=None):
         relionParticles.updateGenFiles(extraPath)
 
     return relionParticles
+
+
+def genOutputPseudoSubtomograms(prot):
+    """Centralized code to generate the output set of pseudosubtomograms for protocols make pseudosubtomograms,
+     auto-refine, CTF refine and frame align"""
+    reader = convert40_tomo.Reader()
+    outputSet = prot._createSet(SetOfPseudoSubtomograms, PSUBTOMOS_SQLITE, '')
+    outputSet.setSamplingRate(prot.inOptSet.get().getCurrentSamplingRate())
+    reader.starFile2PseudoSubtomograms(prot._getExtraPath(OUT_PARTICLES_STAR), outputSet)
+    return outputSet

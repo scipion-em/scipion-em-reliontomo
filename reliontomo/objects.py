@@ -113,6 +113,9 @@ class relionTomoMetadata(EMObject):
     def getNumParticles(self):
         return self._nParticles.get()
 
+    def getCurrentSamplingRate(self):
+        return self.getTsSamplingRate() * self.getRelionBinning()
+
     def _readOptimSetStar(self, optimSetStar):
         dataTable = Table()
         dataTable.read(optimSetStar)
@@ -125,7 +128,7 @@ class relionTomoMetadata(EMObject):
 
     def copyInfo(self, other):
         self.copyAttributes(other, '_nParticles', '_tomograms', '_particles', '_trajectories',
-                            '_manifolds', '_referenceFsc', '_samplingRate', '_tsSamplingRate')
+                            '_manifolds', '_referenceFsc', '_relionBinning', '_tsSamplingRate')
 
 
 class PSubtomogram(Volume):
