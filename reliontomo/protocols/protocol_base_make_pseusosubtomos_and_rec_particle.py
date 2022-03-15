@@ -46,7 +46,7 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
 
         form.addParam('inOptSet', PointerParam,
                       pointerClass='relionTomoMetadata',
-                      label='Input particles')
+                      label='Input Relion Tomo Metadata')
         group = form.addGroup('Reconstruct')
         group.addParam('boxSize', IntParam,
                        label='Box size (pix.)',

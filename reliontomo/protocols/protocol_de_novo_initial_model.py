@@ -94,8 +94,6 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         self._defineOutputs(**{outputObjects.outputAverage.name: vol})
 
     # -------------------------- INFO functions -------------------------------
-    def _validate(self):
-        pass
 
     # --------------------------- UTILS functions -----------------------------
     def _genInitModelCommand(self):

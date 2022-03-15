@@ -30,7 +30,7 @@ from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, StringPa
     EnumParam, PathParam, FloatParam, LEVEL_NORMAL, GE, LE
 from pyworkflow.utils import Message
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, IN_PARTICLES_STAR
-from reliontomo.convert import writeSetOfPseudoSubtomograms
+from reliontomo.protocols import ProtRelionMakePseudoSubtomograms
 
 
 class ProtRelionRefineBase(EMProtocol):
@@ -49,7 +49,7 @@ class ProtRelionRefineBase(EMProtocol):
         form.addSection(label=Message.LABEL_INPUT)
         form.addParam('inOptSet', PointerParam,
                       pointerClass='relionTomoMetadata',
-                      label="Input particles",
+                      label='Input Relion Tomo Metadata',
                       important=True,
                       allowsNull=False)
 
@@ -284,7 +284,11 @@ class ProtRelionRefineBase(EMProtocol):
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
-        pass
+        msg = []
+        optSet = self.inOptSet.get()
+        if ProtRelionMakePseudoSubtomograms().getClassName() not in optSet.getParticles():
+            msg.append('Input metadata is expected to come from making a set of pseudosubtomograms.')
+        return msg
 
     # --------------------------- UTILS functions -----------------------------
     def _genBaseCommand(self):

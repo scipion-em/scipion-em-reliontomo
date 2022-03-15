@@ -87,7 +87,7 @@ class relionTomoMetadata(EMObject):
         for p in EnumRe4GenFilesProps:
             currentFile = join(extraPath, p.value)
             if exists(currentFile):
-                setattr(self, p.name, currentFile)
+                setattr(self, p.name, String(currentFile))
 
     def getTomograms(self):
         return self._tomograms.get()

@@ -278,8 +278,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         half2 = self._getLastFileName(self._getExtraPath(pattern % 2))
         vol.setHalfMaps([half1, half2])
         # Output RelionParticles
-        relionParticles = genRelionParticles(self._getExtraPath(),
-                                             self.inOptSet.get())
+        relionParticles = genRelionParticles(self._getExtraPath(), self.inOptSet.get())
 
         # Output FSC
         fsc = FSC(objLabel=self.getRunName())
