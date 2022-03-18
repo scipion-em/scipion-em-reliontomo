@@ -33,7 +33,7 @@ from relion.convert.convert_base import WriterBase
 from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, IMOD_DIR, FRACTIONAL_DOSE, \
     ACQ_ORDER_FILE, CULLED_FILE, SUBTOMO_NAME, COORD_X, COORD_Y, COORD_Z, ROT, TILT, PSI, CLASS_NUMBER, \
     TOMO_PARTICLE_NAME, RANDOM_SUBSET, OPTICS_GROUP, SHIFTX_ANGST, SHIFTY_ANGST, SHIFTZ_ANGST, CTF_IMAGE, \
-    FILE_NOT_FOUND, TOMO_PARTICLE_ID, MANIFOLD_INDEX
+    TOMO_PARTICLE_ID, MANIFOLD_INDEX
 import pwem.convert.transformations as tfs
 import numpy as np
 from os.path import join

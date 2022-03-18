@@ -37,10 +37,6 @@ def getProgram(program, nMpi):
     return program
 
 
-def getFileFromDataPrepProt(prot, fileName):
-    return prot.inputPrepareDataProt.get()._getExtraPath(fileName)
-
-
 def manageDims(fileName, z, n):
     if fileName.endswith('.mrc') or fileName.endswith('.map'):
         if z == 1 and n != 1:
