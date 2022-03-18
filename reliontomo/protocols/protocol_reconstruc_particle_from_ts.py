@@ -83,15 +83,16 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
                              numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
-        # Output average
-        vol = AverageSubTomogram()
-        vol.setFileName(self._getExtraPath('merged.mrc'))
-        vol.setSamplingRate(self.inOptSet.get().getCurrentSamplingRate())
         # Output Relion Particles
         relionParticles = relionTomoMetadata(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
                                              tsSamplingRate=self.inOptSet.get().getTsSamplingRate(),
                                              relionBinning=self.binningFactor.get(),
                                              nParticles=self.inOptSet.get().getNumParticles())
+
+        # Output average
+        vol = AverageSubTomogram()
+        vol.setFileName(self._getExtraPath('merged.mrc'))
+        vol.setSamplingRate(self.inOptSet.get().getCurrentSamplingRate())
 
         self._defineOutputs(**{outputObjects.outputVolume.name: vol,
                                outputObjects.outputRelionParticles.name: relionParticles})

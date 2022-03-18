@@ -23,6 +23,8 @@
 # *
 # **************************************************************************
 from enum import Enum
+
+from pwem.convert.headers import fixVolume
 from pyworkflow import BETA
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         StringParam, BooleanParam,
@@ -142,7 +144,7 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
     def _createFilenameTemplates(self):
         """ Centralize how files are called for iterations and references. """
         myDict = {
-            'input_particles': self._getTmpPath(self.inStarName + '.star'),
+            'input_particles': self._getExtraPath(self.inStarName + '.star'),
             'output_volume': self._getExtraPath(self.outTomoName + '.mrc')
             }
         self._updateFilenamesDict(myDict)
@@ -159,7 +161,9 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
     def createOutputStep(self):
         imgSet = self.inputSubtomos.get()
         volume = AverageSubTomogram()
-        volume.setFileName(self._getFileName(self.outTomoName))
+        volumeFile = self._getFileName(self.outTomoName)
+        fixVolume(volumeFile)
+        volume.setFileName(volumeFile)
         volume.setSamplingRate(imgSet.getSamplingRate())
         
         self._defineOutputs(**{outputObjects.outputVolume.name: volume})
