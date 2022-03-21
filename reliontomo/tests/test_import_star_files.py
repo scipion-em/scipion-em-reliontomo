@@ -26,7 +26,7 @@ from imod.protocols import ProtImodTomoNormalization
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtImportSubtomogramsFromStar
-from reliontomo.tests import DataSetEmd10439
+from reliontomo.tests import DataSetEmd10439, EMD_10439
 from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.protocols import ProtImportTomograms
 
@@ -46,7 +46,6 @@ class TestImportFromStarFile(BaseTest):
     @classmethod
     def setUpClass(cls):
         setupTestProject(cls)
-        EMD_10439 = 'emd_10439'
         cls.dataset = DataSet.getDataSet(EMD_10439)
         cls.samplingRate = 13.68
         cls.boxSize = 44

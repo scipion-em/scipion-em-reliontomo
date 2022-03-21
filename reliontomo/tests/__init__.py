@@ -24,29 +24,18 @@
 # *
 # **************************************************************************
 from enum import Enum
-
 from pyworkflow.tests import DataSet
 
-DataSet(name='reliontomo', folder='reliontomo',
-        files={
-               'refVol': 'caja72_job30_run_it025_class005.mrc',
-               'mask': 'mascara_cilindro_caja72.mrc',
-               'tiltseries': '*.mrcs',
-               'tomograms': '*ali_bin1.mrc',
-               'tlts': '*.tlt',
-               'doseFiles': '*.txt',
-               'dynamoTables': '*.tbl',
-               'coordsFromStarDir': 'importFromStarFiles'
-        })
+RE4_TOMO = 're4tomo'
+EMD_10439 = 'emd_10439'
 
-# DataSet(name='emd_10439', folder='emd_10439',
-#         files={
-#                'tomoEmd10439': 'tomograms/emd_10439.mrc',
-#                'coords3dStarFile': 'importFromStarFiles/picking_001_parts.star',
-#                'coords3dStarFileWithSRate': 'importFromStarFiles/picking_001_parts_with_sRate.star',
-#                'subtomogramsStarFile': 'importFromStarFiles/class_ap_r_ali_k1_split.star',
-#                'scipionSqlite3dCoords': 'importFromScipionSqlite/coordinates.sqlite'
-#         })
+
+class DataSetRe4Tomo(Enum):
+    eTomoDir = 'eTomo'
+    alignments = 'eTomo/TS_43.xf'
+    tiltSeries = 'eTomo/TS_43.mrc'
+    tomogram = 'TS_43.mrc'
+    coordinates = 'coords.star'
 
 
 class DataSetEmd10439(Enum):
@@ -57,4 +46,5 @@ class DataSetEmd10439(Enum):
     scipionSqlite3dCoords = 'importFromScipionSqlite/coordinates.sqlite'
 
 
-DataSet(name='emd_10439', folder='emd_10439', files={el.name: el.value[0] for el in DataSetEmd10439})
+DataSet(name=RE4_TOMO, folder=RE4_TOMO, files={el.name: el.value[0] for el in DataSetRe4Tomo})
+DataSet(name=EMD_10439, folder=EMD_10439, files={el.name: el.value[0] for el in DataSetEmd10439})
