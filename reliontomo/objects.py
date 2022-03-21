@@ -46,7 +46,7 @@ class relionTomoMetadata(EMObject):
 
     def __init__(self, optimSetStar=None, relionBinning=None, tsSamplingRate=None, nParticles=0, **kwargs):
         super().__init__(**kwargs)
-        self._filesMaster = None
+        self._filesMaster = optimSetStar if optimSetStar else None
         self._nParticles = Integer(nParticles)
         self._tomograms = String()
         self._particles = String()
@@ -55,8 +55,6 @@ class relionTomoMetadata(EMObject):
         self._referenceFsc = String()
         self._relionBinning = Float(relionBinning)
         self._tsSamplingRate = Float(tsSamplingRate)
-        if optimSetStar:
-            self.filesMaster = optimSetStar
 
     def __str__(self):
         strRep = ''

@@ -34,10 +34,10 @@ from relion.convert.convert_base import WriterBase, ReaderBase
 from reliontomo.constants import FILE_NOT_FOUND, COORD_X, COORD_Y, COORD_Z, SUBTOMO_NAME, ROT, TILT, \
     TILT_PRIOR, PSI, PSI_PRIOR, SHIFTX, SHIFTY, SHIFTZ, TOMO_NAME_30, CTF_MISSING_WEDGE, MAGNIFICATION, PIXEL_SIZE, \
     CLASS_NUMBER
-from reliontomo.utils import _getAbsPath, _gen2LevelBaseName, getTransformMatrix
+from reliontomo.utils import getAbsPath, _gen2LevelBaseName, getTransformMatrix
 from scipion.install.funcs import mkdir
 import numpy as np
-from os.path import abspath, join, basename
+from os.path import join
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.objects import SubTomogram, Coordinate3D, TomoAcquisition
@@ -148,29 +148,29 @@ class Reader(ReaderBase):
         self.dataTable.read(starFile)
 
     @staticmethod
-    def gen3dCoordFromStarRow(row, precedentsSet, precedentIdList):
+    def gen3dCoordFromStarRow(row, precedentsSet, precedentIdList, scaleFactor):
         coordinate3d = Coordinate3D()
         tomoId = removeBaseExt(row.get(TOMO_NAME_30))
-        x = row.get(COORD_X, 0)
-        y = row.get(COORD_Y, 0)
-        z = row.get(COORD_Z, 0)
+        x = float(row.get(COORD_X, 0))
+        y = float(row.get(COORD_Y, 0))
+        z = float(row.get(COORD_Z, 0))
         volId = precedentIdList.index(tomoId) + 1  # Set indices begin in 1
         coordinate3d.setVolume(precedentsSet[volId])
         coordinate3d.setVolId(volId)
         ctf3d = row.get(CTF_MISSING_WEDGE, FILE_NOT_FOUND)
         coordinate3d.setTomoId(tomoId)
-        coordinate3d.setX(float(x), BOTTOM_LEFT_CORNER)
-        coordinate3d.setY(float(y), BOTTOM_LEFT_CORNER)
-        coordinate3d.setZ(float(z), BOTTOM_LEFT_CORNER)
+        coordinate3d.setX(x * scaleFactor, BOTTOM_LEFT_CORNER)
+        coordinate3d.setY(y * scaleFactor, BOTTOM_LEFT_CORNER)
+        coordinate3d.setZ(z * scaleFactor, BOTTOM_LEFT_CORNER)
         coordinate3d._3dcftMrcFile = ctf3d  # Used for the ctf3d generation in Relion
         coordinate3d.setMatrix(getTransformMatrixFromRow(row))
 
         return coordinate3d
 
-    def starFile2Coords3D(self, coordsSet, precedentsSet):
+    def starFile2Coords3D(self, coordsSet, precedentsSet, scaleFactor):
         precedentIdList = [tomo.getTsId() for tomo in precedentsSet]
         for row in self.dataTable:
-            coordsSet.append(self.gen3dCoordFromStarRow(row, precedentsSet, precedentIdList))
+            coordsSet.append(self.gen3dCoordFromStarRow(row, precedentsSet, precedentIdList, scaleFactor))
 
     def starFile2Subtomograms(self, subtomoSet, coordSet, linkedSubtomosDir, starFilePath):
         samplingRate = subtomoSet.getSamplingRate()
@@ -183,7 +183,7 @@ class Reader(ReaderBase):
             tomoName = row.get(TOMO_NAME_30, FILE_NOT_FOUND)
             subtomoName = row.get(SUBTOMO_NAME, FILE_NOT_FOUND)
             linkedSubtomoName = join(linkedSubtomosDir, _gen2LevelBaseName(subtomoName))
-            symlink(_getAbsPath(starFilePath, subtomoName), linkedSubtomoName)  # Link the subtomos to the extra folder
+            symlink(getAbsPath(starFilePath, subtomoName), linkedSubtomoName)  # Link the subtomos to the extra folder
 
             # Subtomograms
             tiltPrior = row.get(TILT_PRIOR, 0)

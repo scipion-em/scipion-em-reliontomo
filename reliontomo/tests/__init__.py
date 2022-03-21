@@ -23,6 +23,7 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+from enum import Enum
 
 from pyworkflow.tests import DataSet
 
@@ -38,11 +39,22 @@ DataSet(name='reliontomo', folder='reliontomo',
                'coordsFromStarDir': 'importFromStarFiles'
         })
 
-DataSet(name='emd_10439', folder='emd_10439',
-        files={
-               'tomoEmd10439': 'tomograms/emd_10439.mrc',
-               'coords3dStarFile': 'importFromStarFiles/picking_001_parts.star',
-               'coords3dStarFileWithSRate': 'importFromStarFiles/picking_001_parts_with_sRate.star',
-               'subtomogramsStarFile': 'importFromStarFiles/class_ap_r_ali_k1_split.star',
-               'scipionSqlite3dCoords': 'importFromScipionSqlite/coordinates.sqlite'
-        })
+# DataSet(name='emd_10439', folder='emd_10439',
+#         files={
+#                'tomoEmd10439': 'tomograms/emd_10439.mrc',
+#                'coords3dStarFile': 'importFromStarFiles/picking_001_parts.star',
+#                'coords3dStarFileWithSRate': 'importFromStarFiles/picking_001_parts_with_sRate.star',
+#                'subtomogramsStarFile': 'importFromStarFiles/class_ap_r_ali_k1_split.star',
+#                'scipionSqlite3dCoords': 'importFromScipionSqlite/coordinates.sqlite'
+#         })
+
+
+class DataSetEmd10439(Enum):
+    tomoEmd10439 = 'tomograms/emd_10439.mrc',
+    coords3dStarFile = 'importFromStarFiles/picking_001_parts.star',
+    coords3dStarFileWithSRate = 'importFromStarFiles/picking_001_parts_with_sRate.star',
+    subtomogramsStarFile = 'importFromStarFiles/class_ap_r_ali_k1_split.star',
+    scipionSqlite3dCoords = 'importFromScipionSqlite/coordinates.sqlite'
+
+
+DataSet(name='emd_10439', folder='emd_10439', files={el.name: el.value[0] for el in DataSetEmd10439})

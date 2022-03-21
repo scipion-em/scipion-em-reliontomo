@@ -49,7 +49,7 @@ def manageDims(fileName, z, n):
     return zDim
 
 
-def _getAbsPath(starFilePath, tomoFile):
+def getAbsPath(starFilePath, tomoFile):
     """If the paths of the files pointed from a star file are relative, they'll be referred to the path of the
     star file. This method is used to consider that case."""
     if isabs(tomoFile):
