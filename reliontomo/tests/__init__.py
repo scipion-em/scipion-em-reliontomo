@@ -26,6 +26,8 @@
 from enum import Enum
 from pyworkflow.tests import DataSet
 
+OUTPUT_TOMOS = 'outputTomograms'
+OUTPUT_COORDS = 'outputCoordinates'
 RE4_TOMO = 're4tomo'
 EMD_10439 = 'emd_10439'
 
@@ -34,6 +36,7 @@ class DataSetRe4Tomo(Enum):
     eTomoDir = 'eTomo'
     alignments = 'eTomo/TS_43.xf'
     tiltSeries = 'eTomo/TS_43.mrc'
+    mdoc = 'eTomo/TS_43.mrc.mdoc'
     tomogram = 'TS_43.mrc'
     coordinates = 'coords.star'
 

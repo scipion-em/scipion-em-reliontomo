@@ -26,13 +26,11 @@ from imod.protocols import ProtImodTomoNormalization
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtImportSubtomogramsFromStar
-from reliontomo.tests import DataSetEmd10439, EMD_10439
+from reliontomo.tests import DataSetEmd10439, EMD_10439, OUTPUT_TOMOS, OUTPUT_COORDS
 from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.protocols import ProtImportTomograms
 
 
-OUTPUT_TOMOS = 'outputTomograms'
-OUTPUT_COORDS = 'outputCoordinates'
 OUTPUT_SUBTOMOS = 'outputSubtomograms'
 
 
