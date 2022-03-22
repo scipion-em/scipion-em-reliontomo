@@ -88,17 +88,9 @@ class ProtRelionRefineBase(EMProtocol):
                            "the results.")
 
     @staticmethod
-    def _insertNItersParam(form):
-        form.addParam('nIterations', IntParam,
-                      allowsNull=False,
-                      default=25,
-                      validators=[GE(1)],
-                      label='Number of iterations to be performed')
-
-    @staticmethod
     def _insertRegularisationParam(form):
         form.addParam('regularisation', FloatParam,
-                      default=0,
+                      default=4,
                       validators=[GE(0)],
                       label='Regularisation parameter T',
                       help="Bayes law strictly determines the relative weight between the contribution of the "
@@ -188,7 +180,7 @@ class ProtRelionRefineBase(EMProtocol):
                            "systems where disk access, and particularly metadata handling of disk access, is a "
                            "problem. It has a modest cost of increased RAM usage.")
         form.addParam('skipGridding', BooleanParam,
-                      default=False,
+                      default=True,
                       label='Skip griding?',
                       help='Skip gridding in the Maximization step in the Expectation-Maximization algorithm. '
                            'If this option is set to Yes, more memory will be consumed during the protocol execution, '

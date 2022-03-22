@@ -89,9 +89,9 @@ class Writer(WriterBase):
                 angles[1],                                                   # 11 _rlnAngleTilt
                 angles[2],                                                   # 12 _rlnAnglePsi
                 # Extended fields
-                getattr(coord, '_classNumber', -1),                          # 13_rlnClassNumber
+                int(getattr(coord, '_classNumber', -1)),                     # 13_rlnClassNumber
                 # Alternated 1 and 2 values
-                getattr(coord, '_randomSubset', (i % 2) + 1),                # 14 _rlnRandomSubset
+                int(getattr(coord, '_randomSubset', (i % 2) + 1)),           # 14 _rlnRandomSubset
             )
             i += 1
         # Write the STAR file

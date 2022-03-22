@@ -49,5 +49,5 @@ class DataSetEmd10439(Enum):
     scipionSqlite3dCoords = 'importFromScipionSqlite/coordinates.sqlite'
 
 
-DataSet(name=RE4_TOMO, folder=RE4_TOMO, files={el.name: el.value[0] for el in DataSetRe4Tomo})
+DataSet(name=RE4_TOMO, folder=RE4_TOMO, files={el.name: el.value for el in DataSetRe4Tomo})
 DataSet(name=EMD_10439, folder=EMD_10439, files={el.name: el.value[0] for el in DataSetEmd10439})
