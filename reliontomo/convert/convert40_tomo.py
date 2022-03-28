@@ -424,28 +424,3 @@ def getTransformMatrixFromRow(row, sRate, invert=True):
     rot = row.get(ROT, 0)
 
     return getTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, invert)
-
-
-def genVTomoDict(precedentSet, vTomoScaleFactor):
-    """Generate a set of virtual tomograms with the attributes required to follow the 3D coordinates data model:
-    size, tsId, sampling rate and origin. This way, the metadata produced with this plugin can be represented properly
-    as Scipion metadata"""
-    virtualTomoDict = {}
-    for tomo in precedentSet:
-        vTomo = Tomogram()
-        tsId = tomo.getTsId()
-        vTomo.setSamplingRate(tomo.getSamplingRate() / vTomoScaleFactor)
-        vTomo.setTsId(tsId)
-        origDims = tomo.getDim()
-        vTomo._dim = (origDims[0] * vTomoScaleFactor,
-                      origDims[1] * vTomoScaleFactor,
-                      origDims[2] * vTomoScaleFactor)
-        t = tomo.getOrigin()
-        m = t.getMatrix()
-        m[0, 3] = m[0, 3] * vTomoScaleFactor
-        m[1, 3] = m[1, 3] * vTomoScaleFactor
-        m[2, 3] = m[2, 3] * vTomoScaleFactor
-        vTomo.setOrigin(newOrigin=t)
-        virtualTomoDict[tsId] = vTomo
-
-    return virtualTomoDict
