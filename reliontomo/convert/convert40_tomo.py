@@ -173,7 +173,7 @@ class Writer(WriterTomo):
             # Angles in degrees
             rlnTiltPrior = subtomo._tiltPriorAngle.get() if hasattr(subtomo, '_tiltPriorAngle') else rlnAngleTilt
             rlnPsiPrior = subtomo._psiPriorAngle.get() if hasattr(subtomo, '_psiPriorAngle') else rlnAnglePsi
-            rlnClassNumber = classNumber if classNumber else 1
+            rlnClassNumber = classNumber if classNumber else Integer(1)
             # Add row to the table which will be used to generate the STAR file
             fieldsToAdd = [rlnTomoName,
                            rlnImageName,
