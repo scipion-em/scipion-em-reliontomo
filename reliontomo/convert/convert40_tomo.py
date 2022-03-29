@@ -153,9 +153,7 @@ class Writer(WriterTomo):
             if ctfFile:
                 ctfFile = ctfFile.get()
             classNumber = subtomo.getClassId()
-            if classNumber:
-                classNumber = classNumber.get()
-
+            rlnClassNumber = classNumber if classNumber else 1
             rlnTomoName = subtomo.getVolName()
             rlnImageName = subtomo.getFileName().replace(':' + MRC, '')
             rlnCtfImage = ctfFile if ctfFile else FILE_NOT_FOUND
@@ -167,13 +165,12 @@ class Writer(WriterTomo):
             rlnAngleTilt = angles[1]
             rlnAnglePsi = angles[2]
             # pix * Å/pix = [shifts in Å]
-            rlnOriginX = shifts[0]# * sRate
-            rlnOriginY = shifts[1]# * sRate
-            rlnOriginZ = shifts[2]# * sRate
+            rlnOriginX = shifts[0] * sRate
+            rlnOriginY = shifts[1] * sRate
+            rlnOriginZ = shifts[2] * sRate
             # Angles in degrees
             rlnTiltPrior = subtomo._tiltPriorAngle.get() if hasattr(subtomo, '_tiltPriorAngle') else rlnAngleTilt
             rlnPsiPrior = subtomo._psiPriorAngle.get() if hasattr(subtomo, '_psiPriorAngle') else rlnAnglePsi
-            rlnClassNumber = classNumber if classNumber else Integer(1)
             # Add row to the table which will be used to generate the STAR file
             fieldsToAdd = [rlnTomoName,
                            rlnImageName,
