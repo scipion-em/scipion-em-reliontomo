@@ -35,7 +35,6 @@ class Plugin(relion.Plugin):
     _supportedVersions = [V4_0]
     _homeVar = RELIONTOMO_HOME
     _pathVars = [RELIONTOMO_HOME]
-    _isReconstringParticleFromSubtomos = False
 
     @classmethod
     def _defineVariables(cls):
@@ -50,10 +49,6 @@ class Plugin(relion.Plugin):
     def runRelionTomo(cls, protocol, program, args, cwd=None, numberOfMpi=1):
         """ Run Relion command from a given protocol. """
         protocol.runJob(program, args, cwd=cwd, env=cls.getEnviron(), numberOfMpi=numberOfMpi)
-
-    @classmethod
-    def isReconstringParticleFromSubtomos(cls):
-        return cls._isReconstringParticleFromSubtomos
 
     @classmethod
     def defineBinaries(cls, env):

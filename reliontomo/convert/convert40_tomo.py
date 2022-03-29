@@ -28,26 +28,30 @@ from pwem import ALIGN_NONE, ALIGN_2D, ALIGN_PROJ
 from pwem.convert.headers import fixVolume
 from pwem.objects import Transform
 from pyworkflow.object import Integer
+from pyworkflow.utils import getParentFolder
 from relion.convert import OpticsGroups
-from relion.convert.convert_base import WriterBase
 from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, IMOD_DIR, FRACTIONAL_DOSE, \
     ACQ_ORDER_FILE, CULLED_FILE, SUBTOMO_NAME, COORD_X, COORD_Y, COORD_Z, ROT, TILT, PSI, CLASS_NUMBER, \
     TOMO_PARTICLE_NAME, RANDOM_SUBSET, OPTICS_GROUP, SHIFTX_ANGST, SHIFTY_ANGST, SHIFTZ_ANGST, CTF_IMAGE, \
-    TOMO_PARTICLE_ID, MANIFOLD_INDEX
+    TOMO_PARTICLE_ID, MANIFOLD_INDEX, MRC, FILE_NOT_FOUND
 import pwem.convert.transformations as tfs
 import numpy as np
 from os.path import join
-from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
+from reliontomo.convert.convertBase import checkSubtomogramFormat, getTransformInfoFromCoordOrSubtomo, WriterTomo
 from reliontomo.objects import PSubtomogram
 from reliontomo.utils import getTransformMatrix
 from tomo.constants import BOTTOM_LEFT_CORNER
-from tomo.objects import Coordinate3D, Tomogram
+from tomo.objects import Coordinate3D
+
 
 RELION_3D_COORD_ORIGIN = BOTTOM_LEFT_CORNER
 
 
-class Writer(WriterBase):
+class Writer(WriterTomo):
     """ Helper class to convert from Scipion SetOfTomograms and SetOfSubTomograms to star files ."""
+    
+    def __init__(self,  **kwargs):
+        super().__init__(**kwargs)
 
     def tiltSeries2Star(self, tsSet, outStarFileName, prot=None, ctfPlotterParentDir=None, eTomoParentDir=None):
         tsTable = Table(columns=self._getTomogramStarFileLabels())
@@ -70,7 +74,7 @@ class Writer(WriterBase):
         tomoTable = Table(columns=self._getCoordinatesStarFileLabels())
         i = 0
         for coord in coordSet.iterCoordinates():
-            angles, shifts = self._getTransformInfoFromCoordOrSubtomo(coord)
+            angles, shifts = getTransformInfoFromCoordOrSubtomo(coord)
             # Add row to the table which will be used to generate the STAR file
             tomoTable.addRow(
                 coord.getTomoId(),                                           # 1 _rlnTomoName
@@ -98,7 +102,6 @@ class Writer(WriterBase):
         tomoTable.write(subtomosStar)
 
     def pseudoSubtomograms2Star(self, pSubtomoSet, subtomosStar):
-        MRC = 'mrc'
         sRate = pSubtomoSet.getSamplingRate()
         tomoTable = Table(columns=self._getPseudoSubtomogramStarFileLabels())
 
@@ -112,7 +115,7 @@ class Writer(WriterBase):
             partsWriter.writeHeader(tomoTable.getColumns())
             for subtomo in pSubtomoSet:
                 coord = subtomo._coordinate
-                angles, shifts = self._getTransformInfoFromCoordOrSubtomo(subtomo)
+                angles, shifts = getTransformInfoFromCoordOrSubtomo(subtomo)
                 # Add row to the table which will be used to generate the STAR file
                 partsWriter.writeRowValues([
                     coord.getTomoId(),                                           # _rlnTomoName #1
@@ -138,18 +141,60 @@ class Writer(WriterBase):
                     subtomo.getFileName().replace(':' + MRC, ''),                # _rlnImageName #17
                     subtomo._ctfImage.get()                                      # _rlnCtfImage #18
                 ])
+                
+    def subtomograms2Star(self, subtomoSet, subtomosStar):
+        tomoTable = Table(columns=self.starHeaders)
+        sRate = subtomoSet.getSamplingRate()
+        extraPath = join(getParentFolder(subtomosStar), 'extra')
+        for subtomo in subtomoSet:
+            checkSubtomogramFormat(subtomo, extraPath)
+            angles, shifts = getTransformInfoFromCoordOrSubtomo(subtomo)
+            ctfFile = getattr(subtomo, '_ctfImage', None)
+            if ctfFile:
+                ctfFile = ctfFile.get()
+            classNumber = subtomo.getClassId()
+            if classNumber:
+                classNumber = classNumber.get()
 
-    @staticmethod
-    def _getTransformInfoFromCoordOrSubtomo(obj, calcInv=True):
-        M = obj.getMatrix() if type(obj) is Coordinate3D else obj.getTransform().getMatrix()
-        shifts = translation_from_matrix(M)
-        if calcInv:
-            shifts = -shifts
-            M = np.linalg.inv(M)
+            rlnTomoName = subtomo.getVolName()
+            rlnImageName = subtomo.getFileName().replace(':' + MRC, '')
+            rlnCtfImage = ctfFile if ctfFile else FILE_NOT_FOUND
+            # Coords in pixels
+            rlnCoordinateX = subtomo.getCoordinate3D().getX(BOTTOM_LEFT_CORNER)
+            rlnCoordinateY = subtomo.getCoordinate3D().getY(BOTTOM_LEFT_CORNER)
+            rlnCoordinateZ = subtomo.getCoordinate3D().getZ(BOTTOM_LEFT_CORNER)
+            rlnAngleRot = angles[0]
+            rlnAngleTilt = angles[1]
+            rlnAnglePsi = angles[2]
+            # pix * Å/pix = [shifts in Å]
+            rlnOriginX = shifts[0]# * sRate
+            rlnOriginY = shifts[1]# * sRate
+            rlnOriginZ = shifts[2]# * sRate
+            # Angles in degrees
+            rlnTiltPrior = subtomo._tiltPriorAngle.get() if hasattr(subtomo, '_tiltPriorAngle') else rlnAngleTilt
+            rlnPsiPrior = subtomo._psiPriorAngle.get() if hasattr(subtomo, '_psiPriorAngle') else rlnAnglePsi
+            rlnClassNumber = classNumber if classNumber else 1
+            # Add row to the table which will be used to generate the STAR file
+            fieldsToAdd = [rlnTomoName,
+                           rlnImageName,
+                           rlnCtfImage,
+                           rlnCoordinateX,
+                           rlnCoordinateY,
+                           rlnCoordinateZ,
+                           rlnOriginX,
+                           rlnOriginY,
+                           rlnOriginZ,
+                           rlnAngleRot,
+                           rlnAngleTilt,
+                           rlnTiltPrior,
+                           rlnAnglePsi,
+                           rlnPsiPrior,
+                           rlnClassNumber]
 
-        angles = -np.rad2deg(euler_from_matrix(M, axes='szyz'))
+            tomoTable.addRow(*fieldsToAdd)
 
-        return angles, shifts
+        # Write the STAR file
+        tomoTable.write(subtomosStar)
 
     @staticmethod
     def _getTomogramStarFileLabels():

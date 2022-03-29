@@ -25,8 +25,67 @@
 
 from emtable import Table
 from reliontomo import Plugin
-from reliontomo.constants import TOMO_NAME_30
+from reliontomo.constants import TOMO_NAME_30, COORD_X, COORD_Y, COORD_Z, SUBTOMO_NAME, CTF_MISSING_WEDGE, ROT, TILT, \
+    PSI, SHIFTX, SHIFTY, SHIFTZ, PIXEL_SIZE, MAGNIFICATION, TILT_PRIOR, SHIFTX_ANGST, PSI_PRIOR, SHIFTY_ANGST, \
+    SHIFTZ_ANGST, CTF_IMAGE, TOMO_NAME, CLASS_NUMBER
 from reliontomo.convert import convert40_tomo, convert30_tomo
+
+PYSEG_SUBTOMO_LABELS = [TOMO_NAME_30,
+                        COORD_X,
+                        COORD_Y,
+                        COORD_Z,
+                        SUBTOMO_NAME,
+                        CTF_MISSING_WEDGE,
+                        ROT,
+                        TILT,
+                        PSI,
+                        SHIFTX,
+                        SHIFTY,
+                        SHIFTZ]
+
+RELION_30_TOMO_LABELS = [TOMO_NAME_30,
+                         COORD_X,
+                         COORD_Y,
+                         COORD_Z,
+                         SUBTOMO_NAME,
+                         CTF_MISSING_WEDGE,
+                         MAGNIFICATION,
+                         PIXEL_SIZE,
+                         ROT,
+                         TILT,
+                         TILT_PRIOR,
+                         PSI,
+                         PSI_PRIOR,
+                         SHIFTX,
+                         SHIFTY,
+                         SHIFTZ]
+
+RELION_40_TOMO_LABELS = [TOMO_NAME,
+                         SUBTOMO_NAME,
+                         CTF_IMAGE,
+                         COORD_X,
+                         COORD_Y,
+                         COORD_Z,
+                         SHIFTX_ANGST,
+                         SHIFTY_ANGST,
+                         SHIFTZ_ANGST,
+                         ROT,
+                         TILT,
+                         TILT_PRIOR,
+                         PSI,
+                         PSI_PRIOR,
+                         CLASS_NUMBER]
+
+
+def createWriterTomo(**kwargs):
+    if Plugin.isRe40():
+        if kwargs.get('isPyseg', None):
+            Writer = createWriterTomo30(starHeaders=PYSEG_SUBTOMO_LABELS, **kwargs)
+        else:
+            Writer = createWriterTomo40(starHeaders=RELION_40_TOMO_LABELS, **kwargs)
+    else:
+        Writer = createWriterTomo30(starHeaders=RELION_30_TOMO_LABELS, **kwargs)
+    return Writer
 
 
 def createWriterTomo30(**kwargs):
@@ -41,16 +100,14 @@ def createWriterTomo40(**kwargs):
     return Writer(**kwargs)
 
 
-def writeSetOfPseudoSubtomograms(particlesSet, starFile, **kwargs):
-    return createWriterTomo40(**kwargs).pseudoSubtomograms2Star(particlesSet, starFile)
-
-
 def writeSetOfSubtomograms(particlesSet, starFile, **kwargs):
     """ Convenience function to write a SetOfSubtomograms as Relion metadata using a Writer."""
-    if Plugin.isRe40():
-        return createWriterTomo40(**kwargs).coordinates2Star(particlesSet, starFile, **kwargs)
-    else:
-        return createWriterTomo30(**kwargs).writeSetOfSubtomograms(particlesSet, starFile, **kwargs)
+    writer = createWriterTomo(**kwargs)
+    return writer.subtomograms2Star(particlesSet, starFile)
+
+
+def writeSetOfPseudoSubtomograms(particlesSet, starFile, **kwargs):
+    return createWriterTomo40(**kwargs).pseudoSubtomograms2Star(particlesSet, starFile)
 
 
 def writeSetOfTomograms(imgSet, starFile, **kwargs):

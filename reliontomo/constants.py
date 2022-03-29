@@ -33,6 +33,8 @@ RELIONTOMO_DEFAULT = RELION + '-' + RELIONTOMO_DEFAULT_VERSION
 V30_VALIDATION_MSG = 'This version of Reliontomo plugin requires Relion 3.0 binaries. ' \
                      'Please install it if necessary via scipion3 installb relion-3.0'
 
+MRC = 'mrc'
+
 # Relion 4 tomogram star file fields
 TOMO_NAME = 'rlnTomoName'
 TILT_SERIES_NAME = 'rlnTomoTiltSeriesName'
@@ -47,15 +49,18 @@ TOMO_NAME_30 = 'rlnMicrographName'
 CTF_MISSING_WEDGE = 'rlnCtfImage'
 MAGNIFICATION = 'rlnMagnification'
 PIXEL_SIZE = 'rlnDetectorPixelSize'
+SHIFTX = 'rlnOriginX'
+SHIFTY = 'rlnOriginY'
+SHIFTZ = 'rlnOriginZ'
 
 # Relion 4 subtomogram star file fields
 SUBTOMO_NAME = 'rlnImageName'
 COORD_X = 'rlnCoordinateX'
 COORD_Y = 'rlnCoordinateY'
 COORD_Z = 'rlnCoordinateZ'
-SHIFTX = 'rlnOriginX'
-SHIFTY = 'rlnOriginY'
-SHIFTZ = 'rlnOriginZ'
+SHIFTX_ANGST = 'rlnOriginXAngst'
+SHIFTY_ANGST = 'rlnOriginYAngst'
+SHIFTZ_ANGST = 'rlnOriginZAngst'
 ROT = 'rlnAngleRot'
 TILT = 'rlnAngleTilt'
 PSI = 'rlnAnglePsi'
@@ -69,9 +74,6 @@ TOMO_PARTICLE_NAME = 'rlnTomoParticleName'
 MANIFOLD_INDEX = 'rlnTomoManifoldIndex'
 RANDOM_SUBSET = 'rlnRandomSubset'
 OPTICS_GROUP = 'rlnOpticsGroup'
-SHIFTX_ANGST = 'rlnOriginXAngst'
-SHIFTY_ANGST = 'rlnOriginYAngst'
-SHIFTZ_ANGST = 'rlnOriginZAngst'
 CTF_IMAGE = 'rlnCtfImage'
 
 # Optimisation set fields
