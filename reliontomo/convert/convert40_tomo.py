@@ -324,7 +324,7 @@ class Reader:
             # introduced
             coord, tomoId = self.gen3dCoordFromStarRow(row, coordSamplingRate, precedentIdDict, factor=factor)
             if coord:
-                coordsSet.append()
+                coordsSet.append(coord)
             else:
                 if tomoId not in nonMatchingTomoIds:
                     nonMatchingTomoIds += '%s ' % tomoId
