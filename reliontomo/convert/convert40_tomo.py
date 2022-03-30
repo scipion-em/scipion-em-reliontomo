@@ -28,7 +28,7 @@ from pwem import ALIGN_NONE, ALIGN_2D, ALIGN_PROJ
 from pwem.convert.headers import fixVolume
 from pwem.objects import Transform
 from pyworkflow.object import Integer
-from pyworkflow.utils import getParentFolder
+from pyworkflow.utils import getParentFolder, yellowStr
 from relion.convert import OpticsGroups
 from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, IMOD_DIR, FRACTIONAL_DOSE, \
     ACQ_ORDER_FILE, CULLED_FILE, SUBTOMO_NAME, COORD_X, COORD_Y, COORD_Z, ROT, TILT, PSI, CLASS_NUMBER, \
@@ -289,38 +289,49 @@ class Reader:
         self.dataTable.read(starFile)
 
     @staticmethod
-    def gen3dCoordFromStarRow(row, sRate, precedentIdList, factor=1):
-        
-        coordinate3d = Coordinate3D()
-        tomoId = (row.get(TOMO_NAME))
-        x = row.get(COORD_X, 0)
-        y = row.get(COORD_Y, 0)
-        z = row.get(COORD_Z, 0)
+    def gen3dCoordFromStarRow(row, sRate, precedentIdDict, factor=1):
+        coordinate3d = None
+        tomoId = row.get(TOMO_NAME)
+        vol = precedentIdDict.get(tomoId, None)
+        if vol:
+            coordinate3d = Coordinate3D()
+            x = row.get(COORD_X, 0)
+            y = row.get(COORD_Y, 0)
+            z = row.get(COORD_Z, 0)
+            coordinate3d.setVolume(vol)
+            coordinate3d.setX(float(x)*factor, RELION_3D_COORD_ORIGIN)
+            coordinate3d.setY(float(y)*factor, RELION_3D_COORD_ORIGIN)
+            coordinate3d.setZ(float(z)*factor, RELION_3D_COORD_ORIGIN)
+            coordinate3d.setMatrix(getTransformMatrixFromRow(row, sRate))
+            coordinate3d.setGroupId(row.get(MANIFOLD_INDEX, 1))
+            # Extended fields
+            coordinate3d._classNumber = Integer(row.get(CLASS_NUMBER, -1))
+            coordinate3d._randomSubset = Integer(row.get(RANDOM_SUBSET, 1))
 
-        vol = precedentIdList[tomoId]
-        coordinate3d.setVolume(vol)
-
-        coordinate3d.setX(float(x)*factor, RELION_3D_COORD_ORIGIN)
-        coordinate3d.setY(float(y)*factor, RELION_3D_COORD_ORIGIN)
-        coordinate3d.setZ(float(z)*factor, RELION_3D_COORD_ORIGIN)
-        coordinate3d.setMatrix(getTransformMatrixFromRow(row, sRate))
-        coordinate3d.setGroupId(row.get(MANIFOLD_INDEX, 1))
-        # Extended fields
-        coordinate3d._classNumber = Integer(row.get(CLASS_NUMBER, -1))
-        coordinate3d._randomSubset = Integer(row.get(RANDOM_SUBSET, 1))
-
-        return coordinate3d
+        return coordinate3d, tomoId
 
     def starFile2Coords3D(self, coordsSet, precedentsSet, coordSamplingRate):
-        precedentIdList = {}
+        precedentIdDict = {}
         for tomo in precedentsSet:
-            precedentIdList[tomo.getTsId()] = tomo.clone()
+            precedentIdDict[tomo.getTsId()] = tomo.clone()
 
         # Calculate the factor to allow importing coordinates at different SR than the tomograms associated
         factor = coordSamplingRate/precedentsSet.getSamplingRate()
 
+        nonMatchingTomoIds = ''
         for row in self.dataTable:
-            coordsSet.append(self.gen3dCoordFromStarRow(row, coordSamplingRate, precedentIdList, factor=factor))
+            # Consider that there can be coordinates in the star file that does not belong to any of the tomograms
+            # introduced
+            coord, tomoId = self.gen3dCoordFromStarRow(row, coordSamplingRate, precedentIdDict, factor=factor)
+            if coord:
+                coordsSet.append()
+            else:
+                if tomoId not in nonMatchingTomoIds:
+                    nonMatchingTomoIds += '%s ' % tomoId
+
+        if nonMatchingTomoIds:
+            print(yellowStr('The star file contains coordinates that belong to tomograms not present '
+                            'in the introduced set of tomograms: %s' % nonMatchingTomoIds))
 
     @staticmethod
     def starFile2PseudoSubtomograms(starFile, outputSet):

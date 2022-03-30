@@ -29,7 +29,7 @@ from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
 from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelionPrepareData, \
-    ProtRelionMakePseudoSubtomograms, ProtRelionDeNovoInitialModel
+    ProtRelionMakePseudoSubtomograms, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms
 from reliontomo.protocols.protocol_make_pseudo_subtomos import outputObjects as makePSubtomosOutputs
 from reliontomo.protocols.protocol_prepare_data import outputObjects as prepareOutputs
 from reliontomo.protocols.protocol_de_novo_initial_model import outputObjects as iniModelOutputs
@@ -43,6 +43,15 @@ OUTPUT_MODEL = iniModelOutputs.outputAverage.name
 
 
 class TestRefinceCycle(BaseTest):
+    protAutoRefine = None
+    protInitialModel = None
+    protMakePSubtomos = None
+    protPrepare = None
+    inCoords = None
+    ctfTomoSeries = None
+    inTS = None
+    inTomoSet = None
+    dataset = None
     nParticles = 56
     boxSizeBin4 = 96
     samplingRate = 1.35
@@ -59,6 +68,7 @@ class TestRefinceCycle(BaseTest):
         cls.protPrepare = cls._prepareData4RelionTomo()
         cls.protMakePSubtomos = cls._makePSubtomograms()
         cls.protInitialModel = cls._genInitialModel()
+        cls.protAutoRefine = cls._autoRefine()
 
     @classmethod
     def _importTomograms(cls):
@@ -101,7 +111,7 @@ class TestRefinceCycle(BaseTest):
 
     @classmethod
     def _estimateCTF(cls):
-        print(magentaStr("\n==> Estimating the CTF with cistem:"))
+        print(magentaStr("\n==> Estimating the CTF with cistem - ctffind:"))
         protCtfEst = cls.newProtocol(CistemProtTsCtffind,
                                      inputTiltSeries=cls.inTS,
                                      numberOfThreads=6)
@@ -152,6 +162,24 @@ class TestRefinceCycle(BaseTest):
                                            numberOfThreads=3)
         cls.launchProtocol(protInitialModel)
         return protInitialModel
+
+    @classmethod
+    def _autoRefine(cls):
+        print(magentaStr("\n==> Refining the particles:"))
+        protAutoRefine = cls.newProtocol(ProtRelionRefineSubtomograms,
+                                         inOptSet=getattr(cls.protMakePSubtomos, RELION_TOMO_MD, None),
+                                         referenceVolume=getattr(cls.protInitialModel, OUTPUT_MODEL, None),
+                                         initialLowPassFilterA=50,
+                                         symmetry='C6',
+                                         maskDiameter=230,
+                                         useFinerAngularSampling=True,
+                                         pooledSubtomos=6,
+                                         doGpu=True,
+                                         gpusToUse='0',
+                                         numberOfMpi=3,
+                                         numberOfThreads=3)
+        cls.launchProtocol(protAutoRefine)
+        return protAutoRefine
 
     def _checkRe4Metadata(self, mdObj, tomogramsFile=None, particlesFile=None, trajectoriesFile=None,
                           manifoldsFile=None, referenceFscFile=None, relionBinning=None):
@@ -211,8 +239,32 @@ class TestRefinceCycle(BaseTest):
                                       currentSRate=mdObj.getCurrentSamplingRate())
 
     def testInitialModel(self):
-        recVol = getattr(self.protInitialModel, OUTPUT_MODEL, None)
-        self.assertEqual(recVol.getSamplingRate(), self.protInitialModel.inOptSet.get().getCurrentSamplingRate())
+        protInitialModel = self.protInitialModel
+        recVol = getattr(protInitialModel, OUTPUT_MODEL, None)
+        self.assertEqual(recVol.getSamplingRate(), protInitialModel.inOptSet.get().getCurrentSamplingRate())
         self.assertEqual(recVol.getDim(), (self.boxSizeBin4, self.boxSizeBin4, self.boxSizeBin4))
 
+    def testAutoRefine(self):
+        protMakePSubtomos = self.protMakePSubtomos
+        protAutoRefine = self.protAutoRefine
+        mdObj = getattr(protAutoRefine, RELION_TOMO_MD, None)
+        # Check RelionTomoMetadata: only the particles file is generated
+        self._checkRe4Metadata(mdObj,
+                               tomogramsFile=self.protPrepare._getExtraPath(OUT_TOMOS_STAR),
+                               particlesFile=protAutoRefine._getExtraPath(OUT_PARTICLES_STAR),
+                               trajectoriesFile=None,
+                               manifoldsFile=None,
+                               referenceFscFile=None,
+                               relionBinning=4
+                               )
+        # Check the set of pseudosubtomograms
+        self._checkPseudosubtomograms(getattr(protAutoRefine, OUTPUT_VOLUMES, None),
+                                      boxSize=protMakePSubtomos.croppedBoxSize.get(),
+                                      currentSRate=mdObj.getCurrentSamplingRate()
+                                      )
+        # Check the output volume
+        recVol = getattr(protAutoRefine, OUTPUT_MODEL, None)
+        self.assertEqual(recVol.getSamplingRate(), self.protInitialModel.inOptSet.get().getCurrentSamplingRate())
+        self.assertEqual(recVol.getDim(), (self.boxSizeBin4, self.boxSizeBin4, self.boxSizeBin4))
+        # TODO: check halves
 

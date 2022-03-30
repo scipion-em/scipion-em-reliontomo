@@ -100,6 +100,10 @@ def createWriterTomo40(**kwargs):
     return Writer(**kwargs)
 
 
+def writeSetOfCoordinates(coordSet, starFile, **kwargs):
+    return createWriterTomo40().coordinates2Star(coordSet, starFile, **kwargs)
+
+
 def writeSetOfSubtomograms(particlesSet, starFile, **kwargs):
     """ Convenience function to write a SetOfSubtomograms as Relion metadata using a Writer."""
     writer = createWriterTomo(**kwargs)

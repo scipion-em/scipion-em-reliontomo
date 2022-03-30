@@ -138,7 +138,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         form.addParam('solventCorrectFSC', BooleanParam,
                       default=False,
                       condition='solventMask',
-                      label='Correct FSC curve for the effects of the solvent mask?',
+                      label='Use solvent-flattened FSCs?',
                       help="If set to Yes, then instead of using unmasked maps to calculate the gold-standard FSCs "
                            "during refinement, masked half-maps are used and a post-processing-like correction of "
                            "the FSC curves (with phase-randomisation) is performed every iteration.\n\n"
