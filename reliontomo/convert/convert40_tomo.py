@@ -310,19 +310,17 @@ class Reader:
 
         return coordinate3d, tomoId
 
-    def starFile2Coords3D(self, coordsSet, precedentsSet, coordSamplingRate):
+    def starFile2Coords3D(self, coordsSet, precedentsSet, scaleFactor):
         precedentIdDict = {}
         for tomo in precedentsSet:
             precedentIdDict[tomo.getTsId()] = tomo.clone()
-
-        # Calculate the factor to allow importing coordinates at different SR than the tomograms associated
-        factor = coordSamplingRate/precedentsSet.getSamplingRate()
 
         nonMatchingTomoIds = ''
         for row in self.dataTable:
             # Consider that there can be coordinates in the star file that does not belong to any of the tomograms
             # introduced
-            coord, tomoId = self.gen3dCoordFromStarRow(row, coordSamplingRate, precedentIdDict, factor=factor)
+            coord, tomoId = self.gen3dCoordFromStarRow(row, coordsSet.getSamplingRate(),
+                                                       precedentIdDict, factor=scaleFactor)
             if coord:
                 coordsSet.append(coord)
             else:
