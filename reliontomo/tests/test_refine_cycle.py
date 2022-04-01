@@ -314,7 +314,7 @@ class TestRefinceCycle(BaseTest):
                                trajectoriesFile=None,
                                manifoldsFile=None,
                                referenceFscFile=None,
-                               relionBinning=4
+                               relionBinning=2
                                )
         # Check the output volume
         recVol = getattr(protRecPartFromTS, OUTPUT_MODEL, None)

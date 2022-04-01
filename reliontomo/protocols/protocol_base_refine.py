@@ -329,7 +329,7 @@ class ProtRelionRefineBase(EMProtocol):
         return cmd
 
     def _genAddiotionalBaseCmd(self):
-        cmd = 'oversampling %i ' % self.oversampling.get()
+        cmd = '--oversampling %i ' % self.oversampling.get()
         if self.extraParams.get():
             cmd += ' ' + self.extraParams.get()
         return cmd
