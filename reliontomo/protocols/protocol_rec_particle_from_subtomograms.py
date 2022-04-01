@@ -23,13 +23,14 @@
 # *
 # **************************************************************************
 from enum import Enum
+
+from pwem.convert.headers import fixVolume
 from pyworkflow import BETA
 from pyworkflow.protocol.params import (PointerParam, FloatParam,
                                         StringParam, BooleanParam,
                                         EnumParam, IntParam, LEVEL_ADVANCED)
 
 from pwem.protocols import ProtReconstruct3D
-from reliontomo import Plugin
 from tomo.objects import AverageSubTomogram
 from reliontomo.convert import writeSetOfSubtomograms
 
@@ -97,10 +98,9 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        Plugin._isReconstringParticleFromSubtomos = True
-        self._createFilenameTemplates()
+        self._initialize()
         self._insertFunctionStep(self.convertInputStep)
-        self._insertReconstructStep()
+        self._insertFunctionStep(self.reconstructStep)
         self._insertFunctionStep(self.createOutputStep)
 
     def _getProgram(self, program='relion_reconstruct'):
@@ -109,7 +109,51 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
             program += '_mpi'
         return program
 
-    def _insertReconstructStep(self):
+    # -------------------------- STEPS functions ------------------------------
+    def _initialize(self):
+        """ Centralize how files are called for iterations and references. """
+        myDict = {
+            self.inStarName: self._getExtraPath(self.inStarName + '.star'),
+            self.outTomoName: self._getExtraPath(self.outTomoName + '.mrc')
+            }
+        self._updateFilenamesDict(myDict)
+
+    def convertInputStep(self):
+        """ Create the input file in STAR format as expected by Relion."""
+        subtomosSet = self.inputSubtomos.get()
+        starFile = self._getFileName(self.inStarName)
+        # This binary is expecting the star file column names in relion 3 format
+        writeSetOfSubtomograms(subtomosSet, starFile)
+
+    def reconstructStep(self):
+        self.runJob(self._getProgram(), self._genReconstructCmd())
+
+    def createOutputStep(self):
+        imgSet = self.inputSubtomos.get()
+        volume = AverageSubTomogram()
+        volumeFile = self._getFileName(self.outTomoName)
+        fixVolume(volumeFile)
+        volume.setFileName(volumeFile)
+        volume.setSamplingRate(imgSet.getSamplingRate())
+        
+        self._defineOutputs(**{outputObjects.outputVolume.name: volume})
+        self._defineSourceRelation(self.inputSubtomos, volume)
+    
+    # -------------------------- INFO functions -------------------------------
+    def _validate(self):
+        pass
+    
+    def _summary(self):
+        summary = []
+        if not hasattr(self, 'outputVolume'):
+            summary.append("Output tomogram not ready yet.")
+        else:
+            summary.append("Output tomogram has been reconstructed.")
+
+        return summary
+
+    # --------------------------- UTILS functions -----------------------------
+    def _genReconstructCmd(self):
         imgSet = self.inputSubtomos.get()
 
         params = ' --i %s' % self._getFileName(self.inStarName)
@@ -133,46 +177,4 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
         if self.extraParams.hasValue():
             params += " " + self.extraParams.get()
 
-        self._insertFunctionStep('reconstructStep', params)
-
-    # -------------------------- STEPS functions ------------------------------
-    def reconstructStep(self, params):
-        self.runJob(self._getProgram(), params)
-
-    def _createFilenameTemplates(self):
-        """ Centralize how files are called for iterations and references. """
-        myDict = {
-            'input_particles': self._getTmpPath(self.inStarName + '.star'),
-            'output_volume': self._getExtraPath(self.outTomoName + '.mrc')
-            }
-        self._updateFilenamesDict(myDict)
-
-    def convertInputStep(self):
-        """ Create the input file in STAR format as expected by Relion.
-        """
-        # TODO: If the input particles comes from Relion, just link the file.
-        imgSet = self.inputSubtomos.get()
-        imgStar = self._getFileName(self.inStarName)
-        writeSetOfSubtomograms(imgSet, imgStar, outputDir=self._getTmpPath())
-
-    def createOutputStep(self):
-        imgSet = self.inputSubtomos.get()
-        volume = AverageSubTomogram()
-        volume.setFileName(self._getFileName(self.outTomoName))
-        volume.setSamplingRate(imgSet.getSamplingRate())
-        
-        self._defineOutputs(**{outputObjects.outputVolume.name: volume})
-        self._defineSourceRelation(self.inputSubtomos, volume)
-    
-    # -------------------------- INFO functions -------------------------------
-    def _validate(self):
-        pass
-    
-    def _summary(self):
-        summary = []
-        if not hasattr(self, 'outputVolume'):
-            summary.append("Output tomogram not ready yet.")
-        else:
-            summary.append("Output tomogram has been reconstructed.")
-
-        return summary
+        return params

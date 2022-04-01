@@ -138,7 +138,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         form.addParam('solventCorrectFSC', BooleanParam,
                       default=False,
                       condition='solventMask',
-                      label='Correct FSC curve for the effects of the solvent mask?',
+                      label='Use solvent-flattened FSCs?',
                       help="If set to Yes, then instead of using unmasked maps to calculate the gold-standard FSCs "
                            "during refinement, masked half-maps are used and a post-processing-like correction of "
                            "the FSC curves (with phase-randomisation) is performed every iteration.\n\n"
@@ -264,21 +264,22 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         # Rename the particles file generated (_data.star) to follow the name convention
         createLink(self._getExtraPath('_data.star'), self._getExtraPath(OUT_PARTICLES_STAR))
 
+        # Output RelionParticles
+        relionParticles = genRelionParticles(self._getExtraPath(), self.inOptSet.get())
+
         # Output pseudosubtomograms --> set of volumes for visualization purposes
-        outputSet = genOutputPseudoSubtomograms(self)
+        outputSet = genOutputPseudoSubtomograms(self, relionParticles.getCurrentSamplingRate())
 
         # Output volume
         vol = AverageSubTomogram()
         volName = self._getExtraPath('_class001.mrc')
         fixVolume(volName)  # Fix header for xmipp to consider it a volume instead of a stack
         vol.setFileName(volName)
-        vol.setSamplingRate(self.inOptSet.get().getCurrentSamplingRate())
+        vol.setSamplingRate(relionParticles.getCurrentSamplingRate())
         pattern = '*it*half%s_class*.mrc'
         half1 = self._getLastFileName(self._getExtraPath(pattern % 1))
         half2 = self._getLastFileName(self._getExtraPath(pattern % 2))
         vol.setHalfMaps([half1, half2])
-        # Output RelionParticles
-        relionParticles = genRelionParticles(self._getExtraPath(), self.inOptSet.get())
 
         # Output FSC
         fsc = FSC(objLabel=self.getRunName())

@@ -31,11 +31,10 @@ from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.object import Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED
-from pyworkflow.utils import makePath
 from reliontomo import Plugin
 from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR,
                                   OPTIMISATION_SET_STAR)
-from reliontomo.convert import writeSetOfTomograms, writeSetOfSubtomograms
+from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates
 from reliontomo.objects import relionTomoMetadata
 
 # data source
@@ -102,7 +101,6 @@ class ProtRelionPrepareData(EMProtocol):
                        help='Same as above, in case the Z axis has been flipped. This can be used together with '
                             'the flipYZ option.')
 
-
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._initialize()
@@ -145,10 +143,10 @@ class ProtRelionPrepareData(EMProtocol):
                             ctfPlotterParentDir=self._getExtraPath(DEFOCUS),
                             eTomoParentDir=self._getTmpPath())
         # Write the particles star file
-        writeSetOfSubtomograms(self.coords,
-                               self._getStarFilename(IN_COORDS_STAR),
-                               sRate=self.tsSet.getSamplingRate(),
-                               coordsScale=self.coordScale.get())
+        writeSetOfCoordinates(self.inputCoords.get(),
+                              self._getStarFilename(IN_COORDS_STAR),
+                              sRate=self.tsSet.getSamplingRate(),
+                              coordsScale=self.coordScale.get())
 
     def relionImportTomograms(self):
         Plugin.runRelionTomo(self, 'relion_tomo_import_tomograms', self._genImportTomosCmd())

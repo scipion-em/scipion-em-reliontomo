@@ -48,7 +48,6 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
     # -------------------------- DEFINE param functions -----------------------
 
     def _defineParams(self, form):
-        ProtRelionRefineBase._defineParams(self, form)
         ProtRelionRefineBase._defineIOParams(form)
         ProtRelionRefineBase._defineCTFParams(form)
         self._defineOptimisationParams(form)

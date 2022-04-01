@@ -24,54 +24,36 @@
 # **************************************************************************
 from os import symlink
 from emtable import Table
-from pwem.convert import transformations
 from pwem.emlib.image import ImageHandler
 import pyworkflow.utils as pwutils
 from pwem.objects import Transform
 from pyworkflow.object import Float
 from pyworkflow.utils import removeBaseExt
-from relion.convert.convert_base import WriterBase, ReaderBase
+from relion.convert.convert_base import ReaderBase
 from reliontomo.constants import FILE_NOT_FOUND, COORD_X, COORD_Y, COORD_Z, SUBTOMO_NAME, ROT, TILT, \
-    TILT_PRIOR, PSI, PSI_PRIOR, SHIFTX, SHIFTY, SHIFTZ, TOMO_NAME_30, CTF_MISSING_WEDGE, MAGNIFICATION, PIXEL_SIZE, \
-    CLASS_NUMBER
-from reliontomo.utils import _getAbsPath, _gen2LevelBaseName, getTransformMatrix
+    TILT_PRIOR, PSI, PSI_PRIOR, SHIFTX, SHIFTY, SHIFTZ, TOMO_NAME_30, CTF_MISSING_WEDGE, \
+    CLASS_NUMBER, MRC
+from reliontomo.convert.convertBase import WriterTomo, getTransformInfoFromCoordOrSubtomo
+from reliontomo.utils import getAbsPath, _gen2LevelBaseName, getTransformMatrix
 from scipion.install.funcs import mkdir
-import numpy as np
-from os.path import abspath, join, basename
-from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
+from os.path import join
 from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.objects import SubTomogram, Coordinate3D, TomoAcquisition
 
-RELION_TOMO_LABELS = [TOMO_NAME_30,
-                      COORD_X,
-                      COORD_Y,
-                      COORD_Z,
-                      SUBTOMO_NAME,
-                      CTF_MISSING_WEDGE,
-                      MAGNIFICATION,
-                      PIXEL_SIZE,
-                      ROT,
-                      TILT,
-                      TILT_PRIOR,
-                      PSI,
-                      PSI_PRIOR,
-                      SHIFTX,
-                      SHIFTY,
-                      SHIFTZ]
 
-
-class Writer(WriterBase):
+class Writer(WriterTomo):
     """ Helper class to convert from Scipion SetOfImages subclasses
     with star file format previous to Relion>3.1, but providing the same
      interface as the new Writer class.
     """
 
-    @staticmethod
-    def writeSetOfSubtomograms(subtomoSet, subtomosStar, isPyseg=False):
+    def __init__(self,  **kwargs):
+        super().__init__(**kwargs)
+
+    def subtomograms2Star(self, subtomoSet, subtomosStar):
         currentTomo = ''
-        MRC = 'mrc'
         ih = ImageHandler()
-        tomoTable = _createStarTomoTable(isPyseg)
+        tomoTable = Table(columns=self.starHeaders)
         tmpDir = pwutils.getParentFolder(subtomosStar)
         for subtomo in subtomoSet:
             if pwutils.getExt(subtomo.getFileName().replace(':' + MRC, '')) != '.' + MRC:
@@ -80,14 +62,17 @@ class Writer(WriterBase):
                     mkdir(mrcDir)
                 mrcFile = join(mrcDir, pwutils.replaceBaseExt(subtomo.getFileName(), MRC))
                 ih.convert(subtomo.getFileName(), mrcFile)
-            angles, shifts = _getTransformInfoFromSubtomo(subtomo)
+            angles, shifts = getTransformInfoFromCoordOrSubtomo(subtomo)
             magn = subtomo.getAcquisition().getMagnification()
+            ctfFile = getattr(subtomo.getCoordinate3D(), '_3dcftMrcFile', None)
+            if ctfFile:
+                ctfFile = ctfFile.get()
             rlnMicrographName = subtomo.getVolName()
             rlnCoordinateX = subtomo.getCoordinate3D().getX(BOTTOM_LEFT_CORNER)
             rlnCoordinateY = subtomo.getCoordinate3D().getY(BOTTOM_LEFT_CORNER)
             rlnCoordinateZ = subtomo.getCoordinate3D().getZ(BOTTOM_LEFT_CORNER)
             rlnImageName = subtomo.getFileName().replace(':' + MRC, '')
-            rlnCtfImage = abspath(_getCTFFileFromSubtomo(subtomo))
+            rlnCtfImage = ctfFile if ctfFile else FILE_NOT_FOUND
             rlnMagnification = magn if magn else 10000 #64000
             rlnDetectorPixelSize = subtomo.getSamplingRate()
             rlnAngleRot = angles[0]
@@ -97,7 +82,7 @@ class Writer(WriterBase):
             rlnOriginY = shifts[1]
             rlnOriginZ = shifts[2]
             rlnTiltPrior = subtomo._tiltPriorAngle.get() if hasattr(subtomo, '_tiltPriorAngle') else rlnAngleTilt
-            rlnTiltPsi = subtomo._psiPriorAngle.get() if hasattr(subtomo, '_psiPriorAngle') else rlnAnglePsi
+            rlnPsiPrior = subtomo._psiPriorAngle.get() if hasattr(subtomo, '_psiPriorAngle') else rlnAnglePsi
             # Add row to the table which will be used to generate the STAR file
             fieldsToAdd = [rlnMicrographName,
                            rlnCoordinateX,
@@ -111,11 +96,11 @@ class Writer(WriterBase):
                            rlnAngleTilt,
                            rlnTiltPrior,
                            rlnAnglePsi,
-                           rlnTiltPsi,
+                           rlnPsiPrior,
                            rlnOriginX,
                            rlnOriginY,
                            rlnOriginZ]
-            if isPyseg:
+            if self.isPyseg:
                 fieldsToAdd = [rlnMicrographName,
                                rlnCoordinateX,
                                rlnCoordinateY,
@@ -145,29 +130,29 @@ class Reader(ReaderBase):
         self.dataTable.read(starFile)
 
     @staticmethod
-    def gen3dCoordFromStarRow(row, precedentsSet, precedentIdList):
+    def gen3dCoordFromStarRow(row, precedentsSet, precedentIdList, scaleFactor):
         coordinate3d = Coordinate3D()
         tomoId = removeBaseExt(row.get(TOMO_NAME_30))
-        x = row.get(COORD_X, 0)
-        y = row.get(COORD_Y, 0)
-        z = row.get(COORD_Z, 0)
+        x = float(row.get(COORD_X, 0))
+        y = float(row.get(COORD_Y, 0))
+        z = float(row.get(COORD_Z, 0))
         volId = precedentIdList.index(tomoId) + 1  # Set indices begin in 1
         coordinate3d.setVolume(precedentsSet[volId])
         coordinate3d.setVolId(volId)
         ctf3d = row.get(CTF_MISSING_WEDGE, FILE_NOT_FOUND)
         coordinate3d.setTomoId(tomoId)
-        coordinate3d.setX(float(x), BOTTOM_LEFT_CORNER)
-        coordinate3d.setY(float(y), BOTTOM_LEFT_CORNER)
-        coordinate3d.setZ(float(z), BOTTOM_LEFT_CORNER)
+        coordinate3d.setX(x * scaleFactor, BOTTOM_LEFT_CORNER)
+        coordinate3d.setY(y * scaleFactor, BOTTOM_LEFT_CORNER)
+        coordinate3d.setZ(z * scaleFactor, BOTTOM_LEFT_CORNER)
         coordinate3d._3dcftMrcFile = ctf3d  # Used for the ctf3d generation in Relion
         coordinate3d.setMatrix(getTransformMatrixFromRow(row))
 
         return coordinate3d
 
-    def starFile2Coords3D(self, coordsSet, precedentsSet):
+    def starFile2Coords3D(self, coordsSet, precedentsSet, scaleFactor):
         precedentIdList = [tomo.getTsId() for tomo in precedentsSet]
         for row in self.dataTable:
-            coordsSet.append(self.gen3dCoordFromStarRow(row, precedentsSet, precedentIdList))
+            coordsSet.append(self.gen3dCoordFromStarRow(row, precedentsSet, precedentIdList, scaleFactor))
 
     def starFile2Subtomograms(self, subtomoSet, coordSet, linkedSubtomosDir, starFilePath):
         samplingRate = subtomoSet.getSamplingRate()
@@ -180,7 +165,7 @@ class Reader(ReaderBase):
             tomoName = row.get(TOMO_NAME_30, FILE_NOT_FOUND)
             subtomoName = row.get(SUBTOMO_NAME, FILE_NOT_FOUND)
             linkedSubtomoName = join(linkedSubtomosDir, _gen2LevelBaseName(subtomoName))
-            symlink(_getAbsPath(starFilePath, subtomoName), linkedSubtomoName)  # Link the subtomos to the extra folder
+            symlink(getAbsPath(starFilePath, subtomoName), linkedSubtomoName)  # Link the subtomos to the extra folder
 
             # Subtomograms
             tiltPrior = row.get(TILT_PRIOR, 0)
@@ -206,53 +191,11 @@ class Reader(ReaderBase):
         subtomoSet.setCoordinates3D(coordSet)
 
 
-def _createStarTomoTable(isPyseg):
-
-    cols = RELION_TOMO_LABELS
-    # Pyseg post-rec only works if the magnification, pixel size and the prior angles aren't
-    # present in the star file
-    if isPyseg:
-        cols = [TOMO_NAME_30,
-                COORD_X,
-                COORD_Y,
-                COORD_Z,
-                SUBTOMO_NAME,
-                CTF_MISSING_WEDGE,
-                ROT,
-                TILT,
-                PSI,
-                SHIFTX,
-                SHIFTY,
-                SHIFTZ]
-    return Table(columns=cols)
-
-
 def _getCTFFileFromSubtomo(subtomo):
     try:
         return subtomo.getCoordinate3D()._3dcftMrcFile.get()
     except:
         return 'Unavailable'
-
-
-def _getTransformInfoFromSubtomo(subtomo, calcInv=True):
-    angles = [0, 0, 0]
-    shifts = [0, 0, 0]
-    T = subtomo.getTransform()
-
-    if T:  # Alignment performed before
-        M = subtomo.getTransform().getMatrix()
-        shifts = translation_from_matrix(M)
-        if calcInv:
-            shifts = -shifts
-            M = np.linalg.inv(M)
-
-        angles = -np.rad2deg(euler_from_matrix(M, axes='szyz'))
-
-    return angles, shifts
-
-
-# def _getAbsPath(tomoFile):
-#     return tomoFile if isabs(tomoFile) else abspath(tomoFile)
 
 
 def getTransformMatrixFromRow(row, invert=True):

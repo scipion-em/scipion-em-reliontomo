@@ -46,7 +46,6 @@ class relionTomoMetadata(EMObject):
 
     def __init__(self, optimSetStar=None, relionBinning=None, tsSamplingRate=None, nParticles=0, **kwargs):
         super().__init__(**kwargs)
-        self._filesMaster = None
         self._nParticles = Integer(nParticles)
         self._tomograms = String()
         self._particles = String()
@@ -64,8 +63,6 @@ class relionTomoMetadata(EMObject):
             strRep += '%i items, ' % self.getNumParticles()
         if self.getRelionBinning():
             strRep += 'binning %.1f' % self.getRelionBinning()
-        # if self.getTsSamplingRate():
-        #     strRep += 'TS Sampling Rate %.2f Å/px' % self.getTsSamplingRate()
         return self.getClassName() + ' %s' % ('(%s)' % strRep if strRep else '')
 
     @property
@@ -79,6 +76,8 @@ class relionTomoMetadata(EMObject):
             self._filesMaster = optimSetStar
         except FileNotFoundError:
             raise FileNotFoundError('Unable to find file %s' % optimSetStar)
+        except TypeError:
+            raise TypeError('No optimisation set star file was provided.')
 
     def updateGenFiles(self, extraPath):
         """Some protocols don't generate the optimisation_set.star file. In that case, the input Object which
@@ -143,6 +142,12 @@ class PSubtomogram(Volume):
             self.setClassId(classId)
         self.tsId = String(tsId)
         self.ctfFile = String(ctfFile)
+
+    def getCtfFile(self):
+        return self.ctfFile.get()
+
+    def getTomoId(self):
+        return self.tsId.get()
 
 
 class SetOfPseudoSubtomograms(SetOfVolumes):

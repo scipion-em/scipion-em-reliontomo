@@ -35,11 +35,11 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
     _devStatus = BETA
 
     # -------------------------- DEFINE param functions -----------------------
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.inParticlesStar = None
-        self.inTomosStar = None
-        self.inPrecedents = None
+    # def __init__(self, **kwargs):
+    #     super().__init__(**kwargs)
+    #     self.inParticlesStar = None
+    #     self.inTomosStar = None
+    #     self.inPrecedents = None
 
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)

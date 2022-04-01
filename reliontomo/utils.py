@@ -37,10 +37,6 @@ def getProgram(program, nMpi):
     return program
 
 
-def getFileFromDataPrepProt(prot, fileName):
-    return prot.inputPrepareDataProt.get()._getExtraPath(fileName)
-
-
 def manageDims(fileName, z, n):
     if fileName.endswith('.mrc') or fileName.endswith('.map'):
         if z == 1 and n != 1:
@@ -53,7 +49,7 @@ def manageDims(fileName, z, n):
     return zDim
 
 
-def _getAbsPath(starFilePath, tomoFile):
+def getAbsPath(starFilePath, tomoFile):
     """If the paths of the files pointed from a star file are relative, they'll be referred to the path of the
     star file. This method is used to consider that case."""
     if isabs(tomoFile):
@@ -112,11 +108,11 @@ def genRelionParticles(extraPath, inOptSet, binningFactor=None, nParticles=None)
     return relionParticles
 
 
-def genOutputPseudoSubtomograms(prot):
+def genOutputPseudoSubtomograms(prot, currentSamplingRate):
     """Centralized code to generate the output set of pseudosubtomograms for protocols make pseudosubtomograms,
      auto-refine, CTF refine and frame align"""
     reader = convert40_tomo.Reader()
     outputSet = prot._createSet(SetOfPseudoSubtomograms, PSUBTOMOS_SQLITE, '')
-    outputSet.setSamplingRate(prot.inOptSet.get().getCurrentSamplingRate())
+    outputSet.setSamplingRate(currentSamplingRate)
     reader.starFile2PseudoSubtomograms(prot._getExtraPath(OUT_PARTICLES_STAR), outputSet)
     return outputSet

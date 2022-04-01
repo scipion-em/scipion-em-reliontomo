@@ -24,15 +24,19 @@
 # **************************************************************************
 from enum import Enum
 from os import mkdir
+from os.path import exists
+
 from pyworkflow.utils import getParentFolder
+from reliontomo.constants import SUBTOMO_NAME, FILE_NOT_FOUND
+from reliontomo.convert import createReaderTomo
 from reliontomo.protocols.protocol_base_import_from_star import ProtBaseImportFromStar
-from tomo.objects import SetOfSubTomograms, SetOfTomograms, SetOfCoordinates3D
+from reliontomo.utils import getAbsPath
+from tomo.objects import SetOfSubTomograms, SetOfCoordinates3D
 
 
 class outputObjects(Enum):
-    outputTomograms = SetOfTomograms()
-    outputCoordinates = SetOfCoordinates3D()
-    outputSetOfSubtomograms = SetOfSubTomograms()
+    outputCoordinates = SetOfCoordinates3D
+    outputSubtomograms = SetOfSubTomograms
 
 
 class ProtImportSubtomogramsFromStar(ProtBaseImportFromStar):
@@ -45,7 +49,6 @@ class ProtImportSubtomogramsFromStar(ProtBaseImportFromStar):
         super().__init__(**kwargs)
         self.linkedStarFileName = 'inSubtomograms.star'
         self.linkedSubtomosDirName = 'subtomograms'
-        self.isSubtomoStarFile = True
 
     # --------------------------- STEPS functions -----------------------------
 
@@ -58,12 +61,63 @@ class ProtImportSubtomogramsFromStar(ProtBaseImportFromStar):
         # Generate the corresponding precedents and 3d coordinates
         super()._importStep()
         # Generate the set of subtomograms
-        outputTomoSet = getattr(self, 'outputTomograms', None)
         outputCoordsSet = getattr(self, 'outputCoordinates', None)
         subtomoSet = SetOfSubTomograms.create(self._getPath(), template='setOfSubTomograms%s.sqlite')
-        subtomoSet.setSamplingRate(self.sRate)
-        subtomoSet.setAcquisition(outputTomoSet.getAcquisition())
+        subtomoSet.setSamplingRate(self.coordsSRate)
+        subtomoSet.setAcquisition(self.inTomos.get().getAcquisition())
         self.reader.starFile2Subtomograms(subtomoSet, outputCoordsSet, self._getExtraPath(self.linkedSubtomosDirName),
                                           getParentFolder(self.starFile.get()))
-        self._defineOutputs(outputSubtomograms=subtomoSet)
+        self._defineOutputs(**{outputObjects.outputSubtomograms.name: subtomoSet})
 
+    # --------------------------- INFO functions -----------------------------
+    def _validate(self):
+        errorMsg = super()._validate()
+        reader, isReader40 = createReaderTomo(starFile=self.starFile.get())
+        errorsInPointedFiles = self._checkFilesPointedFromStarFile(getParentFolder(self.starFile.get()),
+                                                                   reader.dataTable,
+                                                                   isReader40)
+        if errorsInPointedFiles:
+            errorMsg.append(errorsInPointedFiles)
+        return errorMsg
+
+    # --------------------------- UTILS functions ------------------------------
+    def _checkFilesPointedFromStarFile(self, starFilePath, dataTable, isReader40=True):
+        errorsFound = ''
+        fields2check = [SUBTOMO_NAME]
+        filesPattern = '\tRow %i - %s\n'
+
+        errorsFound += self._checkFieldsInDataTable(dataTable, fields2check)
+        # Check if the files pointed from those fields exist
+        if errorsFound:
+            filesErrorMsgHead = 'The following files were not found [row, tomoFile, subtomoFile]:\n'
+            for counter, row in enumerate(dataTable):
+                subtomoFileNotFound = self._fileNotFound(row, SUBTOMO_NAME, starFilePath)
+                if subtomoFileNotFound:
+                    errorsFound += filesPattern % (counter, subtomoFileNotFound)
+
+            if errorsFound:
+                errorsFound = filesErrorMsgHead + errorsFound
+
+        return errorsFound
+
+    @staticmethod
+    def _checkFieldsInDataTable(dataTable, fieldList):
+        fieldErrors = ''
+        if fieldList:
+            fieldNotFoundPattern = 'Fields %s were not found in the star file introduced.\n'
+            notFoundFields = [field for field in fieldList if not dataTable.hasColumn(field)]
+            if notFoundFields:
+                pattern = '[%s]' % (' '.join(notFoundFields))
+                fieldErrors = (fieldNotFoundPattern % pattern)
+
+        return fieldErrors
+
+    @staticmethod
+    def _fileNotFound(row, field, starFilePath):
+        statusMsg = ''
+        tomoFile = row.get(field, FILE_NOT_FOUND)
+        tomoFileAbs = getAbsPath(starFilePath, tomoFile)
+        if not exists(tomoFileAbs):
+            statusMsg = tomoFile
+
+        return statusMsg

@@ -23,22 +23,18 @@
 # *
 # **************************************************************************
 from enum import Enum
-
-import numpy as np
-
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
-from pyworkflow.protocol import PointerParam, IntParam, GE, LE, PathParam
-from pyworkflow.utils import Message, createLink
-from relion.convert import OpticsGroups
-from reliontomo.constants import BOX_SIZE_VALS, OUT_TOMOS_STAR, IN_PARTICLES_STAR, OUT_PARTICLES_STAR, IN_TOMOS_STAR
-from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms
-from reliontomo.utils import getFileFromDataPrepProt
-from tomo.objects import SetOfSubTomograms
+from pyworkflow.protocol import PointerParam, IntParam, GE, LE
+from pyworkflow.utils import Message
+from reliontomo.constants import OPTIMISATION_SET_STAR
+from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
+from reliontomo.utils import genOutputPseudoSubtomograms
 
 
 class outputObjects(Enum):
-    outputSubtomograms = SetOfSubTomograms()
+    outputRelionParticles = relionTomoMetadata
+    outputVolumes = SetOfPseudoSubtomograms
 
 
 class ProtRelionPerParticlePerTiltBase(EMProtocol):
@@ -55,32 +51,16 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
 
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
-        form.addParam('inputPrepareDataProt', PointerParam,
-                      pointerClass='ProtRelionPrepareData, ProtRelionTomoFrameAlign, ProtRelionCtfRefine',
-                      label="Data preparation protocol",
-                      important=True,
-                      allowsNull=False)
-        form.addParam('inPseudoSubtomos', PointerParam,
-                      pointerClass='SetOfSubTomograms',
-                      label="Input pseudo-subtomograms",
-                      important=True,
-                      allowsNull=True)
-        form.addParam('inputTrajectory', PathParam,
-                      label="Particle trajectories set (optional)",
-                      allowsNull=True)
-        form.addParam('half1map', PathParam,
-                      label='Path to half map 1',
-                      help="Provide one of the two reference half-reconstructions MRC map files.")
-        form.addParam('half2map', PathParam,
-                      label='Path to half map 2',
-                      help="Provide one of the two reference half-reconstructions MRC map files.")
+        form.addParam('inOptSet', PointerParam,
+                      pointerClass='relionTomoMetadata',
+                      label='Input Relion Tomo Metadata')
+        form.addParam('recVolume', PointerParam,
+                      pointerClass='AverageSubTomogram',
+                      allowsNull=False,
+                      label='Volume to get the halves')
         form.addParam('inRefMask', PointerParam,
                       pointerClass='VolumeMask',
                       label="Input reference mask")
-        form.addParam('inputPostProcess', PathParam,
-                      label="Reference FSC (postprocess.star)",
-                      allowsNull=True,
-                      help="Input STAR file from a relion_postprocess job.")
 
     @staticmethod
     def _insertBoxSizeForEstimationParam(form):
@@ -98,40 +78,49 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
         pass
 
     # -------------------------- UTILS functions -----------------------------
-    def _initialize(self):
-        self._findClosestAdmittedVal()
-        self.inTomosStar = self._getExtraPath(IN_TOMOS_STAR)
-        createLink(getFileFromDataPrepProt(self, OUT_TOMOS_STAR), self.inTomosStar)
+    # def _initialize(self):
+    #     self._findClosestAdmittedVal()
+        # self.inTomosStar = self._getExtraPath(IN_TOMOS_STAR)
+        # createLink(getFileFromDataPrepProt(self, OUT_TOMOS_STAR), self.inTomosStar)
 
-    def convertInputStep(self):
-        self.inParticlesStar = self._getExtraPath(IN_PARTICLES_STAR)
-        writeSetOfPseudoSubtomograms(self.inPseudoSubtomos.get(), self.inParticlesStar)
+    # def convertInputStep(self):
+    #     self.inParticlesStar = self._getExtraPath(IN_PARTICLES_STAR)
+    #     writeSetOfPseudoSubtomograms(self.inPseudoSubtomos.get(), self.inParticlesStar)
 
     def createOutputStep(self):
-        starFile = self._getExtraPath(OUT_PARTICLES_STAR)
-        outputSet = self._createSet(SetOfSubTomograms, 'subtomograms%s.sqlite', '')
-        outputSet.getAcquisition().opticsGroupInfo.set(OpticsGroups.fromStar(starFile).toString())
-        outputSet.setSamplingRate(self.inPseudoSubtomos.get().getSamplingRate())
-        readSetOfPseudoSubtomograms(starFile, outputSet)
-        self._defineOutputs(**{outputObjects.outputSubtomograms.name: outputSet})
+        # Output pseudosubtomograms --> set of volumes for visualization purposes
+        outputSet = genOutputPseudoSubtomograms(self)
 
-    def _findClosestAdmittedVal(self):
-        validVals = np.array(BOX_SIZE_VALS)
-        # Find index of minimum value
-        ind = np.where(validVals == np.amin(validVals - self.boxSize.get()))[0].tolist()[0]
-        self._boxSize4Est = BOX_SIZE_VALS[ind]
+        # Output RelionParticles
+        relionParticles = relionTomoMetadata(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
+                                             tsSamplingRate=self.inOptSet.get().getTsSamplingRate(),
+                                             relionBinning=self.inOptSet.get().getRelionBinning(),
+                                             nParticles=outputSet.getSize())
+
+        self._defineOutputs(**{outputObjects.outputRelionParticles.name: relionParticles,
+                               outputObjects.outputVolumes.name: outputSet})
+
+    # def _findClosestAdmittedVal(self):
+    #     validVals = np.array(BOX_SIZE_VALS)
+    #     # Find index of minimum value
+    #     ind = np.where(validVals == np.amin(validVals - self.boxSize.get()))[0].tolist()[0]
+    #     self._boxSize4Est = BOX_SIZE_VALS[ind]
 
     def _genIOCommand(self):
-        cmd = '--p %s ' % self.inParticlesStar
-        cmd += '--t %s ' % getFileFromDataPrepProt(self, OUT_TOMOS_STAR)
+        optSet = self.inOptSet.get()
+        trajectories = optSet.getTrajectories()
+        postProcess = optSet.getReferenceFsc()
+        half1, half2 = self.recVolume.get().getHalfMaps().split(',')
+        cmd = '--p %s ' % optSet.getParticles()
+        cmd += '--t %s ' % optSet.getTomograms()
         cmd += '--o %s ' % self._getExtraPath()
-        if self.inputTrajectory.get():
-            cmd += '--mot %s ' % self.inputTrajectory.get()
-        cmd += '--ref1 %s ' % self.half1map.get()
-        cmd += '--ref2 %s ' % self.half2map.get()
+        if trajectories:
+            cmd += '--mot %s ' % trajectories
+        cmd += '--ref1 %s ' % half1
+        cmd += '--ref2 %s ' % half2
         cmd += '--mask %s ' % self.inRefMask.get().getFileName()
-        if self.inputPostProcess.get():
-            cmd += '--fsc %s ' % self.inputPostProcess.get()
+        if postProcess:
+            cmd += '--fsc %s ' % postProcess
         cmd += '--b %i ' % self.boxSize.get()
         return cmd
 
