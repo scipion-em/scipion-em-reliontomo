@@ -158,9 +158,15 @@ class Writer(WriterTomo):
             rlnImageName = subtomo.getFileName().replace(':' + MRC, '')
             rlnCtfImage = ctfFile if ctfFile else FILE_NOT_FOUND
             # Coords in pixels
-            rlnCoordinateX = subtomo.getCoordinate3D().getX(BOTTOM_LEFT_CORNER)
-            rlnCoordinateY = subtomo.getCoordinate3D().getY(BOTTOM_LEFT_CORNER)
-            rlnCoordinateZ = subtomo.getCoordinate3D().getZ(BOTTOM_LEFT_CORNER)
+            rlnCoordinateX = 0
+            rlnCoordinateY = 0
+            rlnCoordinateZ = 0
+
+            if subtomo.hasCoordinate3D():
+                rlnCoordinateX = subtomo.getCoordinate3D().getX(BOTTOM_LEFT_CORNER)
+                rlnCoordinateY = subtomo.getCoordinate3D().getY(BOTTOM_LEFT_CORNER)
+                rlnCoordinateZ = subtomo.getCoordinate3D().getZ(BOTTOM_LEFT_CORNER)
+
             rlnAngleRot = angles[0]
             rlnAngleTilt = angles[1]
             rlnAnglePsi = angles[2]
