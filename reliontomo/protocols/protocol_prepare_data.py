@@ -32,7 +32,7 @@ from pyworkflow.object import Float
 from pyworkflow.protocol import PointerParam, PathParam, BooleanParam, LEVEL_ADVANCED, EnumParam
 from reliontomo import Plugin
 from reliontomo.constants import IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR, OPTIMISATION_SET_STAR
-from reliontomo.convert import writeSetOfTomograms, writeSetOfSubtomograms
+from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates
 from reliontomo.objects import relionTomoMetadata
 
 # eTomo data source choices
@@ -103,10 +103,10 @@ class ProtRelionPrepareData(EMProtocol):
                             '    |_extra\n'
                             '        |_ts1\n'
                             '            |_newst.com\n'
-                            '            |_tilt.com\n'  
+                            '            |_tilt.com\n'
                             '        |_ts2\n'
                             '            |_newst.com\n'
-                            '            |_tilt.com\n' 
+                            '            |_tilt.com\n'
                             'In Scipion case, the IMOD - eTomo directory would be the path to\n'
                             '*[IMOD - eTomo protocol]/extra*.')
         group.addParam('flipYZ', BooleanParam,
@@ -172,10 +172,10 @@ class ProtRelionPrepareData(EMProtocol):
                             ctfPlotterParentDir=self._getExtraPath(DEFOCUS),
                             eTomoParentDir=self._getEtomoParentDir())
         # Write the particles star file
-        writeSetOfSubtomograms(self.inputCoords.get(),
-                               self._getStarFilename(IN_COORDS_STAR),
-                               sRate=self.tsSet.getSamplingRate(),
-                               coordsScale=self.coordScale.get())
+        writeSetOfCoordinates(self.inputCoords.get(),
+                              self._getStarFilename(IN_COORDS_STAR),
+                              sRate=self.tsSet.getSamplingRate(),
+                              coordsScale=self.coordScale.get())
 
     def relionImportTomograms(self):
         Plugin.runRelionTomo(self, 'relion_tomo_import_tomograms', self._genImportTomosCmd())
