@@ -134,3 +134,9 @@ BOX_SIZE_VALS = list(range(32, 512, 16))
 # Aberration orders to be estimated in CTF refine
 ABERRATION_ORDERS_EVEN = [4, 6, 8]
 ABERRATION_ORDERS_ODD = [3, 5, 7]
+
+# Star file comparer main messages
+STAR_FILES_EQUAL = 'The introduced star files are equal.'
+STAR_DIFF_SIZE = 'Different number of rows found:'
+STAR_DIFF_LABELS = 'Different labels found:'
+STAR_DIFF_VALUES = 'Different values found:'

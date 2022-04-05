@@ -38,6 +38,20 @@ class DataSetRe4Tomo(Enum):
     tiltSeries = '*/TS_*.mrc'
     mdocs = '*/*.mdoc'
     coordinates = 'coords.star'
+    starFilesComparerDir = 'starFilesComparer'
+    generalTestingDir = 'starFilesComparer/generalTesting'
+    okStarFile = 'starFilesComparer/generalTesting/particles.star'
+    diffSizeStar = 'starFilesComparer/generalTesting/particlesDiffSize5.star'
+    diffLabelsStar = 'starFilesComparer/generalTesting/particlesDiffLabels.star'
+    diffValuesStar = 'starFilesComparer/generalTesting/particlesDiffValues.star'
+    relionStarDir = 'starFilesComparer/re4NativeStars'
+    prepareTomosStarRelion = 'starFilesComparer/re4NativeStars/tomograms.star'
+    prepareParticlesStarRelion = 'starFilesComparer/re4NativeStars/particles.star'
+    makePSubtomosStarRelion = 'starFilesComparer/re4NativeStars/psubtomos.star'
+    scipionStarDir = 'starFilesComparer/re4ScipionStars'
+    prepareTomosStarScipion = 'starFilesComparer/re4ScipionStars/tomograms.star'
+    preparePartcilesStarScipion = 'starFilesComparer/re4ScipionStars/particles.star'
+    makePSubtomosStarScipion = 'starFilesComparer/re4ScipionStars/psubtomos.star'
 
 
 class DataSetEmd10439(Enum):

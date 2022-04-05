@@ -31,7 +31,7 @@ from pwem.objects import Volume, SetOfVolumes
 from pyworkflow.object import String, Integer, Float
 from reliontomo.constants import OPT_TOMOS_STAR, OPT_PARTICLES_STAR, OPT_TRAJECTORIES_STAR, OPT_MANIFOLDS_STAR, \
     OPT_FSC_STAR, OUT_TOMOS_STAR, OUT_PARTICLES_STAR, TRAJECTORIES_STAR, MANIFOLDS_STAR, \
-    FSC_REF_STAR
+    FSC_REF_STAR, STAR_DIFF_SIZE, STAR_DIFF_LABELS, STAR_DIFF_VALUES, STAR_FILES_EQUAL
 
 
 class EnumRe4GenFilesProps(Enum):
@@ -152,3 +152,104 @@ class PSubtomogram(Volume):
 
 class SetOfPseudoSubtomograms(SetOfVolumes):
     ITEM_TYPE = PSubtomogram
+
+
+class StarFileComparer:
+
+    def __init__(self, starFile1, starFile2, table2Read):
+        self._table2Read = table2Read
+        self.dataTable1 = starFile1
+        self.dataTable2 = starFile2
+        self._labels = None
+
+    def compare(self, excludeLabelsList=None):
+        msg = ''
+        msg += self.compareSize()
+        if not msg:
+            msg += self.compareLabels()
+        if not msg:
+            msg += self.compareValues(excludeLabelsList=excludeLabelsList)
+        return msg if msg else STAR_FILES_EQUAL
+
+    def compareSize(self):
+        msg = ''
+        mRows1 = len(self.dataTable1)
+        nRows2 = len(self.dataTable2)
+        if mRows1 != nRows2:
+            msg = '\n- %s %i != %i' % (STAR_DIFF_SIZE, mRows1, nRows2)
+        return msg
+
+    def compareLabels(self):
+        msg = ''
+        labels1 = self.dataTable1.getColumnNames()
+        labels2 = self.dataTable2.getColumnNames()
+        if labels1 == labels2:
+            self._labels = labels1
+        else:
+            msg = '\n- %s' \
+                  '\n\tLABELS 1: %s' \
+                  '\n\tLABELS 2: %s' \
+                  '\n\tDIFF LABELS: %s' % \
+                  (STAR_DIFF_LABELS, list2str(labels1), list2str(labels2), list2str(set(labels1) ^ set(labels2)))
+        return msg
+
+    def compareValues(self, excludeLabelsList=None):
+        msg = ''
+        labels = self._labels if not excludeLabelsList else self._updateLabelsList(self._labels, excludeLabelsList)
+        counter = 1
+        for row1, row2 in zip(self.dataTable1, self.dataTable2):
+            rowMsg = ''
+            for label in labels:
+                val1 = row1.get(label)
+                val2 = row2.get(label)
+                if val1 != val2:
+                    rowMsg += '\n\t\tLABEL = %s, %s != %s' % (label, val1, val2)
+            if rowMsg:
+                msg += '\n\tROW %i%s' % (counter, rowMsg)
+            counter += 1
+
+        if msg:
+            msg = STAR_DIFF_VALUES + msg
+        return msg
+
+    @property
+    def dataTable1(self):
+        return self._dataTable1
+
+    @dataTable1.setter
+    def dataTable1(self, value):
+        self._dataTable1 = self._readStarFile(value)
+
+    @property
+    def dataTable2(self):
+        return self._dataTable2
+
+    @dataTable2.setter
+    def dataTable2(self, value):
+        self._dataTable2 = self._readStarFile(value)
+
+    def _readStarFile(self, starFile):
+        try:
+            dataTable = Table()
+            dataTable.read(starFile, tableName=self._table2Read)
+            return dataTable
+
+        except FileNotFoundError:
+            raise FileNotFoundError('Unable to find file %s' % starFile)
+
+        except TypeError:
+            raise TypeError('A string containing he file and path of a star file was expected.')
+
+    @staticmethod
+    def _updateLabelsList(labelsList, excludeLabelsList):
+        for label in excludeLabelsList:
+            if label in labelsList:
+                labelsList.remove(label)
+        return labelsList
+
+
+def list2str(inList):
+    return ' '.join([str(label) for label in inList])
+
+
+

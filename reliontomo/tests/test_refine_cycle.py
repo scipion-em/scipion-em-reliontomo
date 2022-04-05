@@ -99,7 +99,7 @@ class TestRefinceCycle(BaseTest):
 
     @classmethod
     def _importTS(cls):
-        print(magentaStr("\n==> Importing data - tilt series:"))
+        print(magentaStr("\n==> Importing the tilt series:"))
         protImportTS = cls.newProtocol(ProtImportTs,
                                        filesPath=cls.dataset.getFile(DataSetRe4Tomo.eTomoDir.name),
                                        filesPattern=DataSetRe4Tomo.mdocs.value,
@@ -141,7 +141,7 @@ class TestRefinceCycle(BaseTest):
 
     @classmethod
     def _reconstructTomograms(cls):
-        print(magentaStr("Reconstructing the tomograms:"))
+        print(magentaStr("\n==> Reconstructing the tomograms:"))
         protRecTomograms = cls.newProtocol(ProtJjsoftReconstructTomogram,
                                            inputSetOfTiltSeries=cls.normTS,
                                            method=SIRT,
