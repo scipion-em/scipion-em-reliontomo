@@ -22,22 +22,23 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+import os
 from enum import Enum
-from os import mkdir, listdir
+from os import mkdir
 from os.path import join, exists
 from imod.utils import generateDefocusIMODFileFromObject
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.object import Float
-from pyworkflow.protocol import PointerParam, PathParam, BooleanParam, LEVEL_ADVANCED, EnumParam
+from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED
 from reliontomo import Plugin
-from reliontomo.constants import IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR, OPTIMISATION_SET_STAR
+from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR,
+                                  OPTIMISATION_SET_STAR)
 from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates
 from reliontomo.objects import relionTomoMetadata
 
-# eTomo data source choices
-ETOMO_FROM_PROT = 0
-ETOMO_FROM_DIR = 1
+# data source
+from tomo.utils import recoverTSFromObj
 
 # Other constants
 DEFOCUS = 'defocus'
@@ -62,7 +63,7 @@ class ProtRelionPrepareData(EMProtocol):
     # -------------------------- DEFINE param functions -----------------------
 
     def _defineParams(self, form):
-        form.addSection(label='CTFTomoSeries')
+        form.addSection(label='Input')
 
         form.addParam('inputCtfTs', PointerParam,
                       pointerClass='SetOfCTFTomoSeries',
@@ -76,53 +77,6 @@ class ProtRelionPrepareData(EMProtocol):
                       help='It is the handedness of the tilt geometry and it is used to describe '
                            'whether the focus increases or decreases as a function of Z distance.'
                       )
-        group = form.addGroup('IMOD related arguments')
-        group.addParam('eTomoDataFrom', EnumParam,
-                       label='Choose IMOD-eTomo data source',
-                       display=EnumParam.DISPLAY_HLIST,
-                       choices=['Protocol', 'Directory'],
-                       important=True,
-                       default=ETOMO_FROM_PROT)
-        group.addParam('eTomoProt', PointerParam,
-                       pointerClass='ProtImodEtomo',
-                       label='IMOD-eTomo protocol',
-                       important=True,
-                       condition='eTomoDataFrom == %s' % ETOMO_FROM_PROT)
-        group.addParam('eTomoFilesPath', PathParam,
-                       label="IMOD's eTomo results",
-                       important=True,
-                       allowsNull=False,
-                       condition='eTomoDataFrom == %s' % ETOMO_FROM_DIR,
-                       help='It is expected to be the parent folder where all your resulting subdirectories '
-                            'obtained with IMOD-eTomo are contained.\n\n'
-                            'There *must* be one subdirectory per *tilt series*, and each of one '
-                            '*must* contain the corresponding *newst.com* and *tilt.com files*.\n\n'
-                            '*Note:*\n'
-                            '*Example:*\n'
-                            'IMOD - eTomo manual estimation protocol folder:\n'
-                            '    |_extra\n'
-                            '        |_ts1\n'
-                            '            |_newst.com\n'
-                            '            |_tilt.com\n'
-                            '        |_ts2\n'
-                            '            |_newst.com\n'
-                            '            |_tilt.com\n'
-                            'In Scipion case, the IMOD - eTomo directory would be the path to\n'
-                            '*[IMOD - eTomo protocol]/extra*.')
-        group.addParam('flipYZ', BooleanParam,
-                       label='Has IMOD tomogram been flipped along Y and Z?',
-                       default=False,
-                       help='If the IMOD tomogram has been flipped along Y and Z (i.e. rotated around X) '
-                            'after an IMOD reconstruction and before the particles have been picked, this '
-                            'will apply the same transformation to the relion coordinate system. This will '
-                            'allow relion to use particle positions defined in the X-rotated tomogram unchanged.')
-        group.addParam('flipZ', BooleanParam,
-                       label='Has the Z axis been flipped?',
-                       default=False,
-                       help='Same as above, in case the Z axis has been flipped. This can be used together with '
-                            'the flipYZ option.')
-
-        form.addSection(label='Coordinates')
         form.addParam('inputCoords', PointerParam,
                       pointerClass='SetOfCoordinates3D',
                       label="Input coordinates",
@@ -133,6 +87,19 @@ class ProtRelionPrepareData(EMProtocol):
                       default=False,
                       expertLevel=LEVEL_ADVANCED
                       )
+
+        form.addParam('flipYZ', BooleanParam,
+                       label='Has tomogram been flipped along Y and Z?',
+                       default=False,
+                       help='If the tomogram has been flipped along Y and Z (i.e. rotated around X) '
+                            'after the reconstruction and before the particles have been picked, this '
+                            'will apply the same transformation to the relion coordinate system. This will '
+                            'allow relion to use particle positions defined in the X-rotated tomogram unchanged.')
+        form.addParam('flipZ', BooleanParam,
+                       label='Has the Z axis been flipped?',
+                       default=False,
+                       help='Same as above, in case the Z axis has been flipped. This can be used together with '
+                            'the flipYZ option.')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -147,30 +114,34 @@ class ProtRelionPrepareData(EMProtocol):
         defocusDir = self._getExtraPath(DEFOCUS)
         if not exists(defocusDir):  # It can exist in case of Continue execution
             mkdir(defocusDir)
-        tsSet = self.inputCtfTs.get().getSetOfTiltSeries()
-        tomoSet = self.inputCoords.get().getPrecedents()
-        self.tsSet = tsSet
-        self.tomoSet = tomoSet
-        # If coordinates are referred to a set of tomograms, they'll be rescaled to be expressed in bin 1, as the
-        # ts images
-        if tomoSet:
-            self.coordScale.set(tomoSet.getSamplingRate() / tsSet.getSamplingRate())
+        self.coords = self.inputCoords.get()
+        self.tsSet = recoverTSFromObj(self.coords, self)
+        self.tomoSet = self.coords.getPrecedents()
+        self.inputCtfs = self.inputCtfTs.get()
+        # If coordinates are referred to a set of tomograms, they'll be rescaled
+        # to be expressed in bin 1, as the ts images
+        if self.tomoSet:
+            self.coordScale.set(self.tomoSet.getSamplingRate() / self.tsSet.getSamplingRate())
 
     def convertInputStep(self):
         # Generate defocus files
-        for ctfTomo in self.inputCtfTs.get():
+        for ctfTomo in self.inputCtfs:
             defocusPath = self._getExtraPath(DEFOCUS, ctfTomo.getTsId())
             if not exists(defocusPath):  # It can exist in case of mode Continue execution
                 mkdir(defocusPath)
             generateDefocusIMODFileFromObject(ctfTomo,
                                               join(defocusPath, ctfTomo.getTsId() + '.' + DEFOCUS),
                                               isRelion=True)
+        thickness = self.coords.getPrecedents().getDim()[2]
+        # Simulate the etomo files that serve as entry point to relion4
+        self._simulateETomoFiles(self.tsSet, thickness=thickness, binned=self.coordScale,
+                                 binByFactor=self.coordScale)
         # Write the tomograms star file
         writeSetOfTomograms(self.tsSet,
                             self._getStarFilename(IN_TOMOS_STAR),
                             prot=self,
                             ctfPlotterParentDir=self._getExtraPath(DEFOCUS),
-                            eTomoParentDir=self._getEtomoParentDir())
+                            eTomoParentDir=self._getTmpPath())
         # Write the particles star file
         writeSetOfCoordinates(self.inputCoords.get(),
                               self._getStarFilename(IN_COORDS_STAR),
@@ -187,7 +158,7 @@ class ProtRelionPrepareData(EMProtocol):
         relionParticles = relionTomoMetadata(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
                                              tsSamplingRate=self.tsSet.getSamplingRate(),
                                              relionBinning=self.coordScale.get(),
-                                             nParticles=self.inputCoords.get().getSize())
+                                             nParticles=self.coords.getSize())
 
         self._defineOutputs(**{outputObjects.outputRelionParticles.name: relionParticles})
         self._store()
@@ -196,26 +167,10 @@ class ProtRelionPrepareData(EMProtocol):
     def _validate(self):
         # TODO: generar los nombres culled --> tsId_culled.st:mrc cuando se quiten vistas con IMOD
         errorMsg = []
-        # Check if files tilt.com and newst.com are contained in the eTomo corresponding directories
-        NEWST_COM = 'newst.com'
-        TILT_COM = 'tilt.com'
-        tsIdList = [ts.getTsId() for ts in self.inputCtfTs.get().getSetOfTiltSeries()]
-        eTomoParentDir = self._getEtomoParentDir()
-        for tsId in tsIdList:
-            currentTsEtomoDir = join(eTomoParentDir, tsId)
-            currentTsErrMsg = ['\n%s [%s]:\n' % (tsId, currentTsEtomoDir)]
-            if exists(currentTsEtomoDir):
-                filesList = listdir(currentTsEtomoDir)
-                if NEWST_COM not in filesList:
-                    currentTsErrMsg.append('\t- File %s not found\n' % NEWST_COM)
-                if TILT_COM not in filesList:
-                    currentTsErrMsg.append('\t- File %s not found\n' % TILT_COM)
-            else:
-                currentTsErrMsg.append('\t- Directory %s not found\n' % currentTsEtomoDir)
-
-            if len(currentTsErrMsg) > 1:
-                errorMsg.append(''.join(currentTsErrMsg))
-
+        tsSet = recoverTSFromObj(self.inputCoords.get(), self)
+        if tsSet is None:
+            errorMsg.append("Could not find any SetOfTiltSeries associated "
+                            "with a transformation matrix")
         return errorMsg
 
     def _summary(self):
@@ -224,16 +179,9 @@ class ProtRelionPrepareData(EMProtocol):
             if self.coordScale.get():
                 msg.append('Coordinates were scaled using an scale factor of *%.2f* to be expressed considering the '
                            'size of the introduced tilt series' % self.coordScale.get())
-
         return msg
 
     # --------------------------- UTILS functions -----------------------------
-    def _getEtomoParentDir(self):
-        if self.eTomoDataFrom.get() == ETOMO_FROM_PROT:
-            return self.eTomoProt.get()._getExtraPath()
-        else:
-            return self.eTomoFilesPath.get()
-
     def _genImportTomosCmd(self):
         acq = self.tsSet.getAcquisition()
         cmd = '--i %s ' % self._getStarFilename(IN_TOMOS_STAR)
@@ -263,3 +211,15 @@ class ProtRelionPrepareData(EMProtocol):
 
     def _decodeHandeness(self):
         return -1 if self.handeness.get() else 1
+
+    def _simulateETomoFiles(self, imgSet, **kwargs):
+        """Simulate the etomo files that serve as entry point to relion4
+        """
+        for ts in imgSet:
+            # creating a folder where all data will be generate
+            folderName = self._getTmpPath(ts.getTsId())
+            makePath(folderName)
+            # Create a symbolic link to the tomogram
+            os.symlink(os.path.abspath(ts.getFirstItem().getFileName()),
+                       os.path.join(folderName, ts.getTsId() + '.st'))
+            ts.writeImodFiles(folderName, **kwargs)
