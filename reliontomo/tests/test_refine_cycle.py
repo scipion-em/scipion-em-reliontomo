@@ -26,6 +26,8 @@ import glob
 from os.path import exists, getmtime
 
 from cistem.protocols import CistemProtTsCtffind
+from imod.protocols import ProtImodImportTransformationMatrix, ProtImodApplyTransformationMatrix, \
+    ProtImodTSNormalization
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
 from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR
@@ -35,9 +37,10 @@ from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelionPrep
 from reliontomo.protocols.protocol_make_pseudo_subtomos import outputObjects as makePSubtomosOutputs
 from reliontomo.protocols.protocol_prepare_data import outputObjects as prepareOutputs
 from reliontomo.protocols.protocol_de_novo_initial_model import outputObjects as iniModelOutputs
-from reliontomo.protocols.protocol_prepare_data import ETOMO_FROM_DIR
 from reliontomo.tests import RE4_TOMO, DataSetRe4Tomo, OUTPUT_TOMOS, OUTPUT_COORDS
 from tomo.protocols import ProtImportTomograms, ProtImportTs
+from tomo3d.protocols import ProtJjsoftReconstructTomogram
+from tomo3d.protocols.protocol_reconstruct_tomogram import SIRT
 
 RELION_TOMO_MD = prepareOutputs.outputRelionParticles.name
 OUTPUT_VOLUMES = makePSubtomosOutputs.outputVolumes.name
@@ -45,6 +48,9 @@ OUTPUT_MODEL = iniModelOutputs.outputAverage.name
 
 
 class TestRefinceCycle(BaseTest):
+    normTS = None
+    alignedTS = None
+    tsWithAlignment = None
     protAutoRefine = None
     protInitialModel = None
     protMakePSubtomos = None
@@ -54,10 +60,10 @@ class TestRefinceCycle(BaseTest):
     inTS = None
     inTomoSet = None
     dataset = None
-    nParticles = 56
+    nParticles = 108
     boxSizeBin4 = 96
     boxSizeBin2 = 128
-    samplingRate = 1.35
+    samplingRateOrig = 1.35
     tsId = 'TS_43'
     symmetry = 'C6'
 
@@ -65,9 +71,13 @@ class TestRefinceCycle(BaseTest):
     def setUpClass(cls):
         setupTestProject(cls)
         cls.dataset = DataSet.getDataSet(RE4_TOMO)
-        cls.inTomoSet = cls._importTomograms()
-        cls.inCoords = cls._importCoords3dFromStarFile()
+        # cls.inTomoSet = cls._importTomograms()
         cls.inTS = cls._importTS()
+        cls.tsWithAlignment = cls._importTransformationMatrix()
+        cls.alignedTS = cls._applyTransformationMatrix()
+        cls.normTS = cls._noramlizeTS()
+        cls.inTomoSet = cls._reconstructTomograms()
+        cls.inCoords = cls._importCoords3dFromStarFile()
         cls.ctfTomoSeries = cls._estimateCTF()
         cls.protPrepare = cls._prepareData4RelionTomo()
         cls.protMakePSubtomos = cls._makePSubtomograms()
@@ -75,17 +85,69 @@ class TestRefinceCycle(BaseTest):
         cls.protAutoRefine = cls._autoRefine()
         cls.protRecPartFromTS = cls._recParticleFromTS()
 
-    @classmethod
-    def _importTomograms(cls):
-        print(magentaStr("\n==> Importing data - tomograms:"))
-        tomogramsBinning = 4
-        protImportTomogram = cls.newProtocol(ProtImportTomograms,
-                                             filesPath=cls.dataset.getFile(DataSetRe4Tomo.tomogram.name),
-                                             samplingRate=tomogramsBinning * cls.samplingRate)
+    # @classmethod
+    # def _importTomograms(cls):
+    #     print(magentaStr("\n==> Importing data - tomograms:"))
+    #     tomogramsBinning = 4
+    #     protImportTomogram = cls.newProtocol(ProtImportTomograms,
+    #                                          filesPath=cls.dataset.getFile(DataSetRe4Tomo.tomogram.name),
+    #                                          samplingRate=tomogramsBinning * cls.samplingRateOrig)
+    # 
+    #     cls.launchProtocol(protImportTomogram)
+    #     outputTomos = getattr(protImportTomogram, OUTPUT_TOMOS, None)
+    #     return outputTomos
 
-        cls.launchProtocol(protImportTomogram)
-        outputTomos = getattr(protImportTomogram, OUTPUT_TOMOS, None)
-        return outputTomos
+    @classmethod
+    def _importTS(cls):
+        print(magentaStr("\n==> Importing data - tilt series:"))
+        protImportTS = cls.newProtocol(ProtImportTs,
+                                       filesPath=cls.dataset.getFile(DataSetRe4Tomo.eTomoDir.name),
+                                       filesPattern=DataSetRe4Tomo.mdocs.value,
+                                       voltage=300,
+                                       ampContrast=0.07,
+                                       samplingRate=cls.samplingRateOrig,
+                                       dosePerFrame=3.05)
+        cls.launchProtocol(protImportTS)
+        outputTS = getattr(protImportTS, 'outputTiltSeries', None)
+        return outputTS
+
+    @classmethod
+    def _importTransformationMatrix(cls):
+        print(magentaStr("\n==> Importing the transformation matrices:"))
+        protImportTransMatrix = cls.newProtocol(ProtImodImportTransformationMatrix,
+                                                inputSetOfTiltSeries=cls.inTS,
+                                                filesPath=cls.dataset.getFile(DataSetRe4Tomo.eTomoDir.name),
+                                                filesPattern=DataSetRe4Tomo.alignments.value)
+        cls.launchProtocol(protImportTransMatrix)
+        return getattr(protImportTransMatrix, 'outputSetOfTiltSeries', None)
+
+    @classmethod
+    def _applyTransformationMatrix(cls):
+        print(magentaStr("\n==> Applying the transformation matrices and binning:"))
+        protApplyTransMatrix = cls.newProtocol(ProtImodApplyTransformationMatrix,
+                                               inputSetOfTiltSeries=cls.tsWithAlignment,
+                                               binning=1)
+        cls.launchProtocol(protApplyTransMatrix)
+        return getattr(protApplyTransMatrix, 'outputInterpolatedSetOfTiltSeries', None)
+
+    @classmethod
+    def _noramlizeTS(cls):
+        print(magentaStr("\n==> Normalizing the tilt series to bin 4:"))
+        protNormTS = cls.newProtocol(ProtImodTSNormalization,
+                                     inputSetOfTiltSeries=cls.alignedTS,
+                                     binning=4)
+        cls.launchProtocol(protNormTS)
+        return getattr(protNormTS, 'outputSetOfTiltSeries', None)
+
+    @classmethod
+    def _reconstructTomograms(cls):
+        print(magentaStr("Reconstructing the tomograms:"))
+        protRecTomograms = cls.newProtocol(ProtJjsoftReconstructTomogram,
+                                           inputSetOfTiltSeries=cls.normTS,
+                                           method=SIRT,
+                                           height=300)  # Thickness at bin 4
+        protRecTomograms = cls.launchProtocol(protRecTomograms, wait=True)
+        return getattr(protRecTomograms, 'outputTomograms', None)
 
     @classmethod
     def _importCoords3dFromStarFile(cls):
@@ -93,26 +155,12 @@ class TestRefinceCycle(BaseTest):
         protImportCoords3dFromStar = cls.newProtocol(ProtImportCoordinates3DFromStar,
                                                      starFile=cls.dataset.getFile(DataSetRe4Tomo.coordinates.name),
                                                      inTomos=cls.inTomoSet,
-                                                     samplingRate=1.35,
+                                                     samplingRate=cls.samplingRateOrig,
                                                      boxSize=cls.boxSizeBin4)
 
         cls.launchProtocol(protImportCoords3dFromStar)
         outCoords = getattr(protImportCoords3dFromStar, OUTPUT_COORDS, None)
         return outCoords
-
-    @classmethod
-    def _importTS(cls):
-        print(magentaStr("\n==> Importing data - tilt series:"))
-        protImportTS = cls.newProtocol(ProtImportTs,
-                                       filesPath=cls.dataset.getFile(DataSetRe4Tomo.eTomoDir.name),
-                                       filesPattern='*/*.mdoc',
-                                       voltage=300,
-                                       ampContrast=0.07,
-                                       samplingRate=cls.samplingRate,
-                                       dosePerFrame=3.05)
-        cls.launchProtocol(protImportTS)
-        outputTS = getattr(protImportTS, 'outputTiltSeries', None)
-        return outputTS
 
     @classmethod
     def _estimateCTF(cls):
@@ -121,21 +169,17 @@ class TestRefinceCycle(BaseTest):
                                      inputTiltSeries=cls.inTS,
                                      numberOfThreads=6)
         cls.launchProtocol(protCtfEst)
-        outputTS = getattr(protCtfEst, 'outputSetOfCTFTomoSeries', None)
-        return outputTS
+        return getattr(protCtfEst, 'outputSetOfCTFTomoSeries', None)
 
     @classmethod
     def _prepareData4RelionTomo(cls):
         print(magentaStr("\n==> Preparing data for relion 4 tomo:"))
         protPrepare = cls.newProtocol(ProtRelionPrepareData,
                                       inputCtfTs=cls.ctfTomoSeries,
-                                      eTomoDataFrom=ETOMO_FROM_DIR,
-                                      eTomoFilesPath=cls.dataset.getFile(DataSetRe4Tomo.eTomoDir.name),
+                                      inputCoords=cls.inCoords,
                                       flipYZ=True,
-                                      flipZ=True,
-                                      inputCoords=cls.inCoords)
-        cls.launchProtocol(protPrepare)
-        return protPrepare
+                                      flipZ=True)
+        return cls.launchProtocol(protPrepare)
 
     @classmethod
     def _makePSubtomograms(cls):
@@ -204,14 +248,14 @@ class TestRefinceCycle(BaseTest):
     def _checkRe4Metadata(self, mdObj, tomogramsFile=None, particlesFile=None, trajectoriesFile=None,
                           manifoldsFile=None, referenceFscFile=None, relionBinning=None):
         self.assertEqual(self.nParticles, mdObj.getNumParticles())
-        self.assertEqual(self.samplingRate, mdObj.getTsSamplingRate())
+        self.assertEqual(self.samplingRateOrig, mdObj.getTsSamplingRate())
         self.assertEqual(tomogramsFile, mdObj.getTomograms())
         self.assertEqual(particlesFile, mdObj.getParticles())
         self.assertEqual(trajectoriesFile, mdObj.getTrajectories())
         self.assertEqual(manifoldsFile, mdObj.getManifolds())
         self.assertEqual(referenceFscFile, mdObj.getReferenceFsc())
         self.assertEqual(relionBinning, mdObj.getRelionBinning())
-        self.assertEqual(self.samplingRate * relionBinning, mdObj.getCurrentSamplingRate())
+        self.assertEqual(self.samplingRateOrig * relionBinning, mdObj.getCurrentSamplingRate())
 
     def _checkPseudosubtomograms(self, pSubtomosSet, boxSize=None, currentSRate=None):
         self.assertSetSize(pSubtomosSet, self.nParticles)
@@ -237,10 +281,14 @@ class TestRefinceCycle(BaseTest):
         return files[-1]
 
     def testPrevRequiredDataGeneration(self):
-        self.assertIsNotNone(self.inTomoSet, 'No tomograms were genetated.')
-        self.assertIsNotNone(self.inCoords, 'No coordinates were genetated.')
-        self.assertIsNotNone(self.inTS, 'No tilt series were genetated.')
-        self.assertIsNotNone(self.ctfTomoSeries, 'No CTF tomo series were genetated.')
+        self.assertIsNotNone(self.inTS, 'No tilt series were generated after importing.')
+        self.assertIsNotNone(self.tsWithAlignment, 'No tilt series were generated after importing the transformation '
+                                                   'matrix.')
+        self.assertIsNotNone(self.alignedTS, 'No tilt series were generated after applying the transformation.')
+        self.assertIsNotNone(self.normTS, 'No tilt series were generated after normalization.')
+        self.assertIsNotNone(self.inTomoSet, 'No tomograms were reconstructed.')
+        self.assertIsNotNone(self.inCoords, 'No coordinates were generated.')
+        self.assertIsNotNone(self.ctfTomoSeries, 'No CTF tomo series were generated.')
 
     def testPrepareData(self):
         protPrepare = self.protPrepare
@@ -324,5 +372,4 @@ class TestRefinceCycle(BaseTest):
                              halves=[protRecPartFromTS._getExtraPath('half1.mrc'),
                                      protRecPartFromTS._getExtraPath('half2.mrc')])
 
-
-
+        #TODO: make a star file comparer for testing

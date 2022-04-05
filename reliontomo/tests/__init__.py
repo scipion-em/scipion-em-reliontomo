@@ -34,10 +34,9 @@ EMD_10439 = 'emd_10439'
 
 class DataSetRe4Tomo(Enum):
     eTomoDir = 'eTomo'
-    alignments = 'eTomo/TS_43.xf'
-    tiltSeries = 'eTomo/TS_43.mrc'
-    mdoc = 'eTomo/TS_43.mrc.mdoc'
-    tomogram = 'TS_43.mrc'
+    alignments = '*/TS_*.xf'
+    tiltSeries = '*/TS_*.mrc'
+    mdocs = '*/*.mdoc'
     coordinates = 'coords.star'
 
 

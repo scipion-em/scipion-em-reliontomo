@@ -102,7 +102,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         self.reader.starFile2Coords3D(coordSet, precedentsSet, self.coordsSRate / self.inTomos.get().getSamplingRate())
 
         self._defineOutputs(outputCoordinates=coordSet)
-        self._defineSourceRelation(precedentsSet, coordSet)
+        self._defineSourceRelation(self.inTomos.get(), coordSet)
 
     # --------------------------- INFO functions ------------------------------
 

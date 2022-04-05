@@ -31,6 +31,7 @@ from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.object import Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED
+from pyworkflow.utils import makePath
 from reliontomo import Plugin
 from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR,
                                   OPTIMISATION_SET_STAR)
@@ -89,17 +90,17 @@ class ProtRelionPrepareData(EMProtocol):
                       )
 
         form.addParam('flipYZ', BooleanParam,
-                       label='Has tomogram been flipped along Y and Z?',
-                       default=False,
-                       help='If the tomogram has been flipped along Y and Z (i.e. rotated around X) '
-                            'after the reconstruction and before the particles have been picked, this '
-                            'will apply the same transformation to the relion coordinate system. This will '
-                            'allow relion to use particle positions defined in the X-rotated tomogram unchanged.')
+                      label='Has tomogram been flipped along Y and Z?',
+                      default=False,
+                      help='If the tomogram has been flipped along Y and Z (i.e. rotated around X) '
+                           'after the reconstruction and before the particles have been picked, this '
+                           'will apply the same transformation to the relion coordinate system. This will '
+                           'allow relion to use particle positions defined in the X-rotated tomogram unchanged.')
         form.addParam('flipZ', BooleanParam,
-                       label='Has the Z axis been flipped?',
-                       default=False,
-                       help='Same as above, in case the Z axis has been flipped. This can be used together with '
-                            'the flipYZ option.')
+                      label='Has the Z axis been flipped?',
+                      default=False,
+                      help='Same as above, in case the Z axis has been flipped. This can be used together with '
+                           'the flipYZ option.')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
