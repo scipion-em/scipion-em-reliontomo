@@ -57,8 +57,17 @@ class ReaderTomo:
 def getTransformInfoFromCoordOrSubtomo(obj, calcInv=True):
     M = obj.getMatrix() if type(obj) is Coordinate3D else obj.getTransform().getMatrix()
     shifts = translation_from_matrix(M)
+
     if calcInv:
-        shifts = -shifts
+        # Rotation matrix. Remove translation from the Scipion matrix
+        R = np.eye(4)
+        R[:3, :3] = M[:3, :3]
+
+        Mi = np.linalg.inv(M)
+
+        M = Mi @ R @ R
+        shifts = -translation_from_matrix(M)
+
         M = np.linalg.inv(M)
 
     angles = -np.rad2deg(euler_from_matrix(M, axes='szyz'))
