@@ -27,7 +27,7 @@ from os import mkdir
 from os.path import exists
 
 from pyworkflow.utils import getParentFolder
-from reliontomo.constants import SUBTOMO_NAME, FILE_NOT_FOUND
+from reliontomo.constants import SUBTOMO_NAME, FILE_NOT_FOUND, PARTICLES_TABLE
 from reliontomo.convert import createReaderTomo
 from reliontomo.protocols.protocol_base_import_from_star import ProtBaseImportFromStar
 from reliontomo.utils import getAbsPath
@@ -72,10 +72,11 @@ class ProtImportSubtomogramsFromStar(ProtBaseImportFromStar):
     # --------------------------- INFO functions -----------------------------
     def _validate(self):
         errorMsg = super()._validate()
-        reader, isReader40 = createReaderTomo(starFile=self.starFile.get())
+        reader, isReader40 = createReaderTomo(self.starFile.get())
+        reader.read(tableName=PARTICLES_TABLE)
         errorsInPointedFiles = self._checkFilesPointedFromStarFile(getParentFolder(self.starFile.get()),
                                                                    reader.dataTable,
-                                                                   isReader40)
+                                                                   isReader40=isReader40)
         if errorsInPointedFiles:
             errorMsg.append(errorsInPointedFiles)
         return errorMsg

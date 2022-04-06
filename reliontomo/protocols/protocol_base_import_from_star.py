@@ -29,7 +29,7 @@ from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.protocol import FileParam, FloatParam, IntParam, PointerParam
 from pyworkflow.utils import Message, getParentFolder
-from reliontomo.constants import PIXEL_SIZE, TOMO_NAME
+from reliontomo.constants import PIXEL_SIZE, TOMO_NAME, PARTICLES_TABLE
 from reliontomo.convert import createReaderTomo
 from tomo.protocols.protocol_base import ProtTomoBase
 from tomo.objects import SetOfCoordinates3D
@@ -91,6 +91,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         if self.samplingRate.get():
             self.coordsSRate = self.samplingRate.get()
         else:
+            self.reader.read(tableName=PARTICLES_TABLE)
             self.coordsSRate = float(self.reader.dataTable[0].get(PIXEL_SIZE))
 
     def _importStep(self):
@@ -113,7 +114,8 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
             errors.append('It was not possible to locate the introduced file. Please check the path.')
 
         # Check if the files referred in the star file exists
-        reader, isReader40 = createReaderTomo(starFile=self.starFile.get())
+        reader, isReader40 = createReaderTomo(self.starFile.get())
+        reader.read(tableName=PARTICLES_TABLE)
         if isReader40:
             tsIds = [tomo.getTsId() for tomo in self.inTomos.get()]
             if tsIds:

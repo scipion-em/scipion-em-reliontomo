@@ -33,13 +33,13 @@ from relion.convert import OpticsGroups
 from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, IMOD_DIR, FRACTIONAL_DOSE, \
     ACQ_ORDER_FILE, CULLED_FILE, SUBTOMO_NAME, COORD_X, COORD_Y, COORD_Z, ROT, TILT, PSI, CLASS_NUMBER, \
     TOMO_PARTICLE_NAME, RANDOM_SUBSET, OPTICS_GROUP, SHIFTX_ANGST, SHIFTY_ANGST, SHIFTZ_ANGST, CTF_IMAGE, \
-    TOMO_PARTICLE_ID, MANIFOLD_INDEX, MRC, FILE_NOT_FOUND
+    TOMO_PARTICLE_ID, MANIFOLD_INDEX, MRC, FILE_NOT_FOUND, PARTICLES_TABLE
 import pwem.convert.transformations as tfs
 import numpy as np
 from os.path import join
-from reliontomo.convert.convertBase import checkSubtomogramFormat, getTransformInfoFromCoordOrSubtomo, WriterTomo
+from reliontomo.convert.convertBase import checkSubtomogramFormat, getTransformInfoFromCoordOrSubtomo, WriterTomo, \
+    ReaderTomo, getTransformMatrixFromRow
 from reliontomo.objects import PSubtomogram
-from reliontomo.utils import getTransformMatrix
 from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.objects import Coordinate3D
 
@@ -272,7 +272,7 @@ class Writer(WriterTomo):
         return prot._getExtraPath(tsId + '_culled.mrc:mrc')
 
 
-class Reader:
+class Reader(ReaderTomo):
 
     ALIGNMENT_LABELS = [
         SHIFTX_ANGST,
@@ -283,16 +283,12 @@ class Reader:
         PSI,
     ]
 
-    def __init__(self, **kwargs):
-        # self.setParticleTransform = None
+    def __init__(self, starFile, **kwargs):
+        super().__init__(starFile)
         self._shifts = np.zeros(3)
         self._angles = np.zeros(3)
         self._alignType = kwargs.get('alignType', ALIGN_NONE)
         self._pixelSize = kwargs.get('pixelSize', 1.0)
-        self.dataTable = Table()
-
-    def read(self, starFile):
-        self.dataTable.read(starFile)
 
     @staticmethod
     def gen3dCoordFromStarRow(row, sRate, precedentIdDict, factor=1):
@@ -308,7 +304,7 @@ class Reader:
             coordinate3d.setX(float(x)*factor, RELION_3D_COORD_ORIGIN)
             coordinate3d.setY(float(y)*factor, RELION_3D_COORD_ORIGIN)
             coordinate3d.setZ(float(z)*factor, RELION_3D_COORD_ORIGIN)
-            coordinate3d.setMatrix(getTransformMatrixFromRow(row, sRate))
+            coordinate3d.setMatrix(getTransformMatrixFromRow(row, sRate=sRate))
             coordinate3d.setGroupId(row.get(MANIFOLD_INDEX, 1))
             # Extended fields
             coordinate3d._classNumber = Integer(row.get(CLASS_NUMBER, -1))
@@ -317,6 +313,7 @@ class Reader:
         return coordinate3d, tomoId
 
     def starFile2Coords3D(self, coordsSet, precedentsSet, scaleFactor):
+        self.read(tableName=PARTICLES_TABLE)
         precedentIdDict = {}
         for tomo in precedentsSet:
             precedentIdDict[tomo.getTsId()] = tomo.clone()
@@ -337,14 +334,12 @@ class Reader:
             print(yellowStr('The star file contains coordinates that belong to tomograms not present '
                             'in the introduced set of tomograms: %s' % nonMatchingTomoIds))
 
-    @staticmethod
-    def starFile2PseudoSubtomograms(starFile, outputSet):
-        tomoTable = Table()
-        tomoTable.read(starFile, tableName='particles')
+    def starFile2PseudoSubtomograms(self, outputSet):
+        self.read(tableName=PARTICLES_TABLE)
         samplingRate = outputSet.getSamplingRate()
         listOfFilesToFixVolume = []
 
-        for counter, row in enumerate(tomoTable):
+        for counter, row in enumerate(self.dataTable):
             particleFile = row.get(SUBTOMO_NAME)
             ctfFile = row.get(CTF_IMAGE)
             psubtomo = PSubtomogram(fileName=particleFile,
@@ -360,59 +355,6 @@ class Reader:
 
         # Fix volume headers
         fixVolume(listOfFilesToFixVolume)
-
-    # def starFile2PseudoSubtomograms(self, starFile, outputSet, precedentSet, vTomoScaleFactor):
-    #     tomoTable = Table()
-    #     tomoTable.read(starFile, tableName='particles')
-    #     ih = ImageHandler()
-    #     samplingRate = outputSet.getSamplingRate()
-    #     opticsGroupStr = OpticsGroups.fromImages(outputSet).toString()
-    #     virtualTomoDict = genVTomoDict(precedentSet, vTomoScaleFactor)
-    #
-    #     for counter, row in enumerate(tomoTable):
-    #         psubtomo = SubTomogram()
-    #         transform = Transform()
-    #         origin = Transform()
-    #
-    #         coordinate3d = Coordinate3D()
-    #         tomoId = row.get(TOMO_NAME)
-    #         coordinate3d.setVolume(virtualTomoDict[tomoId])
-    #
-    #         psubtomo.setCoordinate3D(coordinate3d)
-    #         psubtomo.setTransform(transform)
-    #         psubtomo.setAcquisition(TomoAcquisition())
-    #         psubtomo.getAcquisition().opticsGroupInfo.set(opticsGroupStr)
-    #         psubtomo.setSamplingRate(samplingRate)
-    #
-    #         # Set the origin and the dimensions of the current subtomogram
-    #         subtomoFilename = row.get(SUBTOMO_NAME, FILE_NOT_FOUND)
-    #         x, y, z, n = ih.getDimensions(subtomoFilename)
-    #         zDim = manageDims(subtomoFilename, z, n)
-    #         origin.setShifts(x / -2., y / -2., zDim / -2.)
-    #         psubtomo.setOrigin(origin)
-    #
-    #         # Update values of current pseudo subtomogram
-    #         coordinate3d.setTomoId(tomoId)                                                 # 1 _rlnTomoName
-    #         particleId = row.get(TOMO_PARTICLE_ID, counter + 1)                            # 2 _rlnTomoParticleId
-    #         manifoldInd = row.get(MANIFOLD_INDEX, None)
-    #         if manifoldInd:
-    #             coordinate3d.setGroupId(manifoldInd)
-    #             psubtomo._manifoldIndex = Integer(manifoldInd)                             # 3 _rlnTomoManifoldIndex
-    #         coordinate3d.setX(float(row.get(COORD_X, 0)), RELION_3D_COORD_ORIGIN)          # 4 _rlnCoordinateX
-    #         coordinate3d.setY(float(row.get(COORD_Y, 0)), RELION_3D_COORD_ORIGIN)          # 5 _rlnCoordinateX
-    #         coordinate3d.setZ(float(row.get(COORD_Z, 0)), RELION_3D_COORD_ORIGIN)          # 6 _rlnCoordinateX
-    #         self.__setParticleTransformProj(psubtomo, row, samplingRate)                   # 7 - 12 rlnOriginAngst and rlnAngles
-    #         psubtomo.setClassId(row.get(CLASS_NUMBER, -1))                                 # 13 _rlnClassNumber
-    #         randomSubset = row.get(RANDOM_SUBSET, None)
-    #         if randomSubset:
-    #             psubtomo._randomSubset = Integer(randomSubset)                             # 14 _rlnRandomSubset
-    #         psubtomo._particleName = String(row.get(TOMO_PARTICLE_NAME, FILE_NOT_FOUND))   # 15 _rlnTomoParticleName
-    #         psubtomo._opticsGroupId = Integer(row.get(OPTICS_GROUP, 1))                    # 16 _rlnOpticsGroup
-    #         psubtomo.setLocation((particleId, subtomoFilename))                            # 17 _rlnImageName
-    #         psubtomo._ctfImage = String(row.get(CTF_IMAGE, FILE_NOT_FOUND))                # 18 _rlnCtfImage
-    #
-    #         # Add current subtomogram to the output set
-    #         outputSet.append(psubtomo)
 
     def setParticleTransform(self, particle, row, sRate):
         """ Set the transform values from the row. """
@@ -471,13 +413,3 @@ class Reader:
         M = np.linalg.inv(M)
         particle.getTransform().setMatrix(M)
 
-
-def getTransformMatrixFromRow(row, sRate, invert=True):
-    shiftx = float(row.get(SHIFTX_ANGST, 0)) / sRate
-    shifty = float(row.get(SHIFTY_ANGST, 0)) / sRate
-    shiftz = float(row.get(SHIFTZ_ANGST, 0)) / sRate
-    tilt = row.get(TILT, 0)
-    psi = row.get(PSI, 0)
-    rot = row.get(ROT, 0)
-
-    return getTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, invert)

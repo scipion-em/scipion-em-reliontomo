@@ -27,7 +27,7 @@ from emtable import Table
 from reliontomo import Plugin
 from reliontomo.constants import TOMO_NAME_30, COORD_X, COORD_Y, COORD_Z, SUBTOMO_NAME, CTF_MISSING_WEDGE, ROT, TILT, \
     PSI, SHIFTX, SHIFTY, SHIFTZ, PIXEL_SIZE, MAGNIFICATION, TILT_PRIOR, SHIFTX_ANGST, PSI_PRIOR, SHIFTY_ANGST, \
-    SHIFTZ_ANGST, CTF_IMAGE, TOMO_NAME, CLASS_NUMBER
+    SHIFTZ_ANGST, CTF_IMAGE, TOMO_NAME, CLASS_NUMBER, PARTICLES_TABLE
 from reliontomo.convert import convert40_tomo, convert30_tomo
 
 PYSEG_SUBTOMO_LABELS = [TOMO_NAME_30,
@@ -120,25 +120,30 @@ def writeSetOfTomograms(imgSet, starFile, **kwargs):
     return createWriterTomo40(**kwargs).tiltSeries2Star(imgSet, starFile, **kwargs)
 
 
-def createReaderTomo(starFile=None, **kwargs):
-    if starFile:
-        dataTable = Table()
-        dataTable.read(starFile)
-        labels = dataTable.getColumnNames()
-        if TOMO_NAME_30 in labels:
-            reader = convert30_tomo.Reader(**kwargs)
-            isReader40 = False
-        else:
-            reader = convert40_tomo.Reader(**kwargs)
-            isReader40 = True
-        reader.read(starFile)
+def createReaderTomo(starFile, **kwargs):
+    dataTable = Table()
+    # Old or third parties star files can have only one unnamed table
+    dataTable.read(starFile)
+    labels = dataTable.getColumnNames()
+    if TOMO_NAME_30 in labels:
+        reader = convert30_tomo.Reader(starFile, **kwargs)
+        isReader40 = False
     else:
-        if Plugin.isRe40():
-            reader = convert40_tomo.Reader(**kwargs)
+        try:
+            dataTable.read(starFile, tableName=PARTICLES_TABLE)
+            labels = dataTable.getColumnNames()
+            if TOMO_NAME_30 in labels:
+                reader = convert30_tomo.Reader(starFile, **kwargs)
+                isReader40 = False
+            else:
+                reader = convert40_tomo.Reader(starFile, **kwargs)
+                isReader40 = True
+        except Exception:
+            # If the particles table isn't present in the introduced star, it means that it isn't a
+            # coordinates/particles star, which means that we are in relion4, in which there are other star files for
+            # tomography, like tomograms or pseudosubtomograms
+            reader = convert40_tomo.Reader(starFile, **kwargs)
             isReader40 = True
-        else:
-            reader = convert30_tomo.Reader(**kwargs)
-            isReader40 = False
 
     return reader, isReader40
 
@@ -146,5 +151,5 @@ def createReaderTomo(starFile=None, **kwargs):
 def readSetOfPseudoSubtomograms(starFile, outputSet):
     """ Convenience function to write a SetOfPseudoSubtomograms as Relion metadata using a Reader."""
     # Subtomogras are represented in Relion 4 as Pseudosubtomograms
-    reader, _ = createReaderTomo()
-    return reader.starFile2PseudoSubtomograms(starFile, outputSet)
+    reader, _ = createReaderTomo(starFile)
+    return reader.starFile2PseudoSubtomograms(outputSet)

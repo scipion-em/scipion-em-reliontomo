@@ -140,3 +140,10 @@ STAR_FILES_EQUAL = 'The introduced star files are equal.'
 STAR_DIFF_SIZE = 'Different number of rows found:'
 STAR_DIFF_LABELS = 'Different labels found:'
 STAR_DIFF_VALUES = 'Different values found:'
+
+# Tomograms star tables
+GLOBAL_TABLE = 'global'
+
+# Particles star tables
+OPTICS_TABLE = 'optics'
+PARTICLES_TABLE = 'particles'

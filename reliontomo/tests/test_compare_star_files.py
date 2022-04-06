@@ -24,18 +24,14 @@
 # **************************************************************************
 from pyworkflow.tests import BaseTest, DataSet
 from pyworkflow.utils import magentaStr
-from reliontomo.constants import STAR_FILES_EQUAL, STAR_DIFF_SIZE, STAR_DIFF_LABELS, STAR_DIFF_VALUES
+from reliontomo.constants import STAR_FILES_EQUAL, STAR_DIFF_SIZE, STAR_DIFF_LABELS, STAR_DIFF_VALUES, OPTICS_TABLE, \
+    PARTICLES_TABLE, GLOBAL_TABLE
 from reliontomo.objects import StarFileComparer
 from reliontomo.tests import RE4_TOMO, DataSetRe4Tomo
 
 # Tomograms star tables
-GLOBAL_TABLE = 'global'
 TS_45_TABLE = 'TS_45'
 TS_54_TABLE = 'TS_54'
-
-# Particles star tables
-OPTICS_TABLE = 'optics'
-PARTICLES_TABLE = 'particles'
 
 
 class TestStarFileComparer(BaseTest):

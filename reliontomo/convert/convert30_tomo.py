@@ -29,12 +29,12 @@ import pyworkflow.utils as pwutils
 from pwem.objects import Transform
 from pyworkflow.object import Float
 from pyworkflow.utils import removeBaseExt
-from relion.convert.convert_base import ReaderBase
-from reliontomo.constants import FILE_NOT_FOUND, COORD_X, COORD_Y, COORD_Z, SUBTOMO_NAME, ROT, TILT, \
-    TILT_PRIOR, PSI, PSI_PRIOR, SHIFTX, SHIFTY, SHIFTZ, TOMO_NAME_30, CTF_MISSING_WEDGE, \
-    CLASS_NUMBER, MRC
-from reliontomo.convert.convertBase import WriterTomo, getTransformInfoFromCoordOrSubtomo
-from reliontomo.utils import getAbsPath, _gen2LevelBaseName, getTransformMatrix
+from reliontomo.constants import FILE_NOT_FOUND, COORD_X, COORD_Y, COORD_Z, SUBTOMO_NAME, \
+    TILT_PRIOR, PSI_PRIOR, TOMO_NAME_30, CTF_MISSING_WEDGE, \
+    CLASS_NUMBER, MRC, PARTICLES_TABLE
+from reliontomo.convert.convertBase import WriterTomo, getTransformInfoFromCoordOrSubtomo, ReaderTomo, \
+    getTransformMatrixFromRow
+from reliontomo.utils import getAbsPath, _gen2LevelBaseName
 from scipion.install.funcs import mkdir
 from os.path import join
 from tomo.constants import BOTTOM_LEFT_CORNER
@@ -120,14 +120,19 @@ class Writer(WriterTomo):
         tomoTable.write(subtomosStar)
 
 
-class Reader(ReaderBase):
+class Reader(ReaderTomo):
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.dataTable = Table()
+    def __init__(self, starFile, **kwargs):
+        super().__init__(starFile)
 
-    def read(self, starFile):
-        self.dataTable.read(starFile)
+    def read(self, tableName=None):
+        try:
+            self.dataTable.read(self.starFile, tableName=tableName)
+        except Exception:
+            # If the particles table isn't present in the introduced star, it means that it isn't a
+            # coordinates/particles star, which means that we are in relion4, in which there are other star files for
+            # tomography, like tomograms or pseudosubtomograms
+            self.dataTable.read(self.starFile)
 
     @staticmethod
     def gen3dCoordFromStarRow(row, precedentsSet, precedentIdList, scaleFactor):
@@ -150,11 +155,13 @@ class Reader(ReaderBase):
         return coordinate3d
 
     def starFile2Coords3D(self, coordsSet, precedentsSet, scaleFactor):
+        self.read(tableName=PARTICLES_TABLE)
         precedentIdList = [tomo.getTsId() for tomo in precedentsSet]
         for row in self.dataTable:
             coordsSet.append(self.gen3dCoordFromStarRow(row, precedentsSet, precedentIdList, scaleFactor))
 
     def starFile2Subtomograms(self, subtomoSet, coordSet, linkedSubtomosDir, starFilePath):
+        self.read(tableName=PARTICLES_TABLE)
         samplingRate = subtomoSet.getSamplingRate()
         for row, coordinate3d in zip(self.dataTable, coordSet):
             subtomo = SubTomogram()
@@ -190,21 +197,4 @@ class Reader(ReaderBase):
         # Set the set of coordinates which corresponds to the current set of subtomograms
         subtomoSet.setCoordinates3D(coordSet)
 
-
-def _getCTFFileFromSubtomo(subtomo):
-    try:
-        return subtomo.getCoordinate3D()._3dcftMrcFile.get()
-    except:
-        return 'Unavailable'
-
-
-def getTransformMatrixFromRow(row, invert=True):
-    shiftx = row.get(SHIFTX, 0)
-    shifty = row.get(SHIFTY, 0)
-    shiftz = row.get(SHIFTZ, 0)
-    tilt = row.get(TILT, 0)
-    psi = row.get(PSI, 0)
-    rot = row.get(ROT, 0)
-
-    return getTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, invert)
 

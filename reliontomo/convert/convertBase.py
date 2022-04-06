@@ -25,13 +25,15 @@
 from os.path import join
 
 import numpy as np
+from emtable import Table
 
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from pwem.emlib.image import ImageHandler
 from pyworkflow.utils import getExt, removeBaseExt, replaceBaseExt, makePath
 from relion.convert.convert_base import WriterBase
 from reliontomo import Plugin
-from reliontomo.constants import MRC
+from reliontomo.constants import MRC, SHIFTX_ANGST, SHIFTY_ANGST, SHIFTZ_ANGST, TILT, PSI, ROT
+from reliontomo.utils import getTransformMatrix
 from tomo.objects import Coordinate3D
 
 
@@ -41,6 +43,15 @@ class WriterTomo(WriterBase):
         self.isPyseg = kwargs.get('isPyseg', False)
         self.starHeaders = kwargs.get('starHeaders', None)
         self.isRelion4 = Plugin.isRe40()
+
+
+class ReaderTomo:
+    def __init__(self, starFile):
+        self.starFile = starFile
+        self.dataTable = Table()
+
+    def read(self, tableName=None):
+        self.dataTable.read(self.starFile, tableName=tableName)
 
 
 def getTransformInfoFromCoordOrSubtomo(obj, calcInv=True):
@@ -66,4 +77,12 @@ def checkSubtomogramFormat(subtomo, extraPath):
         ih.convert(subtomo.getFileName(), mrcFile)
 
 
+def getTransformMatrixFromRow(row, sRate=1, invert=True):
+    shiftx = float(row.get(SHIFTX_ANGST, 0)) / sRate
+    shifty = float(row.get(SHIFTY_ANGST, 0)) / sRate
+    shiftz = float(row.get(SHIFTZ_ANGST, 0)) / sRate
+    tilt = row.get(TILT, 0)
+    psi = row.get(PSI, 0)
+    rot = row.get(ROT, 0)
 
+    return getTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, invert)
