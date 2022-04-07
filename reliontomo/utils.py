@@ -111,8 +111,8 @@ def genRelionParticles(extraPath, inOptSet, binningFactor=None, nParticles=None)
 def genOutputPseudoSubtomograms(prot, currentSamplingRate):
     """Centralized code to generate the output set of pseudosubtomograms for protocols make pseudosubtomograms,
      auto-refine, CTF refine and frame align"""
-    reader = convert40_tomo.Reader()
+    reader = convert40_tomo.Reader(prot._getExtraPath(OUT_PARTICLES_STAR))
     outputSet = prot._createSet(SetOfPseudoSubtomograms, PSUBTOMOS_SQLITE, '')
     outputSet.setSamplingRate(currentSamplingRate)
-    reader.starFile2PseudoSubtomograms(prot._getExtraPath(OUT_PARTICLES_STAR), outputSet)
+    reader.starFile2PseudoSubtomograms(outputSet)
     return outputSet

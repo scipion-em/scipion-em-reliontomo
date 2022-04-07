@@ -37,8 +37,8 @@ from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelionPrep
 from reliontomo.protocols.protocol_make_pseudo_subtomos import outputObjects as makePSubtomosOutputs
 from reliontomo.protocols.protocol_prepare_data import outputObjects as prepareOutputs
 from reliontomo.protocols.protocol_de_novo_initial_model import outputObjects as iniModelOutputs
-from reliontomo.tests import RE4_TOMO, DataSetRe4Tomo, OUTPUT_TOMOS, OUTPUT_COORDS
-from tomo.protocols import ProtImportTomograms, ProtImportTs
+from reliontomo.tests import RE4_TOMO, DataSetRe4Tomo, OUTPUT_COORDS
+from tomo.protocols import ProtImportTs
 from tomo3d.protocols import ProtJjsoftReconstructTomogram
 from tomo3d.protocols.protocol_reconstruct_tomogram import SIRT
 
@@ -64,7 +64,7 @@ class TestRefinceCycle(BaseTest):
     boxSizeBin4 = 96
     boxSizeBin2 = 128
     samplingRateOrig = 1.35
-    tsId = 'TS_43'
+    tsIds = ['TS_45', 'TS_54']
     symmetry = 'C6'
 
     @classmethod
@@ -265,7 +265,7 @@ class TestRefinceCycle(BaseTest):
             self.assertTrue(exists(pSubtomo.getCtfFile()))
             self.assertEqual((boxSize, boxSize, boxSize), pSubtomo.getDimensions())
             self.assertEqual(currentSRate, pSubtomosSet.getSamplingRate())
-            self.assertEqual(self.tsId, pSubtomo.getTomoId())
+            self.assertTrue(pSubtomo.getTomoId() in self.tsIds)
 
     def _checkRecVolume(self, recVol, optSet=None, boxSize=None, halves=None):
         self.assertEqual(recVol.getSamplingRate(), optSet.getCurrentSamplingRate())
