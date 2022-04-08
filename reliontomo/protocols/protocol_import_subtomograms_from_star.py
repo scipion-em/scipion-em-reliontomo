@@ -65,24 +65,22 @@ class ProtImportSubtomogramsFromStar(ProtBaseImportFromStar):
         subtomoSet = SetOfSubTomograms.create(self._getPath(), template='setOfSubTomograms%s.sqlite')
         subtomoSet.setSamplingRate(self.coordsSRate)
         subtomoSet.setAcquisition(self.inTomos.get().getAcquisition())
-        self.reader.starFile2Subtomograms(subtomoSet, outputCoordsSet, self._getExtraPath(self.linkedSubtomosDirName),
-                                          getParentFolder(self.starFile.get()))
+        self.reader.starFile2SubtomogramsImport(subtomoSet, outputCoordsSet, self._getExtraPath(self.linkedSubtomosDirName),
+                                                getParentFolder(self.starFile.get()))
         self._defineOutputs(**{outputObjects.outputSubtomograms.name: subtomoSet})
 
     # --------------------------- INFO functions -----------------------------
     def _validate(self):
         errorMsg = super()._validate()
         reader, isReader40 = createReaderTomo(self.starFile.get())
-        reader.read(tableName=PARTICLES_TABLE)
         errorsInPointedFiles = self._checkFilesPointedFromStarFile(getParentFolder(self.starFile.get()),
-                                                                   reader.dataTable,
-                                                                   isReader40=isReader40)
+                                                                   reader.dataTable)
         if errorsInPointedFiles:
             errorMsg.append(errorsInPointedFiles)
         return errorMsg
 
     # --------------------------- UTILS functions ------------------------------
-    def _checkFilesPointedFromStarFile(self, starFilePath, dataTable, isReader40=True):
+    def _checkFilesPointedFromStarFile(self, starFilePath, dataTable):
         errorsFound = ''
         fields2check = [SUBTOMO_NAME]
         filesPattern = '\tRow %i - %s\n'

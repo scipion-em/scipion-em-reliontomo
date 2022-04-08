@@ -283,8 +283,8 @@ class Reader(ReaderTomo):
         PSI,
     ]
 
-    def __init__(self, starFile, **kwargs):
-        super().__init__(starFile)
+    def __init__(self, starFile, dataTable, **kwargs):
+        super().__init__(starFile, dataTable)
         self._shifts = np.zeros(3)
         self._angles = np.zeros(3)
         self._alignType = kwargs.get('alignType', ALIGN_NONE)
@@ -313,7 +313,6 @@ class Reader(ReaderTomo):
         return coordinate3d, tomoId
 
     def starFile2Coords3D(self, coordsSet, precedentsSet, scaleFactor):
-        self.read(tableName=PARTICLES_TABLE)
         precedentIdDict = {}
         for tomo in precedentsSet:
             precedentIdDict[tomo.getTsId()] = tomo.clone()
@@ -335,7 +334,6 @@ class Reader(ReaderTomo):
                             'in the introduced set of tomograms: %s' % nonMatchingTomoIds))
 
     def starFile2PseudoSubtomograms(self, outputSet):
-        self.read(tableName=PARTICLES_TABLE)
         samplingRate = outputSet.getSamplingRate()
         listOfFilesToFixVolume = []
 

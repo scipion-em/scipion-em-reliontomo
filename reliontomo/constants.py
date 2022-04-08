@@ -85,6 +85,39 @@ OPT_FSC_STAR = 'rlnTomoReferenceFscFile'
 
 FILE_NOT_FOUND = 'FileNotFound'
 
+RELION_30_TOMO_LABELS = [TOMO_NAME_30,
+                         COORD_X,
+                         COORD_Y,
+                         COORD_Z,
+                         SUBTOMO_NAME,
+                         CTF_MISSING_WEDGE,
+                         MAGNIFICATION,
+                         PIXEL_SIZE,
+                         ROT,
+                         TILT,
+                         TILT_PRIOR,
+                         PSI,
+                         PSI_PRIOR,
+                         SHIFTX,
+                         SHIFTY,
+                         SHIFTZ]
+
+RELION_40_TOMO_LABELS = [TOMO_NAME,
+                         SUBTOMO_NAME,
+                         CTF_IMAGE,
+                         COORD_X,
+                         COORD_Y,
+                         COORD_Z,
+                         SHIFTX_ANGST,
+                         SHIFTY_ANGST,
+                         SHIFTZ_ANGST,
+                         ROT,
+                         TILT,
+                         TILT_PRIOR,
+                         PSI,
+                         PSI_PRIOR,
+                         CLASS_NUMBER]
+
 # IMOD's eTomo files
 NEWST_COM = 'newst.com'
 TILT_COM = 'tilt.com'

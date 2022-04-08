@@ -26,7 +26,6 @@ from os.path import isabs, join, exists
 import numpy as np
 from pwem.convert import transformations
 from reliontomo.constants import OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE
-from reliontomo.convert import convert40_tomo
 from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
 
 
@@ -111,7 +110,8 @@ def genRelionParticles(extraPath, inOptSet, binningFactor=None, nParticles=None)
 def genOutputPseudoSubtomograms(prot, currentSamplingRate):
     """Centralized code to generate the output set of pseudosubtomograms for protocols make pseudosubtomograms,
      auto-refine, CTF refine and frame align"""
-    reader = convert40_tomo.Reader(prot._getExtraPath(OUT_PARTICLES_STAR))
+    from reliontomo.convert import createReaderTomo
+    reader, _ = createReaderTomo(prot._getExtraPath(OUT_PARTICLES_STAR))
     outputSet = prot._createSet(SetOfPseudoSubtomograms, PSUBTOMOS_SQLITE, '')
     outputSet.setSamplingRate(currentSamplingRate)
     reader.starFile2PseudoSubtomograms(outputSet)

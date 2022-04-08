@@ -25,67 +25,16 @@
 
 from emtable import Table
 from reliontomo import Plugin
-from reliontomo.constants import TOMO_NAME_30, COORD_X, COORD_Y, COORD_Z, SUBTOMO_NAME, CTF_MISSING_WEDGE, ROT, TILT, \
-    PSI, SHIFTX, SHIFTY, SHIFTZ, PIXEL_SIZE, MAGNIFICATION, TILT_PRIOR, SHIFTX_ANGST, PSI_PRIOR, SHIFTY_ANGST, \
-    SHIFTZ_ANGST, CTF_IMAGE, TOMO_NAME, CLASS_NUMBER, PARTICLES_TABLE
+from reliontomo.constants import TOMO_NAME_30, PARTICLES_TABLE, RELION_30_TOMO_LABELS, RELION_40_TOMO_LABELS
 from reliontomo.convert import convert40_tomo, convert30_tomo
 
-PYSEG_SUBTOMO_LABELS = [TOMO_NAME_30,
-                        COORD_X,
-                        COORD_Y,
-                        COORD_Z,
-                        SUBTOMO_NAME,
-                        CTF_MISSING_WEDGE,
-                        ROT,
-                        TILT,
-                        PSI,
-                        SHIFTX,
-                        SHIFTY,
-                        SHIFTZ]
 
-RELION_30_TOMO_LABELS = [TOMO_NAME_30,
-                         COORD_X,
-                         COORD_Y,
-                         COORD_Z,
-                         SUBTOMO_NAME,
-                         CTF_MISSING_WEDGE,
-                         MAGNIFICATION,
-                         PIXEL_SIZE,
-                         ROT,
-                         TILT,
-                         TILT_PRIOR,
-                         PSI,
-                         PSI_PRIOR,
-                         SHIFTX,
-                         SHIFTY,
-                         SHIFTZ]
-
-RELION_40_TOMO_LABELS = [TOMO_NAME,
-                         SUBTOMO_NAME,
-                         CTF_IMAGE,
-                         COORD_X,
-                         COORD_Y,
-                         COORD_Z,
-                         SHIFTX_ANGST,
-                         SHIFTY_ANGST,
-                         SHIFTZ_ANGST,
-                         ROT,
-                         TILT,
-                         TILT_PRIOR,
-                         PSI,
-                         PSI_PRIOR,
-                         CLASS_NUMBER]
-
-
-def createWriterTomo(**kwargs):
-    if Plugin.isRe40():
-        if kwargs.get('isPyseg', None):
-            Writer = createWriterTomo30(starHeaders=PYSEG_SUBTOMO_LABELS, **kwargs)
-        else:
-            Writer = createWriterTomo40(starHeaders=RELION_40_TOMO_LABELS, **kwargs)
+def createWriterTomo(isPyseg=False, **kwargs):
+    if isPyseg or not Plugin.isRe40():
+        writer = createWriterTomo30(starHeaders=RELION_30_TOMO_LABELS, **kwargs)
     else:
-        Writer = createWriterTomo30(starHeaders=RELION_30_TOMO_LABELS, **kwargs)
-    return Writer
+        writer = createWriterTomo40(starHeaders=RELION_40_TOMO_LABELS, **kwargs)
+    return writer
 
 
 def createWriterTomo30(**kwargs):
@@ -122,28 +71,18 @@ def writeSetOfTomograms(imgSet, starFile, **kwargs):
 
 def createReaderTomo(starFile, **kwargs):
     dataTable = Table()
-    # Old or third parties star files can have only one unnamed table
-    dataTable.read(starFile)
+    try:
+        dataTable.read(starFile, tableName=PARTICLES_TABLE)
+    except Exception:
+        dataTable.read(starFile, tableName=None)
+
     labels = dataTable.getColumnNames()
     if TOMO_NAME_30 in labels:
-        reader = convert30_tomo.Reader(starFile, **kwargs)
+        reader = convert30_tomo.Reader(starFile, dataTable, **kwargs)
         isReader40 = False
     else:
-        try:
-            dataTable.read(starFile, tableName=PARTICLES_TABLE)
-            labels = dataTable.getColumnNames()
-            if TOMO_NAME_30 in labels:
-                reader = convert30_tomo.Reader(starFile, **kwargs)
-                isReader40 = False
-            else:
-                reader = convert40_tomo.Reader(starFile, **kwargs)
-                isReader40 = True
-        except Exception:
-            # If the particles table isn't present in the introduced star, it means that it isn't a
-            # coordinates/particles star, which means that we are in relion4, in which there are other star files for
-            # tomography, like tomograms or pseudosubtomograms
-            reader = convert40_tomo.Reader(starFile, **kwargs)
-            isReader40 = True
+        reader = convert40_tomo.Reader(starFile, dataTable, **kwargs)
+        isReader40 = True
 
     return reader, isReader40
 

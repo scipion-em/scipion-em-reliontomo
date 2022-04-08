@@ -95,7 +95,7 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
         vol.setHalfMaps([self._getExtraPath('half1.mrc'), self._getExtraPath('half2.mrc')])
         vol.setSamplingRate(relionParticles.getCurrentSamplingRate())
 
-        self._defineOutputs(**{outputObjects.outputVolume.name: vol,
+        self._defineOutputs(**{outputObjects.outputAverage.name: vol,
                                outputObjects.outputRelionParticles.name: relionParticles})
 
     # -------------------------- INFO functions -------------------------------

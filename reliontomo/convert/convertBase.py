@@ -23,10 +23,8 @@
 # *
 # **************************************************************************
 from os.path import join
-
 import numpy as np
 from emtable import Table
-
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from pwem.emlib.image import ImageHandler
 from pyworkflow.utils import getExt, removeBaseExt, replaceBaseExt, makePath
@@ -40,18 +38,17 @@ from tomo.objects import Coordinate3D
 class WriterTomo(WriterBase):
     def __init__(self,  **kwargs):
         super().__init__(**kwargs)
-        self.isPyseg = kwargs.get('isPyseg', False)
         self.starHeaders = kwargs.get('starHeaders', None)
         self.isRelion4 = Plugin.isRe40()
 
 
 class ReaderTomo:
-    def __init__(self, starFile):
+    def __init__(self, starFile, dataTable):
         self.starFile = starFile
-        self.dataTable = Table()
+        self.dataTable = dataTable
 
-    def read(self, tableName=None):
-        self.dataTable.read(self.starFile, tableName=tableName)
+    # def read(self, tableName=None):
+    #     self.dataTable.read(self.starFile, tableName=tableName)
 
 
 def getTransformInfoFromCoordOrSubtomo(obj, calcInv=True):

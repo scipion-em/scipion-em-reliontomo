@@ -91,7 +91,6 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         if self.samplingRate.get():
             self.coordsSRate = self.samplingRate.get()
         else:
-            self.reader.read(tableName=PARTICLES_TABLE)
             self.coordsSRate = float(self.reader.dataTable[0].get(PIXEL_SIZE))
 
     def _importStep(self):
@@ -115,7 +114,6 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
 
         # Check if the files referred in the star file exists
         reader, isReader40 = createReaderTomo(self.starFile.get())
-        reader.read(tableName=PARTICLES_TABLE)
         if isReader40:
             tsIds = [tomo.getTsId() for tomo in self.inTomos.get()]
             if tsIds:

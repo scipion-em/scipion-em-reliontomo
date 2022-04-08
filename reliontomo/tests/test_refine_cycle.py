@@ -367,7 +367,7 @@ class TestRefinceCycle(BaseTest):
         # Check the output volume
         recVol = getattr(protRecPartFromTS, OUTPUT_MODEL, None)
         self._checkRecVolume(recVol,
-                             optSet=protRecPartFromTS.inOptSet.get(),
+                             optSet=mdObj,
                              boxSize=self.boxSizeBin2,
                              halves=[protRecPartFromTS._getExtraPath('half1.mrc'),
                                      protRecPartFromTS._getExtraPath('half2.mrc')])
