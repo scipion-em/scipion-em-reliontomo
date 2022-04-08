@@ -193,7 +193,7 @@ class StarFileComparer:
                   (STAR_DIFF_LABELS, list2str(labels1), list2str(labels2), list2str(set(labels1) ^ set(labels2)))
         return msg
 
-    def compareValues(self, excludeLabelsList=None):
+    def compareValues(self, excludeLabelsList=None, tolerance=0.1):
         msg = ''
         labels = self._labels if not excludeLabelsList else self._updateLabelsList(self._labels, excludeLabelsList)
         counter = 1
@@ -202,8 +202,16 @@ class StarFileComparer:
             for label in labels:
                 val1 = row1.get(label)
                 val2 = row2.get(label)
-                if val1 != val2:
-                    rowMsg += '\n\t\tLABEL = %s, %s != %s' % (label, val1, val2)
+                try:
+                    # Numeric case --> apply tolerance
+                    val1 = float(val1)
+                    val2 = float(val2)
+                    if abs(float(val1) - float(val2)) > tolerance:
+                        rowMsg += '\n\t\tLABEL = %s, %s != %s' % (label, val1, val2)
+                except ValueError:
+                    # Not numeric case  --> check equality
+                    if val1 != val2:
+                        rowMsg += '\n\t\tLABEL = %s, %s != %s' % (label, val1, val2)
             if rowMsg:
                 msg += '\n\tROW %i%s' % (counter, rowMsg)
             counter += 1

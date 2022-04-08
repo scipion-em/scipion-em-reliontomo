@@ -167,6 +167,16 @@ class TestStarFileComparer(BaseTest):
                                     testName=testName,
                                     excludeLabelsList=excludeLabelsList)
 
+    def test_08_makePSubtomosInVsOut(self):
+        starFile1 = self.dataset.getFile(DataSetRe4Tomo.zShiftedScipion.name)
+        starFile2 = self.dataset.getFile(DataSetRe4Tomo.zShiftedRelion.name)
+        tablesList = [OPTICS_TABLE, PARTICLES_TABLE]
+        testName = self.test_07_makePSubtomosInVsOut.__name__
+        excludeLabelsList = ['rlnTomoParticleId']
+        self._checkMultipleTablesOk(starFile1, starFile2, tablesList,
+                                    testName=testName,
+                                    excludeLabelsList=excludeLabelsList)
+
     def _checkComparison(self, compareMsg, testName=None, filesEqual=None, diffSize=None,
                          diffLabels=None, diffValues=None, strings2check=None):
         if testName:

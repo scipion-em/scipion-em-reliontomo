@@ -48,10 +48,12 @@ class DataSetRe4Tomo(Enum):
     prepareTomosStarRelion = 'starFilesComparer/re4NativeStars/tomograms.star'
     prepareParticlesStarRelion = 'starFilesComparer/re4NativeStars/particles.star'
     makePSubtomosStarRelion = 'starFilesComparer/re4NativeStars/psubtomos.star'
+    zShiftedRelion = 'starFilesComparer/re4NativeStars/native_z2_75.star'
     scipionStarDir = 'starFilesComparer/re4ScipionStars'
     prepareTomosStarScipion = 'starFilesComparer/re4ScipionStars/tomograms.star'
     preparePartcilesStarScipion = 'starFilesComparer/re4ScipionStars/particles.star'
     makePSubtomosStarScipion = 'starFilesComparer/re4ScipionStars/psubtomos.star'
+    zShiftedScipion = 'starFilesComparer/re4ScipionStars/scipion_z2_75.star'
 
 
 class DataSetEmd10439(Enum):

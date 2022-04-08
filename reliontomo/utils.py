@@ -22,6 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from collections import OrderedDict
 from os.path import isabs, join, exists
 import numpy as np
 from pwem.convert import transformations
@@ -116,3 +117,7 @@ def genOutputPseudoSubtomograms(prot, currentSamplingRate):
     outputSet.setSamplingRate(currentSamplingRate)
     reader.starFile2PseudoSubtomograms(outputSet)
     return outputSet
+
+
+def genEnumParamDict(keyList):
+    return OrderedDict((key, val) for key, val in zip(keyList, range(len(keyList))))

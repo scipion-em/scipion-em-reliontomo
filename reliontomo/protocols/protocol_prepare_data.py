@@ -54,6 +54,7 @@ class ProtRelionPrepareData(EMProtocol):
     """
     _label = 'Prepare data for Relion 4'
     _devStatus = BETA
+    _possibleOutputs = outputObjects
 
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)
