@@ -169,7 +169,8 @@ class StarFileComparer:
             msg += self.compareLabels()
         if not msg:
             msg += self.compareValues(excludeLabelsList=excludeLabelsList)
-        return msg if msg else STAR_FILES_EQUAL
+        tableNameMsg = 'Table [%s]\n' % self._table2Read
+        return tableNameMsg + msg if msg else tableNameMsg + STAR_FILES_EQUAL
 
     def compareSize(self):
         msg = ''
