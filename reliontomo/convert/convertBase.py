@@ -24,14 +24,13 @@
 # **************************************************************************
 from os.path import join
 import numpy as np
-from emtable import Table
+from pwem.convert import transformations
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from pwem.emlib.image import ImageHandler
 from pyworkflow.utils import getExt, removeBaseExt, replaceBaseExt, makePath
 from relion.convert.convert_base import WriterBase
 from reliontomo import Plugin
 from reliontomo.constants import MRC, SHIFTX_ANGST, SHIFTY_ANGST, SHIFTZ_ANGST, TILT, PSI, ROT
-from reliontomo.utils import getTransformMatrix
 from tomo.objects import Coordinate3D
 
 
@@ -91,4 +90,22 @@ def getTransformMatrixFromRow(row, sRate=1, invert=True):
     psi = row.get(PSI, 0)
     rot = row.get(ROT, 0)
 
-    return getTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, invert)
+    return genTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, invert)
+
+
+def genTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, invert):
+    shifts = (float(shiftx), float(shifty), float(shiftz))
+    angles = (float(rot), float(tilt), float(psi))
+    radAngles = -np.deg2rad(angles)
+    M = transformations.euler_matrix(radAngles[0], radAngles[1], radAngles[2], 'szyz')
+    if invert:
+        M[0, 3] = -shifts[0]
+        M[1, 3] = -shifts[1]
+        M[2, 3] = -shifts[2]
+        M = np.linalg.inv(M)
+    else:
+        M[0, 3] = shifts[0]
+        M[1, 3] = shifts[1]
+        M[2, 3] = shifts[2]
+
+    return M

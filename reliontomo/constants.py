@@ -33,6 +33,7 @@ RELIONTOMO_DEFAULT = RELION + '-' + RELIONTOMO_DEFAULT_VERSION
 V30_VALIDATION_MSG = 'This version of Reliontomo plugin requires Relion 3.0 binaries. ' \
                      'Please install it if necessary via scipion3 installb relion-3.0'
 
+STAR_COMPARE_ENTRY_POINT = 'compareStar'
 MRC = 'mrc'
 
 # Relion 4 tomogram star file fields

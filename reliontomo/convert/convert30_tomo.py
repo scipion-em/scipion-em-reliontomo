@@ -112,15 +112,6 @@ class Reader(ReaderTomo):
     def __init__(self, starFile, dataTable, **kwargs):
         super().__init__(starFile, dataTable)
 
-    # def read(self, tableName=None):
-    #     try:
-    #         self.dataTable.read(self.starFile, tableName=tableName)
-    #     except Exception:
-    #         # If the particles table isn't present in the introduced star, it means that it isn't a
-    #         # coordinates/particles star, which means that we are in relion4, in which there are other star files for
-    #         # tomography, like tomograms or pseudosubtomograms
-    #         self.dataTable.read(self.starFile)
-
     @staticmethod
     def gen3dCoordFromStarRow(row, precedentsSet, precedentIdList, scaleFactor):
         coordinate3d = Coordinate3D()
