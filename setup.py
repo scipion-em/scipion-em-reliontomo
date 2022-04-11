@@ -35,6 +35,7 @@ from setuptools import setup, find_packages
 from codecs import open
 from os import path
 from reliontomo import __version__
+from reliontomo.constants import STAR_COMPARE_ENTRY_POINT
 
 here = path.abspath(path.dirname(__file__))
 
@@ -181,9 +182,7 @@ setup(
     # For example, the following would provide a command called `sample` which
     # executes the function `main` from this package when invoked:
     entry_points={
-        'console_scripts': [
-                    # '%s = reliontomo.cmd.program:main' % EM_PROGRAM_ENTRY_POINT,
-                ],
+        'console_scripts': ['%s = reliontomo.cmd.program:main' % STAR_COMPARE_ENTRY_POINT],
         'pyworkflow.plugin': 'reliontomo = reliontomo'
     },
 
