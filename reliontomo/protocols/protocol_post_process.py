@@ -25,32 +25,24 @@
 # *
 # **************************************************************************
 from enum import Enum
-from os.path import join, dirname
 
-import reliontomo
+from pwem.objects import VolumeMask
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
-from pyworkflow.protocol import PointerParam, BooleanParam, FloatParam, EnumParam, GE, LE, IntParam
+from pyworkflow.protocol import PointerParam, BooleanParam, FloatParam, GE, LE, IntParam, FileParam
 from pyworkflow.utils import Message
 from reliontomo import Plugin
-from reliontomo.constants import OUT_PARTICLES_STAR, COORD_X, COORD_Y, COORD_Z, SHIFTX_ANGST, SHIFTY_ANGST, \
-    SHIFTZ_ANGST, ROT, TILT, PSI
+from reliontomo.constants import POST_PROCESS_MRC, POST_PROCESS_MASKED_MRC
 from reliontomo.objects import relionTomoMetadata
 from reliontomo.utils import genRelionParticles
 
-
-resourcesPath = join(dirname(reliontomo.__file__), 'resources')
+NO_MTF_FILE = 0
 
 
 class outputObjects(Enum):
     outputRelionParticles = relionTomoMetadata
-
-
-class detectoMftFiles(Enum):
-    no_mft = ('No MFT file', None)
-    de_20_300 = ('DE-20 at 300 KV', join(resourcesPath, 'DE-20_300KV.star'))
-    falcon2_300 = ('Falcon II at 300 KV', join(resourcesPath, 'Falcon-II_300KV.star'))
-    k2_summit_300 = ('K2-summit at 300 Kv', join(resourcesPath, 'K2-summit_300KV.star'))
+    outputPostProcessVolume = VolumeMask
+    # outputPostProcessVolumeMasked = VolumeMask
 
 
 class ProtRelionPostProcess(EMProtocol):
@@ -70,6 +62,12 @@ class ProtRelionPostProcess(EMProtocol):
                       pointerClass='relionTomoMetadata',
                       label='Input Relion Tomo Metadata',
                       important=True)
+        form.addParam('inVolume', PointerParam,
+                      pointerClass='AverageSubTomogram',
+                      label='Use halves from this refined volume',
+                      important=True,
+                      help='It will provide the two unfiltered half-reconstructions that were output upon convergence '
+                           'of a 3D auto-refine run.')
         form.addParam('solventMask', PointerParam,
                       pointerClass='VolumeMask',
                       important=True,
@@ -132,36 +130,74 @@ class ProtRelionPostProcess(EMProtocol):
                       help='This option allows one to low-pass filter the map at a user-provided frequency (in '
                            'Angstroms). When using a resolution that is higher than the gold-standard FSC-reported '
                            'resolution, take care not to interpret noise in the map for signal.')
-        form.addParam('detectorMtf', EnumParam,
-                      choices=[detectoMftFile.value(0) for detectoMftFile in detectoMftFiles],
-                      default=detectoMftFiles.no_mft.value(0),
+        form.addParam('mtf', FileParam,
                       label='MTF of the detector',
-                      help='If you know the MTF of your detector, provide it here. Curves provided were downloaded '
-                           'from the RELION Wiki. Also see there for the exact format. If you do not know the MTF of '
-                           'your detector and do not want to measure it, then by leaving this entry empty, you '
-                           'include the MTF of your detector in your overall estimated B-factor upon sharpening the '
-                           'map.Although that is probably slightly less accurate, the overall quality of your map will '
-                           'probably not suffer very much.')
+                      help='User-provided STAR-file with the MTF-curve '
+                           'of the detector. Use the wizard to load one '
+                           'of the predefined ones provided at:\n'
+                           '- [[https://www3.mrc-lmb.cam.ac.uk/relion/index.php/'
+                           'FAQs#Where_can_I_find_MTF_curves_for_typical_detectors.3F]'
+                           '[Relion\'s Wiki FAQs]]\n'
+                           ' - [[https://www.gatan.com/techniques/cryo-em#MTF][Gatan\'s website]]\n\n'
+                           'Relion param: *--mtf*')
         form.addParam('origDetectorPixSize', FloatParam,
                       default=1,
                       validators=[GE(0.1), LE(2)],
-                      condition='detectorMtf != %s' % detectoMftFiles.no_mft.value(0),
+                      condition='mtf',
                       label='Original detector pixel size ((Å)/pix)',
                       help='This is the original pixel size (in Angstroms) in the raw (non-super-resolution!) '
                            'micrographs.')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        pass
+        self._insertFunctionStep(self.relionPostProcessStep)
+        self._insertFunctionStep(self.createOutputStep)
 
+    def relionPostProcessStep(self):
+        Plugin.runRelionTomo(self, 'relion_postprocess', self.genPostProcessCmd())
 
-    # def createOutputStep(self):
-    #     # Output RelionParticles
-    #     relionParticles = genRelionParticles(self._getExtraPath(), self.inOptSet.get())
-    #     self._defineOutputs(**{outputObjects.outputRelionParticles.name: relionParticles})
+    def createOutputStep(self):
+        # Output RelionParticles
+        relionParticles = genRelionParticles(self._getExtraPath(), self.inOptSet.get())
+        # Output FSC masks
+        postProccesMrc = self._genPostProcessOutputMrcFile(POST_PROCESS_MRC)
+        # postProcessMaskedMrc = self._genPostProcessOutputMrcFile(POST_PROCESS_MASKED_MRC)
+
+        outputDict = {outputObjects.outputRelionParticles.name: relionParticles,
+                      outputObjects.outputPostProcessVolume.name: postProccesMrc}
+                      # outputObjects.outputPostProcessVolumeMasked.name: postProcessMaskedMrc}
+        self._defineOutputs(**outputDict)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
         pass
 
     # --------------------------- UTILS functions -----------------------------
+    def genPostProcessCmd(self):
+        half1, half2 = self.inVolume.get().getHalfMaps().split(',')
+        cmd = ''
+        cmd += '--i %s ' % half1
+        cmd += '--i2 %s ' % half2
+        cmd += '--o %s ' % self._getExtraPath('postprocess')
+        cmd += '--mask %s ' % self.solventMask.get().getFileName()
+        cmd += '--angpix %.2f ' % self.calPixSize.get()
+        # Sharpening
+        if self.mtf.get():
+            cmd += '--mtf %s ' % self.mtf.get()
+            cmd += '--mtf_angpix %.2f' % self.origDetectorPixSize.get()
+        if self.estimateBFactor.get():
+            cmd += '--auto_bfac --autob_lowres %.2f ' % self.lowestResBFit.get()
+        if self.useOwnBFactor.get():
+            cmd += '--adhoc_bfac %.2f ' % self.userBFactor.get()
+        # Filtering
+        if self.skipFscWeight.get():
+            cmd += '--skip_fsc_weighting --low_pass %i ' % self.adHocLowPassFilter.get()
+
+        return cmd
+
+    def _genPostProcessOutputMrcFile(self, fileName):
+        postProccesMrc = VolumeMask()
+        postProccesMrc.setFileName(self._getExtraPath(fileName))
+        postProccesMrc.setSamplingRate(self.inOptSet.get().getCurrentSamplingRate())
+
+        return postProccesMrc
