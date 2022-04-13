@@ -181,3 +181,7 @@ GLOBAL_TABLE = 'global'
 # Particles star tables
 OPTICS_TABLE = 'optics'
 PARTICLES_TABLE = 'particles'
+
+# Post process files
+POST_PROCESS_MRC = 'postprocess.mrc'
+POST_PROCESS_MASKED_MRC = 'postprocess_masked.mrc'
