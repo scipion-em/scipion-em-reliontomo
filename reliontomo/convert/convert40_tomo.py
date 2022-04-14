@@ -146,7 +146,7 @@ class Writer(WriterTomo):
         tomoTable = Table(columns=self.starHeaders)
         sRate = subtomoSet.getSamplingRate()
         extraPath = join(getParentFolder(subtomosStar), 'extra')
-        for subtomo in subtomoSet:
+        for subtomo in subtomoSet.iterSubtomos():
             checkSubtomogramFormat(subtomo, extraPath)
             angles, shifts = getTransformInfoFromCoordOrSubtomo(subtomo)
             ctfFile = getattr(subtomo, '_ctfImage', None)
