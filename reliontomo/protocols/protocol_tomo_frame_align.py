@@ -26,14 +26,11 @@ from enum import Enum
 
 from pyworkflow.protocol import IntParam, BooleanParam, GE, LE, FloatParam, EnumParam
 from reliontomo import Plugin
+from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_per_part_per_tilt import ProtRelionPerParticlePerTiltBase
 from reliontomo.utils import getProgram
 from tomo.objects import SetOfSubTomograms
 from tomo.protocols import ProtTomoBase
-
-
-class outputObjects(Enum):
-    outputSubtomograms = SetOfSubTomograms()
 
 
 class alignModels(Enum):
@@ -45,6 +42,11 @@ class deformationModels(Enum):
     linear = 0
     spline = 1
     fourier = 2
+
+
+class outputObjects(Enum):
+    outputRelionParticles = relionTomoMetadata
+    outputVolumes = SetOfPseudoSubtomograms
 
 
 class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
@@ -141,7 +143,7 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self.convertInputStep)
+        # self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self._relionTomoFrameAlign)
         self._insertFunctionStep(self.createOutputStep)
 

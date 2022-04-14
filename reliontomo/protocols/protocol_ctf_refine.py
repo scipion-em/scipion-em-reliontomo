@@ -22,14 +22,22 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from enum import Enum
+
 from pyworkflow.protocol import IntParam, BooleanParam, GE, LE, FloatParam, EnumParam
 from reliontomo import Plugin
+from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_per_part_per_tilt import ProtRelionPerParticlePerTiltBase
 from reliontomo.utils import getProgram
 from tomo.protocols import ProtTomoBase
 
 oddAberrationOrders = [3, 5, 7]
 evenAberrationOrders = [4, 6, 8]
+
+
+class outputObjects(Enum):
+    outputRelionParticles = relionTomoMetadata
+    outputVolumes = SetOfPseudoSubtomograms
 
 
 class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
