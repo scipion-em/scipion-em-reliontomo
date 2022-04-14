@@ -30,9 +30,9 @@ from pwem.objects import VolumeMask
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, BooleanParam, FloatParam, GE, LE, IntParam, FileParam
-from pyworkflow.utils import Message
+from pyworkflow.utils import Message, makePath
 from reliontomo import Plugin
-from reliontomo.constants import POST_PROCESS_MRC, POST_PROCESS_MASKED_MRC
+from reliontomo.constants import POST_PROCESS_MRC, POST_PROCESS_MASKED_MRC, POSTPROCESS_DIR
 from reliontomo.objects import relionTomoMetadata
 from reliontomo.utils import genRelionParticles
 
@@ -150,6 +150,7 @@ class ProtRelionPostProcess(EMProtocol):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
+        makePath(self._getExtraPath(POSTPROCESS_DIR))
         self._insertFunctionStep(self.relionPostProcessStep)
         self._insertFunctionStep(self.createOutputStep)
 
@@ -178,7 +179,7 @@ class ProtRelionPostProcess(EMProtocol):
         cmd = ''
         cmd += '--i %s ' % half1
         cmd += '--i2 %s ' % half2
-        cmd += '--o %s ' % self._getExtraPath('Postprocess', 'postprocess')
+        cmd += '--o %s ' % self._getExtraPath(POSTPROCESS_DIR, POSTPROCESS_DIR.lower())
         cmd += '--mask %s ' % self.solventMask.get().getFileName()
         cmd += '--angpix %.2f ' % self.calPixSize.get()
         # Sharpening

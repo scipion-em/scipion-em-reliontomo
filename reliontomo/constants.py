@@ -23,6 +23,7 @@
 # *
 # **************************************************************************
 import json
+from os.path import join
 
 RELION = 'relion'
 V4_0 = '4.0'
@@ -131,7 +132,8 @@ IN_PARTICLES_STAR = 'inSubtomos.star'
 OUT_PARTICLES_STAR = 'particles.star'
 TRAJECTORIES_STAR = 'trajectories.star'
 MANIFOLDS_STAR = 'manifolds.star'
-FSC_REF_STAR = 'PostProcess/postprocess.star'
+POSTPROCESS_DIR = 'PostProcess'
+FSC_REF_STAR = join(POSTPROCESS_DIR, 'postprocess.star')
 RE4_INDIV_GEN_FILES = [OUT_TOMOS_STAR, OUT_PARTICLES_STAR, TRAJECTORIES_STAR, MANIFOLDS_STAR, FSC_REF_STAR]
 OPTIMISATION_SET_STAR = 'optimisation_set.star'
 PSUBTOMOS_SQLITE = 'pseudosubtomograms%s.sqlite'
