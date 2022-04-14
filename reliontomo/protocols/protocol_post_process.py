@@ -198,7 +198,7 @@ class ProtRelionPostProcess(EMProtocol):
 
     def _genPostProcessOutputMrcFile(self, fileName):
         postProccesMrc = VolumeMask()
-        postProccesMrc.setFileName(self._getExtraPath(fileName))
+        postProccesMrc.setFileName(self._getExtraPath(POSTPROCESS_DIR, fileName))
         postProccesMrc.setSamplingRate(self.inOptSet.get().getCurrentSamplingRate())
 
         return postProccesMrc
