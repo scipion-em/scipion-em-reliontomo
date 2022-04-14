@@ -88,14 +88,14 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
     #     writeSetOfPseudoSubtomograms(self.inPseudoSubtomos.get(), self.inParticlesStar)
 
     def createOutputStep(self):
-        # Output pseudosubtomograms --> set of volumes for visualization purposes
-        outputSet = genOutputPseudoSubtomograms(self)
-
         # Output RelionParticles
         relionParticles = relionTomoMetadata(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
                                              tsSamplingRate=self.inOptSet.get().getTsSamplingRate(),
                                              relionBinning=self.inOptSet.get().getRelionBinning(),
-                                             nParticles=outputSet.getSize())
+                                             nParticles=self.inOptSet.get().getNumParticles())
+
+        # Output pseudosubtomograms --> set of volumes for visualization purposes
+        outputSet = genOutputPseudoSubtomograms(self, relionParticles.getCurrentSamplingRate())
 
         self._defineOutputs(**{outputObjects.outputRelionParticles.name: relionParticles,
                                outputObjects.outputVolumes.name: outputSet})
