@@ -178,7 +178,7 @@ class ProtRelionPostProcess(EMProtocol):
         cmd = ''
         cmd += '--i %s ' % half1
         cmd += '--i2 %s ' % half2
-        cmd += '--o %s ' % self._getExtraPath('postprocess')
+        cmd += '--o %s ' % self._getExtraPath('Postprocess', 'postprocess')
         cmd += '--mask %s ' % self.solventMask.get().getFileName()
         cmd += '--angpix %.2f ' % self.calPixSize.get()
         # Sharpening
