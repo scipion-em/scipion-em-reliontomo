@@ -64,7 +64,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         ProtRelionRefineSubtomograms._insertOptimisationSection(form)
         ProtRelionRefineSubtomograms._insertNumOfClassesParam(form)
         ProtRelionRefineSubtomograms._insertRegularisationParam(form)
-        ProtRelionRefineSubtomograms._insertNItersParam(form)
+        # ProtRelionRefineSubtomograms._insertNItersParam(form)
         form.addParam('useFastSubsets', BooleanParam,
                       label='Use fast subsets (for large data sets)?',
                       default=False,

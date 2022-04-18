@@ -182,7 +182,7 @@ setup(
     # For example, the following would provide a command called `sample` which
     # executes the function `main` from this package when invoked:
     entry_points={
-        'console_scripts': ['%s = reliontomo.cmd.program:main' % STAR_COMPARE_ENTRY_POINT],
+        'console_scripts': ['%s = reliontomo.cmd.compareStarFiles:main' % STAR_COMPARE_ENTRY_POINT],
         'pyworkflow.plugin': 'reliontomo = reliontomo'
     },
 
