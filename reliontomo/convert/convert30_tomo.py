@@ -113,7 +113,7 @@ class Reader(ReaderTomo):
         super().__init__(starFile, dataTable)
 
     @staticmethod
-    def gen3dCoordFromStarRow(row, precedentDict, scaleFactor):
+    def gen3dCoordFromStarRow(row, precedentDict, scaleFactor=1):
         coordinate3d = Coordinate3D()
         tomoNameFromStar = row.get(TOMO_NAME_30)
         x = float(row.get(COORD_X, 0))
