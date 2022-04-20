@@ -22,6 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+import logging
 import csv
 from emtable import Table
 from pwem import ALIGN_NONE, ALIGN_2D, ALIGN_PROJ
@@ -42,6 +43,8 @@ from reliontomo.convert.convertBase import checkSubtomogramFormat, getTransformI
 from reliontomo.objects import PSubtomogram
 from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.objects import Coordinate3D
+
+logger = logging.getLogger(__name__)
 
 
 RELION_3D_COORD_ORIGIN = BOTTOM_LEFT_CORNER
@@ -143,6 +146,7 @@ class Writer(WriterTomo):
                 ])
                 
     def subtomograms2Star(self, subtomoSet, subtomosStar):
+        logger.info("Writing relion4 star file (%s) from subtomograms."% subtomosStar)
         tomoTable = Table(columns=self.starHeaders)
         sRate = subtomoSet.getSamplingRate()
         extraPath = join(getParentFolder(subtomosStar), 'extra')
