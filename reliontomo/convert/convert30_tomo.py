@@ -113,17 +113,15 @@ class Reader(ReaderTomo):
         super().__init__(starFile, dataTable)
 
     @staticmethod
-    def gen3dCoordFromStarRow(row, precedentsSet, precedentIdList, scaleFactor):
+    def gen3dCoordFromStarRow(row, precedentDict, scaleFactor):
         coordinate3d = Coordinate3D()
-        tomoId = removeBaseExt(row.get(TOMO_NAME_30))
+        tomoNameFromStar = row.get(TOMO_NAME_30)
         x = float(row.get(COORD_X, 0))
         y = float(row.get(COORD_Y, 0))
         z = float(row.get(COORD_Z, 0))
-        volId = precedentIdList.index(tomoId) + 1  # Set indices begin in 1
-        coordinate3d.setVolume(precedentsSet[volId])
-        coordinate3d.setVolId(volId)
+        tomo = precedentDict[tomoNameFromStar]
+        coordinate3d.setVolume(tomo)
         ctf3d = row.get(CTF_MISSING_WEDGE, FILE_NOT_FOUND)
-        coordinate3d.setTomoId(tomoId)
         coordinate3d.setX(x * scaleFactor, BOTTOM_LEFT_CORNER)
         coordinate3d.setY(y * scaleFactor, BOTTOM_LEFT_CORNER)
         coordinate3d.setZ(z * scaleFactor, BOTTOM_LEFT_CORNER)
@@ -133,10 +131,9 @@ class Reader(ReaderTomo):
         return coordinate3d
 
     def starFile2Coords3D(self, coordsSet, precedentsSet, scaleFactor):
-        # self.read(tableName=PARTICLES_TABLE)
-        precedentIdList = [tomo.getTsId() for tomo in precedentsSet]
+        precedentDict = {tomo.getFileName(): tomo.clone() for tomo in precedentsSet}
         for row in self.dataTable:
-            coordsSet.append(self.gen3dCoordFromStarRow(row, precedentsSet, precedentIdList, scaleFactor))
+            coordsSet.append(self.gen3dCoordFromStarRow(row, precedentDict, scaleFactor))
 
     def starFile2SubtomogramsImport(self, subtomoSet, coordSet, linkedSubtomosDir, starFilePath):
         samplingRate = subtomoSet.getSamplingRate()
