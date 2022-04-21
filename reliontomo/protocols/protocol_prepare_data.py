@@ -60,6 +60,8 @@ class ProtRelionPrepareData(EMProtocol):
         EMProtocol.__init__(self, **args)
         self.tsSet = None
         self.tomoSet = None
+        self.tsReducedSet = None # Reduced list of tiltseries with only those in the coordinates
+        self.coordsVolIds = None  # Unique tomogram identifiers volId used in the coordinate set. In case is a subset
         self.coordScale = Float(1)
 
     # -------------------------- DEFINE param functions -----------------------
@@ -84,6 +86,15 @@ class ProtRelionPrepareData(EMProtocol):
                       label="Input coordinates",
                       important=True,
                       allowsNull=False)
+
+        form.addParam('inputTS', PointerParam,
+                      help="Tilt series with alignment (non interpolated) used in the tomograms recnstruction. To be deprecated!! ",
+                      pointerClass='SetOfTiltSeries',
+                      label="Input tilt series",
+                      important=True,
+                      expertLevel=LEVEL_ADVANCED,
+                      allowsNull=True)
+
         form.addParam('flipZCoords', BooleanParam,
                       label='Flip Z coordinate?',
                       default=False,
@@ -117,13 +128,25 @@ class ProtRelionPrepareData(EMProtocol):
         if not exists(defocusDir):  # It can exist in case of Continue execution
             mkdir(defocusDir)
         self.coords = self.inputCoords.get()
-        self.tsSet = recoverTSFromObj(self.coords, self)
+        self.coordsVolIds = self._getTSIDFromCoordinates()
+        self.tsSet = self._getTiltSeriesNonInterpolated()
         self.tomoSet = self.coords.getPrecedents()
         self.inputCtfs = self.inputCtfTs.get()
         # If coordinates are referred to a set of tomograms, they'll be rescaled
         # to be expressed in bin 1, as the ts images
         if self.tomoSet:
             self.coordScale.set(self.tomoSet.getSamplingRate() / self.tsSet.getSamplingRate())
+
+    def _getTiltSeriesNonInterpolated(self):
+
+        return self.inputTS.get() if self.inputTS.get() is not None else recoverTSFromObj(self.inputCoords.get(), self)
+
+    def _getTSIDFromCoordinates(self):
+        # TODO: Add this functionality to the SetOFCoordinates. May be useful for other cases
+        volIds = self.coords.aggregate(["MAX"], "_tomoId", ["_tomoId"])
+        volIds = [d['_tomoId'] for d in volIds]
+        self.info("Involved tomograms in the coordinates: %s" % volIds)
+        return volIds
 
     def convertInputStep(self):
         # Generate defocus files
@@ -143,7 +166,8 @@ class ProtRelionPrepareData(EMProtocol):
                             self._getStarFilename(IN_TOMOS_STAR),
                             prot=self,
                             ctfPlotterParentDir=self._getExtraPath(DEFOCUS),
-                            eTomoParentDir=self._getTmpPath())
+                            eTomoParentDir=self._getTmpPath(),
+                            whiteList=self.coordsVolIds)
         # Write the particles star file
         writeSetOfCoordinates(self.inputCoords.get(),
                               self._getStarFilename(IN_COORDS_STAR),
@@ -169,7 +193,7 @@ class ProtRelionPrepareData(EMProtocol):
     def _validate(self):
         # TODO: generar los nombres culled --> tsId_culled.st:mrc cuando se quiten vistas con IMOD
         errorMsg = []
-        tsSet = recoverTSFromObj(self.inputCoords.get(), self)
+        tsSet = self._getTiltSeriesNonInterpolated()
         if tsSet is None:
             errorMsg.append("Could not find any SetOfTiltSeries associated "
                             "with a transformation matrix")
