@@ -153,6 +153,7 @@ class Writer(WriterTomo):
                 ])
                 
     def subtomograms2Star(self, subtomoSet, subtomosStar):
+        logger.info("Writing relion4 star file (%s) from subtomograms."% subtomosStar)
         tomoTable = Table(columns=self.starHeaders)
         sRate = subtomoSet.getSamplingRate()
         extraPath = join(getParentFolder(subtomosStar), 'extra')
