@@ -157,10 +157,14 @@ class ProtRelionPrepareData(EMProtocol):
             generateDefocusIMODFileFromObject(ctfTomo,
                                               join(defocusPath, ctfTomo.getTsId() + '.' + DEFOCUS),
                                               isRelion=True)
+        # Thickness of the tomogram
         thickness = self.coords.getPrecedents().getDim()[2]
+        # Thickness at TS sampling rate
+        thickness = thickness * self.coordScale
+
         # Simulate the etomo files that serve as entry point to relion4
         self._simulateETomoFiles(self.tsSet, thickness=thickness, binned=self.coordScale,
-                                 binByFactor=self.coordScale)
+                                 binByFactor=self.coordScale, whiteList=self.coordsVolIds)
         # Write the tomograms star file
         writeSetOfTomograms(self.tsSet,
                             self._getStarFilename(IN_TOMOS_STAR),
@@ -238,14 +242,16 @@ class ProtRelionPrepareData(EMProtocol):
     def _decodeHandeness(self):
         return -1 if self.handeness.get() else 1
 
-    def _simulateETomoFiles(self, imgSet, **kwargs):
+    def _simulateETomoFiles(self, imgSet, whiteList=None, **kwargs):
         """Simulate the etomo files that serve as entry point to relion4
         """
         for ts in imgSet:
-            # creating a folder where all data will be generate
-            folderName = self._getTmpPath(ts.getTsId())
-            makePath(folderName)
-            # Create a symbolic link to the tomogram
-            os.symlink(os.path.abspath(ts.getFirstItem().getFileName()),
-                       os.path.join(folderName, ts.getTsId() + '.st'))
-            ts.writeImodFiles(folderName, **kwargs)
+            tsId = ts.getTsId()
+            if whiteList is None or tsId in whiteList:
+                # creating a folder where all data will be generate
+                folderName = self._getTmpPath(tsId)
+                makePath(folderName)
+                # Create a symbolic link to the tiltseries image file
+                os.symlink(os.path.abspath(ts.getFirstItem().getFileName()),
+                           os.path.join(folderName, ts.getTsId() + '.st'))
+                ts.writeImodFiles(folderName, **kwargs)
