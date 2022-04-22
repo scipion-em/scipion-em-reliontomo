@@ -160,7 +160,7 @@ class ProtRelionPrepareData(EMProtocol):
         # Thickness of the tomogram
         thickness = self.coords.getPrecedents().getDim()[2]
         # Thickness at TS sampling rate
-        thickness = thickness * self.coordScale
+        thickness = thickness * self.coordScale.get()
 
         # Simulate the etomo files that serve as entry point to relion4
         self._simulateETomoFiles(self.tsSet, thickness=thickness, binned=self.coordScale,
