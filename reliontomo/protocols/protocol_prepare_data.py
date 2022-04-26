@@ -114,6 +114,12 @@ class ProtRelionPrepareData(EMProtocol):
                       help='Same as above, in case the Z axis has been flipped. This can be used together with '
                            'the flipYZ option.')
 
+        form.addParam('swapXY', BooleanParam,
+                      label='Swap X with Y dimensions of the tilt series',
+                      default=True,
+                      help='This may be a trial and error parameter. Depending of the reconstruction path of '
+                           'your tomograms we you may need to deactivate this option to get good results.')
+
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._initialize()
@@ -163,8 +169,8 @@ class ProtRelionPrepareData(EMProtocol):
         thickness = thickness * self.coordScale.get()
 
         # Simulate the etomo files that serve as entry point to relion4
-        self._simulateETomoFiles(self.tsSet, thickness=thickness, binned=self.coordScale,
-                                 binByFactor=self.coordScale, whiteList=self.coordsVolIds)
+        self._simulateETomoFiles(self.tsSet, thickness=thickness, binned=1,
+                                 binByFactor=self.coordScale, whiteList=self.coordsVolIds, swapDims=self.swapXY.get())
         # Write the tomograms star file
         writeSetOfTomograms(self.tsSet,
                             self._getStarFilename(IN_TOMOS_STAR),
