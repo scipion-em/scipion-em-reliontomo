@@ -63,10 +63,10 @@ def writeSetOfPseudoSubtomograms(particlesSet, starFile, **kwargs):
     return createWriterTomo40(**kwargs).pseudoSubtomograms2Star(particlesSet, starFile)
 
 
-def writeSetOfTomograms(imgSet, starFile, **kwargs):
+def writeSetOfTomograms(imgSet, starFile, whiteList=None, **kwargs):
     """ Convenience function to write a SetOfTomograms as Relion metadata using a Writer."""
     # There's no tomogram star file in Relion3
-    return createWriterTomo40(**kwargs).tiltSeries2Star(imgSet, starFile, **kwargs)
+    return createWriterTomo40(**kwargs).tiltSeries2Star(imgSet, starFile, whiteList=whiteList, **kwargs)
 
 
 def createReaderTomo(starFile, **kwargs):

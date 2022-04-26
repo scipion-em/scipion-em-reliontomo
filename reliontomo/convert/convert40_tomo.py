@@ -23,6 +23,8 @@
 # *
 # **************************************************************************
 import logging
+logger = logging.getLogger(__name__)
+
 import csv
 from emtable import Table
 from pwem import ALIGN_NONE, ALIGN_2D, ALIGN_PROJ
@@ -44,8 +46,6 @@ from reliontomo.objects import PSubtomogram
 from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.objects import Coordinate3D
 
-logger = logging.getLogger(__name__)
-
 
 RELION_3D_COORD_ORIGIN = BOTTOM_LEFT_CORNER
 
@@ -56,19 +56,26 @@ class Writer(WriterTomo):
     def __init__(self,  **kwargs):
         super().__init__(**kwargs)
 
-    def tiltSeries2Star(self, tsSet, outStarFileName, prot=None, ctfPlotterParentDir=None, eTomoParentDir=None):
+    def tiltSeries2Star(self, tsSet, outStarFileName, prot=None, ctfPlotterParentDir=None, eTomoParentDir=None, whiteList=None):
+        """ Writes the needed tomograms.star file for relion prepare
+
+        :param whiteList list with tilseriesIds to be filter by"""
+
         tsTable = Table(columns=self._getTomogramStarFileLabels())
         for ts in tsSet:
             tsId = ts.getTsId()
-            tsTable.addRow(tsId,                                                # _rlnTomoName #1
-                           ts.getFirstItem().getFileName() + ':mrc',            # _rlnTomoTiltSeriesName #2
-                           self._getCtfPlotterFile(tsId, ctfPlotterParentDir),  # _rlnTomoImportCtfPlotterFile #3
-                           join(eTomoParentDir, tsId),                          # _rlnTomoImportImodDir #4
-                           ts.getAcquisition().getDosePerFrame(),               # _rlnTomoImportFractionalDose #5
-                           self._genOrderListFile(prot, ts),                    # _rlnTomoImportOrderList #6
-                           self._genCulledFileName(prot, tsId)                  # _rlnTomoImportCulledFile #7
-                           )
 
+            if whiteList is None or tsId in whiteList:
+                tsTable.addRow(tsId,                                                # _rlnTomoName #1
+                               ts.getFirstItem().getFileName() + ':mrc',            # _rlnTomoTiltSeriesName #2
+                               self._getCtfPlotterFile(tsId, ctfPlotterParentDir),  # _rlnTomoImportCtfPlotterFile #3
+                               join(eTomoParentDir, tsId),                          # _rlnTomoImportImodDir #4
+                               ts.getAcquisition().getDosePerFrame(),               # _rlnTomoImportFractionalDose #5
+                               self._genOrderListFile(prot, ts),                    # _rlnTomoImportOrderList #6
+                               self._genCulledFileName(prot, tsId)                  # _rlnTomoImportCulledFile #7
+                               )
+            else:
+                logger.info("Tilt series %s excluded." % tsId)
         # Write the STAR file
         tsTable.write(outStarFileName)
 
