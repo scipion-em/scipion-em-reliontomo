@@ -35,8 +35,8 @@ from tomo.objects import SetOfSubTomograms, SetOfCoordinates3D
 
 
 class outputObjects(Enum):
-    outputCoordinates = SetOfCoordinates3D
-    outputSubtomograms = SetOfSubTomograms
+    coordinates = SetOfCoordinates3D
+    subtomograms = SetOfSubTomograms
 
 
 class ProtImportSubtomogramsFromStar(ProtBaseImportFromStar):
@@ -61,13 +61,16 @@ class ProtImportSubtomogramsFromStar(ProtBaseImportFromStar):
         # Generate the corresponding precedents and 3d coordinates
         super()._importStep()
         # Generate the set of subtomograms
-        outputCoordsSet = getattr(self, 'outputCoordinates', None)
+        # outputCoordsSet = getattr(self, outputObjects.coordinates.name)
         subtomoSet = SetOfSubTomograms.create(self._getPath(), template='setOfSubTomograms%s.sqlite')
         subtomoSet.setSamplingRate(self.coordsSRate)
         subtomoSet.setAcquisition(self.inTomos.get().getAcquisition())
-        self.reader.starFile2SubtomogramsImport(subtomoSet, outputCoordsSet, self._getExtraPath(self.linkedSubtomosDirName),
+        self.reader.starFile2SubtomogramsImport(subtomoSet,
+                                                getattr(self, outputObjects.coordinates.name),
+                                                self._getExtraPath(self.linkedSubtomosDirName),
                                                 getParentFolder(self.starFile.get()))
-        self._defineOutputs(**{outputObjects.outputSubtomograms.name: subtomoSet})
+        self._defineOutputs(**{outputObjects.subtomograms.name: subtomoSet})
+        self._defineSourceRelation(self.inTomos.get(), subtomoSet)
 
     # --------------------------- INFO functions -----------------------------
     def _validate(self):

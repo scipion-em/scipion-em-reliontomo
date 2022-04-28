@@ -55,7 +55,7 @@ class Writer(WriterTomo):
         ih = ImageHandler()
         tomoTable = Table(columns=self.starHeaders)
         tmpDir = pwutils.getParentFolder(subtomosStar)
-        for subtomo in subtomoSet:
+        for subtomo in subtomoSet.iterSubtomos():
             if pwutils.getExt(subtomo.getFileName().replace(':' + MRC, '')) != '.' + MRC:
                 mrcDir = join(tmpDir, pwutils.removeBaseExt(subtomo.getVolName()))
                 if currentTomo != subtomo.getVolName():
@@ -119,7 +119,7 @@ class Reader(ReaderTomo):
         x = float(row.get(COORD_X, 0))
         y = float(row.get(COORD_Y, 0))
         z = float(row.get(COORD_Z, 0))
-        tomo = precedentDict[tomoNameFromStar]
+        tomo = precedentDict[removeBaseExt(tomoNameFromStar)]
         coordinate3d.setVolume(tomo)
         ctf3d = row.get(CTF_MISSING_WEDGE, FILE_NOT_FOUND)
         coordinate3d.setX(x * scaleFactor, BOTTOM_LEFT_CORNER)
@@ -131,7 +131,7 @@ class Reader(ReaderTomo):
         return coordinate3d
 
     def starFile2Coords3D(self, coordsSet, precedentsSet, scaleFactor):
-        precedentDict = {tomo.getFileName(): tomo.clone() for tomo in precedentsSet}
+        precedentDict = {removeBaseExt(tomo.getFileName()): tomo.clone() for tomo in precedentsSet}
         for row in self.dataTable:
             coordsSet.append(self.gen3dCoordFromStarRow(row, precedentDict, scaleFactor))
 

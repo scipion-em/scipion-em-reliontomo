@@ -25,7 +25,8 @@
 from pyworkflow.tests import BaseTest, DataSet
 from pyworkflow.utils import magentaStr
 from reliontomo.constants import STAR_FILES_EQUAL, STAR_DIFF_SIZE, STAR_DIFF_LABELS, STAR_DIFF_VALUES, OPTICS_TABLE, \
-    PARTICLES_TABLE, GLOBAL_TABLE
+    PARTICLES_TABLE, GLOBAL_TABLE, TOMO_PARTICLE_ID, SUBTOMO_NAME, CTF_IMAGE, CLASS_NUMBER, RANDOM_SUBSET, \
+    TILT_SERIES_NAME
 from reliontomo.objects import StarFileComparer
 from reliontomo.tests import RE4_TOMO, DataSetRe4Tomo
 
@@ -105,7 +106,7 @@ class TestStarFileComparer(BaseTest):
                               diffValues=False)
         # Check particles table
         sfc = StarFileComparer(starFile1, starFile2, PARTICLES_TABLE)
-        strings2check = ['DIFF LABELS', 'rlnClassNumber', 'rlnRandomSubset']
+        strings2check = ['DIFF LABELS', CLASS_NUMBER, RANDOM_SUBSET]
         compareMsg = sfc.compare()
         self._checkComparison(compareMsg,
                               testName=testName,
@@ -114,7 +115,6 @@ class TestStarFileComparer(BaseTest):
                               diffLabels=True,
                               diffValues=False,
                               strings2check=strings2check)
-        self.assertTrue('DIFF LABELS: rlnClassNumber rlnRandomSubset' in compareMsg)
 
     def test_04_checkDiffValues(self):
         """Compare an OK star file with a copy of itself excepting some values changed."""
@@ -145,7 +145,10 @@ class TestStarFileComparer(BaseTest):
         starFile2 = self.dataset.getFile(DataSetRe4Tomo.prepareTomosStarRelion.name)
         tablesList = [GLOBAL_TABLE, TS_45_TABLE, TS_54_TABLE]
         testName = self.test_05_prepareTomosInVsOut.__name__
-        self._checkMultipleTablesOk(starFile1, starFile2, tablesList, testName=testName)
+        excludeLabelsList = [TILT_SERIES_NAME]  # paths may differ
+        self._checkMultipleTablesOk(starFile1, starFile2, tablesList,
+                                    testName=testName,
+                                    excludeLabelsList=excludeLabelsList)
 
     def test_06_prepareParticlesInVsOut(self):
         starFile1 = self.dataset.getFile(DataSetRe4Tomo.preparePartcilesStarScipion.name)
@@ -162,7 +165,7 @@ class TestStarFileComparer(BaseTest):
         starFile2 = self.dataset.getFile(DataSetRe4Tomo.makePSubtomosStarRelion.name)
         tablesList = [OPTICS_TABLE, PARTICLES_TABLE]
         testName = self.test_07_makePSubtomosInVsOut.__name__
-        excludeLabelsList = ['rlnTomoParticleId']
+        excludeLabelsList = [TOMO_PARTICLE_ID, SUBTOMO_NAME, CTF_IMAGE]  # Paths may be different, but tsId are enough for the match
         self._checkMultipleTablesOk(starFile1, starFile2, tablesList,
                                     testName=testName,
                                     excludeLabelsList=excludeLabelsList)

@@ -26,12 +26,10 @@ from imod.protocols import ProtImodTomoNormalization
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtImportSubtomogramsFromStar
-from reliontomo.tests import DataSetEmd10439, EMD_10439, OUTPUT_TOMOS, OUTPUT_COORDS
+from reliontomo.protocols.protocol_import_subtomograms_from_star import outputObjects as importSubtomosOutputs
+from reliontomo.tests import DataSetEmd10439, EMD_10439, OUTPUT_TOMOS
 from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.protocols import ProtImportTomograms
-
-
-OUTPUT_SUBTOMOS = 'outputSubtomograms'
 
 
 class TestImportFromStarFile(BaseTest):
@@ -77,7 +75,7 @@ class TestImportFromStarFile(BaseTest):
                                                      boxSize=cls.boxSize)
 
         cls.launchProtocol(protImportCoords3dFromStar)
-        outCoords = getattr(protImportCoords3dFromStar, OUTPUT_COORDS, None)
+        outCoords = getattr(protImportCoords3dFromStar, importSubtomosOutputs.coordinates.name)
         cls.assertIsNotNone(outCoords, 'No coordinates were genetated.')
         return outCoords
 
@@ -133,8 +131,8 @@ class TestImportFromStarFile(BaseTest):
                                                           boxSize=self.boxSize)
 
         self.launchProtocol(protImportSubtomogramsFromStar)
-        outCoords = getattr(protImportSubtomogramsFromStar, OUTPUT_COORDS, None)
-        outSubtomos = getattr(protImportSubtomogramsFromStar, OUTPUT_SUBTOMOS, None)
+        outCoords = getattr(protImportSubtomogramsFromStar, importSubtomosOutputs.coordinates.name)
+        outSubtomos = getattr(protImportSubtomogramsFromStar, importSubtomosOutputs.subtomograms.name)
         self._checkCoordinates(outCoords, coordSetSize=7, inTomos=self.inTomoSet)
         self._checkSubtomograms(outSubtomos)
 

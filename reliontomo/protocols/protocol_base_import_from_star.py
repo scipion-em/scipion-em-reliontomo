@@ -36,7 +36,7 @@ from tomo.objects import SetOfCoordinates3D
 
 
 class outputObjects(Enum):
-    outputCoordinates = SetOfCoordinates3D
+    coordinates = SetOfCoordinates3D
 
 
 class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
@@ -101,7 +101,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         coordSet.setBoxSize(self.boxSize.get())
         self.reader.starFile2Coords3D(coordSet, precedentsSet, self.coordsSRate / self.inTomos.get().getSamplingRate())
 
-        self._defineOutputs(outputCoordinates=coordSet)
+        self._defineOutputs(**{outputObjects.coordinates.name: coordSet})
         self._defineSourceRelation(self.inTomos.get(), coordSet)
 
     # --------------------------- INFO functions ------------------------------

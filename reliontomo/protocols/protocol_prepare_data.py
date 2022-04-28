@@ -33,13 +33,10 @@ from pyworkflow.object import Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED
 from pyworkflow.utils import makePath
 from reliontomo import Plugin
-from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR,
-                                  OPTIMISATION_SET_STAR)
+from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR, OPTIMISATION_SET_STAR)
 from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates
 from reliontomo.objects import relionTomoMetadata
-
-# data source
-from tomo.utils import recoverTSFromObj
+from tomo.utils import getNonInterpolatedTsFromRelations
 
 # Other constants
 DEFOCUS = 'defocus'
@@ -144,8 +141,8 @@ class ProtRelionPrepareData(EMProtocol):
             self.coordScale.set(self.tomoSet.getSamplingRate() / self.tsSet.getSamplingRate())
 
     def _getTiltSeriesNonInterpolated(self):
-
-        return self.inputTS.get() if self.inputTS.get() is not None else recoverTSFromObj(self.inputCoords.get(), self)
+        return self.inputTS.get() if self.inputTS.get() is not None else \
+            getNonInterpolatedTsFromRelations(self.inputCoords.get(), self)
 
     def _getTSIDFromCoordinates(self):
         # TODO: Add this functionality to the SetOFCoordinates. May be useful for other cases
