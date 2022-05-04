@@ -33,8 +33,8 @@ from tomo.objects import AverageSubTomogram
 
 
 class outputObjects(Enum):
-    outputRelionParticles = relionTomoMetadata()
-    outputAverage = AverageSubTomogram()
+    outputRelionParticles = relionTomoMetadata
+    outputAverage = AverageSubTomogram
 
 
 class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBase):
