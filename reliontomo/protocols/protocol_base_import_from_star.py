@@ -99,7 +99,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         coordSet.setPrecedents(precedentsSet)
         coordSet.setSamplingRate(precedentsSet.getSamplingRate())
         coordSet.setBoxSize(self.boxSize.get())
-        self.reader.starFile2Coords3D(coordSet, precedentsSet, self.coordsSRate / self.inTomos.get().getSamplingRate())
+        self.reader.starFile2Coords3D(coordSet, precedentsSet, self.coordsSRate / precedentsSet.getSamplingRate())
 
         self._defineOutputs(**{outputObjects.coordinates.name: coordSet})
         self._defineSourceRelation(self.inTomos.get(), coordSet)

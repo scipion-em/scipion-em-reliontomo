@@ -34,10 +34,11 @@ from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelionPrepareData, \
     ProtRelionMakePseudoSubtomograms, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms, \
     ProtRelionReconstructParticle
+from reliontomo.protocols.protocol_base_import_from_star import outputObjects as importStarOutputs
 from reliontomo.protocols.protocol_make_pseudo_subtomos import outputObjects as makePSubtomosOutputs
 from reliontomo.protocols.protocol_prepare_data import outputObjects as prepareOutputs
 from reliontomo.protocols.protocol_de_novo_initial_model import outputObjects as iniModelOutputs
-from reliontomo.tests import RE4_TOMO, DataSetRe4Tomo, OUTPUT_COORDS
+from reliontomo.tests import RE4_TOMO, DataSetRe4Tomo
 from tomo.protocols import ProtImportTs
 from tomo3d.protocols import ProtJjsoftReconstructTomogram
 from tomo3d.protocols.protocol_reconstruct_tomogram import SIRT
@@ -45,6 +46,7 @@ from tomo3d.protocols.protocol_reconstruct_tomogram import SIRT
 RELION_TOMO_MD = prepareOutputs.outputRelionParticles.name
 OUTPUT_VOLUMES = makePSubtomosOutputs.outputVolumes.name
 OUTPUT_MODEL = iniModelOutputs.outputAverage.name
+OUTPUT_COORDS = importStarOutputs.coordinates.name
 
 
 class TestRefinceCycle(BaseTest):
