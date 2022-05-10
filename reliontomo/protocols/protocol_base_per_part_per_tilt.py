@@ -33,8 +33,8 @@ from reliontomo.utils import genOutputPseudoSubtomograms
 
 
 class outputObjects(Enum):
-    outputRelionParticles = relionTomoMetadata
-    outputVolumes = SetOfPseudoSubtomograms
+    relionParticles = relionTomoMetadata
+    volumes = SetOfPseudoSubtomograms
 
 
 class ProtRelionPerParticlePerTiltBase(EMProtocol):
@@ -77,35 +77,23 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
     def _insertAllSteps(self):
         pass
 
-    # -------------------------- UTILS functions -----------------------------
-    # def _initialize(self):
-    #     self._findClosestAdmittedVal()
-        # self.inTomosStar = self._getExtraPath(IN_TOMOS_STAR)
-        # createLink(getFileFromDataPrepProt(self, OUT_TOMOS_STAR), self.inTomosStar)
-
-    # def convertInputStep(self):
-    #     self.inParticlesStar = self._getExtraPath(IN_PARTICLES_STAR)
-    #     writeSetOfPseudoSubtomograms(self.inPseudoSubtomos.get(), self.inParticlesStar)
-
     def createOutputStep(self):
+        inOptSet = self.inOptSet.get()
         # Output RelionParticles
         relionParticles = relionTomoMetadata(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
-                                             tsSamplingRate=self.inOptSet.get().getTsSamplingRate(),
-                                             relionBinning=self.inOptSet.get().getRelionBinning(),
-                                             nParticles=self.inOptSet.get().getNumParticles())
+                                             tsSamplingRate=inOptSet.getTsSamplingRate(),
+                                             relionBinning=inOptSet.getRelionBinning(),
+                                             nParticles=inOptSet.getNumParticles())
 
         # Output pseudosubtomograms --> set of volumes for visualization purposes
         outputSet = genOutputPseudoSubtomograms(self, relionParticles.getCurrentSamplingRate())
 
-        self._defineOutputs(**{outputObjects.outputRelionParticles.name: relionParticles,
-                               outputObjects.outputVolumes.name: outputSet})
+        self._defineOutputs(**{outputObjects.relionParticles.name: relionParticles,
+                               outputObjects.volumes.name: outputSet})
+        self._defineSourceRelation(inOptSet, relionParticles)
+        self._defineSourceRelation(inOptSet, outputSet)
 
-    # def _findClosestAdmittedVal(self):
-    #     validVals = np.array(BOX_SIZE_VALS)
-    #     # Find index of minimum value
-    #     ind = np.where(validVals == np.amin(validVals - self.boxSize.get()))[0].tolist()[0]
-    #     self._boxSize4Est = BOX_SIZE_VALS[ind]
-
+    # -------------------------- UTILS functions -----------------------------
     def _genIOCommand(self):
         optSet = self.inOptSet.get()
         trajectories = optSet.getTrajectories()

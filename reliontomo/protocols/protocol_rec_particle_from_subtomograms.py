@@ -36,7 +36,7 @@ from reliontomo.convert import writeSetOfSubtomograms
 
 
 class outputObjects(Enum):
-    outputVolume = AverageSubTomogram()
+    average = AverageSubTomogram()
 
 
 class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
@@ -136,7 +136,7 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
         volume.setFileName(volumeFile)
         volume.setSamplingRate(imgSet.getSamplingRate())
         
-        self._defineOutputs(**{outputObjects.outputVolume.name: volume})
+        self._defineOutputs(**{outputObjects.average.name: volume})
         self._defineSourceRelation(self.inputSubtomos, volume)
     
     # -------------------------- INFO functions -------------------------------

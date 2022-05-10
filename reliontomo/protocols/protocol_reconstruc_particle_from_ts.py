@@ -33,8 +33,8 @@ from tomo.objects import AverageSubTomogram
 
 
 class outputObjects(Enum):
-    outputRelionParticles = relionTomoMetadata
-    outputAverage = AverageSubTomogram
+    relionParticles = relionTomoMetadata
+    average = AverageSubTomogram
 
 
 class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBase):
@@ -83,11 +83,12 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
                              numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
+        inOptSet = self.inOptSet.get()
         # Output Relion Particles
         relionParticles = relionTomoMetadata(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
-                                             tsSamplingRate=self.inOptSet.get().getTsSamplingRate(),
+                                             tsSamplingRate=inOptSet.getTsSamplingRate(),
                                              relionBinning=self.binningFactor.get(),
-                                             nParticles=self.inOptSet.get().getNumParticles())
+                                             nParticles=inOptSet.getNumParticles())
 
         # Output average
         vol = AverageSubTomogram()
@@ -95,8 +96,10 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
         vol.setHalfMaps([self._getExtraPath('half1.mrc'), self._getExtraPath('half2.mrc')])
         vol.setSamplingRate(relionParticles.getCurrentSamplingRate())
 
-        self._defineOutputs(**{outputObjects.outputAverage.name: vol,
-                               outputObjects.outputRelionParticles.name: relionParticles})
+        self._defineOutputs(**{outputObjects.average.name: vol,
+                               outputObjects.relionParticles.name: relionParticles})
+        self._defineSourceRelation(inOptSet, relionParticles)
+        self._defineSourceRelation(inOptSet, vol)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):

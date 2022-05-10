@@ -157,7 +157,7 @@ class ProtRelionRefineBase(EMProtocol):
 
     # COMPUTE PARAMS ---------------------------------------------------------------------------------------------------
     @staticmethod
-    def _defineComputeParams(form):
+    def _defineComputeParams(form, isOnlyClassif=False):
         form.addSection(label='Compute')
         form.addParam('parallelDiscIO', BooleanParam,
                       default=True,
@@ -199,16 +199,6 @@ class ProtRelionRefineBase(EMProtocol):
                       label='Copy particles to scratch directory',
                       help='If provided, particle stacks will be copied to this local scratch disk prior for '
                            'refinement.')
-        form.addParam('doGpu', BooleanParam,
-                      default=False,
-                      label='Use GPU acceleration?',
-                      help='If set to Yes, it will use available gpu resources for some calculations.')
-        form.addParam('gpusToUse', StringParam,
-                      condition='doGpu',
-                      default='0',
-                      label='GPUs to use:',
-                      help='It can be used to provide a list of which GPUs (e. g. "0:1:2:3") to use. MPI-processes are '
-                           'separated by ":", threads by ",". For example: "0,0:1,1:0,0:1,1"')
 
     # ADDITIONAL PARAMS ------------------------------------------------------------------------------------------------
     @staticmethod
@@ -269,6 +259,19 @@ class ProtRelionRefineBase(EMProtocol):
                            'Translational sampling is also done using the adaptive approach. '
                            'Therefore, if adaptive=1, the translations will first be evaluated'
                            'on a 2x coarser grid.')
+
+    @staticmethod
+    def _insertGpuParams(form):
+        form.addParam('doGpu', BooleanParam,
+                      default=False,
+                      label='Use GPU acceleration?',
+                      help='If set to Yes, it will use available gpu resources for some calculations.')
+        form.addParam('gpusToUse', StringParam,
+                      condition='doGpu',
+                      default='0',
+                      label='GPUs to use:',
+                      help='It can be used to provide a list of which GPUs (e. g. "0:1:2:3") to use. MPI-processes are '
+                           'separated by ":", threads by ",". For example: "0,0:1,1:0,0:1,1"')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

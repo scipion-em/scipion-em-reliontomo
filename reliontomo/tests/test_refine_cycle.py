@@ -43,9 +43,9 @@ from tomo.protocols import ProtImportTs
 from tomo3d.protocols import ProtJjsoftReconstructTomogram
 from tomo3d.protocols.protocol_reconstruct_tomogram import SIRT
 
-RELION_TOMO_MD = prepareOutputs.outputRelionParticles.name
-OUTPUT_VOLUMES = makePSubtomosOutputs.outputVolumes.name
-OUTPUT_MODEL = iniModelOutputs.outputAverage.name
+RELION_TOMO_MD = prepareOutputs.relionParticles.name
+OUTPUT_VOLUMES = makePSubtomosOutputs.volumes.name
+OUTPUT_MODEL = iniModelOutputs.average.name
 OUTPUT_COORDS = importStarOutputs.coordinates.name
 
 
@@ -84,20 +84,10 @@ class TestRefinceCycle(BaseTest):
         cls.protPrepare = cls._prepareData4RelionTomo()
         cls.protMakePSubtomos = cls._makePSubtomograms()
         cls.protInitialModel = cls._genInitialModel()
+        cls.protCl3d = cls._3dClassify()
+        cls.protCl3dWithAlign = cls._3dClassify(doAlingment=True)
         cls.protAutoRefine = cls._autoRefine()
         cls.protRecPartFromTS = cls._recParticleFromTS()
-
-    # @classmethod
-    # def _importTomograms(cls):
-    #     print(magentaStr("\n==> Importing data - tomograms:"))
-    #     tomogramsBinning = 4
-    #     protImportTomogram = cls.newProtocol(ProtImportTomograms,
-    #                                          filesPath=cls.dataset.getFile(DataSetRe4Tomo.tomogram.name),
-    #                                          samplingRate=tomogramsBinning * cls.samplingRateOrig)
-    # 
-    #     cls.launchProtocol(protImportTomogram)
-    #     outputTomos = getattr(protImportTomogram, OUTPUT_TOMOS, None)
-    #     return outputTomos
 
     @classmethod
     def _importTS(cls):
@@ -215,6 +205,28 @@ class TestRefinceCycle(BaseTest):
         return protInitialModel
 
     @classmethod
+    def _3dClassify(cls, doAlingment=False):
+        print(magentaStr("\n==> Classifying the psudosubtomograms:"))
+        paramsDict = {'inOptSet': getattr(cls.protMakePSubtomos, RELION_TOMO_MD, None),
+                      'referenceVolume': getattr(cls.protInitialModel, OUTPUT_MODEL, None),
+                      'initialLowPassFilterA': 30,
+                      'symmetry': cls.symmetry,
+                      'maskDiameter': 230,
+                      'nIterations': 3,
+                      'pooledSubtomos': 6,
+                      'numberOfMpi': 3,
+                      'numberOfThreads': 3}
+
+        if doAlingment:
+            paramsDict['doImageAlignment'] = True
+            paramsDict['doGpu'] = True
+            paramsDict['gpusToUse'] = '0'
+
+        protCl3d = cls.newProtocol(ProtRelionRefineSubtomograms, **paramsDict)
+        cls.launchProtocol(protCl3d)
+        return protCl3d
+
+    @classmethod
     def _autoRefine(cls):
         print(magentaStr("\n==> Refining the particles:"))
         protAutoRefine = cls.newProtocol(ProtRelionRefineSubtomograms,
@@ -326,6 +338,28 @@ class TestRefinceCycle(BaseTest):
         recVol = getattr(protInitialModel, OUTPUT_MODEL, None)
         self._checkRecVolume(recVol, optSet=protInitialModel.inOptSet.get(), boxSize=self.boxSizeBin4)
 
+    def testCl3d(self):
+        protMakePSubtomos = self.protMakePSubtomos
+        protCl3d = self.protCl3d
+        mdObj = getattr(protCl3d, RELION_TOMO_MD, None)
+        # Check RelionTomoMetadata: only the particles file is generated
+        self._checkRe4Metadata(mdObj,
+                               tomogramsFile=self.protPrepare._getExtraPath(OUT_TOMOS_STAR),
+                               particlesFile=protCl3d._getExtraPath(OUT_PARTICLES_STAR),
+                               trajectoriesFile=None,
+                               manifoldsFile=None,
+                               referenceFscFile=None,
+                               relionBinning=4
+                               )
+        # Check the set of pseudosubtomograms
+        self._checkPseudosubtomograms(getattr(protCl3d, OUTPUT_VOLUMES, None),
+                                      boxSize=protMakePSubtomos.croppedBoxSize.get(),
+                                      currentSRate=mdObj.getCurrentSamplingRate()
+                                      )
+        # Check the classes
+
+
+
     def testAutoRefine(self):
         protMakePSubtomos = self.protMakePSubtomos
         protAutoRefine = self.protAutoRefine
@@ -374,4 +408,4 @@ class TestRefinceCycle(BaseTest):
                              halves=[protRecPartFromTS._getExtraPath('half1.mrc'),
                                      protRecPartFromTS._getExtraPath('half2.mrc')])
 
-        #TODO: make a star file comparer for testing
+        # TODO: make a star file comparer for testing

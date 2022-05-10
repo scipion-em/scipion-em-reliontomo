@@ -28,8 +28,8 @@ from tomo.objects import SetOfTomograms, SetOfCoordinates3D
 
 
 class outputObjects(Enum):
-    outputTomograms = SetOfTomograms()
-    outputCoordinates = SetOfCoordinates3D()
+    tomograms = SetOfTomograms()
+    coordinates = SetOfCoordinates3D()
 
 
 class ProtImportCoordinates3DFromStar(ProtBaseImportFromStar):

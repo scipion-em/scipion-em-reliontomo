@@ -40,9 +40,8 @@ NO_MTF_FILE = 0
 
 
 class outputObjects(Enum):
-    outputRelionParticles = relionTomoMetadata
-    outputPostProcessVolume = VolumeMask
-    # outputPostProcessVolumeMasked = VolumeMask
+    relionParticles = relionTomoMetadata
+    postProcessVolume = VolumeMask
 
 
 class ProtRelionPostProcess(EMProtocol):
@@ -158,16 +157,18 @@ class ProtRelionPostProcess(EMProtocol):
         Plugin.runRelionTomo(self, 'relion_postprocess', self.genPostProcessCmd())
 
     def createOutputStep(self):
+        inOptSet = self.inOptSet.get()
         # Output RelionParticles
-        relionParticles = genRelionParticles(self._getExtraPath(), self.inOptSet.get())
+        relionParticles = genRelionParticles(self._getExtraPath(), inOptSet)
         # Output FSC masks
         postProccesMrc = self._genPostProcessOutputMrcFile(POST_PROCESS_MRC)
         # postProcessMaskedMrc = self._genPostProcessOutputMrcFile(POST_PROCESS_MASKED_MRC)
 
-        outputDict = {outputObjects.outputRelionParticles.name: relionParticles,
-                      outputObjects.outputPostProcessVolume.name: postProccesMrc}
-                      # outputObjects.outputPostProcessVolumeMasked.name: postProcessMaskedMrc}
+        outputDict = {outputObjects.relionParticles.name: relionParticles,
+                      outputObjects.postProcessVolume.name: postProccesMrc}
         self._defineOutputs(**outputDict)
+        self._defineSourceRelation(inOptSet, relionParticles)
+        self._defineSourceRelation(inOptSet, postProccesMrc)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):

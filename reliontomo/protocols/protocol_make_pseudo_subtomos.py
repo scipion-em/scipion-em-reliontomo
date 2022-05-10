@@ -34,8 +34,8 @@ from tomo.protocols import ProtTomoBase
 
 
 class outputObjects(Enum):
-    outputRelionParticles = relionTomoMetadata
-    outputVolumes = SetOfPseudoSubtomograms
+    relionParticles = relionTomoMetadata
+    volumes = SetOfPseudoSubtomograms
 
 
 class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticleBase, ProtTomoBase):
@@ -94,17 +94,20 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
                              self._genMakePseudoSubtomoCmd(), numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
+        inOptSet = self.inOptSet.get()
         # Output RelionParticles
         relionParticles = relionTomoMetadata(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
-                                             tsSamplingRate=self.inOptSet.get().getTsSamplingRate(),
+                                             tsSamplingRate=inOptSet.getTsSamplingRate(),
                                              relionBinning=self.binningFactor.get(),
-                                             nParticles=self.inOptSet.get().getNumParticles())
+                                             nParticles=inOptSet.getNumParticles())
 
         # Output pseudosubtomograms --> set of volumes for visualization purposes
         outputSet = genOutputPseudoSubtomograms(self, relionParticles.getCurrentSamplingRate())
 
-        self._defineOutputs(**{outputObjects.outputRelionParticles.name: relionParticles,
-                               outputObjects.outputVolumes.name: outputSet})
+        self._defineOutputs(**{outputObjects.relionParticles.name: relionParticles,
+                               outputObjects.volumes.name: outputSet})
+        self._defineSourceRelation(inOptSet, relionParticles)
+        self._defineSourceRelation(inOptSet, outputSet)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):

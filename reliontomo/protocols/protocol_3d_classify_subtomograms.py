@@ -22,19 +22,28 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from enum import Enum
 from os import remove, listdir
 from os.path import abspath, exists, isfile, join
 
 from emtable import Table
 
 from pyworkflow.object import Float
-from pyworkflow.utils import moveFile
+from pyworkflow.utils import moveFile, createLink
+from reliontomo.constants import OUT_PARTICLES_STAR
+from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
 from reliontomo.protocols import ProtRelionRefineSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
-from pyworkflow.protocol import FloatParam, BooleanParam, GE, LE
-from reliontomo.utils import getProgram
+from pyworkflow.protocol import FloatParam, BooleanParam, GE, LE, IntParam, StringParam
+from reliontomo.utils import getProgram, genRelionParticles, genOutputPseudoSubtomograms
 from tomo.objects import SetOfClassesSubTomograms, SetOfAverageSubTomograms
+
+
+class outputObjects(Enum):
+    relionParticles = relionTomoMetadata
+    volumes = SetOfPseudoSubtomograms
+    classes = SetOfClassesSubTomograms
 
 
 class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
@@ -57,6 +66,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         self._defineOptimisationParams(form)
         self._defineSamplingParams(form)
         ProtRelionRefineSubtomograms._defineComputeParams(form)
+        self._insertGpuParams(form)
         ProtRelionRefineSubtomograms._defineAdditionalParams(form)
 
     @staticmethod
@@ -64,7 +74,13 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         ProtRelionRefineSubtomograms._insertOptimisationSection(form)
         ProtRelionRefineSubtomograms._insertNumOfClassesParam(form)
         ProtRelionRefineSubtomograms._insertRegularisationParam(form)
-        # ProtRelionRefineSubtomograms._insertNItersParam(form)
+        form.addParam('nIterations', IntParam,
+                      label='Number of iterations',
+                      default=25,
+                      help='Number of iterations to be performed. Note that the current implementation of 2D class '
+                           'averaging and 3D classification does NOT comprise a convergence criterium. Therefore, '
+                           'the calculations will need to be stopped by the user if further iterations do not yield '
+                           'improvements in resolution or classes.')
         form.addParam('useFastSubsets', BooleanParam,
                       label='Use fast subsets (for large data sets)?',
                       default=False,
@@ -104,7 +120,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                            "at the optimal orientation in the previous iteration and with a stddev of 1/3 of the range "
                            "given below will be enforced.")
         form.addParam('localAngularSearchRange', FloatParam,
-                      label='Local angular search range',
+                      label='Local angular search range (deg.)',
                       condition='doImageAlignment and doLocalAngleSearch',
                       default=5,
                       validators=[GE(0), LE(15)],
@@ -121,6 +137,20 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                            "estimated accuracies of the assignments are still low in the earlier iterations. This may "
                            "speed up the calculations.")
 
+    @staticmethod
+    def _insertGpuParams(form):
+        form.addParam('doGpu', BooleanParam,
+                      default=False,
+                      condition='doImageAlignment',
+                      label='Use GPU acceleration?',
+                      help='If set to Yes, it will use available gpu resources for some calculations.')
+        form.addParam('gpusToUse', StringParam,
+                      condition='doGpu',
+                      default='0',
+                      label='GPUs to use:',
+                      help='It can be used to provide a list of which GPUs (e. g. "0:1:2:3") to use. MPI-processes are '
+                           'separated by ":", threads by ",". For example: "0,0:1,1:0,0:1,1"')
+
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._insertFunctionStep(self._classify3d)
@@ -132,31 +162,37 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genCl3dCommand(), numberOfMpi=nMpi)
 
     def createOutputStep(self):
-        # self._manageGeneratedFiles()
-        subtomoSet = self.inputPseudoSubtomos.get()
-        classes3D = self._createSetOfClassesSubTomograms(subtomoSet)
+        # Rename the particles file generated (_data.star) to follow the name convention
+        createLink(self._getIterGenFileName('data', self.nIterations.get()), self._getExtraPath(OUT_PARTICLES_STAR))
+
+        # Output RelionParticles
+        relionParticles = genRelionParticles(self._getExtraPath(), self.inOptSet.get())
+
+        # Output pseudosubtomograms --> set of volumes for visualization purposes
+        pSubtomoSet = genOutputPseudoSubtomograms(self, relionParticles.getCurrentSamplingRate())
+
+        # Output classes
+        classes3D = self._createSetOfClassesSubTomograms(pSubtomoSet)
+        classes3D.setImages(pSubtomoSet)
         self._fillClassesFromIter(classes3D, self.nIterations.get())
-
-        self._defineOutputs(outputClasses=classes3D)
-        self._defineSourceRelation(subtomoSet, classes3D)
-
-        # Create a SetOfVolumes and define its relations
-        volumes = SetOfAverageSubTomograms.create(self._getPath(),
-                                                  template='avgSubtomograms%s.sqlite',
-                                                  suffix='')
-        volumes.setSamplingRate(subtomoSet.getSamplingRate())
-
+        averages = SetOfAverageSubTomograms.create(self._getPath(),
+                                                   template='avgSubtomograms%s.sqlite',
+                                                   suffix='')
+        averages.setSamplingRate(pSubtomoSet.getSamplingRate())
         for class3D in classes3D:
             vol = class3D.getRepresentative()
             vol.setObjId(class3D.getObjId())
-            volumes.append(vol)
+            averages.append(vol)
 
-        self._defineOutputs(outputVolumes=volumes)
-        self._defineSourceRelation(subtomoSet, volumes)
+        outputDict = {outputObjects.relionParticles.name: relionParticles,
+                      outputObjects.volumes.name: pSubtomoSet,
+                      outputObjects.classes.name: classes3D}
+        self._defineOutputs(**outputDict)
 
-        # if not self.doContinue:
-        #     self._defineSourceRelation(self.referenceVolume, classes3D)
-        #     self._defineSourceRelation(self.referenceVolume, volumes)
+        inOptSet = self.inOptSet.get()
+        self._defineSourceRelation(inOptSet, relionParticles)
+        self._defineSourceRelation(inOptSet, pSubtomoSet)
+        self._defineSourceRelation(inOptSet, classes3D)
 
         if self.keepOnlyLastIterFiles.get():
             self._cleanUndesiredFiles()
@@ -204,14 +240,16 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         # Sampling args
         if self.doImageAlignment.get():
             cmd += '--healpix_order %i ' % self.angularSamplingDeg.get()
-            cmd += 'offset_range %i ' % self.offsetSearchRangePix.get()
-            cmd += '--offset_step %d ' % (2 * self.offsetSearchStepPix.get())
+            cmd += '--offset_range %i ' % self.offsetSearchRangePix.get()
+            cmd += '--offset_step %d ' % (self.offsetSearchStepPix.get() * 2 ** self.oversampling.get())
             if self.doLocalAngleSearch.get():
-                cmd += '--sigma_ang %d ' % self.localAngularSearchRange.get()
+                cmd += '--sigma_ang %d ' % (self.localAngularSearchRange.get() / 3)
                 if self.relaxSym.get():
-                   cmd += '--relax_sym %s ' % self.relaxSym.get()
+                    cmd += '--relax_sym %s ' % self.relaxSym.get()
             if self.allowCoarser.get():
                 cmd += '--allow_coarser_sampling '
+        else:
+            cmd += '--skip_align '
 
         # Compute args
         cmd += self._genComputeBaseCmd()
@@ -258,7 +296,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
 
     @staticmethod
     def _updateParticle(item, row):
-        item.setClassId(row.rlnClassNumber)#rlnGroupNumber))
+        item.setClassId(row.rlnClassNumber)  # rlnGroupNumber))
         item._rlnLogLikeliContribution = Float(row.rlnLogLikeliContribution)
         item._rlnMaxValueProbDistribution = Float(row.rlnMaxValueProbDistribution)
 
@@ -289,7 +327,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         mrcExt = '.mrc'
         # Classify calculations related files
         calcFiles = ['data', 'model', 'optimiser', 'sampling']
-        for i in range(self._lastIter()):
+        for i in range(self.nIterations.get()):
             for calcFile in calcFiles:
                 fn = abspath(self._getExtraPath('{}{:03d}_{}{}'.format(
                     itPref, i, calcFile, starExt)))
@@ -314,4 +352,4 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
 
     def _getIterGenFileName(self, fileType, iteration):
         # Pattern to reproduce is it[3 digit number]_[file type].star
-        return self._getExtraPath('it%03d_%s.star' % (iteration, fileType))
+        return self._getExtraPath('_it%03d_%s.star' % (iteration, fileType))

@@ -36,8 +36,8 @@ evenAberrationOrders = [4, 6, 8]
 
 
 class outputObjects(Enum):
-    outputRelionParticles = relionTomoMetadata
-    outputVolumes = SetOfPseudoSubtomograms
+    relionParticles = relionTomoMetadata
+    volumes = SetOfPseudoSubtomograms
 
 
 class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):

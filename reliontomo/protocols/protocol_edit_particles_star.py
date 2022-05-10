@@ -50,7 +50,7 @@ LABELS_TO_OPERATE_WITH = [COORDINATES, SHIFTS, ANGLES]
 
 
 class outputObjects(Enum):
-    outputRelionParticles = relionTomoMetadata
+    relionParticles = relionTomoMetadata
 
 
 class ProtRelionEditParticlesStar(EMProtocol):
@@ -156,9 +156,11 @@ class ProtRelionEditParticlesStar(EMProtocol):
         Plugin.runRelionTomo(self, 'relion_star_handler', self._getOperateCommand())
 
     def createOutputStep(self):
+        inOptSet = self.inOptSet.get()
         # Output RelionParticles
-        relionParticles = genRelionParticles(self._getExtraPath(), self.inOptSet.get())
-        self._defineOutputs(**{outputObjects.outputRelionParticles.name: relionParticles})
+        relionParticles = genRelionParticles(self._getExtraPath(), inOptSet)
+        self._defineOutputs(**{outputObjects.relionParticles.name: relionParticles})
+        self._defineSourceRelation(inOptSet, relionParticles)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):

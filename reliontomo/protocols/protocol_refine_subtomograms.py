@@ -43,9 +43,9 @@ from tomo.protocols import ProtTomoBase
 
 
 class outputObjects(Enum):
-    outputRelionParticles = relionTomoMetadata
-    outputVolumes = SetOfPseudoSubtomograms
-    outputAverage = AverageSubTomogram
+    relionParticles = relionTomoMetadata
+    volumes = SetOfPseudoSubtomograms
+    average = AverageSubTomogram
     outputFSC = FSC
 
 
@@ -69,6 +69,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         self._defineOptimisationParamsCommon2All(form)
         self._defineAutoSamplingParams(form)
         self._defineComputeParams(form)
+        ProtRelionRefineBase._insertGpuParams(form)
         ProtRelionRefineBase._defineAdditionalParams(form)
 
     @staticmethod
@@ -289,11 +290,15 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         frc = table.getColumnValues('rlnGoldStandardFsc')
         fsc.setData(resolution_inv, frc)
 
-        outputDict = {outputObjects.outputRelionParticles.name: relionParticles,
-                      outputObjects.outputVolumes.name: outputSet,
-                      outputObjects.outputAverage.name: vol,
+        outputDict = {outputObjects.relionParticles.name: relionParticles,
+                      outputObjects.volumes.name: outputSet,
+                      outputObjects.average.name: vol,
                       outputObjects.outputFSC.name: fsc}
         self._defineOutputs(**outputDict)
+        inOptSet = self.inOptSet.get()
+        self._defineSourceRelation(inOptSet, relionParticles)
+        self._defineSourceRelation(inOptSet, outputSet)
+        self._defineSourceRelation(inOptSet, vol)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):

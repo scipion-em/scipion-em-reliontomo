@@ -43,7 +43,7 @@ DEFOCUS = 'defocus'
 
 
 class outputObjects(Enum):
-    outputRelionParticles = relionTomoMetadata
+    relionParticles = relionTomoMetadata
 
 
 class ProtRelionPrepareData(EMProtocol):
@@ -193,7 +193,8 @@ class ProtRelionPrepareData(EMProtocol):
                                              relionBinning=self.coordScale.get(),
                                              nParticles=self.coords.getSize())
 
-        self._defineOutputs(**{outputObjects.outputRelionParticles.name: relionParticles})
+        self._defineOutputs(**{outputObjects.relionParticles.name: relionParticles})
+        self._defineSourceRelation(self.inputCoords.get(), relionParticles)
         self._store()
 
     # -------------------------- INFO functions -------------------------------
