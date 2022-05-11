@@ -34,6 +34,8 @@ from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelionPrepareData, \
     ProtRelionMakePseudoSubtomograms, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms, \
     ProtRelionReconstructParticle
+from reliontomo.protocols.protocol_3d_classify_subtomograms import outputObjects as cl3dOutputs, \
+    ProtRelion3DClassifySubtomograms
 from reliontomo.protocols.protocol_base_import_from_star import outputObjects as importStarOutputs
 from reliontomo.protocols.protocol_make_pseudo_subtomos import outputObjects as makePSubtomosOutputs
 from reliontomo.protocols.protocol_prepare_data import outputObjects as prepareOutputs
@@ -47,6 +49,7 @@ RELION_TOMO_MD = prepareOutputs.relionParticles.name
 OUTPUT_VOLUMES = makePSubtomosOutputs.volumes.name
 OUTPUT_MODEL = iniModelOutputs.average.name
 OUTPUT_COORDS = importStarOutputs.coordinates.name
+OUTPUT_CLASSES = cl3dOutputs.classes.name
 
 
 class TestRefinceCycle(BaseTest):
@@ -68,6 +71,7 @@ class TestRefinceCycle(BaseTest):
     samplingRateOrig = 1.35
     tsIds = ['TS_45', 'TS_54']
     symmetry = 'C6'
+    nClasses = 2
 
     @classmethod
     def setUpClass(cls):
@@ -206,9 +210,9 @@ class TestRefinceCycle(BaseTest):
 
     @classmethod
     def _3dClassify(cls, doAlingment=False):
-        print(magentaStr("\n==> Classifying the psudosubtomograms:"))
         paramsDict = {'inOptSet': getattr(cls.protMakePSubtomos, RELION_TOMO_MD, None),
                       'referenceVolume': getattr(cls.protInitialModel, OUTPUT_MODEL, None),
+                      'numberOfClasses': cls.nClasses,
                       'initialLowPassFilterA': 30,
                       'symmetry': cls.symmetry,
                       'maskDiameter': 230,
@@ -221,8 +225,14 @@ class TestRefinceCycle(BaseTest):
             paramsDict['doImageAlignment'] = True
             paramsDict['doGpu'] = True
             paramsDict['gpusToUse'] = '0'
+            label = 'cl3d with alignment'
+            print(magentaStr("\n==> Classifying the psudosubtomograms with alignment:"))
+        else:
+            label = 'cl3d'
+            print(magentaStr("\n==> Classifying the psudosubtomograms:"))
 
-        protCl3d = cls.newProtocol(ProtRelionRefineSubtomograms, **paramsDict)
+        protCl3d = cls.newProtocol(ProtRelion3DClassifySubtomograms, **paramsDict)
+        protCl3d.setObjLabel(label)
         cls.launchProtocol(protCl3d)
         return protCl3d
 
@@ -280,6 +290,10 @@ class TestRefinceCycle(BaseTest):
             self.assertEqual((boxSize, boxSize, boxSize), pSubtomo.getDimensions())
             self.assertEqual(currentSRate, pSubtomosSet.getSamplingRate())
             self.assertTrue(pSubtomo.getTomoId() in self.tsIds)
+
+    def _check3dClasses(self, classes, currentSRate=None):
+        self.assertSetSize(classes, self.nClasses)
+        self.assertEqual(currentSRate, classes.getSamplingRate())
 
     def _checkRecVolume(self, recVol, optSet=None, boxSize=None, halves=None):
         self.assertEqual(recVol.getSamplingRate(), optSet.getCurrentSamplingRate())
@@ -339,8 +353,13 @@ class TestRefinceCycle(BaseTest):
         self._checkRecVolume(recVol, optSet=protInitialModel.inOptSet.get(), boxSize=self.boxSizeBin4)
 
     def testCl3d(self):
+        self._runTestCl3d(self.protCl3d)
+
+    def testCl3dWithAlignment(self):
+        self._runTestCl3d(self.protCl3dWithAlign)
+
+    def _runTestCl3d(self, protCl3d):
         protMakePSubtomos = self.protMakePSubtomos
-        protCl3d = self.protCl3d
         mdObj = getattr(protCl3d, RELION_TOMO_MD, None)
         # Check RelionTomoMetadata: only the particles file is generated
         self._checkRe4Metadata(mdObj,
@@ -357,8 +376,8 @@ class TestRefinceCycle(BaseTest):
                                       currentSRate=mdObj.getCurrentSamplingRate()
                                       )
         # Check the classes
-
-
+        self._check3dClasses(getattr(protCl3d, OUTPUT_CLASSES, None),
+                             currentSRate=mdObj.getCurrentSamplingRate())
 
     def testAutoRefine(self):
         protMakePSubtomos = self.protMakePSubtomos
