@@ -91,7 +91,11 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         if self.samplingRate.get():
             self.coordsSRate = self.samplingRate.get()
         else:
-            self.coordsSRate = float(self.reader.dataTable[0].get(PIXEL_SIZE))
+            sRateFromStar = self.reader.dataTable[0].get(PIXEL_SIZE, None)
+            if sRateFromStar:
+                self.coordsSRate = float(sRateFromStar)
+            else:
+                self.coordsSRate = self.inTomos.get().getSamplingRate()
 
     def _importStep(self):
         precedentsSet = self.inTomos.get()
