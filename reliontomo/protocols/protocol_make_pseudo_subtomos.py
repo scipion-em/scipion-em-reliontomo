@@ -65,16 +65,11 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
                       help='It is the (full) opening angle of the cone to be suppressed, given in degrees. This angle '
                            'should  include both the uncertainty about the membrane orientation and its variation '
                            'across the region represented in the subtomogram.')
-        form.addParam('rotateVolumes', BooleanParam,
-                      label='Rotate volumes?',
+        form.addParam('applyOffsets', BooleanParam,
+                      label='Apply offsets?',
                       default=False,
-                      help='If set to Yes, rlnAngle<Rot/Tilt/Psi> orientations are added to '
-                           'rlnTomoSubtomogram<Rot/Tilt/Psi> to construct rotated volumes.')
-        form.addParam('restoreOrientations', BooleanParam,
-                      label='Restore orientations?',
-                      default=False,
-                      help='If set to Yes, rlnTomoSubtomogram<Rot/Tilt/Psi> orientations are added to '
-                           'rlnAngle<Rot/Tilt/Psi>. Particles are not constructed.')
+                      help='If set to Yes, rlnOrigin<X/Y/Z> translations are combined with rlnCoordinate<X/Y/Z> to '
+                           'construct subtomos on their refined centers.')
         form.addParam('outputInFloat16', BooleanParam,
                       label='Write output in float16?',
                       default=True,
@@ -110,12 +105,6 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
         self._defineSourceRelation(inOptSet, outputSet)
 
     # -------------------------- INFO functions -------------------------------
-    def _validate(self):
-        validationMsg = []
-        if self.rotateVolumes.get() and self.restoreOrientations.get():
-            validationMsg.append('Restore angles and rotate p-subtomos cannot be applied simultaneously.')
-
-        return validationMsg
 
     # # --------------------------- UTILS functions -----------------------------
     def _genMakePseudoSubtomoCmd(self):
@@ -124,10 +113,8 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
         if self.applyConeWeight.get():
             cmd += '--cone_weight '
             cmd += '--cone_angle %.2f ' % self.coneAngle.get()
+        if self.applyOffsets.get():
+            cmd += '--apply_offsets '
         if self.outputInFloat16.get():
             cmd += '--float16 '
-        if self.rotateVolumes.get():
-            cmd += '--apply_angles '
-        if self.restoreOrientations.get():
-            cmd += '--restore '
         return cmd
