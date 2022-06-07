@@ -289,7 +289,7 @@ class TestRefinceCycle(BaseTest):
             self.assertTrue(exists(pSubtomo.getCtfFile()))
             self.assertEqual((boxSize, boxSize, boxSize), pSubtomo.getDimensions())
             self.assertEqual(currentSRate, pSubtomosSet.getSamplingRate())
-            self.assertTrue(pSubtomo.getTomoId() in self.tsIds)
+            self.assertTrue(pSubtomo.getTsId() in self.tsIds)
 
     def _check3dClasses(self, classes, currentSRate=None):
         self.assertSetSize(classes, self.nClasses)

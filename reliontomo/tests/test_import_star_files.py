@@ -86,7 +86,7 @@ class TestImportFromStarFile(BaseTest):
         self.assertEqual(outputCoordsSet.getBoxSize(), self.boxSize)
         self.assertEqual(outputCoordsSet.getSamplingRate(), inTomos.getSamplingRate())
         self.assertTrue(outputCoordsSet.getPrecedents(), inTomos)
-        [self.assertEqual(coord.getTomoId(), self.tomoId) for coord in outputCoordsSet]
+        [self.assertEqual(coord.getTsId(), self.tomoId) for coord in outputCoordsSet]
 
     def testImport3dCoordsFromStarFile_01(self):
         print(magentaStr("\n==> Importing coordinates 3D from a star file. Sampling rate read from protocol form:"))

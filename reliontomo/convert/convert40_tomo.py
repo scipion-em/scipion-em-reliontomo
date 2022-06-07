@@ -93,7 +93,7 @@ class Writer(WriterTomo):
             angles, shifts = getTransformInfoFromCoordOrSubtomo(coord)
             # Add row to the table which will be used to generate the STAR file
             tomoTable.addRow(
-                coord.getTomoId(),  # 1 _rlnTomoName
+                coord.getTsId(),  # 1 _rlnTomoName
                 coord.getObjId(),  # 2 _rlnTomoParticleId
                 coord.getGroupId() if coord.getGroupId() else 1,  # 3 _rlnTomoManifoldIndex
                 # coord in pix at scale of bin1
@@ -134,7 +134,7 @@ class Writer(WriterTomo):
                 angles, shifts = getTransformInfoFromCoordOrSubtomo(subtomo)
                 # Add row to the table which will be used to generate the STAR file
                 partsWriter.writeRowValues([
-                    coord.getTomoId(),  # _rlnTomoName #1
+                    coord.getTsId(),  # _rlnTomoName #1
                     subtomo.getObjId(),  # rlnTomoParticleId #2
                     coord.getGroupId(),  # rlnTomoManifoldIndex #3
                     # Coords in pixels

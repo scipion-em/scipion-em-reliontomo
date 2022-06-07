@@ -32,6 +32,8 @@ from pyworkflow.object import String, Integer, Float
 from reliontomo.constants import OPT_TOMOS_STAR, OPT_PARTICLES_STAR, OPT_TRAJECTORIES_STAR, OPT_MANIFOLDS_STAR, \
     OPT_FSC_STAR, OUT_TOMOS_STAR, OUT_PARTICLES_STAR, TRAJECTORIES_STAR, MANIFOLDS_STAR, \
     FSC_REF_STAR, STAR_DIFF_SIZE, STAR_DIFF_LABELS, STAR_DIFF_VALUES, STAR_FILES_EQUAL
+from tomo.constants import SCIPION
+from tomo.objects import SetOfSubTomograms, TiltSeries, SubTomogram
 
 
 class EnumRe4GenFilesProps(Enum):
@@ -130,28 +132,137 @@ class relionTomoMetadata(EMObject):
                             '_manifolds', '_referenceFsc', '_relionBinning', '_tsSamplingRate')
 
 
-class PSubtomogram(Volume):
+class PSubtomogram(SubTomogram):
 
-    def __init__(self, fileName=None, samplingRate=None, ctfFile=None, tsId=None, classId=None, **kwargs):
+    def __init__(self, fileName=None, samplingRate=None, ctfFile=None, tsId=None, classId=None,
+                 tsName=None, boxSize=None, x=None, y=None, z=None, rdnSubset=None, re4ParticleName=None,
+                 opticsGroupId=1, **kwargs):
         super().__init__(**kwargs)
-        if fileName:
-            self.setFileName(fileName)
-        if samplingRate:
-            self.setSamplingRate(samplingRate)
-        if classId:
-            self.setClassId(classId)
-        self.tsId = String(tsId)
-        self.ctfFile = String(ctfFile)
+        self.setFileName(fileName)
+        self.setSamplingRate(samplingRate)
+        self.setClassId(classId)
+        self._tsId = String(tsId)
+        self._tsName = String(tsName)
+        self._ctfFile = String(ctfFile)
+        self._boxSize = Integer(boxSize)
+        self._x = Float(x)
+        self._y = Float(y)
+        self._z = Float(z)
+        self._rdnSubset = Integer(rdnSubset)
+        self._re4ParticleName = String(re4ParticleName)
+        self._opticsGroupId = Integer(opticsGroupId)
 
     def getCtfFile(self):
-        return self.ctfFile.get()
+        return self._ctfFile.get()
 
-    def getTomoId(self):
-        return self.tsId.get()
+    def getTsId(self):
+        return self._tsId.get()
+
+    def getTsName(self):
+        return self._tsName.get()
+
+    def getTransform(self, convention=SCIPION):
+        return super().getTransform(convention=convention)
+
+    def getBoxSize(self):
+        return self._boxSize.get()
+
+    def getX(self):
+        return self._x.get()
+
+    def getY(self):
+        return self._y.get()
+
+    def getZ(self):
+        return self._z.get()
+
+    def getCoords(self):
+        return self.getX(), self.getY(), self.getZ()
+
+    def getRdnSubset(self):
+        return self._rdnSubset.get()
+
+    def getRe4ParticleName(self):
+        return self._re4ParticleName.get()
+
+    def getOpticsGroupId(self):
+        return self._opticsGroupId.get()
+
+    def setCtfFile(self, val):
+        self._ctfFile.set(val)
+
+    def setTsId(self, val):
+        self._tsId.set(val)
+
+    def setTsName(self, val):
+        self._tsName.set(val)
+
+    def setTransform(self, newTransform, convention=SCIPION):
+        super().setTransform(newTransform, convention=convention)
+
+    def setBoxSize(self, val):
+        self._boxSize = val
+
+    def setX(self, val):
+        self._x = val
+
+    def setY(self, val):
+        self._y = val
+
+    def setZ(self, val):
+        self._z = val
+
+    def setCoords(self, x, y, z):
+        self.setX(x)
+        self.setY(y)
+        self.setZ(z)
+
+    def setRdnSubset(self, val):
+        self._rdnSubset.set(val)
+
+    def setReParticleName(self, val):
+        self._re4ParticleName.set(val)
+
+    def setOpticsGroupId(self, val):
+        self._opticsGroupId.set(val)
+
+    def copyInfo(self, other):
+        self.copyAttributes(other, '_samplingRate', '_tsId', '_tsName', '_rdnSubset',
+                            '_re4ParticleName', '_opticsGroupId')
 
 
-class SetOfPseudoSubtomograms(SetOfVolumes):
+class SetOfPseudoSubtomograms(SetOfSubTomograms):
     ITEM_TYPE = PSubtomogram
+
+    def __init__(self, relionMd=None, **kwargs):
+        super().__init__(**kwargs)
+        self._relionMd = relionMd if relionMd else relionTomoMetadata
+
+    def iterPSubtomos(self, ts=None, orderBy='id'):
+        if ts is None:
+            tsId = None
+        elif isinstance(ts, str):
+            tsId = ts
+        elif isinstance(ts, TiltSeries):
+            tsId = ts.getTsId()
+        else:
+            raise Exception('Invalid input tilt series of type %s' % type(ts))
+
+        # Iterate over all psubtomos if tomoId is None,
+        # otherwise use tomoId to filter the where selection
+        psubtomoWhere = '1' if tsId is None else '_tomoId=%s' % tsId
+        for psubtomo in self.iterItems(where=psubtomoWhere, orderBy=orderBy):
+            yield psubtomo
+
+    def getRelionMd(self):
+        return self._relionMd
+
+    def setRelionMd(self, reMd):
+        self._relionMd = reMd
+
+    def copyInfo(self, other):
+        self.copyAttributes(other, '_samplingRate', '_relionMd')
+        self._acquisition.copyInfo(other._acquisition)
 
 
 class StarFileComparer:
