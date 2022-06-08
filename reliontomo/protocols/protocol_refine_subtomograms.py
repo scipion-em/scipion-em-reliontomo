@@ -30,7 +30,7 @@ from emtable import Table
 from pwem.convert.headers import fixVolume
 from pwem.objects import FSC
 from pyworkflow import BETA
-from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
+from reliontomo.objects import relionTomoMetadata, RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
 from os.path import getmtime
@@ -44,7 +44,7 @@ from tomo.protocols import ProtTomoBase
 
 class outputObjects(Enum):
     relionParticles = relionTomoMetadata
-    volumes = SetOfPseudoSubtomograms
+    volumes = RelionSetOfPseudoSubtomograms
     average = AverageSubTomogram
     outputFSC = FSC
 

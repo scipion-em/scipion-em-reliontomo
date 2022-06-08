@@ -33,9 +33,10 @@ from pyworkflow.object import Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED
 from pyworkflow.utils import makePath
 from reliontomo import Plugin
-from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR, OPTIMISATION_SET_STAR)
-from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates
-from reliontomo.objects import relionTomoMetadata
+from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR, OPTIMISATION_SET_STAR,
+                                  PSUBTOMOS_SQLITE)
+from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates, readSetOfPseudoSubtomograms
+from reliontomo.objects import createSetOfRelionPSubtomograms, RelionPSubtomogram
 from tomo.utils import getNonInterpolatedTsFromRelations
 
 # Other constants
@@ -43,7 +44,7 @@ DEFOCUS = 'defocus'
 
 
 class outputObjects(Enum):
-    relionParticles = relionTomoMetadata
+    relionParticles = RelionPSubtomogram
 
 
 class ProtRelionPrepareData(EMProtocol):
@@ -57,7 +58,7 @@ class ProtRelionPrepareData(EMProtocol):
         EMProtocol.__init__(self, **args)
         self.tsSet = None
         self.tomoSet = None
-        self.tsReducedSet = None # Reduced list of tiltseries with only those in the coordinates
+        self.tsReducedSet = None  # Reduced list of tiltseries with only those in the coordinates
         self.coordsVolIds = None  # Unique tomogram identifiers volId used in the coordinate set. In case is a subset
         self.coordScale = Float(1)
 
@@ -188,13 +189,18 @@ class ProtRelionPrepareData(EMProtocol):
         Plugin.runRelionTomo(self, 'relion_tomo_import_particles', self._genImportSubtomosCmd())
 
     def createOutputStep(self):
-        relionParticles = relionTomoMetadata(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
-                                             tsSamplingRate=self.tsSet.getSamplingRate(),
-                                             relionBinning=self.coordScale.get(),
-                                             nParticles=self.coords.getSize())
+        # Pseudosubtomos
+        psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
+                                                     self._getExtraPath(OPTIMISATION_SET_STAR),
+                                                     template=PSUBTOMOS_SQLITE,
+                                                     tsSamplingRate=self.tsSet.getSamplingRate(),
+                                                     relionBinning=self.coordScale.get(),
+                                                     boxSize=self.inputCoords.get().getBoxSize())
+        # Fill the set with the generated particles
+        readSetOfPseudoSubtomograms(psubtomoSet)
 
-        self._defineOutputs(**{outputObjects.relionParticles.name: relionParticles})
-        self._defineSourceRelation(self.inputCoords.get(), relionParticles)
+        self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet})
+        self._defineSourceRelation(self.inputCoords.get(), psubtomoSet)
         self._store()
 
     # -------------------------- INFO functions -------------------------------

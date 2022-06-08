@@ -31,7 +31,7 @@ from emtable import Table
 from pyworkflow.object import Float
 from pyworkflow.utils import moveFile, createLink
 from reliontomo.constants import OUT_PARTICLES_STAR
-from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
+from reliontomo.objects import relionTomoMetadata, RelionSetOfPseudoSubtomograms
 from reliontomo.protocols import ProtRelionRefineSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
@@ -42,7 +42,7 @@ from tomo.objects import SetOfClassesSubTomograms, SetOfAverageSubTomograms
 
 class outputObjects(Enum):
     relionParticles = relionTomoMetadata
-    volumes = SetOfPseudoSubtomograms
+    volumes = RelionSetOfPseudoSubtomograms
     classes = SetOfClassesSubTomograms
 
 

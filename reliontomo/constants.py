@@ -36,6 +36,7 @@ V30_VALIDATION_MSG = 'This version of Reliontomo plugin requires Relion 3.0 bina
 
 STAR_COMPARE_ENTRY_POINT = 'compareStar'
 MRC = 'mrc'
+PSUBTOMOS_SQLITE = 'relionPSubtomograms%s.sqlite'
 
 # Relion 4 tomogram star file fields
 TOMO_NAME = 'rlnTomoName'

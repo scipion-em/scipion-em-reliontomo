@@ -28,13 +28,13 @@ from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, IntParam, GE, LE
 from pyworkflow.utils import Message
 from reliontomo.constants import OPTIMISATION_SET_STAR
-from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
+from reliontomo.objects import relionTomoMetadata, RelionSetOfPseudoSubtomograms
 from reliontomo.utils import genOutputPseudoSubtomograms
 
 
 class outputObjects(Enum):
     relionParticles = relionTomoMetadata
-    volumes = SetOfPseudoSubtomograms
+    volumes = RelionSetOfPseudoSubtomograms
 
 
 class ProtRelionPerParticlePerTiltBase(EMProtocol):

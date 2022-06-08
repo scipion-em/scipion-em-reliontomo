@@ -87,8 +87,8 @@ def createReaderTomo(starFile, **kwargs):
     return reader, isReader40
 
 
-def readSetOfPseudoSubtomograms(starFile, outputSet):
+def readSetOfPseudoSubtomograms(outputSet):
     """ Convenience function to write a SetOfPseudoSubtomograms as Relion metadata using a Reader."""
     # Subtomogras are represented in Relion 4 as Pseudosubtomograms
-    reader, _ = createReaderTomo(starFile)
+    reader, _ = createReaderTomo(outputSet.getParticles())
     return reader.starFile2PseudoSubtomograms(outputSet)

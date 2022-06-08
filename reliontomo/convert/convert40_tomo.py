@@ -39,11 +39,10 @@ from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, I
     TOMO_PARTICLE_ID, MANIFOLD_INDEX, MRC, FILE_NOT_FOUND, TILT_PRIOR, PSI_PRIOR
 import pwem.convert.transformations as tfs
 import numpy as np
-from os.path import join, basename, abspath
+from os.path import join, basename
 from reliontomo.convert.convertBase import checkSubtomogramFormat, getTransformInfoFromCoordOrSubtomo, WriterTomo, \
     ReaderTomo, getTransformMatrixFromRow
-from reliontomo.objects import PSubtomogram
-from reliontomo.utils import _gen2LevelBaseName, getAbsPath
+from reliontomo.objects import RelionPSubtomogram
 from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.objects import Coordinate3D, SubTomogram, TomoAcquisition
 
@@ -93,7 +92,7 @@ class Writer(WriterTomo):
             angles, shifts = getTransformInfoFromCoordOrSubtomo(coord)
             # Add row to the table which will be used to generate the STAR file
             tomoTable.addRow(
-                coord.getTsId(),  # 1 _rlnTomoName
+                coord.getTomoId(),  # 1 _rlnTomoName
                 coord.getObjId(),  # 2 _rlnTomoParticleId
                 coord.getGroupId() if coord.getGroupId() else 1,  # 3 _rlnTomoManifoldIndex
                 # coord in pix at scale of bin1
@@ -351,25 +350,39 @@ class Reader(ReaderTomo):
                             'in the introduced set of tomograms: %s' % nonMatchingTomoIds))
 
     def starFile2PseudoSubtomograms(self, outputSet):
-        samplingRate = outputSet.getSamplingRate()
+        sRate = outputSet.getSamplingRate()
         listOfFilesToFixVolume = []
-
         for counter, row in enumerate(self.dataTable):
-            particleFile = row.get(SUBTOMO_NAME)
-            ctfFile = row.get(CTF_IMAGE)
-            psubtomo = PSubtomogram(fileName=particleFile,
-                                    samplingRate=samplingRate,
-                                    ctfFile=ctfFile,
-                                    tsId=row.get(TOMO_NAME),
-                                    classId=row.get(CLASS_NUMBER, -1))
+            t = Transform()
+            particleFile = row.get(SUBTOMO_NAME, None)
+            ctfFile = row.get(CTF_IMAGE, None)
+            psubtomo = RelionPSubtomogram(fileName=particleFile,
+                                          samplingRate=sRate,
+                                          ctfFile=ctfFile,
+                                          tsId=row.get(TOMO_NAME),
+                                          classId=row.get(CLASS_NUMBER, -1),
+                                          x=row.get(COORD_X),
+                                          y=row.get(COORD_Y),
+                                          z=row.get(COORD_Z),
+                                          rdnSubset=row.get(RANDOM_SUBSET, counter % 2),  # 1 and 2 alt. by default
+                                          re4ParticleName=row.get(TOMO_PARTICLE_NAME),
+                                          opticsGroupId=row.get(OPTICS_GROUP, 1),
+                                          manifoldIndex=row.get(MANIFOLD_INDEX, 1 if counter % 2 else -1))  # 1 and -1
+            # Set the transformation matrix
+            t.setMatrix(getTransformMatrixFromRow(row, sRate=sRate))
+            psubtomo.setTransform(t)
+
             # Add the files to the list of files whose header has to be corrected to be interpreted as volumes
-            listOfFilesToFixVolume.append(particleFile)
-            listOfFilesToFixVolume.append(ctfFile)
+            if particleFile:
+                listOfFilesToFixVolume.append(particleFile)
+            if ctfFile:
+                listOfFilesToFixVolume.append(ctfFile)
             # Add current pseudosubtomogram to the output set
             outputSet.append(psubtomo)
 
         # Fix volume headers
-        fixVolume(listOfFilesToFixVolume)
+        if listOfFilesToFixVolume:
+            fixVolume(listOfFilesToFixVolume)
 
     def starFile2SubtomogramsImport(self, subtomoSet, coordSet, linkedSubtomosDir, starFilePath):
         samplingRate = subtomoSet.getSamplingRate()

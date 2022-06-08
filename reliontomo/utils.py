@@ -25,7 +25,7 @@
 from collections import OrderedDict
 from os.path import isabs, join, exists
 from reliontomo.constants import OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE
-from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
+from reliontomo.objects import relionTomoMetadata, RelionSetOfPseudoSubtomograms
 
 
 def getProgram(program, nMpi):
@@ -93,7 +93,7 @@ def genOutputPseudoSubtomograms(prot, currentSamplingRate):
      auto-refine, CTF refine and frame align"""
     from reliontomo.convert import createReaderTomo
     reader, _ = createReaderTomo(prot._getExtraPath(OUT_PARTICLES_STAR))
-    outputSet = prot._createSet(SetOfPseudoSubtomograms, PSUBTOMOS_SQLITE, '')
+    outputSet = prot._createSet(RelionSetOfPseudoSubtomograms, PSUBTOMOS_SQLITE, '')
     outputSet.setSamplingRate(currentSamplingRate)
     reader.starFile2PseudoSubtomograms(outputSet)
     return outputSet

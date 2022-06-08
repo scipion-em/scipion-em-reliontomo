@@ -26,7 +26,7 @@ from enum import Enum
 from pyworkflow.protocol import FloatParam, BooleanParam
 from reliontomo import Plugin
 from reliontomo.constants import OPTIMISATION_SET_STAR
-from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
+from reliontomo.objects import relionTomoMetadata, RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
 from reliontomo.utils import getProgram, genOutputPseudoSubtomograms
@@ -35,7 +35,7 @@ from tomo.protocols import ProtTomoBase
 
 class outputObjects(Enum):
     relionParticles = relionTomoMetadata
-    volumes = SetOfPseudoSubtomograms
+    volumes = RelionSetOfPseudoSubtomograms
 
 
 class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticleBase, ProtTomoBase):
