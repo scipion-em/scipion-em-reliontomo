@@ -77,16 +77,15 @@ class ProtRelionPrepareData(EMProtocol):
                       default=True,
                       expertLevel=LEVEL_ADVANCED,
                       help='It is the handedness of the tilt geometry and it is used to describe '
-                           'whether the focus increases or decreases as a function of Z distance.'
-                      )
+                           'whether the focus increases or decreases as a function of Z distance.')
         form.addParam('inputCoords', PointerParam,
                       pointerClass='SetOfCoordinates3D',
                       label="Input coordinates",
                       important=True,
                       allowsNull=False)
-
         form.addParam('inputTS', PointerParam,
-                      help="Tilt series with alignment (non interpolated) used in the tomograms recnstruction. To be deprecated!! ",
+                      help="Tilt series with alignment (non interpolated) used in the tomograms recnstruction. "
+                           "To be deprecated!!",
                       pointerClass='SetOfTiltSeries',
                       label="Input tilt series",
                       important=True,
@@ -194,13 +193,14 @@ class ProtRelionPrepareData(EMProtocol):
                                                      self._getExtraPath(OPTIMISATION_SET_STAR),
                                                      template=PSUBTOMOS_SQLITE,
                                                      tsSamplingRate=self.tsSet.getSamplingRate(),
-                                                     relionBinning=self.coordScale.get(),
+                                                     relionBinning=1,  # Coords are re-sampled to fit the TS size
                                                      boxSize=self.inputCoords.get().getBoxSize())
         # Fill the set with the generated particles
         readSetOfPseudoSubtomograms(psubtomoSet)
 
         self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet})
         self._defineSourceRelation(self.inputCoords.get(), psubtomoSet)
+        self._defineSourceRelation(self.inputCtfTs.get(), psubtomoSet)
         self._store()
 
     # -------------------------- INFO functions -------------------------------
