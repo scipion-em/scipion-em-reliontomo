@@ -36,14 +36,14 @@ from relion.convert import OpticsGroups
 from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, IMOD_DIR, FRACTIONAL_DOSE, \
     ACQ_ORDER_FILE, CULLED_FILE, SUBTOMO_NAME, COORD_X, COORD_Y, COORD_Z, ROT, TILT, PSI, CLASS_NUMBER, \
     TOMO_PARTICLE_NAME, RANDOM_SUBSET, OPTICS_GROUP, SHIFTX_ANGST, SHIFTY_ANGST, SHIFTZ_ANGST, CTF_IMAGE, \
-    TOMO_PARTICLE_ID, MANIFOLD_INDEX, MRC, FILE_NOT_FOUND, TILT_PRIOR, PSI_PRIOR
+    TOMO_PARTICLE_ID, MANIFOLD_INDEX, MRC, FILE_NOT_FOUND, TILT_PRIOR, PSI_PRIOR, PARTICLES_TABLE
 import pwem.convert.transformations as tfs
 import numpy as np
 from os.path import join, basename
 from reliontomo.convert.convertBase import checkSubtomogramFormat, getTransformInfoFromCoordOrSubtomo, WriterTomo, \
     ReaderTomo, getTransformMatrixFromRow
 from reliontomo.objects import RelionPSubtomogram
-from tomo.constants import BOTTOM_LEFT_CORNER
+from tomo.constants import BOTTOM_LEFT_CORNER, TR_SCIPION
 from tomo.objects import Coordinate3D, SubTomogram, TomoAcquisition
 
 logger = logging.getLogger(__name__)
@@ -116,30 +116,33 @@ class Writer(WriterTomo):
         # Write the STAR file
         tomoTable.write(subtomosStar)
 
-    def pseudoSubtomograms2Star(self, pSubtomoSet, subtomosStar):
+    def pseudoSubtomograms2Star(self, pSubtomoSet, outStar):
         sRate = pSubtomoSet.getSamplingRate()
         tomoTable = Table(columns=self._getPseudoSubtomogramStarFileLabels())
 
         # Write the STAR file
         optGroup = OpticsGroups.fromString(pSubtomoSet.getAcquisition().opticsGroupInfo.get())
-        with open(subtomosStar, 'w') as f:
+        with open(outStar, 'w') as f:
             optGroup.toStar(f)
             # Write header first
             partsWriter = Table.Writer(f)
-            partsWriter.writeTableName('particles')
+            partsWriter.writeTableName(PARTICLES_TABLE)
             partsWriter.writeHeader(tomoTable.getColumns())
-            for subtomo in pSubtomoSet:
-                coord = subtomo._coordinate
-                angles, shifts = getTransformInfoFromCoordOrSubtomo(subtomo)
+            for pSubtomo in pSubtomoSet:
+                angles, shifts = getTransformInfoFromCoordOrSubtomo(pSubtomo, convention=TR_SCIPION)
+                pSubtomoFile = pSubtomo.getFileName()
+                pSubtomoFile = pSubtomoFile.replace(':' + MRC, '') if pSubtomoFile else FILE_NOT_FOUND
+                pSubtomoCtfFile = pSubtomo.getCtfFile() if pSubtomo.getCtfFile() else FILE_NOT_FOUND
+
                 # Add row to the table which will be used to generate the STAR file
                 partsWriter.writeRowValues([
-                    coord.getTsId(),  # _rlnTomoName #1
-                    subtomo.getObjId(),  # rlnTomoParticleId #2
-                    coord.getGroupId(),  # rlnTomoManifoldIndex #3
+                    pSubtomo.getTsId(),  # _rlnTomoName #1
+                    pSubtomo.getObjId(),  # rlnTomoParticleId #2
+                    pSubtomo.getManifoldIndex(),  # rlnTomoManifoldIndex #3
                     # Coords in pixels
-                    coord.getX(RELION_3D_COORD_ORIGIN),  # _rlnCoordinateX #4
-                    coord.getY(RELION_3D_COORD_ORIGIN),  # _rlnCoordinateY #5
-                    coord.getZ(RELION_3D_COORD_ORIGIN),  # _rlnCoordinateZ #6
+                    pSubtomo.getX(),  # _rlnCoordinateX #4
+                    pSubtomo.getY(),  # _rlnCoordinateY #5
+                    pSubtomo.getZ(),  # _rlnCoordinateZ #6
                     # pix * Å/pix = [shifts in Å]
                     shifts[0] * sRate,  # _rlnOriginXAngst #7
                     shifts[1] * sRate,  # _rlnOriginYAngst #8
@@ -149,12 +152,12 @@ class Writer(WriterTomo):
                     angles[1],  # _rlnAngleTilt #11
                     angles[2],  # _rlnAnglePsi #12
 
-                    subtomo.getClassId(),  # _rlnClassNumber #13
-                    subtomo._randomSubset.get(),  # _rlnRandomSubset #14
-                    subtomo._particleName.get(),  # _rlnTomoParticleName #15
-                    subtomo._opticsGroupId.get(),  # _rlnOpticsGroup #16
-                    subtomo.getFileName().replace(':' + MRC, ''),  # _rlnImageName #17
-                    subtomo._ctfImage.get()  # _rlnCtfImage #18
+                    pSubtomo.getClassId(),  # _rlnClassNumber #13
+                    pSubtomo.getRdnSubset(),  # _rlnRandomSubset #14
+                    pSubtomo.getRe4ParticleName(),  # _rlnTomoParticleName #15
+                    pSubtomo.getOpticsGroupId(),  # _rlnOpticsGroup #16
+                    pSubtomoFile,  # _rlnImageName #17
+                    pSubtomoCtfFile  # _rlnCtfImage #18
                 ])
 
     def subtomograms2Star(self, subtomoSet, subtomosStar):

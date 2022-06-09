@@ -25,17 +25,17 @@
 from enum import Enum
 from pyworkflow.protocol import FloatParam, BooleanParam
 from reliontomo import Plugin
-from reliontomo.constants import OPTIMISATION_SET_STAR
-from reliontomo.objects import relionTomoMetadata, RelionSetOfPseudoSubtomograms
+from reliontomo.constants import OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE
+from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms
+from reliontomo.objects import RelionSetOfPseudoSubtomograms, createSetOfRelionPSubtomograms
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
-from reliontomo.utils import getProgram, genOutputPseudoSubtomograms
+from reliontomo.utils import getProgram
 from tomo.protocols import ProtTomoBase
 
 
 class outputObjects(Enum):
-    relionParticles = relionTomoMetadata
-    volumes = RelionSetOfPseudoSubtomograms
+    relionParticles = RelionSetOfPseudoSubtomograms
 
 
 class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticleBase, ProtTomoBase):
@@ -44,10 +44,14 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
     _label = 'Make pseudo-subtomograms'
     _possibleOutputs = outputObjects
 
+    def __int__(self, **kwargs):
+        super().__int__(**kwargs)
+
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        ProtRelionMakePseudoSubtomoAndRecParticleBase._defineParams(self, form)
+        super()._defineParams(form)
         form.addSection(label='Reconstruct pseudo-Subtomograms')
+        super()._defineCommonRecParams(form)
         form.addParam('applyConeWeight', BooleanParam,
                       label='Apply cone weight?',
                       default=False,
@@ -79,30 +83,32 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self._relionMakePseudoSubtomos)
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.relionMakePseudoSubtomos)
         self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
+    def convertInputStep(self):
+        writeSetOfPseudoSubtomograms(self.inReParticles.get(), self.getOutStarFile())
 
-    def _relionMakePseudoSubtomos(self):
+    def relionMakePseudoSubtomos(self):
         Plugin.runRelionTomo(self, getProgram('relion_tomo_subtomo', self.numberOfMpi.get()),
                              self._genMakePseudoSubtomoCmd(), numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
-        inOptSet = self.inOptSet.get()
-        # Output RelionParticles
-        relionParticles = relionTomoMetadata(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
-                                             tsSamplingRate=inOptSet.getTsSamplingRate(),
-                                             relionBinning=self.binningFactor.get(),
-                                             nParticles=inOptSet.getNumParticles())
+        inReParticles = self.inReParticles.get()
+        # Pseudosubtomos
+        psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
+                                                     self._getExtraPath(OPTIMISATION_SET_STAR),
+                                                     template=PSUBTOMOS_SQLITE,
+                                                     tsSamplingRate=inReParticles.getSamplingRate(),
+                                                     relionBinning=self.binningFactor.get(),
+                                                     boxSize=self.croppedBoxSize.get())
+        # Fill the set with the generated particles
+        readSetOfPseudoSubtomograms(psubtomoSet)
 
-        # Output pseudosubtomograms --> set of volumes for visualization purposes
-        outputSet = genOutputPseudoSubtomograms(self, relionParticles.getCurrentSamplingRate())
-
-        self._defineOutputs(**{outputObjects.relionParticles.name: relionParticles,
-                               outputObjects.volumes.name: outputSet})
-        self._defineSourceRelation(inOptSet, relionParticles)
-        self._defineSourceRelation(inOptSet, outputSet)
+        self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet})
+        self._defineSourceRelation(inReParticles, psubtomoSet)
 
     # -------------------------- INFO functions -------------------------------
 

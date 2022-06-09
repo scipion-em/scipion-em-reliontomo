@@ -29,9 +29,10 @@ from emtable import Table
 from pwem import EMObject
 from pwem.objects import Volume, SetOfVolumes
 from pyworkflow.object import String, Integer, Float
+from relion.convert import OpticsGroups
 from reliontomo.constants import OPT_TOMOS_STAR, OPT_PARTICLES_STAR, OPT_TRAJECTORIES_STAR, OPT_MANIFOLDS_STAR, \
     OPT_FSC_STAR, OUT_TOMOS_STAR, OUT_PARTICLES_STAR, TRAJECTORIES_STAR, MANIFOLDS_STAR, \
-    FSC_REF_STAR, STAR_DIFF_SIZE, STAR_DIFF_LABELS, STAR_DIFF_VALUES, STAR_FILES_EQUAL, PSUBTOMOS_SQLITE
+    FSC_REF_STAR, STAR_DIFF_SIZE, STAR_DIFF_LABELS, STAR_DIFF_VALUES, STAR_FILES_EQUAL, PSUBTOMOS_SQLITE, OPTICS_TABLE
 from tomo.constants import SCIPION, TR_SCIPION
 from tomo.objects import SetOfSubTomograms, TiltSeries, SubTomogram
 
@@ -228,13 +229,14 @@ class RelionPSubtomogram(SubTomogram):
 
     def copyInfo(self, other):
         self.copyAttributes(other, '_samplingRate', '_tsId', '_tsName', '_rdnSubset',
-                            '_re4ParticleName', '_opticsGroupId')
+                            '_re4ParticleName', '_opticsGroupId', '_boxSize')
 
 
 class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     ITEM_TYPE = RelionPSubtomogram
 
-    def __init__(self, optimSetStar=None, relionBinning=None, tsSamplingRate=None, boxSize=24, **kwargs):
+    def __init__(self, optimSetStar=None, relionBinning=None, tsSamplingRate=None, boxSize=24,
+                 opticsGroupStr=None, **kwargs):
         super().__init__(**kwargs)
         self._boxSize = Integer(boxSize)
         self._tomograms = String()
@@ -268,6 +270,21 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
             raise FileNotFoundError('Unable to find file %s' % optimSetStar)
         except TypeError:
             raise TypeError('No optimisation set star file was provided.')
+
+    def _readOptimSetStar(self, optimSetStar):
+        dataTable = Table()
+        dataTable.read(optimSetStar)
+        rowObj = dataTable[0]  # This file only contains the different filenames related to the current STA step
+        self._tomograms.set(rowObj.get(OPT_TOMOS_STAR, None))
+        self._particles.set(rowObj.get(OPT_PARTICLES_STAR, None))
+        self._trajectories.set(rowObj.get(OPT_TRAJECTORIES_STAR, None))
+        self._manifolds.set(rowObj.get(OPT_MANIFOLDS_STAR, None))
+        self._referenceFsc.set(rowObj.get(OPT_FSC_STAR, None))
+        # Read optimisation set and fill the corresponding attribute
+        og = OpticsGroups(Table(fileName=self._particles.get(), tableName=OPTICS_TABLE))
+        acq = self.getAcquisition()
+        acq.opticsGroupInfo = String(og.toString())
+        self.setAcquisition(acq)
 
     def updateGenFiles(self, extraPath):
         """Some protocols don't generate the optimisation_set.star file. In that case, the input Object which
@@ -314,19 +331,9 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     def setBoxSize(self, val):
         self._boxSize.set(val)
 
-    def _readOptimSetStar(self, optimSetStar):
-        dataTable = Table()
-        dataTable.read(optimSetStar)
-        rowObj = dataTable[0]  # This file only contains the different filenames related to the current STA step
-        self._tomograms.set(rowObj.get(OPT_TOMOS_STAR, None))
-        self._particles.set(rowObj.get(OPT_PARTICLES_STAR, None))
-        self._trajectories.set(rowObj.get(OPT_TRAJECTORIES_STAR, None))
-        self._manifolds.set(rowObj.get(OPT_MANIFOLDS_STAR, None))
-        self._referenceFsc.set(rowObj.get(OPT_FSC_STAR, None))
-
     def copyInfo(self, other):
         self.copyAttributes(other, '_tomograms', '_particles', '_trajectories', '_manifolds', '_referenceFsc',
-                            '_relionBinning', '_tsSamplingRate', '_samplingRate')
+                            '_relionBinning', '_tsSamplingRate', '_samplingRate', '_boxSize')
         self._acquisition.copyInfo(other._acquisition)
         # self._relionMd = relionMd if relionMd else relionTomoMetadata
 
@@ -380,7 +387,7 @@ class StarFileComparer:
         msg = ''
         msg += self.compareSize()
         if not msg:
-            msg += self.compareLabels()
+            msg += self.compareLabels(excludeLabelsList=excludeLabelsList)
         if not msg:
             msg += self.compareValues(excludeLabelsList=excludeLabelsList)
         tableNameMsg = 'Table [%s]\n' % self._table2Read
@@ -394,10 +401,17 @@ class StarFileComparer:
             msg = '\n- %s %i != %i' % (STAR_DIFF_SIZE, mRows1, nRows2)
         return msg
 
-    def compareLabels(self):
+    def compareLabels(self, excludeLabelsList=None):
         msg = ''
         labels1 = self.dataTable1.getColumnNames()
         labels2 = self.dataTable2.getColumnNames()
+        if excludeLabelsList:
+            for label in excludeLabelsList:
+                if label in labels1:
+                    labels1.remove(label)
+                if label in labels2:
+                    labels2.remove(label)
+
         if labels1 == labels2:
             self._labels = labels1
         else:

@@ -29,13 +29,14 @@ from reliontomo.objects import StarFileComparer
 
 
 def main():
-
     parser = argparse.ArgumentParser(prog=STAR_COMPARE_ENTRY_POINT,
                                      usage="Reliontomo program to compare two star files")
     parser.add_argument('--star1', type=str, help='First star file to be compared.')
     parser.add_argument('--star2', type=str, help='Second star file to be compared.')
-    parser.add_argument('--tableList', type=list, help='List of tables desired to be compared in both star files.')
-    parser.add_argument('--excludeLabelList', type=list, help='list of labels to be excluded in the comparison.')
+    parser.add_argument('--tableList', nargs='+', default=['particles'],
+                        help='List of tables desired to be compared in both star files. Default is "particles".')
+    parser.add_argument('--excludeLabelList', nargs='+', default=[],
+                        help='list of labels to be excluded in the comparison.')
 
     args = parser.parse_args()
     star1 = args.star1

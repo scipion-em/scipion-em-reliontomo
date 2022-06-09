@@ -36,7 +36,7 @@ from reliontomo import Plugin
 from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR, OPTIMISATION_SET_STAR,
                                   PSUBTOMOS_SQLITE)
 from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates, readSetOfPseudoSubtomograms
-from reliontomo.objects import createSetOfRelionPSubtomograms, RelionPSubtomogram
+from reliontomo.objects import createSetOfRelionPSubtomograms, RelionSetOfPseudoSubtomograms
 from tomo.utils import getNonInterpolatedTsFromRelations
 
 # Other constants
@@ -44,7 +44,7 @@ DEFOCUS = 'defocus'
 
 
 class outputObjects(Enum):
-    relionParticles = RelionPSubtomogram
+    relionParticles = RelionSetOfPseudoSubtomograms
 
 
 class ProtRelionPrepareData(EMProtocol):
