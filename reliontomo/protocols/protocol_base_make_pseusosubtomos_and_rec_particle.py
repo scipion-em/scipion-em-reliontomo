@@ -22,29 +22,27 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-from pwem.protocols import EMProtocol
 from pyworkflow import BETA
-from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, FloatParam
-from pyworkflow.utils import Message
-from reliontomo.constants import IN_PARTICLES_STAR
+from pyworkflow.protocol import IntParam, FloatParam
+from reliontomo.constants import IN_PARTICLES_STAR, OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE
+from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms
+from reliontomo.objects import createSetOfRelionPSubtomograms
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
 
-class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
+class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
     """Reconstruct particle and make pseudo-subtomograms base class"""
 
     _label = None
     _devStatus = BETA
 
-    def __int__(self, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.psubtomoSet = None
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        form.addSection(label=Message.LABEL_INPUT)
-
-        form.addParam('inReParticles', PointerParam,
-                      pointerClass='RelionSetOfPseudoSubtomograms',
-                      label='Relion particles')
+        super()._defineCommonInputParams(form)
         form.addParallelSection(threads=1, mpi=1)
 
     @staticmethod
@@ -70,30 +68,29 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
                       allowsNull=False,
                       help='Downsampling (binning) factor. Note that this does not alter the box size. The '
                            'reconstructed region instead becomes larger.')
-        form.addParam('snrWiener', FloatParam,
-                      label='Apply a Wiener filter with this SNR',
-                      default=-1,
-                      expertLevel=LEVEL_ADVANCED,
-                      help='Assumed signal-to-noise ratio (negative means use a heuristic to prevent divisions by '
-                           'excessively small numbers.) Please note that using a low (even though realistic) SNR '
-                           'might wash out the higher frequencies, which could make the map unsuitable to be used '
-                           'for further refinement. More information about the Wiener Filter can be found here: '
-                           'https://en.wikipedia.org/wiki/Wiener_filter')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         pass
 
-    # # -------------------------- INFO functions -------------------------------
-    # def _validate(self):
-    #     errorMsg = []
-    #     if self.inputParticles.get():
-    #         if not isPseudoSubtomogram(self.inputParticles.get().getFirstElement()):
-    #             errorMsg.append('Introduced subtomograms do not contain the required data to be considered '
-    #                             'pseudosubtomograms. This set can be generated using the output of the protocol for '
-    #                             'preparing the data for Relion 4.')
+    def convertInputStep(self):
+        writeSetOfPseudoSubtomograms(self.inReParticles.get(), self.getOutStarFile())
 
-    # # --------------------------- UTILS functions -----------------------------
+    def createOutputStep(self):
+        # Pseudosubtomos
+        psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
+                                                     self._getExtraPath(OPTIMISATION_SET_STAR),
+                                                     template=PSUBTOMOS_SQLITE,
+                                                     tsSamplingRate=self.inReParticles.get().getTsSamplingRate(),
+                                                     relionBinning=self.binningFactor.get(),
+                                                     boxSize=self.croppedBoxSize.get())
+        # Fill the set with the generated particles
+        readSetOfPseudoSubtomograms(psubtomoSet)
+        self.psubtomoSet = psubtomoSet
+
+    # -------------------------- INFO functions -------------------------------
+
+    # --------------------------- UTILS functions -----------------------------
     def _genCommonCmd(self):
         inRelionParticles = self.inReParticles.get()
         cmd = ''
@@ -104,7 +101,6 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
         cmd += '--b %i ' % self.boxSize.get()
         cmd += '--crop %i ' % self.croppedBoxSize.get()
         cmd += '--bin %.1f ' % self.binningFactor.get()
-        cmd += '--SNR %.2f ' % self.snrWiener.get()
         cmd += '--j %i ' % self.numberOfThreads.get()
         return cmd
 

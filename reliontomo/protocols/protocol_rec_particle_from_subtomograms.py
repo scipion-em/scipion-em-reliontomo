@@ -45,7 +45,7 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
     The alignment parameters will be converted to a Relion star file
     and used as direction projections to reconstruct.
     """
-    _label = 'Reconstruct particle averaging a set of subtomograms'
+    _label = 'Rec. particle averaging subtomograms'
     _devStatus = BETA
     inStarName = 'input_particles'
     outTomoName = 'output_volume'
@@ -57,7 +57,6 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
 
         form.addParam('inputSubtomos', PointerParam,
                       pointerClass='SetOfSubTomograms',
-                      # pointerCondition='hasAlignmentProj',
                       label="Input subtomograms",
                       help='Select the input subtomograms from the project.')
         form.addParam('symmetryGroup', StringParam, default='c1',

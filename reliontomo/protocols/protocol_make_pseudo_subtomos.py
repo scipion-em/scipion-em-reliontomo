@@ -25,9 +25,7 @@
 from enum import Enum
 from pyworkflow.protocol import FloatParam, BooleanParam
 from reliontomo import Plugin
-from reliontomo.constants import OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE
-from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms
-from reliontomo.objects import RelionSetOfPseudoSubtomograms, createSetOfRelionPSubtomograms
+from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
 from reliontomo.utils import getProgram
@@ -43,9 +41,6 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
 
     _label = 'Make pseudo-subtomograms'
     _possibleOutputs = outputObjects
-
-    def __int__(self, **kwargs):
-        super().__int__(**kwargs)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -88,27 +83,14 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
         self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
-    def convertInputStep(self):
-        writeSetOfPseudoSubtomograms(self.inReParticles.get(), self.getOutStarFile())
-
     def relionMakePseudoSubtomos(self):
         Plugin.runRelionTomo(self, getProgram('relion_tomo_subtomo', self.numberOfMpi.get()),
                              self._genMakePseudoSubtomoCmd(), numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
-        inReParticles = self.inReParticles.get()
-        # Pseudosubtomos
-        psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
-                                                     self._getExtraPath(OPTIMISATION_SET_STAR),
-                                                     template=PSUBTOMOS_SQLITE,
-                                                     tsSamplingRate=inReParticles.getSamplingRate(),
-                                                     relionBinning=self.binningFactor.get(),
-                                                     boxSize=self.croppedBoxSize.get())
-        # Fill the set with the generated particles
-        readSetOfPseudoSubtomograms(psubtomoSet)
-
-        self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet})
-        self._defineSourceRelation(inReParticles, psubtomoSet)
+        super().createOutputStep()
+        self._defineOutputs(**{outputObjects.relionParticles.name: self.psubtomoSet})
+        self._defineSourceRelation(self.inReParticles.get(), self.psubtomoSet)
 
     # -------------------------- INFO functions -------------------------------
 

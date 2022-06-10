@@ -24,16 +24,15 @@
 # **************************************************************************
 from os import remove
 from os.path import abspath, exists
-from pwem.protocols import EMProtocol
 from pyworkflow import BETA
-from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, StringParam, BooleanParam, \
+from pyworkflow.protocol import LEVEL_ADVANCED, IntParam, StringParam, BooleanParam, \
     EnumParam, PathParam, FloatParam, LEVEL_NORMAL, GE, LE
-from pyworkflow.utils import Message
-from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, IN_PARTICLES_STAR
+from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG
 from reliontomo.protocols import ProtRelionMakePseudoSubtomograms
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
 
-class ProtRelionRefineBase(EMProtocol):
+class ProtRelionRefineBase(ProtRelionTomoBase):
     """Base protocol used for the getting the initial model and performing the auto-refinment"""
 
     _devStatus = BETA
@@ -46,12 +45,8 @@ class ProtRelionRefineBase(EMProtocol):
     # I/O PARAMS -------------------------------------------------------------------------------------------------------
     @staticmethod
     def _defineIOParams(form):
-        form.addSection(label=Message.LABEL_INPUT)
-        form.addParam('inOptSet', PointerParam,
-                      pointerClass='relionTomoMetadata',
-                      label='Input Relion Tomo Metadata',
-                      important=True,
-                      allowsNull=False)
+        super()._defineCommonInputParams(form)
+        form.addParallelSection(threads=1, mpi=1)
 
     # CTF PARAMS -------------------------------------------------------------------------------------------------------
     @staticmethod
