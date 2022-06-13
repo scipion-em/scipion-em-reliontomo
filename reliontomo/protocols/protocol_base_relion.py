@@ -25,12 +25,19 @@
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol import PointerParam
 from pyworkflow.utils import Message
+from reliontomo.constants import IN_PARTICLES_STAR
 
 
 class ProtRelionTomoBase(EMProtocol):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def _defineCommonInputParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
         form.addParam('inReParticles', PointerParam,
                       pointerClass='RelionSetOfPseudoSubtomograms',
                       label='Relion particles')
+
+    def getOutStarFile(self):
+        return self._getExtraPath(IN_PARTICLES_STAR)

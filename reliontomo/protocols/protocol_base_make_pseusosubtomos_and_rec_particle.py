@@ -104,5 +104,3 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
         cmd += '--j %i ' % self.numberOfThreads.get()
         return cmd
 
-    def getOutStarFile(self):
-        return self._getExtraPath(IN_PARTICLES_STAR)

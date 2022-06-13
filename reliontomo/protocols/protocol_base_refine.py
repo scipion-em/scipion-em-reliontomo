@@ -28,6 +28,7 @@ from pyworkflow import BETA
 from pyworkflow.protocol import LEVEL_ADVANCED, IntParam, StringParam, BooleanParam, \
     EnumParam, PathParam, FloatParam, LEVEL_NORMAL, GE, LE
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG
+from reliontomo.convert import writeSetOfPseudoSubtomograms
 from reliontomo.protocols import ProtRelionMakePseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
@@ -37,14 +38,16 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
 
     _devStatus = BETA
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     # -------------------------- DEFINE param functions -----------------------
 
     def _defineParams(self, form):
         pass
 
     # I/O PARAMS -------------------------------------------------------------------------------------------------------
-    @staticmethod
-    def _defineIOParams(form):
+    def _defineIOParams(self, form):
         super()._defineCommonInputParams(form)
         form.addParallelSection(threads=1, mpi=1)
 
@@ -272,13 +275,10 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
     def _insertAllSteps(self):
         pass
 
+    def convertInputStep(self):
+        writeSetOfPseudoSubtomograms(self.inReParticles.get(), self.getOutStarFile())
+
     # -------------------------- INFO functions -------------------------------
-    def _validate(self):
-        msg = []
-        optSet = self.inOptSet.get()
-        if ProtRelionMakePseudoSubtomograms().getClassName() not in optSet.getParticles():
-            msg.append('Input metadata is expected to come from making a set of pseudosubtomograms.')
-        return msg
 
     # --------------------------- UTILS functions -----------------------------
     def _genBaseCommand(self):
@@ -291,7 +291,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         return cmd
 
     def _genIOBaseCmd(self):
-        cmd = '--i %s ' % self.inOptSet.get().getParticles()
+        cmd = '--i %s ' % self.getOutStarFile()
         cmd += '--o %s ' % (self._getExtraPath() + '/')  # If not, Relion will concatenate it directly as a prefix
         cmd += '--j %i ' % self.numberOfThreads
         return cmd

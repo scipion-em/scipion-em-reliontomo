@@ -72,7 +72,7 @@ class Writer(WriterTomo):
 
             if whiteList is None or tsId in whiteList:
                 tsTable.addRow(tsId,  # _rlnTomoName #1
-                               ts.getFirstItem().getFileName() + ':mrc',  # _rlnTomoTiltSeriesName #2
+                               ts.getFirstItem().getFileName(),  # _rlnTomoTiltSeriesName #2
                                self._getCtfPlotterFile(tsId, ctfPlotterParentDir),  # _rlnTomoImportCtfPlotterFile #3
                                join(eTomoParentDir, tsId),  # _rlnTomoImportImodDir #4
                                ts.getAcquisition().getDosePerFrame(),  # _rlnTomoImportFractionalDose #5

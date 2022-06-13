@@ -161,12 +161,14 @@ class ProtRelionPrepareData(EMProtocol):
                                               join(defocusPath, ctfTomo.getTsId() + '.' + DEFOCUS),
                                               isRelion=True)
         # Thickness of the tomogram
-        thickness = self.coords.getPrecedents().getDim()[2]
-        # Thickness at TS sampling rate
+        x, y, thickness = self.coords.getPrecedents().getDim()
+        # Dimensions at TS sampling rate
+        x = x * self.coordScale.get()
+        y = y * self.coordScale.get()
         thickness = thickness * self.coordScale.get()
 
         # Simulate the etomo files that serve as entry point to relion4
-        self._simulateETomoFiles(self.tsSet, thickness=thickness, binned=1,
+        self._simulateETomoFiles(self.tsSet, thickness=thickness, binned=1, dims=(x, y),
                                  binByFactor=self.coordScale, whiteList=self.coordsVolIds, swapDims=self.swapXY.get())
         # Write the tomograms star file
         writeSetOfTomograms(self.tsSet,
