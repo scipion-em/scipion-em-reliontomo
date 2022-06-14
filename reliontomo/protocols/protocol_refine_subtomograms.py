@@ -59,7 +59,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     PREFIXES = ['half1_', 'half2_']
 
     def __init__(self, **args):
-        super().__init__(self, **args)
+        super().__init__(**args)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
