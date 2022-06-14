@@ -39,7 +39,6 @@ from pyworkflow.utils import createLink
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, OUT_PARTICLES_STAR
 from reliontomo.utils import getProgram, genRelionParticles, genOutputPseudoSubtomograms
 from tomo.objects import AverageSubTomogram
-from tomo.protocols import ProtTomoBase
 
 
 class outputObjects(Enum):
@@ -49,7 +48,7 @@ class outputObjects(Enum):
     outputFSC = FSC
 
 
-class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
+class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
     """Auto-refinement of subtomograms."""
 
     _label = 'Auto-refinement of subtomograms'
@@ -58,8 +57,8 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     FILE_KEYS = ['data', 'optimiser', 'sampling']
     PREFIXES = ['half1_', 'half2_']
 
-    def __init__(self, **args):
-        super().__init__(**args)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -72,8 +71,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         super()._insertGpuParams(form)
         super()._defineAdditionalParams(form)
 
-    @staticmethod
-    def _defineInputParams(form):
+    def _defineInputParams(self, form):
         super()._defineIOParams(form)
         form.addParam('referenceVolume', PointerParam,
                       pointerClass='Volume',
@@ -103,8 +101,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
                            'set to a constant. Note that this second mask should have one-values inside the '
                            'virion and zero-values in the capsid and the solvent areas.')
 
-    @staticmethod
-    def _defineReferenceParams(form):
+    def _defineReferenceParams(self, form):
         form.addSection(label='Reference')
         form.addParam('isMapAbsoluteGreyScale', BooleanParam,
                       default=True,
@@ -131,8 +128,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
                            'If set to 0, no low-pass filter will be applied to the initial reference(s).')
         super()._insertSymmetryParam(form)
 
-    @staticmethod
-    def _defineOptimisationParamsCommon2All(form):
+    def _defineOptimisationParamsCommon2All(self, form):
         super()._insertOptimisationSection(form)
         super()._insertMaskDiameterParam(form)
         super()._insertZeroMaskParam(form)
@@ -147,8 +143,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
                            "higher-resolution maps, especially when the mask contains only a relatively small "
                            "volume inside the box.")
 
-    @staticmethod
-    def _defineAutoSamplingParams(form):
+    def _defineAutoSamplingParams(self, form):
         form.addSection(label='Auto-sampling')
         super()._insertAngularCommonParams(form)
         form.addParam('localSearchAutoSampling', EnumParam,
@@ -173,8 +168,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
                            "hasn't been tested for many cases for potential loss in reconstruction quality upon "
                            "convergence.")
 
-    @staticmethod
-    def _defineComputeParams(form, isOnlyClassif=False):
+    def _defineComputeParams(self, form, isOnlyClassif=False):
         super()._defineComputeParams(form, isOnlyClassif=isOnlyClassif)
         form.addParam('skipPadding', BooleanParam,
                       default=False,

@@ -29,7 +29,6 @@ from pyworkflow.protocol import LEVEL_ADVANCED, IntParam, StringParam, BooleanPa
     EnumParam, PathParam, FloatParam, LEVEL_NORMAL, GE, LE
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG
 from reliontomo.convert import writeSetOfPseudoSubtomograms
-from reliontomo.protocols import ProtRelionMakePseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
 
@@ -154,8 +153,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                            "symmetry point group indicated above.")
 
     # COMPUTE PARAMS ---------------------------------------------------------------------------------------------------
-    @staticmethod
-    def _defineComputeParams(form, isOnlyClassif=False):
+    def _defineComputeParams(self, form, isOnlyClassif=False):
         form.addSection(label='Compute')
         form.addParam('parallelDiscIO', BooleanParam,
                       default=True,
