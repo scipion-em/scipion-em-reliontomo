@@ -59,7 +59,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     PREFIXES = ['half1_', 'half2_']
 
     def __init__(self, **args):
-        ProtRelionRefineBase.__init__(self, **args)
+        super().__init__(self, **args)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -69,12 +69,12 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         self._defineOptimisationParamsCommon2All(form)
         self._defineAutoSamplingParams(form)
         self._defineComputeParams(form)
-        ProtRelionRefineBase._insertGpuParams(form)
-        ProtRelionRefineBase._defineAdditionalParams(form)
+        super()._insertGpuParams(form)
+        super()._defineAdditionalParams(form)
 
     @staticmethod
     def _defineInputParams(form):
-        ProtRelionRefineBase._defineIOParams(form)
+        super()._defineIOParams(form)
         form.addParam('referenceVolume', PointerParam,
                       pointerClass='Volume',
                       allowsNull=False,
@@ -129,13 +129,13 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
                       help='It is recommended to strongly low-pass filter your initial reference map. '
                            'If it has not yet been low-pass filtered, it may be done internally using this option. '
                            'If set to 0, no low-pass filter will be applied to the initial reference(s).')
-        ProtRelionRefineBase._insertSymmetryParam(form)
+        super()._insertSymmetryParam(form)
 
     @staticmethod
     def _defineOptimisationParamsCommon2All(form):
-        ProtRelionRefineSubtomograms._insertOptimisationSection(form)
-        ProtRelionRefineBase._insertMaskDiameterParam(form)
-        ProtRelionRefineBase._insertZeroMaskParam(form)
+        super()._insertOptimisationSection(form)
+        super()._insertMaskDiameterParam(form)
+        super()._insertZeroMaskParam(form)
         form.addParam('solventCorrectFSC', BooleanParam,
                       default=False,
                       condition='solventMask',
@@ -150,7 +150,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     @staticmethod
     def _defineAutoSamplingParams(form):
         form.addSection(label='Auto-sampling')
-        ProtRelionRefineBase._insertAngularCommonParams(form)
+        super()._insertAngularCommonParams(form)
         form.addParam('localSearchAutoSampling', EnumParam,
                       default=4,
                       choices=ANGULAR_SAMPLING_LIST,
@@ -174,8 +174,8 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
                            "convergence.")
 
     @staticmethod
-    def _defineComputeParams(form):
-        ProtRelionRefineBase._defineComputeParams(form)
+    def _defineComputeParams(form, isOnlyClassif=False):
+        super()._defineComputeParams(form, isOnlyClassif=isOnlyClassif)
         form.addParam('skipPadding', BooleanParam,
                       default=False,
                       label='Skip padding?',
