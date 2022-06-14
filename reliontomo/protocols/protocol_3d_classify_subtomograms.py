@@ -55,19 +55,19 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
     opticsTable = Table()
     particlesTable = Table()
 
-    def __init__(self, **args):
-        ProtRelionRefineSubtomograms.__init__(self, **args)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        ProtRelionRefineSubtomograms._defineInputParams(form)
-        ProtRelionRefineSubtomograms._defineReferenceParams(form)
-        ProtRelionRefineSubtomograms._defineCTFParams(form)
+        super()._defineInputParams(form)
+        super()._defineReferenceParams(form)
+        super()._defineCTFParams(form)
         self._defineOptimisationParams(form)
         self._defineSamplingParams(form)
-        ProtRelionRefineSubtomograms._defineComputeParams(form)
+        super()._defineComputeParams(form)
         self._insertGpuParams(form)
-        ProtRelionRefineSubtomograms._defineAdditionalParams(form)
+        super()._defineAdditionalParams(form)
 
     @staticmethod
     def _defineOptimisationParams(form):
