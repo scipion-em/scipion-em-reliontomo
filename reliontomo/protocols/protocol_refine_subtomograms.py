@@ -196,6 +196,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._initialize()
+        self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self.autoRefineStep)
         self._insertFunctionStep(self.createOutputStep)
 
