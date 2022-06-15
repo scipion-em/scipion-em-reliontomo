@@ -48,7 +48,6 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
     # I/O PARAMS -------------------------------------------------------------------------------------------------------
     def _defineIOParams(self, form):
         super()._defineCommonInputParams(form)
-        form.addParallelSection(threads=1, mpi=1)
 
     # CTF PARAMS -------------------------------------------------------------------------------------------------------
     @staticmethod

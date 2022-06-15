@@ -54,6 +54,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         super()._defineComputeParams(form)
         super()._insertGpuParams(form)
         super()._defineAdditionalParams(form)
+        form.addParallelSection(threads=1, mpi=1)
 
     @staticmethod
     def _defineOptimisationParams(form):
