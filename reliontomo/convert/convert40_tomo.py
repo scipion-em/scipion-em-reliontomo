@@ -43,7 +43,7 @@ from os.path import join, basename
 from reliontomo.convert.convertBase import checkSubtomogramFormat, getTransformInfoFromCoordOrSubtomo, WriterTomo, \
     ReaderTomo, getTransformMatrixFromRow
 from reliontomo.objects import RelionPSubtomogram
-from tomo.constants import BOTTOM_LEFT_CORNER, TR_SCIPION
+from tomo.constants import BOTTOM_LEFT_CORNER, TR_SCIPION, TR_RELION
 from tomo.objects import Coordinate3D, SubTomogram, TomoAcquisition
 
 logger = logging.getLogger(__name__)
@@ -323,7 +323,7 @@ class Reader(ReaderTomo):
             coordinate3d.setX(float(x) * factor, RELION_3D_COORD_ORIGIN)
             coordinate3d.setY(float(y) * factor, RELION_3D_COORD_ORIGIN)
             coordinate3d.setZ(float(z) * factor, RELION_3D_COORD_ORIGIN)
-            coordinate3d.setMatrix(getTransformMatrixFromRow(row, sRate=sRate))
+            coordinate3d.setMatrix(getTransformMatrixFromRow(row, sRate=sRate), convention=TR_RELION)
             coordinate3d.setGroupId(row.get(MANIFOLD_INDEX, 1))
             # Extended fields
             coordinate3d._classNumber = Integer(row.get(CLASS_NUMBER, -1))
@@ -407,7 +407,7 @@ class Reader(ReaderTomo):
             # Subtomograms
             tiltPrior = row.get(TILT_PRIOR, 0)
             psiPrior = row.get(PSI_PRIOR, 0)
-            transform.setMatrix(coordinate3d.getMatrix())
+            transform.setMatrix(coordinate3d.getMatrix(convention=TR_RELION))
 
             subtomo.setVolName(tomoName)
             subtomo.setFileName(linkedSubtomoName)

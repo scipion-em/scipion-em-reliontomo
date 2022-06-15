@@ -33,8 +33,8 @@ from tomo.protocols import ProtImportTomograms
 
 
 class TestImportFromStarFile(BaseTest):
-
     inTomoSet = None
+    inTomoSetBin2 = None
     boxSize = None
     samplingRate = None
     dataset = None
@@ -48,11 +48,13 @@ class TestImportFromStarFile(BaseTest):
         cls.coordSetSize = 2339
         cls.tomoId = EMD_10439
         cls.inTomoSet = cls._importTomograms()
+        cls.inTomoSetBin2 = cls._normalizeTomograms()
         cls.coords1 = cls._runImportCoords3dFromStarFile(cls.dataset.getFile(DataSetEmd10439.coords3dStarFile.name),
                                                          samplingRate=cls.samplingRate,
                                                          inTomos=cls.inTomoSet)
-        cls.coords2 = cls._runImportCoords3dFromStarFile(cls.dataset.getFile(DataSetEmd10439.coords3dStarFileWithSRate.name),
-                                                         inTomos=cls.inTomoSet)
+        cls.coords2 = cls._runImportCoords3dFromStarFile(
+            cls.dataset.getFile(DataSetEmd10439.coords3dStarFileWithSRate.name),
+            inTomos=cls.inTomoSet)
 
     @classmethod
     def _importTomograms(cls):
@@ -63,6 +65,17 @@ class TestImportFromStarFile(BaseTest):
 
         cls.launchProtocol(protImportTomogram)
         outputTomos = getattr(protImportTomogram, OUTPUT_TOMOS, None)
+        cls.assertIsNotNone(outputTomos, 'No tomograms were genetated.')
+        return outputTomos
+
+    @classmethod
+    def _normalizeTomograms(cls):
+        # Generate a tomogram with a different sampling rate
+        protNormTomogram = cls.newProtocol(ProtImodTomoNormalization,
+                                           inputSetOfTomograms=cls.inTomoSet,
+                                           binning=2)
+        cls.launchProtocol(protNormTomogram)
+        outputTomos = getattr(protNormTomogram, 'outputSetOfTomograms', None)
         cls.assertIsNotNone(outputTomos, 'No tomograms were genetated.')
         return outputTomos
 
@@ -86,7 +99,7 @@ class TestImportFromStarFile(BaseTest):
         self.assertEqual(outputCoordsSet.getBoxSize(), self.boxSize)
         self.assertEqual(outputCoordsSet.getSamplingRate(), inTomos.getSamplingRate())
         self.assertTrue(outputCoordsSet.getPrecedents(), inTomos)
-        [self.assertEqual(coord.getTsId(), self.tomoId) for coord in outputCoordsSet]
+        [self.assertEqual(coord.getTomoId(), self.tomoId) for coord in outputCoordsSet]
 
     def testImport3dCoordsFromStarFile_01(self):
         print(magentaStr("\n==> Importing coordinates 3D from a star file. Sampling rate read from protocol form:"))
@@ -101,18 +114,10 @@ class TestImportFromStarFile(BaseTest):
         print(magentaStr("\n==> Importing coordinates 3D from a star file with a sampling rate different than the "
                          "tomograms sampling rate:"))
 
-        # Generate a tomogram with a different sampling rate
-        protNormTomogram = self.newProtocol(ProtImodTomoNormalization,
-                                            inputSetOfTomograms=self.inTomoSet,
-                                            binning=2)
-        self.launchProtocol(protNormTomogram)
-        outputTomos = getattr(protNormTomogram, 'outputSetOfTomograms', None)
-        self.assertIsNotNone(outputTomos, 'No tomograms were genetated.')
-
         # Import the coordinates from a star file with the binned tomogram
         coords3 = self._runImportCoords3dFromStarFile(self.dataset.getFile(DataSetEmd10439.coords3dStarFile.name),
                                                       samplingRate=self.samplingRate,
-                                                      inTomos=outputTomos)
+                                                      inTomos=self.inTomoSetBin2)
 
         # These coordinates are referred to a tomogram which was binned a factor of 2 respecting the original tomogram
         # from this dataset, so the coordinates from one to another import protocols should present a scale factor of 2
@@ -123,25 +128,32 @@ class TestImportFromStarFile(BaseTest):
             self.assertEqual(binFactor * coords3[i].getY(BOTTOM_LEFT_CORNER), self.coords1[i].getY(BOTTOM_LEFT_CORNER))
             self.assertEqual(binFactor * coords3[i].getZ(BOTTOM_LEFT_CORNER), self.coords1[i].getZ(BOTTOM_LEFT_CORNER))
 
-    def _runImportSubtomogramsFromStarFile(self, starFile, samplingRate=None):
+    def _runImportSubtomogramsFromStarFile(self, starFile, inTomoSet, binning=1):
         protImportSubtomogramsFromStar = self.newProtocol(ProtImportSubtomogramsFromStar,
                                                           starFile=starFile,
-                                                          inTomos=self.inTomoSet,
-                                                          samplingRate=samplingRate,
+                                                          inTomos=inTomoSet,
+                                                          samplingRate=self.samplingRate,
                                                           boxSize=self.boxSize)
 
         self.launchProtocol(protImportSubtomogramsFromStar)
         outCoords = getattr(protImportSubtomogramsFromStar, importSubtomosOutputs.coordinates.name)
         outSubtomos = getattr(protImportSubtomogramsFromStar, importSubtomosOutputs.subtomograms.name)
-        self._checkCoordinates(outCoords, coordSetSize=7, inTomos=self.inTomoSet)
-        self._checkSubtomograms(outSubtomos)
+        self._checkCoordinates(outCoords, coordSetSize=7, inTomos=inTomoSet)
+        self._checkSubtomograms(outSubtomos, binning=binning)
 
-    def _checkSubtomograms(self, subtomoSet):
+    def _checkSubtomograms(self, subtomoSet, binning):
         self.assertSetSize(subtomoSet, size=7)
-        self.assertEqual(subtomoSet.getSamplingRate(), self.samplingRate)
+        self.assertEqual(subtomoSet.getSamplingRate(), self.samplingRate * binning)
         self.assertEqual(subtomoSet.getDim(), (self.boxSize, self.boxSize, self.boxSize))
 
-    def testImportSubtomogramsFromStarFile(self):
+    def testImportSubtomogramsFromStarFile_01(self):
         print(magentaStr("\n==> Importing subtomograms from a star file:"))
         self._runImportSubtomogramsFromStarFile(self.dataset.getFile(DataSetEmd10439.subtomogramsStarFile.name),
-                                                self.inTomoSet.getSamplingRate())
+                                                self.inTomoSet)
+
+    def testImportSubtomogramsFromStarFile_02(self):
+        print(magentaStr("\n==> Importing subtomograms from a star file with a sampling rate different than the "
+                         "tomograms sampling rate:"))
+        self._runImportSubtomogramsFromStarFile(self.dataset.getFile(DataSetEmd10439.subtomogramsStarFile.name),
+                                                self.inTomoSetBin2,
+                                                binning=2)
