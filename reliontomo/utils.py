@@ -25,7 +25,7 @@
 from collections import OrderedDict
 from os.path import isabs, join, exists
 from reliontomo.constants import OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE
-from reliontomo.objects import relionTomoMetadata, RelionSetOfPseudoSubtomograms
+from reliontomo.objects import relionTomoMetadata, RelionSetOfPseudoSubtomograms, createSetOfRelionPSubtomograms
 
 
 def getProgram(program, nMpi):
@@ -70,22 +70,24 @@ def isPseudoSubtomogram(subtomo):
     return hasattr(subtomo, '_ctfImage')
 
 
-def genRelionParticles(extraPath, inOptSet, binningFactor=None, nParticles=None):
+def genRelionParticles(extraPath, inParticlesSet, binningFactor=None, boxSIze=24):
     """Generate a relionParticles object containing the files involved for the next protocol, considering that some
     protocols don't generate the optimisation_set.star file. In that case, the input Object which represents it will
     be copied and, after that, this method will be used to update the corresponding attribute."""
     optimSetStar = join(extraPath, OPTIMISATION_SET_STAR)
     if exists(optimSetStar):
-        relionParticles = relionTomoMetadata(optimSetStar=optimSetStar,
-                                             tsSamplingRate=inOptSet.getTsSamplingRate(),
-                                             relionBinning=binningFactor if binningFactor else inOptSet.getRelionBinning(),
-                                             nParticles=nParticles if nParticles else inOptSet.getNumParticles())
+        psubtomoSet = createSetOfRelionPSubtomograms(join(extraPath, '..'),
+                                                     optimSetStar,
+                                                     template=PSUBTOMOS_SQLITE,
+                                                     tsSamplingRate=inParticlesSet.getTsSamplingRate(),
+                                                     relionBinning=binningFactor,
+                                                     boxSize=boxSIze)
     else:
-        relionParticles = relionTomoMetadata()
-        relionParticles.copyInfo(inOptSet)
-        relionParticles.updateGenFiles(extraPath)
+        psubtomoSet = RelionSetOfPseudoSubtomograms()
+        psubtomoSet.copyInfo(inParticlesSet)
+        psubtomoSet.updateGenFiles(extraPath)
 
-    return relionParticles
+    return psubtomoSet
 
 
 def genOutputPseudoSubtomograms(prot, currentSamplingRate):

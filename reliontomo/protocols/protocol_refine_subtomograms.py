@@ -295,8 +295,6 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         self._defineSourceRelation(inOptSet, vol)
 
     # -------------------------- INFO functions -------------------------------
-    def _validate(self):
-        pass
 
     # --------------------------- UTILS functions -----------------------------
     def _genAutoRefineCommand(self):

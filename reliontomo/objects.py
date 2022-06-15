@@ -235,8 +235,7 @@ class RelionPSubtomogram(SubTomogram):
 class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     ITEM_TYPE = RelionPSubtomogram
 
-    def __init__(self, optimSetStar=None, relionBinning=None, tsSamplingRate=None, boxSize=24,
-                 opticsGroupStr=None, **kwargs):
+    def __init__(self, optimSetStar=None, relionBinning=None, tsSamplingRate=None, boxSize=24, **kwargs):
         super().__init__(**kwargs)
         self._boxSize = Integer(boxSize)
         self._tomograms = String()
