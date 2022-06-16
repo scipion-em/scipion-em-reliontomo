@@ -30,6 +30,7 @@ from pyworkflow.protocol import BooleanParam, FloatParam, EnumParam
 from reliontomo import Plugin
 from reliontomo.constants import OUT_PARTICLES_STAR, COORD_X, COORD_Y, COORD_Z, SHIFTX_ANGST, SHIFTY_ANGST, \
     SHIFTZ_ANGST, ROT, TILT, PSI
+from reliontomo.convert import writeSetOfPseudoSubtomograms
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 from reliontomo.utils import genEnumParamDict, genRelionParticles
@@ -141,13 +142,17 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._initialize()
-        self._insertFunctionStep(self._operateStep)
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.operateStep)
         self._insertFunctionStep(self.createOutputStep)
 
     def _initialize(self):
         self._manageOperateLabels()
 
-    def _operateStep(self):
+    def convertInputStep(self):
+        writeSetOfPseudoSubtomograms(self.inReParticles.get(), self.getOutStarFile())
+
+    def operateStep(self):
         Plugin.runRelionTomo(self, 'relion_star_handler', self._getOperateCommand())
 
     def createOutputStep(self):
