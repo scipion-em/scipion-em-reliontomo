@@ -41,7 +41,7 @@ from tomo.objects import AverageSubTomogram
 
 
 class outputObjects(Enum):
-    volumes = RelionSetOfPseudoSubtomograms
+    relionParticles = RelionSetOfPseudoSubtomograms
     average = AverageSubTomogram
     outputFSC = FSC
 
