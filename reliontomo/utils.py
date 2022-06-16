@@ -25,6 +25,7 @@
 from collections import OrderedDict
 from os.path import isabs, join, exists
 from reliontomo.constants import OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE
+from reliontomo.convert import readSetOfPseudoSubtomograms
 from reliontomo.objects import relionTomoMetadata, RelionSetOfPseudoSubtomograms, createSetOfRelionPSubtomograms
 
 
@@ -81,13 +82,15 @@ def genRelionParticles(extraPath, inParticlesSet, binningFactor=None, boxSIze=24
                                                      optimSetStar,
                                                      template=PSUBTOMOS_SQLITE,
                                                      tsSamplingRate=inParticlesSet.getTsSamplingRate(),
-                                                     relionBinning=binningFactor,
-                                                     boxSize=boxSIze)
+                                                     relionBinning=binningFactor if binningFactor else inParticlesSet..getRelionBinning(),
+                                                     boxSize=boxSIze if boxSIze else inParticlesSet.getBoxSize())
     else:
         psubtomoSet = RelionSetOfPseudoSubtomograms()
         psubtomoSet.copyInfo(inParticlesSet)
         psubtomoSet.updateGenFiles(extraPath)
 
+    # Fill the set with the generated particles
+    readSetOfPseudoSubtomograms(psubtomoSet)
     return psubtomoSet
 
 

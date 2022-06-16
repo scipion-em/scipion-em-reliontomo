@@ -25,24 +25,22 @@
 import glob
 import re
 from enum import Enum
-
 from emtable import Table
 from pwem.convert.headers import fixVolume
 from pwem.objects import FSC
 from pyworkflow import BETA
-from reliontomo.objects import relionTomoMetadata, RelionSetOfPseudoSubtomograms
+from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
 from os.path import getmtime
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, StringParam, BooleanParam, EnumParam
 from pyworkflow.utils import createLink
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, OUT_PARTICLES_STAR
-from reliontomo.utils import getProgram, genRelionParticles, genOutputPseudoSubtomograms
+from reliontomo.utils import getProgram, genRelionParticles
 from tomo.objects import AverageSubTomogram
 
 
 class outputObjects(Enum):
-    relionParticles = relionTomoMetadata
     volumes = RelionSetOfPseudoSubtomograms
     average = AverageSubTomogram
     outputFSC = FSC
@@ -221,9 +219,6 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         # Output RelionParticles
         relionParticles = genRelionParticles(self._getExtraPath(), inParticles)
 
-        # Output pseudosubtomograms --> set of volumes for visualization purposes
-        outputSet = genOutputPseudoSubtomograms(self, relionParticles.getCurrentSamplingRate())
-
         # Output volume
         vol = AverageSubTomogram()
         volName = self._getExtraPath('_class001.mrc')
@@ -244,12 +239,10 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         fsc.setData(resolution_inv, frc)
 
         outputDict = {outputObjects.relionParticles.name: relionParticles,
-                      outputObjects.volumes.name: outputSet,
                       outputObjects.average.name: vol,
                       outputObjects.outputFSC.name: fsc}
         self._defineOutputs(**outputDict)
         self._defineSourceRelation(inParticles, relionParticles)
-        self._defineSourceRelation(inParticles, outputSet)
         self._defineSourceRelation(inParticles, vol)
 
     # -------------------------- INFO functions -------------------------------
