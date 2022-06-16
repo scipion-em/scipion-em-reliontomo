@@ -213,11 +213,13 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genAutoRefineCommand(), numberOfMpi=nMpi)
 
     def createOutputStep(self):
+        inParticles = self.inReParticles.get()
+
         # Rename the particles file generated (_data.star) to follow the name convention
         createLink(self._getExtraPath('_data.star'), self._getExtraPath(OUT_PARTICLES_STAR))
 
         # Output RelionParticles
-        relionParticles = genRelionParticles(self._getExtraPath(), self.inOptSet.get())
+        relionParticles = genRelionParticles(self._getExtraPath(), inParticles)
 
         # Output pseudosubtomograms --> set of volumes for visualization purposes
         outputSet = genOutputPseudoSubtomograms(self, relionParticles.getCurrentSamplingRate())
@@ -246,10 +248,9 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
                       outputObjects.average.name: vol,
                       outputObjects.outputFSC.name: fsc}
         self._defineOutputs(**outputDict)
-        inOptSet = self.inOptSet.get()
-        self._defineSourceRelation(inOptSet, relionParticles)
-        self._defineSourceRelation(inOptSet, outputSet)
-        self._defineSourceRelation(inOptSet, vol)
+        self._defineSourceRelation(inParticles, relionParticles)
+        self._defineSourceRelation(inParticles, outputSet)
+        self._defineSourceRelation(inParticles, vol)
 
     # -------------------------- INFO functions -------------------------------
 
