@@ -183,7 +183,7 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
 
     def _getOperateCommand(self):
         cmd = ''
-        cmd += '--i %s ' % self.inOptSet.get().getParticles()
+        cmd += '--i %s ' % self.getOutStarFile()
         cmd += '--o %s ' % self._getExtraPath(OUT_PARTICLES_STAR)
         if self.doRecenter.get():
             cmd += '--center '
