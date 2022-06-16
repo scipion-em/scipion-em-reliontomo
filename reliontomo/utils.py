@@ -25,8 +25,7 @@
 from collections import OrderedDict
 from os.path import isabs, join, exists
 from reliontomo.constants import OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE
-from reliontomo.convert import readSetOfPseudoSubtomograms
-from reliontomo.objects import relionTomoMetadata, RelionSetOfPseudoSubtomograms, createSetOfRelionPSubtomograms
+from reliontomo.objects import RelionSetOfPseudoSubtomograms, createSetOfRelionPSubtomograms
 
 
 def getProgram(program, nMpi):
@@ -76,6 +75,8 @@ def genRelionParticles(extraPath, inParticlesSet, binningFactor=None, boxSIze=24
     considering that some protocols don't generate the optimisation_set.star file. In that case, the input Object
     which represents it will be copied and, after that, this method will be used to update the corresponding
     attribute."""
+    from reliontomo.convert import readSetOfPseudoSubtomograms
+
     optimSetStar = join(extraPath, OPTIMISATION_SET_STAR)
     if exists(optimSetStar):
         psubtomoSet = createSetOfRelionPSubtomograms(join(extraPath, '..'),
