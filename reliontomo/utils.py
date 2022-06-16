@@ -78,15 +78,16 @@ def genRelionParticles(extraPath, inParticlesSet, binningFactor=None, boxSIze=24
     from reliontomo.convert import readSetOfPseudoSubtomograms
 
     optimSetStar = join(extraPath, OPTIMISATION_SET_STAR)
+    protocolPath = join(extraPath, '..')
     if exists(optimSetStar):
-        psubtomoSet = createSetOfRelionPSubtomograms(join(extraPath, '..'),
+        psubtomoSet = createSetOfRelionPSubtomograms(protocolPath,
                                                      optimSetStar,
                                                      template=PSUBTOMOS_SQLITE,
                                                      tsSamplingRate=inParticlesSet.getTsSamplingRate(),
                                                      relionBinning=binningFactor if binningFactor else inParticlesSet.getRelionBinning(),
                                                      boxSize=boxSIze if boxSIze else inParticlesSet.getBoxSize())
     else:
-        psubtomoSet = RelionSetOfPseudoSubtomograms()
+        psubtomoSet = RelionSetOfPseudoSubtomograms.create(protocolPath, template=PSUBTOMOS_SQLITE)
         psubtomoSet.copyInfo(inParticlesSet)
         psubtomoSet.updateGenFiles(extraPath)
 
