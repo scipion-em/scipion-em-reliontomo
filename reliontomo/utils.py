@@ -82,7 +82,7 @@ def genRelionParticles(extraPath, inParticlesSet, binningFactor=None, boxSIze=24
                                                      optimSetStar,
                                                      template=PSUBTOMOS_SQLITE,
                                                      tsSamplingRate=inParticlesSet.getTsSamplingRate(),
-                                                     relionBinning=binningFactor if binningFactor else inParticlesSet..getRelionBinning(),
+                                                     relionBinning=binningFactor if binningFactor else inParticlesSet.getRelionBinning(),
                                                      boxSize=boxSIze if boxSIze else inParticlesSet.getBoxSize())
     else:
         psubtomoSet = RelionSetOfPseudoSubtomograms()
