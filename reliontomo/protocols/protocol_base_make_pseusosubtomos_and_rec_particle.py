@@ -24,7 +24,7 @@
 # **************************************************************************
 from pyworkflow import BETA
 from pyworkflow.protocol import IntParam, FloatParam
-from reliontomo.constants import IN_PARTICLES_STAR, OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE
+from reliontomo.constants import OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE
 from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms
 from reliontomo.objects import createSetOfRelionPSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase

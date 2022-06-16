@@ -25,14 +25,13 @@
 # *
 # **************************************************************************
 from enum import Enum
-from pwem.protocols import EMProtocol
 from pyworkflow import BETA
-from pyworkflow.protocol import PointerParam, BooleanParam, FloatParam, EnumParam
-from pyworkflow.utils import Message
+from pyworkflow.protocol import BooleanParam, FloatParam, EnumParam
 from reliontomo import Plugin
 from reliontomo.constants import OUT_PARTICLES_STAR, COORD_X, COORD_Y, COORD_Z, SHIFTX_ANGST, SHIFTY_ANGST, \
     SHIFTZ_ANGST, ROT, TILT, PSI
-from reliontomo.objects import relionTomoMetadata
+from reliontomo.objects import RelionSetOfPseudoSubtomograms
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 from reliontomo.utils import genEnumParamDict, genRelionParticles
 
 # Operation labels and values
@@ -50,10 +49,10 @@ LABELS_TO_OPERATE_WITH = [COORDINATES, SHIFTS, ANGLES]
 
 
 class outputObjects(Enum):
-    relionParticles = relionTomoMetadata
+    relionParticles = RelionSetOfPseudoSubtomograms
 
 
-class ProtRelionEditParticlesStar(EMProtocol):
+class ProtRelionEditParticlesStar(ProtRelionTomoBase):
     """Operate on the particles star file"""
 
     _label = 'Apply operation to Relion particles'
@@ -70,11 +69,7 @@ class ProtRelionEditParticlesStar(EMProtocol):
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        form.addSection(label=Message.LABEL_INPUT)
-        form.addParam('inOptSet', PointerParam,
-                      pointerClass='relionTomoMetadata',
-                      label='Input Relion Tomo Metadata',
-                      important=True)
+        super()._defineCommonInputParams(form)
         form.addSection(label='Center')
         form.addParam('doRecenter', BooleanParam,
                       label='Perform centering of particles',
@@ -156,11 +151,11 @@ class ProtRelionEditParticlesStar(EMProtocol):
         Plugin.runRelionTomo(self, 'relion_star_handler', self._getOperateCommand())
 
     def createOutputStep(self):
-        inOptSet = self.inOptSet.get()
+        inParticles = self.inReParticles.get()
         # Output RelionParticles
-        relionParticles = genRelionParticles(self._getExtraPath(), inOptSet)
+        relionParticles = genRelionParticles(self._getExtraPath(), inParticles)
         self._defineOutputs(**{outputObjects.relionParticles.name: relionParticles})
-        self._defineSourceRelation(inOptSet, relionParticles)
+        self._defineSourceRelation(inParticles, relionParticles)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
