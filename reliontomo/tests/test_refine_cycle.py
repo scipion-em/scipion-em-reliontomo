@@ -45,8 +45,8 @@ from tomo.protocols import ProtImportTs
 from tomo3d.protocols import ProtJjsoftReconstructTomogram
 from tomo3d.protocols.protocol_reconstruct_tomogram import SIRT
 
-RELION_TOMO_MD = prepareOutputs.relionParticles.name
-OUTPUT_VOLUMES = makePSubtomosOutputs.volumes.name
+RELION_TOMO_PARTICLES = prepareOutputs.relionParticles.name
+OUTPUT_VOLUMES = makePSubtomosOutputs.relionParticles.name
 OUTPUT_MODEL = iniModelOutputs.average.name
 OUTPUT_COORDS = importStarOutputs.coordinates.name
 OUTPUT_CLASSES = cl3dOutputs.classes.name
@@ -181,7 +181,7 @@ class TestRefinceCycle(BaseTest):
     def _makePSubtomograms(cls):
         print(magentaStr("\n==> Making the psudosubtomograms:"))
         protMakePsubtomos = cls.newProtocol(ProtRelionMakePseudoSubtomograms,
-                                            inOptSet=getattr(cls.protPrepare, RELION_TOMO_MD, None),
+                                            inReParticles=getattr(cls.protPrepare, RELION_TOMO_PARTICLES, None),
                                             boxSize=192,
                                             croppedBoxSize=cls.boxSizeBin4,
                                             binningFactor=4,
@@ -195,7 +195,7 @@ class TestRefinceCycle(BaseTest):
     def _genInitialModel(cls):
         print(magentaStr("\n==> Generating the a de novo 3D initial model:"))
         protInitialModel = cls.newProtocol(ProtRelionDeNovoInitialModel,
-                                           inOptSet=getattr(cls.protMakePSubtomos, RELION_TOMO_MD, None),
+                                           inReParticles=getattr(cls.protMakePSubtomos, RELION_TOMO_PARTICLES, None),
                                            nVdamMiniBatches=10,
                                            maskDiameter=230,
                                            symmetry=cls.symmetry,
@@ -210,7 +210,7 @@ class TestRefinceCycle(BaseTest):
 
     @classmethod
     def _3dClassify(cls, doAlingment=False):
-        paramsDict = {'inOptSet': getattr(cls.protMakePSubtomos, RELION_TOMO_MD, None),
+        paramsDict = {'inReParticles': getattr(cls.protMakePSubtomos, RELION_TOMO_PARTICLES, None),
                       'referenceVolume': getattr(cls.protInitialModel, OUTPUT_MODEL, None),
                       'numberOfClasses': cls.nClasses,
                       'initialLowPassFilterA': 30,
@@ -240,7 +240,7 @@ class TestRefinceCycle(BaseTest):
     def _autoRefine(cls):
         print(magentaStr("\n==> Refining the particles:"))
         protAutoRefine = cls.newProtocol(ProtRelionRefineSubtomograms,
-                                         inOptSet=getattr(cls.protMakePSubtomos, RELION_TOMO_MD, None),
+                                         inReParticles=getattr(cls.protMakePSubtomos, RELION_TOMO_PARTICLES, None),
                                          referenceVolume=getattr(cls.protInitialModel, OUTPUT_MODEL, None),
                                          initialLowPassFilterA=50,
                                          symmetry=cls.symmetry,
@@ -258,7 +258,7 @@ class TestRefinceCycle(BaseTest):
     def _recParticleFromTS(cls):
         print(magentaStr("\n==> Reconstructing the particle from the TS using a binning factor of 2:"))
         protRecPartFromTS = cls.newProtocol(ProtRelionReconstructParticle,
-                                            inOptSet=getattr(cls.protAutoRefine, RELION_TOMO_MD, None),
+                                            inReParticles=getattr(cls.protAutoRefine, RELION_TOMO_PARTICLES, None),
                                             boxSize=256,
                                             croppedBoxSize=cls.boxSizeBin2,
                                             binningFactor=2,
@@ -321,7 +321,7 @@ class TestRefinceCycle(BaseTest):
     def testPrepareData(self):
         protPrepare = self.protPrepare
         # Check RelionTomoMetadata: both particles and tomograms files are generated
-        self._checkRe4Metadata(getattr(protPrepare, RELION_TOMO_MD, None),
+        self._checkRe4Metadata(getattr(protPrepare, RELION_TOMO_PARTICLES, None),
                                tomogramsFile=protPrepare._getExtraPath(OUT_TOMOS_STAR),
                                particlesFile=protPrepare._getExtraPath(OUT_PARTICLES_STAR),
                                trajectoriesFile=None,
@@ -332,7 +332,7 @@ class TestRefinceCycle(BaseTest):
 
     def testMakePSubtomos(self):
         protMakePSubtomos = self.protMakePSubtomos
-        mdObj = getattr(protMakePSubtomos, RELION_TOMO_MD, None)
+        mdObj = getattr(protMakePSubtomos, RELION_TOMO_PARTICLES, None)
         # Check RelionTomoMetadata: only the particles file is generated
         self._checkRe4Metadata(mdObj,
                                tomogramsFile=self.protPrepare._getExtraPath(OUT_TOMOS_STAR),
@@ -350,7 +350,7 @@ class TestRefinceCycle(BaseTest):
     def testInitialModel(self):
         protInitialModel = self.protInitialModel
         recVol = getattr(protInitialModel, OUTPUT_MODEL, None)
-        self._checkRecVolume(recVol, optSet=protInitialModel.inOptSet.get(), boxSize=self.boxSizeBin4)
+        self._checkRecVolume(recVol, optSet=protInitialModel.inReParticles.get(), boxSize=self.boxSizeBin4)
 
     def testCl3d(self):
         self._runTestCl3d(self.protCl3d)
@@ -360,7 +360,7 @@ class TestRefinceCycle(BaseTest):
 
     def _runTestCl3d(self, protCl3d):
         protMakePSubtomos = self.protMakePSubtomos
-        mdObj = getattr(protCl3d, RELION_TOMO_MD, None)
+        mdObj = getattr(protCl3d, RELION_TOMO_PARTICLES, None)
         # Check RelionTomoMetadata: only the particles file is generated
         self._checkRe4Metadata(mdObj,
                                tomogramsFile=self.protPrepare._getExtraPath(OUT_TOMOS_STAR),
@@ -382,7 +382,7 @@ class TestRefinceCycle(BaseTest):
     def testAutoRefine(self):
         protMakePSubtomos = self.protMakePSubtomos
         protAutoRefine = self.protAutoRefine
-        mdObj = getattr(protAutoRefine, RELION_TOMO_MD, None)
+        mdObj = getattr(protAutoRefine, RELION_TOMO_PARTICLES, None)
         # Check RelionTomoMetadata: only the particles file is generated
         self._checkRe4Metadata(mdObj,
                                tomogramsFile=self.protPrepare._getExtraPath(OUT_TOMOS_STAR),
@@ -403,13 +403,13 @@ class TestRefinceCycle(BaseTest):
         half1 = self._getLastFileName(protAutoRefine._getExtraPath(pattern % 1))
         half2 = self._getLastFileName(protAutoRefine._getExtraPath(pattern % 2))
         self._checkRecVolume(recVol,
-                             optSet=protAutoRefine.inOptSet.get(),
+                             optSet=protAutoRefine.inReParticles.get(),
                              boxSize=self.boxSizeBin4,
                              halves=[half1, half2])
 
     def testRecParticleFromTS(self):
         protRecPartFromTS = self.protRecPartFromTS
-        mdObj = getattr(protRecPartFromTS, RELION_TOMO_MD, None)
+        mdObj = getattr(protRecPartFromTS, RELION_TOMO_PARTICLES, None)
         # Check RelionTomoMetadata: only the particles file is generated
         self._checkRe4Metadata(mdObj,
                                tomogramsFile=self.protPrepare._getExtraPath(OUT_TOMOS_STAR),
