@@ -383,6 +383,8 @@ class Reader(ReaderTomo):
             # Add current pseudosubtomogram to the output set
             outputSet.append(psubtomo)
 
+        # Keep the number of particles to compare sizes in case of subset
+        outputSet.setNReParticles(self.dataTable.size())
         # Fix volume headers
         if listOfFilesToFixVolume:
             fixVolume(listOfFilesToFixVolume)

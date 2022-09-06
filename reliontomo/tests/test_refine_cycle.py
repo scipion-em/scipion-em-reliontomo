@@ -269,17 +269,17 @@ class TestRefinceCycle(BaseTest):
         cls.launchProtocol(protRecPartFromTS)
         return protRecPartFromTS
 
-    def _checkRe4Metadata(self, mdObj, tomogramsFile=None, particlesFile=None, trajectoriesFile=None,
+    def _checkRe4Metadata(self, pSubtomoSet, tomogramsFile=None, particlesFile=None, trajectoriesFile=None,
                           manifoldsFile=None, referenceFscFile=None, relionBinning=None):
-        self.assertEqual(self.nParticles, mdObj.getNumParticles())
-        self.assertEqual(self.samplingRateOrig, mdObj.getTsSamplingRate())
-        self.assertEqual(tomogramsFile, mdObj.getTomograms())
-        self.assertEqual(particlesFile, mdObj.getParticles())
-        self.assertEqual(trajectoriesFile, mdObj.getTrajectories())
-        self.assertEqual(manifoldsFile, mdObj.getManifolds())
-        self.assertEqual(referenceFscFile, mdObj.getReferenceFsc())
-        self.assertEqual(relionBinning, mdObj.getRelionBinning())
-        self.assertEqual(self.samplingRateOrig * relionBinning, mdObj.getCurrentSamplingRate())
+        self.assertEqual(self.nParticles, pSubtomoSet.getNReParticles())
+        self.assertEqual(self.samplingRateOrig, pSubtomoSet.getTsSamplingRate())
+        self.assertEqual(tomogramsFile, pSubtomoSet.getTomograms())
+        self.assertEqual(particlesFile, pSubtomoSet.getParticles())
+        self.assertEqual(trajectoriesFile, pSubtomoSet.getTrajectories())
+        self.assertEqual(manifoldsFile, pSubtomoSet.getManifolds())
+        self.assertEqual(referenceFscFile, pSubtomoSet.getReferenceFsc())
+        self.assertEqual(relionBinning, pSubtomoSet.getRelionBinning())
+        self.assertEqual(self.samplingRateOrig * relionBinning, pSubtomoSet.getCurrentSamplingRate())
 
     def _checkPseudosubtomograms(self, pSubtomosSet, boxSize=None, currentSRate=None):
         self.assertSetSize(pSubtomosSet, self.nParticles)

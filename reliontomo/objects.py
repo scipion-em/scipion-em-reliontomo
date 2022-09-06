@@ -143,7 +143,6 @@ class RelionPSubtomogram(SubTomogram):
         self.setSamplingRate(samplingRate)
         self.setClassId(classId)
         self._tsId = String(tsId)
-        # self._tsName = String(tsName)
         self._ctfFile = String(ctfFile)
         self._x = Float(x)
         self._y = Float(y)
@@ -235,7 +234,8 @@ class RelionPSubtomogram(SubTomogram):
 class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     ITEM_TYPE = RelionPSubtomogram
 
-    def __init__(self, optimSetStar=None, relionBinning=None, tsSamplingRate=None, boxSize=24, **kwargs):
+    def __init__(self, optimSetStar=None, relionBinning=None, tsSamplingRate=None, boxSize=24,
+                 nReParticles=0, **kwargs):
         super().__init__(**kwargs)
         self._boxSize = Integer(boxSize)
         self._tomograms = String()
@@ -245,6 +245,8 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
         self._referenceFsc = String()
         self._relionBinning = Float(relionBinning)
         self._tsSamplingRate = Float(tsSamplingRate)
+        self._nReParticles = Integer(nReParticles)
+
         if optimSetStar:
             self.filesMaster = optimSetStar
 
@@ -321,6 +323,12 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     def getCurrentSamplingRate(self):
         return self.getTsSamplingRate() * self.getRelionBinning()
 
+    def getNReParticles(self):
+        return self._nReParticles.get()
+
+    def setNReParticles(self, val):
+        self._nReParticles.set(val)
+
     def setRelionBinning(self, val):
         self._relionBinning.set(val)
 
@@ -332,7 +340,7 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
 
     def copyInfo(self, other):
         self.copyAttributes(other, '_tomograms', '_particles', '_trajectories', '_manifolds', '_referenceFsc',
-                            '_relionBinning', '_tsSamplingRate', '_samplingRate', '_boxSize')
+                            '_relionBinning', '_tsSamplingRate', '_samplingRate', '_boxSize', '_nReParticles')
         self._acquisition.copyInfo(other._acquisition)
         # self._relionMd = relionMd if relionMd else relionTomoMetadata
 
@@ -364,13 +372,14 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
 
 
 def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, template=PSUBTOMOS_SQLITE, tsSamplingRate=1,
-                                   relionBinning=1, boxSize=24):
+                                   relionBinning=1, boxSize=24, nReParticles=0):
     psubtomoSet = RelionSetOfPseudoSubtomograms.create(protocolPath, template=template)
     psubtomoSet.filesMaster = optimSetStar
     psubtomoSet.setTsSamplingRate(tsSamplingRate)
     psubtomoSet.setRelionBinning(relionBinning)
     psubtomoSet.setSamplingRate(psubtomoSet.getCurrentSamplingRate())
     psubtomoSet.setBoxSize(boxSize)
+    psubtomoSet.setNReParticles(nReParticles)
     return psubtomoSet
 
 

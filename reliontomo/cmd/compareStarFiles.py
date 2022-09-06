@@ -34,9 +34,10 @@ def main():
     parser.add_argument('--star1', type=str, help='First star file to be compared.')
     parser.add_argument('--star2', type=str, help='Second star file to be compared.')
     parser.add_argument('--tableList', nargs='+', default=['particles'],
-                        help='List of tables desired to be compared in both star files. Default is "particles".')
+                        help='Comma-separated names of the tables desired to be compared in both star files. Default '
+                             'is "particles".')
     parser.add_argument('--excludeLabelList', nargs='+', default=[],
-                        help='list of labels to be excluded in the comparison.')
+                        help='Comma-separated names of the labels to be excluded in the comparison.')
 
     args = parser.parse_args()
     star1 = args.star1

@@ -25,7 +25,7 @@
 from pyworkflow import BETA
 from pyworkflow.protocol import IntParam, FloatParam
 from reliontomo.constants import OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE
-from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms
+from reliontomo.convert import readSetOfPseudoSubtomograms
 from reliontomo.objects import createSetOfRelionPSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
@@ -74,7 +74,7 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
         pass
 
     def convertInputStep(self):
-        writeSetOfPseudoSubtomograms(self.inReParticles.get(), self.getOutStarFile())
+        self.genInStarFile()
 
     def createOutputStep(self):
         # Pseudosubtomos
@@ -95,7 +95,7 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
         inRelionParticles = self.inReParticles.get()
         cmd = ''
         cmd += '--t %s ' % inRelionParticles.getTomograms()
-        cmd += '--p %s ' % self.getOutStarFile()
+        cmd += '--p %s ' % self.getOutStarFileName()
         if inRelionParticles.getTrajectories():
             cmd += '--mot %s ' % inRelionParticles.getTrajectories()
         cmd += '--b %i ' % self.boxSize.get()

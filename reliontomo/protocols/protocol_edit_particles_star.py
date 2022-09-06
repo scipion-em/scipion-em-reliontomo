@@ -150,7 +150,7 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
         self._manageOperateLabels()
 
     def convertInputStep(self):
-        writeSetOfPseudoSubtomograms(self.inReParticles.get(), self.getOutStarFile())
+        writeSetOfPseudoSubtomograms(self.inReParticles.get(), self.getOutStarFileName())
 
     def operateStep(self):
         Plugin.runRelionTomo(self, 'relion_star_handler', self._getOperateCommand())
@@ -188,7 +188,7 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
 
     def _getOperateCommand(self):
         cmd = ''
-        cmd += '--i %s ' % self.getOutStarFile()
+        cmd += '--i %s ' % self.getOutStarFileName()
         cmd += '--o %s ' % self._getExtraPath(OUT_PARTICLES_STAR)
         if self.doRecenter.get():
             cmd += '--center '

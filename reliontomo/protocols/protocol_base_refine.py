@@ -273,7 +273,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         pass
 
     def convertInputStep(self):
-        writeSetOfPseudoSubtomograms(self.inReParticles.get(), self.getOutStarFile())
+        self.genInStarFile()
 
     # -------------------------- INFO functions -------------------------------
 
@@ -288,7 +288,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         return cmd
 
     def _genIOBaseCmd(self):
-        cmd = '--i %s ' % self.getOutStarFile()
+        cmd = '--i %s ' % self.getOutStarFileName()
         cmd += '--o %s ' % (self._getExtraPath() + '/')  # If not, Relion will concatenate it directly as a prefix
         cmd += '--j %i ' % self.numberOfThreads
         return cmd

@@ -24,8 +24,9 @@
 # **************************************************************************
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol import PointerParam
-from pyworkflow.utils import Message
+from pyworkflow.utils import Message, createLink
 from reliontomo.constants import IN_PARTICLES_STAR
+from reliontomo.convert import writeSetOfPseudoSubtomograms
 
 
 class ProtRelionTomoBase(EMProtocol):
@@ -39,5 +40,16 @@ class ProtRelionTomoBase(EMProtocol):
                       pointerClass='RelionSetOfPseudoSubtomograms',
                       label='Relion particles')
 
-    def getOutStarFile(self):
+    def getOutStarFileName(self):
         return self._getExtraPath(IN_PARTICLES_STAR)
+
+    def genInStarFile(self):
+        """It will check if the set size and the stored particles star file are of the same size or not. In
+        the first case, a link will be made to the previous particles star file to avoid generating it and in the
+        second case, a new file will be generated containing only the ones present in the input set."""
+        inReParticlesSet = self.inReParticles.get()
+        outStarFileName = self.getOutStarFileName()
+        if inReParticlesSet.getSize() == inReParticlesSet.getNReParticles():
+            createLink(inReParticlesSet.getParticles(), outStarFileName)
+        else:
+            writeSetOfPseudoSubtomograms(inReParticlesSet, outStarFileName)
