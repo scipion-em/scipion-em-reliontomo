@@ -24,7 +24,6 @@
 # **************************************************************************
 import logging
 import csv
-from os import symlink
 
 from emtable import Table
 from pwem import ALIGN_NONE, ALIGN_2D, ALIGN_PROJ
@@ -36,7 +35,8 @@ from relion.convert import OpticsGroups
 from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, IMOD_DIR, FRACTIONAL_DOSE, \
     ACQ_ORDER_FILE, CULLED_FILE, SUBTOMO_NAME, COORD_X, COORD_Y, COORD_Z, ROT, TILT, PSI, CLASS_NUMBER, \
     TOMO_PARTICLE_NAME, RANDOM_SUBSET, OPTICS_GROUP, SHIFTX_ANGST, SHIFTY_ANGST, SHIFTZ_ANGST, CTF_IMAGE, \
-    TOMO_PARTICLE_ID, MANIFOLD_INDEX, MRC, FILE_NOT_FOUND, TILT_PRIOR, PSI_PRIOR, PARTICLES_TABLE
+    TOMO_PARTICLE_ID, MANIFOLD_INDEX, MRC, FILE_NOT_FOUND, TILT_PRIOR, PSI_PRIOR, PARTICLES_TABLE, \
+    RELION_3D_COORD_ORIGIN
 import pwem.convert.transformations as tfs
 import numpy as np
 from os.path import join, basename
@@ -47,7 +47,6 @@ from tomo.constants import BOTTOM_LEFT_CORNER, TR_SCIPION, TR_RELION
 from tomo.objects import Coordinate3D, SubTomogram, TomoAcquisition
 
 logger = logging.getLogger(__name__)
-RELION_3D_COORD_ORIGIN = BOTTOM_LEFT_CORNER
 
 
 class Writer(WriterTomo):
@@ -371,6 +370,7 @@ class Reader(ReaderTomo):
                                           re4ParticleName=row.get(TOMO_PARTICLE_NAME),
                                           opticsGroupId=row.get(OPTICS_GROUP, 1),
                                           manifoldIndex=row.get(MANIFOLD_INDEX, 1 if counter % 2 else -1))  # 1 and -1
+
             # Set the transformation matrix
             t.setMatrix(getTransformMatrixFromRow(row, sRate=sRate))
             psubtomo.setTransform(t)

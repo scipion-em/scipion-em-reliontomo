@@ -33,10 +33,11 @@ from pyworkflow.utils import magentaStr
 from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelionPrepareData, \
     ProtRelionMakePseudoSubtomograms, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms, \
-    ProtRelionReconstructParticle
+    ProtRelionReconstructParticle, ProtExtractCoordsFromPSubtomos
 from reliontomo.protocols.protocol_3d_classify_subtomograms import outputObjects as cl3dOutputs, \
     ProtRelion3DClassifySubtomograms
 from reliontomo.protocols.protocol_base_import_from_star import outputObjects as importStarOutputs
+from reliontomo.protocols.protocol_extract_coordinates_from_psubtomos import outputObjects as extractCoordsOutputs
 from reliontomo.protocols.protocol_make_pseudo_subtomos import outputObjects as makePSubtomosOutputs
 from reliontomo.protocols.protocol_prepare_data import outputObjects as prepareOutputs
 from reliontomo.protocols.protocol_de_novo_initial_model import outputObjects as iniModelOutputs
@@ -59,6 +60,7 @@ class TestRefinceCycle(BaseTest):
     protAutoRefine = None
     protInitialModel = None
     protMakePSubtomos = None
+    protExtractCoords = None
     protPrepare = None
     inCoords = None
     ctfTomoSeries = None
@@ -77,7 +79,6 @@ class TestRefinceCycle(BaseTest):
     def setUpClass(cls):
         setupTestProject(cls)
         cls.dataset = DataSet.getDataSet(RE4_TOMO)
-        # cls.inTomoSet = cls._importTomograms()
         cls.inTS = cls._importTS()
         cls.tsWithAlignment = cls._importTransformationMatrix()
         cls.alignedTS = cls._applyTransformationMatrix()
@@ -87,6 +88,7 @@ class TestRefinceCycle(BaseTest):
         cls.ctfTomoSeries = cls._estimateCTF()
         cls.protPrepare = cls._prepareData4RelionTomo()
         cls.protMakePSubtomos = cls._makePSubtomograms()
+        cls.protExtractCoords = cls._extractCoordsFromPSubtomos()
         cls.protInitialModel = cls._genInitialModel()
         cls.protCl3d = cls._3dClassify()
         cls.protCl3dWithAlign = cls._3dClassify(doAlingment=True)
@@ -190,6 +192,14 @@ class TestRefinceCycle(BaseTest):
                                             numberOfMpi=3)
         cls.launchProtocol(protMakePsubtomos)
         return protMakePsubtomos
+
+    @classmethod
+    def _extractCoordsFromPSubtomos(cls):
+        print(magentaStr("\n==> Generating the a de novo 3D initial model:"))
+        protExtractCoords = cls.newProtocol(ProtExtractCoordsFromPSubtomos,
+                                            inReParticles=getattr(cls.protMakePSubtomos, RELION_TOMO_PARTICLES, None))
+        cls.launchProtocol(protExtractCoords)
+        return protExtractCoords
 
     @classmethod
     def _genInitialModel(cls):
@@ -346,6 +356,12 @@ class TestRefinceCycle(BaseTest):
         self._checkPseudosubtomograms(getattr(protMakePSubtomos, OUTPUT_VOLUMES, None),
                                       boxSize=protMakePSubtomos.croppedBoxSize.get(),
                                       currentSRate=mdObj.getCurrentSamplingRate())
+
+    def testExtractCoordsFromPSubtomos(self):
+        protExtractCoords = self.protExtractCoords
+        outCoords = getattr(protExtractCoords, extractCoordsOutputs.coordinates.name, None)
+        self.assertEqual(outCoords.getSamplingRate(), 5.4)
+        self.assertEqual(outCoords.getBoxSize(), self.boxSizeBin4)
 
     def testInitialModel(self):
         protInitialModel = self.protInitialModel

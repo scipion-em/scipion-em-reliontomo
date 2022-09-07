@@ -26,8 +26,9 @@ from enum import Enum
 from pyworkflow import BETA
 from pyworkflow.object import Integer
 from reliontomo.constants import RELION_3D_COORD_ORIGIN
-from reliontomo.convert.convertBase import genTransformMatrix
+from reliontomo.convert.convertBase import genTransformMatrix, getTransformInfoFromCoordOrSubtomo
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
+from tomo.constants import TR_SCIPION
 from tomo.objects import SetOfTomograms, SetOfCoordinates3D, Coordinate3D
 from tomo.utils import getObjFromRelation
 
@@ -86,8 +87,6 @@ class ProtExtractCoordsFromPSubtomos(ProtRelionRefineBase):
                 coordinate3d.setTomoId(coordTsId)
                 coordinate3d.setVolume(precedent)
                 # Scale x, y and z properly
-                # NOTE: pSubtomos and coordinate3D are both Scipion EMObjects, so no conversion between spaces
-                # is required here
                 coordinate3d.setX(pSubtomo.getX() * scaleFactor, RELION_3D_COORD_ORIGIN)
                 coordinate3d.setY(pSubtomo.getY() * scaleFactor, RELION_3D_COORD_ORIGIN)
                 coordinate3d.setZ(pSubtomo.getZ() * scaleFactor, RELION_3D_COORD_ORIGIN)
@@ -128,11 +127,6 @@ class ProtExtractCoordsFromPSubtomos(ProtRelionRefineBase):
 
     @staticmethod
     def getTransformMatrix(pSubtomo, tomoSRate, invert=True):
-        shiftx = pSubtomo._sxAngst.get() / tomoSRate
-        shifty = pSubtomo._syAngst.get() / tomoSRate
-        shiftz = pSubtomo._szAngst.get() / tomoSRate
-        tilt = pSubtomo._rot.get()
-        psi = pSubtomo._tilt.get()
-        rot = pSubtomo._psi.get()
-
-        return genTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, invert)
+        angles, shiftsAngst = getTransformInfoFromCoordOrSubtomo(pSubtomo, convention=TR_SCIPION)
+        shiftsPix = shiftsAngst / tomoSRate
+        return genTransformMatrix(shiftsPix[0], shiftsPix[1], shiftsPix[2], angles[0], angles[1], angles[2], invert)

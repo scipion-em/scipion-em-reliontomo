@@ -25,6 +25,8 @@
 import json
 from os.path import join
 
+from tomo.constants import BOTTOM_LEFT_CORNER
+
 RELION = 'relion'
 V4_0 = '4.0'
 RELIONTOMO_HOME = 'RELIONTOMO_HOME'
@@ -37,6 +39,7 @@ V30_VALIDATION_MSG = 'This version of Reliontomo plugin requires Relion 3.0 bina
 STAR_COMPARE_ENTRY_POINT = 'compareStar'
 MRC = 'mrc'
 PSUBTOMOS_SQLITE = 'relionPSubtomograms%s.sqlite'
+RELION_3D_COORD_ORIGIN = BOTTOM_LEFT_CORNER
 
 # Relion 4 tomogram star file fields
 TOMO_NAME = 'rlnTomoName'
