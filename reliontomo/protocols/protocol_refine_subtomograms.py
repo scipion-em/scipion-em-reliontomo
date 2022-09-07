@@ -200,7 +200,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
-        """ This function is mean to be called after the
+        """ This function is meant to be called after the
         working dir for the protocol have been set. (maybe after recovery from mapper)
         """
         self._createFilenameTemplates()
