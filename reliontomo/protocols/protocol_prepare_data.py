@@ -31,7 +31,7 @@ from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.object import Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED
-from pyworkflow.utils import makePath
+from pyworkflow.utils import makePath, Message
 from reliontomo import Plugin
 from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR, OPTIMISATION_SET_STAR,
                                   PSUBTOMOS_SQLITE)
@@ -65,7 +65,7 @@ class ProtRelionPrepareData(EMProtocol):
     # -------------------------- DEFINE param functions -----------------------
 
     def _defineParams(self, form):
-        form.addSection(label='Input')
+        form.addSection(label=Message.LABEL_INPUT)
 
         form.addParam('inputCtfTs', PointerParam,
                       pointerClass='SetOfCTFTomoSeries',

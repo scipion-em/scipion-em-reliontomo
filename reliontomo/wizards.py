@@ -32,6 +32,7 @@ from reliontomo.protocols import ProtRelionTomoReconstruct
 from reliontomo.protocols.protocol_post_process import ProtRelionPostProcess
 from tomo.objects import SetOfTomograms
 from tomo.utils import getObjFromRelation
+from reliontomo.protocols.protocol_prepare_data import outputObjects as prepareProtOutputs
 
 RelionWizMtfSelector._targets.append((ProtRelionPostProcess, ['mtf']))
 
@@ -43,7 +44,8 @@ class RelionTomoIdsWizard(EmWizard):
 
     def show(self, form):
         relionTomoRecProt = form.protocol
-        tomoSet = getObjFromRelation(relionTomoRecProt.inReParticles.get(), relionTomoRecProt, SetOfTomograms)
+        inReParticles = getattr(relionTomoRecProt.protPrepare.get(), prepareProtOutputs.relionParticles.name, None)
+        tomoSet = getObjFromRelation(inReParticles, relionTomoRecProt, SetOfTomograms)
         tsIds = [String(tomo.getTsId()) for tomo in tomoSet]
 
         # Get a data provider from the operations to be used in the tree (dialog)

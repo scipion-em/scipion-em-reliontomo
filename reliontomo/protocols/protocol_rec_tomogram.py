@@ -24,33 +24,53 @@
 # **************************************************************************
 from enum import Enum
 from pwem.convert.headers import fixVolume
+from pwem.protocols import EMProtocol
 from pyworkflow import BETA
-from pyworkflow.protocol.params import FloatParam, IntParam, StringParam
+from pyworkflow.protocol.params import FloatParam, IntParam, StringParam, PointerParam, EnumParam
+from pyworkflow.utils import Message
 from reliontomo import Plugin
-from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
-from tomo.objects import Tomogram
+from reliontomo.protocols.protocol_prepare_data import outputObjects as prepareProtOutputs
+from tomo.objects import Tomogram, SetOfTomograms
+from tomo.utils import getObjFromRelation
 
+# Reconstruct options
+SINGLE_TOMO = 0
+ALL_TOMOS = 1
 
 class outputObjects(Enum):
-    tomogram = Tomogram
+    tomograms = SetOfTomograms
 
 
-class ProtRelionTomoReconstruct(ProtRelionTomoBase):
+class ProtRelionTomoReconstruct(EMProtocol):
     """ This protocol reconstructs a single tomogram using Relion. It is very useful
     to check if the protocol "Prepare data" has been applied correctly (in terms of flip
-    options, for example)
+    options, for example).
     """
     _label = 'Reconstruct tomogram'
     _devStatus = BETA
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.inReParticles = None
+        self.tomoSet = None
+        self.tomoList = None
+        self.outTomoSet = None
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        super()._defineCommonInputParams(form)
+        form.addSection(label=Message.LABEL_INPUT)
+        form.addParam('protPrepare', PointerParam,
+                      pointerClass='ProtRelionPrepareData',
+                      label='Prepare Data protocol',
+                      help='It is very usefulto check if the protocol "Prepare data" has been applied correctly (in '
+                           'terms of flip options, for example)')
+        form.addParam('recTomoMode', EnumParam,
+                      display=EnumParam.DISPLAY_HLIST,
+                      choices=['Single tomogram', 'All tomograms'],
+                      default=SINGLE_TOMO,
+                      label='Choose a reconstruction option')
         form.addParam('tomoId', StringParam,
-                      allowsNull=False,
+                      condition='recTomoMode == %s' % SINGLE_TOMO,
                       label='Tomogram to be reconstructed')
         form.addParam('binFactor', FloatParam,
                       label='Binning factor',
@@ -78,40 +98,53 @@ class ProtRelionTomoReconstruct(ProtRelionTomoBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self._reconstructStep)
-        self._insertFunctionStep(self._createOutputStep)
+        self._initialize()
+        for tomo in self.tomoList:
+            tomoId = tomo.getTsId()
+            self._insertFunctionStep(self._reconstructStep, tomoId)
+            self._insertFunctionStep(self._createOutputStep, tomoId)
 
     # -------------------------- STEPS functions ------------------------------
+    def _initialize(self):
+        self.inReParticles = getattr(self.protPrepare.get(), prepareProtOutputs.relionParticles.name, None)
+        self.tomoSet = getObjFromRelation(self.inReParticles, self, SetOfTomograms)
+        self.outTomoSet = SetOfTomograms.create(self._getPath(), template='tomograms%s.sqlite')
+        self.outTomoSet.copyInfo(self.tomoSet)
+        if self.recTomoMode.get() == SINGLE_TOMO:
+            self.tomoList = [tomo.clone() for tomo in self.tomoSet if tomo.getTsId() == self.tomoId.get()]
+        else:
+            self.tomoList = [tomo.clone() for tomo in self.tomoSet]
 
-    def _reconstructStep(self):
-        Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_tomogram', self._genTomoRecCommand())
+    def _reconstructStep(self, tomoId):
+        Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_tomogram', self._genTomoRecCommand(tomoId))
 
-    def _createOutputStep(self):
+    def _createOutputStep(self, tomoId):
         tomo = Tomogram()
-        outFileName = self._getOutTomoFileName()
+        outFileName = self._getOutTomoFileName(tomoId)
         fixVolume(outFileName)
         tomo.setLocation(outFileName)
-        tomo.setSamplingRate(self.inReParticles.get().getTsSamplingRate() * self.binFactor.get())
+        tomo.setSamplingRate(self.inReParticles.getTsSamplingRate() * self.binFactor.get())
         tomo.setOrigin()
-        tomo.setTsId(self.tomoId.get())
-        self._defineOutputs(**{outputObjects.tomogram.name: tomo})
-        self._defineSourceRelation(self.inReParticles.get(), tomo)
+        tomo.setTsId(tomoId)
+        self.outTomoSet.append(tomo)
+        self._defineOutputs(**{outputObjects.tomograms.name: self.outTomoSet})
+        self._defineSourceRelation(self.inReParticles, self.outTomoSet)
 
     # -------------------------- INFO functions -------------------------------
 
     def _summary(self):
         summary = []
         if self.isFinished():
-            summary.append('The selected tomogram was *%s*.' % self.tomoId.get())
-
+            if self.recTomoMode.get() == SINGLE_TOMO:
+                summary.append('The selected tomogram was *%s*.' % self.tomoId.get())
         return summary
 
     # --------------------------- UTILS functions -----------------------------
 
-    def _genTomoRecCommand(self):
-        cmd = '--t %s ' % self.inReParticles.get().getTomograms()
-        cmd += '--tn %s ' % self.tomoId.get()
-        cmd += '--o %s ' % self._getOutTomoFileName()
+    def _genTomoRecCommand(self, tomoId):
+        cmd = '--t %s ' % self.inReParticles.getTomograms()
+        cmd += '--tn %s ' % tomoId
+        cmd += '--o %s ' % self._getOutTomoFileName(tomoId)
         cmd += '--bin %.1f ' % self.binFactor.get()
         cmd += '--w %i ' % self.width.get()
         cmd += '--h %i ' % self.height.get()
@@ -119,8 +152,8 @@ class ProtRelionTomoReconstruct(ProtRelionTomoBase):
         cmd += '--j %i ' % self.numberOfThreads.get()
         return cmd
 
-    def _getOutTomoFileName(self):
-        return self._getExtraPath(self.tomoId.get() + '.mrc')
+    def _getOutTomoFileName(self, tomoId):
+        return self._getExtraPath(tomoId + '.mrc')
 
 
 
