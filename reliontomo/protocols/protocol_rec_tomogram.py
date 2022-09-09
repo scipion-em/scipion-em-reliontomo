@@ -46,7 +46,7 @@ class ProtRelionTomoReconstruct(EMProtocol):
     to check if the protocol "Prepare data" has been applied correctly (in terms of flip
     options, for example).
     """
-    _label = 'Reconstruct tomogram'
+    _label = 'Reconstruct tomograms from prepare data prot'
     _devStatus = BETA
 
     def __init__(self, **kwargs):
