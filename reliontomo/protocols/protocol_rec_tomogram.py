@@ -37,6 +37,7 @@ from tomo.utils import getObjFromRelation
 SINGLE_TOMO = 0
 ALL_TOMOS = 1
 
+
 class outputObjects(Enum):
     tomograms = SetOfTomograms
 
@@ -55,6 +56,7 @@ class ProtRelionTomoReconstruct(EMProtocol):
         self.tomoSet = None
         self.tomoList = None
         self.outTomoSet = None
+        self.outputSamplingRate = None
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -107,9 +109,11 @@ class ProtRelionTomoReconstruct(EMProtocol):
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
         self.inReParticles = getattr(self.protPrepare.get(), prepareProtOutputs.relionParticles.name, None)
+        self.outputSamplingRate = self.inReParticles.getTsSamplingRate() * self.binFactor.get()
         self.tomoSet = getObjFromRelation(self.inReParticles, self, SetOfTomograms)
         self.outTomoSet = SetOfTomograms.create(self._getPath(), template='tomograms%s.sqlite')
         self.outTomoSet.copyInfo(self.tomoSet)
+        self.outTomoSet.setSamplingRate(self.outputSamplingRate)  # Bin factor provided is referred to the TS
         if self.recTomoMode.get() == SINGLE_TOMO:
             self.tomoList = [tomo.clone() for tomo in self.tomoSet if tomo.getTsId() == self.tomoId.get()]
         else:
@@ -123,7 +127,7 @@ class ProtRelionTomoReconstruct(EMProtocol):
         outFileName = self._getOutTomoFileName(tomoId)
         fixVolume(outFileName)
         tomo.setLocation(outFileName)
-        tomo.setSamplingRate(self.inReParticles.getTsSamplingRate() * self.binFactor.get())
+        tomo.setSamplingRate(self.outputSamplingRate)
         tomo.setOrigin()
         tomo.setTsId(tomoId)
         self.outTomoSet.append(tomo)
