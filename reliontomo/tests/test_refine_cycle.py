@@ -29,7 +29,7 @@ from imod.protocols import ProtImodImportTransformationMatrix, ProtImodApplyTran
     ProtImodTSNormalization
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
-from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR
+from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR, IN_PARTICLES_STAR
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelionPrepareData, \
     ProtRelionMakePseudoSubtomograms, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms, \
     ProtRelionReconstructParticle, ProtExtractCoordsFromPSubtomos, ProtRelionTomoReconstruct
@@ -466,7 +466,7 @@ class TestRefinceCycle(BaseTest):
         # Check RelionTomoMetadata: only the particles file is generated
         self._checkRe4Metadata(mdObj,
                                tomogramsFile=self.protPrepare._getExtraPath(OUT_TOMOS_STAR),
-                               particlesFile=protRecPartFromTS._getExtraPath(OUT_PARTICLES_STAR),
+                               particlesFile=protRecPartFromTS._getExtraPath(IN_PARTICLES_STAR),
                                trajectoriesFile=None,
                                manifoldsFile=None,
                                referenceFscFile=None,
