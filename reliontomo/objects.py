@@ -237,6 +237,7 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     def __init__(self, optimSetStar=None, relionBinning=None, tsSamplingRate=None, boxSize=24,
                  nReParticles=0, **kwargs):
         super().__init__(**kwargs)
+        self._filesMaster = String()
         self._boxSize = Integer(boxSize)
         self._tomograms = String()
         self._particles = String()
@@ -260,13 +261,13 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
 
     @property
     def filesMaster(self):
-        return self._filesMaster
+        return self._filesMaster.get()
 
     @filesMaster.setter
     def filesMaster(self, optimSetStar):
         try:
             self._readOptimSetStar(optimSetStar)
-            self._filesMaster = optimSetStar
+            self._filesMaster.set(optimSetStar)
         except FileNotFoundError:
             raise FileNotFoundError('Unable to find file %s' % optimSetStar)
         except TypeError:

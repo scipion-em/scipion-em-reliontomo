@@ -24,10 +24,8 @@
 # **************************************************************************
 from pyworkflow import BETA
 from pyworkflow.protocol import IntParam, FloatParam
-from reliontomo.constants import OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE
-from reliontomo.convert import readSetOfPseudoSubtomograms
-from reliontomo.objects import createSetOfRelionPSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
+from reliontomo.utils import genRelionParticles
 
 
 class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
@@ -77,15 +75,8 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
         self.genInStarFile()
 
     def createOutputStep(self):
-        # Pseudosubtomos
-        psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
-                                                     self._getExtraPath(OPTIMISATION_SET_STAR),
-                                                     template=PSUBTOMOS_SQLITE,
-                                                     tsSamplingRate=self.inReParticles.get().getTsSamplingRate(),
-                                                     relionBinning=self.binningFactor.get(),
-                                                     boxSize=self.croppedBoxSize.get())
-        # Fill the set with the generated particles
-        readSetOfPseudoSubtomograms(psubtomoSet)
+        inParticles = self.inReParticles.get()
+        psubtomoSet = genRelionParticles(self._getExtraPath(), inParticles)
         self.psubtomoSet = psubtomoSet
 
     # -------------------------- INFO functions -------------------------------

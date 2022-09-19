@@ -27,21 +27,27 @@ from os.path import exists, getmtime
 from cistem.protocols import CistemProtTsCtffind
 from imod.protocols import ProtImodImportTransformationMatrix, ProtImodApplyTransformationMatrix, \
     ProtImodTSNormalization
+from pwem.convert.transformations import translation_from_matrix
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
 from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR, IN_PARTICLES_STAR
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelionPrepareData, \
     ProtRelionMakePseudoSubtomograms, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms, \
-    ProtRelionReconstructParticle, ProtExtractCoordsFromPSubtomos, ProtRelionTomoReconstruct
+    ProtRelionReconstructParticle, ProtExtractCoordsFromPSubtomos, ProtRelionTomoReconstruct, \
+    ProtRelionEditParticlesStar
 from reliontomo.protocols.protocol_3d_classify_subtomograms import outputObjects as cl3dOutputs, \
     ProtRelion3DClassifySubtomograms
 from reliontomo.protocols.protocol_base_import_from_star import outputObjects as importStarOutputs
+from reliontomo.protocols.protocol_edit_particles_star import OPERATION_LABELS, LABELS_TO_OPERATE_WITH, ANGLES, \
+    OP_ADDITION, OP_MULTIPLICATION, COORDINATES, OP_SET_TO
 from reliontomo.protocols.protocol_extract_coordinates_from_psubtomos import outputObjects as extractCoordsOutputs
 from reliontomo.protocols.protocol_prepare_data import outputObjects as prepareOutputs
+from reliontomo.protocols.protocol_edit_particles_star import outputObjects as editStarOutputs
 from reliontomo.protocols.protocol_de_novo_initial_model import outputObjects as iniModelOutputs
 from reliontomo.protocols.protocol_rec_tomogram import outputObjects as recTomoRelionOutputs
 from reliontomo.protocols.protocol_rec_tomogram import SINGLE_TOMO, ALL_TOMOS
 from reliontomo.tests import RE4_TOMO, DataSetRe4Tomo
+from reliontomo.utils import genEnumParamDict
 from tomo.protocols import ProtImportTs
 from tomo3d.protocols import ProtJjsoftReconstructTomogram
 from tomo3d.protocols.protocol_reconstruct_tomogram import SIRT
@@ -73,6 +79,8 @@ class TestRefinceCycle(BaseTest):
     tsIds = ['TS_45', 'TS_54']
     symmetry = 'C6'
     nClasses = 2
+    editStarOperationDict = genEnumParamDict(OPERATION_LABELS)
+    editStarLabelsDict = genEnumParamDict(LABELS_TO_OPERATE_WITH)
 
     @classmethod
     def setUpClass(cls):
@@ -89,6 +97,10 @@ class TestRefinceCycle(BaseTest):
         cls.recTomoFromPrepareSingle = cls._runRecFromPrepare_SingleTomo()
         cls.recTomoFromPrepareAll = cls._runRecFromPrepare_AllTomos()
         cls.protMakePSubtomos = cls._makePSubtomograms()
+        cls.protEditStarCenter = cls._editStar_shiftCenter()
+        cls.protEditStarAngles = cls._editStar_addToAngles()
+        cls.protEditStarCoordsMult = cls._editStar_multiplyCoordinates()
+        cls.protEditStarSetCoords = cls._editStar_setCoordinatesToValue()
         cls.protExtractCoords = cls._extractCoordsFromPSubtomos()
         cls.protInitialModel = cls._genInitialModel()
         cls.protCl3d = cls._3dClassify()
@@ -118,16 +130,16 @@ class TestRefinceCycle(BaseTest):
                                                 filesPath=cls.dataset.getFile(DataSetRe4Tomo.eTomoDir.name),
                                                 filesPattern=DataSetRe4Tomo.alignments.value)
         cls.launchProtocol(protImportTransMatrix)
-        return getattr(protImportTransMatrix, 'outputSetOfTiltSeries', None)
+        return getattr(protImportTransMatrix, 'TiltSeries', None)
 
     @classmethod
     def _applyTransformationMatrix(cls):
-        print(magentaStr("\n==> Applying the transformation matrices and binning:"))
+        print(magentaStr("\n==> Applying the transformation matrices:"))
         protApplyTransMatrix = cls.newProtocol(ProtImodApplyTransformationMatrix,
                                                inputSetOfTiltSeries=cls.tsWithAlignment,
                                                binning=1)
         cls.launchProtocol(protApplyTransMatrix)
-        return getattr(protApplyTransMatrix, 'outputInterpolatedSetOfTiltSeries', None)
+        return getattr(protApplyTransMatrix, 'InterpolatedTiltSeries', None)
 
     @classmethod
     def _noramlizeTS(cls):
@@ -136,7 +148,7 @@ class TestRefinceCycle(BaseTest):
                                      inputSetOfTiltSeries=cls.alignedTS,
                                      binning=4)
         cls.launchProtocol(protNormTS)
-        return getattr(protNormTS, 'outputSetOfTiltSeries', None)
+        return getattr(protNormTS, 'TiltSeries', None)
 
     @classmethod
     def _reconstructTomograms(cls):
@@ -215,6 +227,63 @@ class TestRefinceCycle(BaseTest):
                                             numberOfMpi=3)
         cls.launchProtocol(protMakePsubtomos)
         return protMakePsubtomos
+
+    @classmethod
+    def _editStar_shiftCenter(cls) -> ProtRelionEditParticlesStar:
+        print(magentaStr("\n==> Perform centering of particles:"))
+        protEditStar = cls.newProtocol(ProtRelionEditParticlesStar,
+                                       inReParticles=getattr(cls.protMakePSubtomos, RELION_TOMO_PARTICLES, None),
+                                       doRecenter=True,
+                                       shiftX=4,
+                                       shiftY=2,
+                                       shiftZ=3)
+        protEditStar.setObjLabel('Particles re-center')
+        cls.launchProtocol(protEditStar)
+        return protEditStar
+
+    @classmethod
+    def _editStar_addToAngles(cls) -> ProtRelionEditParticlesStar:
+        print(magentaStr("\n==> Perform angle re-assignment:"))
+        protEditStar = cls.newProtocol(ProtRelionEditParticlesStar,
+                                       inReParticles=getattr(cls.protMakePSubtomos, RELION_TOMO_PARTICLES, None),
+                                       doRecenter=False,
+                                       chosenOperation=cls.editStarOperationDict[OP_ADDITION],
+                                       opValue=5,
+                                       operateWith=cls.editStarLabelsDict[ANGLES],
+                                       label1rot=True)
+        protEditStar.setObjLabel('Edit angles')
+        cls.launchProtocol(protEditStar)
+        return protEditStar
+
+    @classmethod
+    def _editStar_multiplyCoordinates(cls) -> ProtRelionEditParticlesStar:
+        print(magentaStr("\n==> Perform coordinates multiply by a scalar:"))
+        protEditStar = cls.newProtocol(ProtRelionEditParticlesStar,
+                                       inReParticles=getattr(cls.protMakePSubtomos, RELION_TOMO_PARTICLES, None),
+                                       doRecenter=False,
+                                       chosenOperation=cls.editStarOperationDict[OP_MULTIPLICATION],
+                                       opValue=2,
+                                       operateWith=cls.editStarLabelsDict[COORDINATES],
+                                       label1x=True,
+                                       label3z=True)
+        protEditStar.setObjLabel('Multiply coords')
+        cls.launchProtocol(protEditStar)
+        return protEditStar
+
+    @classmethod
+    def _editStar_setCoordinatesToValue(cls) -> ProtRelionEditParticlesStar:
+        print(magentaStr("\n==> Perform coordinates setting to a introduced valuer:"))
+        protEditStar = cls.newProtocol(ProtRelionEditParticlesStar,
+                                       inReParticles=getattr(cls.protMakePSubtomos, RELION_TOMO_PARTICLES, None),
+                                       doRecenter=False,
+                                       chosenOperation=cls.editStarOperationDict[OP_SET_TO],
+                                       opValue=123,
+                                       operateWith=cls.editStarLabelsDict[COORDINATES],
+                                       label2y=True,
+                                       label3z=True)
+        protEditStar.setObjLabel('Set coords to value')
+        cls.launchProtocol(protEditStar)
+        return protEditStar
 
     @classmethod
     def _extractCoordsFromPSubtomos(cls):
@@ -366,7 +435,7 @@ class TestRefinceCycle(BaseTest):
     def testRecSingleTomoFromPrep(self):
         expectedSize = 1
         self._checkRelionRecTomos(self.recTomoFromPrepareSingle, expectedSize)
-    
+
     def testRecAllTomosFromPrep(self):
         expectedSize = 2
         self._checkRelionRecTomos(self.recTomoFromPrepareAll, expectedSize)
@@ -376,7 +445,7 @@ class TestRefinceCycle(BaseTest):
         self.assertSetSize(outTomos, expectedSize)
         self.assertEqual(outTomos.getFirstItem().getDimensions(), (464, 480, 150))
         self.assertEqual(outTomos.getSamplingRate(), self.samplingRateOrig * protRec.binFactor.get())
-        
+
     def testMakePSubtomos(self):
         protMakePSubtomos = self.protMakePSubtomos
         mdObj = getattr(protMakePSubtomos, RELION_TOMO_PARTICLES, None)
@@ -393,6 +462,25 @@ class TestRefinceCycle(BaseTest):
         self._checkPseudosubtomograms(getattr(protMakePSubtomos, RELION_TOMO_PARTICLES, None),
                                       boxSize=protMakePSubtomos.croppedBoxSize.get(),
                                       currentSRate=mdObj.getCurrentSamplingRate())
+
+    def testEditStar_multiplyCoordinates(self):
+        # Values edited: shiftX = 4, shiftY = 2, shiftZ = 3
+        tol = 0.01
+        protEdit = self.protEditStarCenter
+        inPSubtomos = protEdit.inReParticles.get()
+        outPSubtomos = getattr(protEdit, editStarOutputs.relionParticles.name, None)
+        for inPSubtomo, outPSubtomo in zip (inPSubtomos, outPSubtomos):
+            isx, isy, isz = self._getShiftsFromPSubtomogram(inPSubtomo)
+            osx, osy, osz = self._getShiftsFromPSubtomogram(outPSubtomo)
+            self.assertTrue(abs(isx * 4 - osx) < tol)
+            self.assertTrue(abs(isy * 2 - osy) < tol)
+            self.assertTrue(abs(isz * 3 - osz) < tol)
+
+    @classmethod
+    def _getShiftsFromPSubtomogram(cls, pSubtomo):
+        M = pSubtomo.getTransform().getMatrix()
+        sx, sy, sz = translation_from_matrix(M)
+        return sx, sy, sz
 
     def testExtractCoordsFromPSubtomos(self):
         protExtractCoords = self.protExtractCoords
