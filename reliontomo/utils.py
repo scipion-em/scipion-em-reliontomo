@@ -70,7 +70,7 @@ def isPseudoSubtomogram(subtomo):
     return hasattr(subtomo, '_ctfImage')
 
 
-def genRelionParticles(extraPath, inParticlesSet, binningFactor=None, boxSIze=24):
+def genRelionParticles(extraPath, inParticlesSet, binningFactor=None, boxSize=24):
     """Generate a RelionSetOfPseudoSubtomograms object containing the files involved for the next protocol,
     considering that some protocols don't generate the optimisation_set.star file. In that case, the input Object
     which represents it will be copied and, after that, this method will be used to update the corresponding
@@ -85,7 +85,7 @@ def genRelionParticles(extraPath, inParticlesSet, binningFactor=None, boxSIze=24
                                                      template=PSUBTOMOS_SQLITE,
                                                      tsSamplingRate=inParticlesSet.getTsSamplingRate(),
                                                      relionBinning=binningFactor if binningFactor else inParticlesSet.getRelionBinning(),
-                                                     boxSize=boxSIze if boxSIze else inParticlesSet.getBoxSize())
+                                                     boxSize=boxSize if boxSize else inParticlesSet.getBoxSize())
     else:
         psubtomoSet = RelionSetOfPseudoSubtomograms.create(protocolPath, template=PSUBTOMOS_SQLITE)
         psubtomoSet.copyInfo(inParticlesSet)

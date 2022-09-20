@@ -176,7 +176,6 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
                 cmd += '--center_Z %.2f ' % self.shiftZ.get()
         if self.chosenOperation.get() != self.operationDict[NO_OPERATION]:
             opValue = self.opValue.get()
-            operateWith = self.operateWith.get()
             chosenOp = self.chosenOperation.get()
             # Chosen operation
             if chosenOp == self.operationDict[OP_ADDITION]:
@@ -186,21 +185,34 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
             else:
                 cmd += '--set_to %.2f ' % opValue
             # Chosen values
-            if operateWith == self.labelsDict[COORDINATES]:
-                label1, label2, label3 = COORD_X, COORD_Y, COORD_Z
-                edit1, edit2, edit3 = self.label1x.get(), self.label2y.get(), self.label3z.get()
-            elif operateWith == self.labelsDict[ANGLES]:
-                label1, label2, label3 = ROT, TILT, PSI
-                edit1, edit2, edit3 = self.label1rot.get(), self.label2tilt.get(), self.label3psi.get()
-            else:
-                label1, label2, label3 = SHIFTX_ANGST, SHIFTY_ANGST, SHIFTZ_ANGST
-                edit1, edit2, edit3 = self.label1sx.get(), self.label2sy.get(), self.label3sz.get()
-
-            if edit1:
-                cmd += 'operate %s ' % label1
-            if edit2:
-                cmd += 'operate2 %s ' % label2
-            if edit3:
-                cmd += 'operate3 %s' % label3
+            cmd += self._genOperateCmd()
         return cmd
+
+    def _genOperateCmd(self):
+        """Three are the maximum number of labels able to be edited at once. Relion offers 3 arguments to add them
+        to the generated command: --operate, --operate2, --operate3."""
+        operateWith = self.operateWith.get()
+        if operateWith == self.labelsDict[COORDINATES]:
+            label1, label2, label3 = COORD_X, COORD_Y, COORD_Z
+            edit1, edit2, edit3 = self.label1x.get(), self.label2y.get(), self.label3z.get()
+        elif operateWith == self.labelsDict[ANGLES]:
+            label1, label2, label3 = ROT, TILT, PSI
+            edit1, edit2, edit3 = self.label1rot.get(), self.label2tilt.get(), self.label3psi.get()
+        else:
+            label1, label2, label3 = SHIFTX_ANGST, SHIFTY_ANGST, SHIFTZ_ANGST
+            edit1, edit2, edit3 = self.label1sx.get(), self.label2sy.get(), self.label3sz.get()
+
+        operateCmd = ''
+        labelList = [label1, label3, label3]
+        editList = [edit1, edit2, edit3]
+        counter = 1
+        for label, editVal in zip(labelList, editList):
+            if editVal:
+                if counter == 1:
+                    operateCmd += '--operate %s ' % label
+                else:
+                    operateCmd += '--operate%i %s ' % (counter, label1)
+                counter += 1
+
+        return operateCmd
 

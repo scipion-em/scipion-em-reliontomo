@@ -24,10 +24,10 @@
 # **************************************************************************
 import glob
 from os.path import exists, getmtime
-from cistem.protocols import CistemProtTsCtffind
+from gctf.protocols import ProtTsGctf
 from imod.protocols import ProtImodImportTransformationMatrix, ProtImodApplyTransformationMatrix, \
     ProtImodTSNormalization
-from pwem.convert.transformations import translation_from_matrix
+from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
 from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR, IN_PARTICLES_STAR
@@ -81,18 +81,19 @@ class TestRefinceCycle(BaseTest):
     nClasses = 2
     editStarOperationDict = genEnumParamDict(OPERATION_LABELS)
     editStarLabelsDict = genEnumParamDict(LABELS_TO_OPERATE_WITH)
+    editTestsTol = 0.01
 
     @classmethod
     def setUpClass(cls):
         setupTestProject(cls)
         cls.dataset = DataSet.getDataSet(RE4_TOMO)
         cls.inTS = cls._importTS()
+        cls.ctfTomoSeries = cls._estimateCTF()
         cls.tsWithAlignment = cls._importTransformationMatrix()
         cls.alignedTS = cls._applyTransformationMatrix()
         cls.normTS = cls._noramlizeTS()
         cls.inTomoSet = cls._reconstructTomograms()
         cls.inCoords = cls._importCoords3dFromStarFile()
-        cls.ctfTomoSeries = cls._estimateCTF()
         cls.protPrepare = cls._prepareData4RelionTomo()
         cls.recTomoFromPrepareSingle = cls._runRecFromPrepare_SingleTomo()
         cls.recTomoFromPrepareAll = cls._runRecFromPrepare_AllTomos()
@@ -175,8 +176,8 @@ class TestRefinceCycle(BaseTest):
 
     @classmethod
     def _estimateCTF(cls):
-        print(magentaStr("\n==> Estimating the CTF with cistem - ctffind:"))
-        protCtfEst = cls.newProtocol(CistemProtTsCtffind,
+        print(magentaStr("\n==> Estimating the CTF with gctf - ctffind:"))
+        protCtfEst = cls.newProtocol(ProtTsGctf,
                                      inputTiltSeries=cls.inTS,
                                      numberOfThreads=6)
         cls.launchProtocol(protCtfEst)
@@ -463,24 +464,67 @@ class TestRefinceCycle(BaseTest):
                                       boxSize=protMakePSubtomos.croppedBoxSize.get(),
                                       currentSRate=mdObj.getCurrentSamplingRate())
 
-    def testEditStar_multiplyCoordinates(self):
+    def testEditStar_shiftCenter(self):
         # Values edited: shiftX = 4, shiftY = 2, shiftZ = 3
-        tol = 0.01
         protEdit = self.protEditStarCenter
         inPSubtomos = protEdit.inReParticles.get()
         outPSubtomos = getattr(protEdit, editStarOutputs.relionParticles.name, None)
         for inPSubtomo, outPSubtomo in zip (inPSubtomos, outPSubtomos):
             isx, isy, isz = self._getShiftsFromPSubtomogram(inPSubtomo)
             osx, osy, osz = self._getShiftsFromPSubtomogram(outPSubtomo)
-            self.assertTrue(abs(isx * 4 - osx) < tol)
-            self.assertTrue(abs(isy * 2 - osy) < tol)
-            self.assertTrue(abs(isz * 3 - osz) < tol)
+            self.assertTrue(abs((isx - 4) - osx) < self.editTestsTol)
+            self.assertTrue(abs((isy - 2) - osy) < self.editTestsTol)
+            self.assertTrue(abs((isz - 3) - osz) < self.editTestsTol)
+
+    def testEditStar_addToAngles(self):
+        # Values edited: 5 degrees were added to the rot angle
+        protEdit = self.protEditStarAngles
+        inPSubtomos = protEdit.inReParticles.get()
+        outPSubtomos = getattr(protEdit, editStarOutputs.relionParticles.name, None)
+        for inPSubtomo, outPSubtomo in zip (inPSubtomos, outPSubtomos):
+            irot, itilt, ipsi = self._getShiftsFromPSubtomogram(inPSubtomo)
+            orot, otilt, opsi = self._getShiftsFromPSubtomogram(outPSubtomo)
+            self.assertTrue(abs(irot * 5 - orot) < self.editTestsTol)
+            self.assertTrue(abs(itilt - otilt) < self.editTestsTol)
+            self.assertTrue(abs(ipsi - opsi) < self.editTestsTol)
+
+    def testEditStar_multiplyCoordinates(self):
+        # Values edited: multiply by 2 the X and Z coordinates
+        val = 2
+        protEdit = self.protEditStarCoordsMult
+        inPSubtomos = protEdit.inReParticles.get()
+        outPSubtomos = getattr(protEdit, editStarOutputs.relionParticles.name, None)
+        for inPSubtomo, outPSubtomo in zip (inPSubtomos, outPSubtomos):
+            ix, iy, iz = inPSubtomo.getCoords()
+            ox, oy, oz = outPSubtomo.getCoords()
+            self.assertTrue(abs(ix * val - ox) < self.editTestsTol)
+            self.assertTrue(abs(iy - oy) < self.editTestsTol)
+            self.assertTrue(abs(iz * val - oz) < self.editTestsTol)
+
+    def testEditStar_setCoordinatesToValue(self):
+        # Values edited: set the Y and Z coordinates to 123
+        val = 123
+        protEdit = self.protEditStarSetCoords
+        inPSubtomos = protEdit.inReParticles.get()
+        outPSubtomos = getattr(protEdit, editStarOutputs.relionParticles.name, None)
+        for inPSubtomo, outPSubtomo in zip (inPSubtomos, outPSubtomos):
+            ix, iy, iz = inPSubtomo.getCoords()
+            ox, oy, oz = outPSubtomo.getCoords()
+            self.assertTrue(abs(ix - ox) < self.editTestsTol)
+            self.assertTrue(abs(oy - val) < self.editTestsTol)
+            self.assertTrue(abs(oz - val) < self.editTestsTol)
 
     @classmethod
     def _getShiftsFromPSubtomogram(cls, pSubtomo):
         M = pSubtomo.getTransform().getMatrix()
         sx, sy, sz = translation_from_matrix(M)
         return sx, sy, sz
+
+    @classmethod
+    def _getAnglesFromPSubtomogram(cls, pSubtomo):
+        M = pSubtomo.getTransform().getMatrix()
+        rot, tilt, psi = euler_from_matrix(M)
+        return rot, tilt, psi
 
     def testExtractCoordsFromPSubtomos(self):
         protExtractCoords = self.protExtractCoords

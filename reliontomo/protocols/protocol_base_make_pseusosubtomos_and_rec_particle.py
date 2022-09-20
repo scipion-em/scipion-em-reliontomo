@@ -76,7 +76,9 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
 
     def createOutputStep(self):
         inParticles = self.inReParticles.get()
-        psubtomoSet = genRelionParticles(self._getExtraPath(), inParticles)
+        psubtomoSet = genRelionParticles(self._getExtraPath(), inParticles,
+                                         binningFactor=self.binningFactor.get(),
+                                         boxSize=self.croppedBoxSize.get())
         self.psubtomoSet = psubtomoSet
 
     # -------------------------- INFO functions -------------------------------
