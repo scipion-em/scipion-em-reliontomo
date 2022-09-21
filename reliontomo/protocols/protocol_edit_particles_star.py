@@ -203,7 +203,7 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
             edit1, edit2, edit3 = self.label1sx.get(), self.label2sy.get(), self.label3sz.get()
 
         operateCmd = ''
-        labelList = [label1, label3, label3]
+        labelList = [label1, label2, label3]
         editList = [edit1, edit2, edit3]
         counter = 1
         for label, editVal in zip(labelList, editList):
@@ -211,7 +211,7 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
                 if counter == 1:
                     operateCmd += '--operate %s ' % label
                 else:
-                    operateCmd += '--operate%i %s ' % (counter, label1)
+                    operateCmd += '--operate%i %s ' % (counter, label)
                 counter += 1
 
         return operateCmd
