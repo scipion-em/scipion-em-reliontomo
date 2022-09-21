@@ -25,7 +25,6 @@
 from pyworkflow import BETA
 from pyworkflow.protocol import IntParam, FloatParam
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
-from reliontomo.utils import genRelionParticles
 
 
 class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
@@ -36,7 +35,6 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.psubtomoSet = None
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -75,11 +73,7 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
         self.genInStarFile()
 
     def createOutputStep(self):
-        inParticles = self.inReParticles.get()
-        psubtomoSet = genRelionParticles(self._getExtraPath(), inParticles,
-                                         binningFactor=self.binningFactor.get(),
-                                         boxSize=self.croppedBoxSize.get())
-        self.psubtomoSet = psubtomoSet
+        return self.genRelionParticles(binningFactor=self.binningFactor.get(), boxSize=self.croppedBoxSize.get())
 
     # -------------------------- INFO functions -------------------------------
 

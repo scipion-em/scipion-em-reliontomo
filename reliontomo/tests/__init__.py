@@ -36,6 +36,7 @@ class DataSetRe4Tomo(Enum):
     alignments = '*/TS_*.xf'
     tiltSeries = '*/TS_*.mrc'
     mdocs = '*/*.mdoc'
+    maskFscBin2 = 'mask_fsc_bin2.mrc'
     coordinates = 'coords.star'
     starFilesComparerDir = 'starFilesComparer'
     generalTestingDir = 'starFilesComparer/generalTesting'

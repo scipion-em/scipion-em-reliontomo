@@ -88,9 +88,9 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
                              self._genMakePseudoSubtomoCmd(), numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
-        super().createOutputStep()
-        self._defineOutputs(**{outputObjects.relionParticles.name: self.psubtomoSet})
-        self._defineSourceRelation(self.inReParticles.get(), self.psubtomoSet)
+        psubtomoSet = super().createOutputStep()
+        self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet})
+        self._defineSourceRelation(self.inReParticles.get(), psubtomoSet)
 
     # -------------------------- INFO functions -------------------------------
 

@@ -32,7 +32,7 @@ from reliontomo.constants import OUT_PARTICLES_STAR, COORD_X, COORD_Y, COORD_Z, 
     SHIFTZ_ANGST, ROT, TILT, PSI
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
-from reliontomo.utils import genEnumParamDict, genRelionParticles
+from reliontomo.utils import genEnumParamDict
 
 # Operation labels and values
 NO_OPERATION = 'No operation'
@@ -150,7 +150,7 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
 
     def createOutputStep(self):
         inParticles = self.inReParticles.get()
-        psubtomoSet = genRelionParticles(self._getExtraPath(), inParticles)
+        psubtomoSet = self.genRelionParticles()
         self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet})
         self._defineSourceRelation(inParticles, psubtomoSet)
 

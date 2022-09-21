@@ -26,9 +26,10 @@ import glob
 from enum import Enum
 
 from pwem.convert.headers import fixVolume
+from pwem.objects import VolumeMask
 from pyworkflow.protocol import StringParam, PointerParam, FloatParam
 from reliontomo import Plugin
-from reliontomo.constants import SYMMETRY_HELP_MSG
+from reliontomo.constants import SYMMETRY_HELP_MSG, POST_PROCESS_MRC
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
@@ -36,8 +37,9 @@ from tomo.objects import AverageSubTomogram
 
 
 class outputObjects(Enum):
-    relionParticles = RelionSetOfPseudoSubtomograms
     average = AverageSubTomogram
+    postProcessVolume = VolumeMask
+    relionParticles = RelionSetOfPseudoSubtomograms
 
 
 class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBase):
@@ -64,13 +66,13 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
                       label='FSC solvent mask (opt.)',
                       allowsNull=True,
                       help='Provide a soft mask to automatically estimate the postprocess FSC.')
-        form.addParam('snrWiener', FloatParam,
-                      label='Apply a Wiener filter with this SNR',
-                      default=0,
-                      help='If set to a positive value, apply a Wiener filter with this signal-to-noise ratio. If '
-                           'omitted, the reconstruction will use a heuristic to prevent divisions by excessively '
-                           'small numbers. Please note that using a low (even though realistic) SNR might wash out the '
-                           'higher frequencies, which could make the map unsuitable to be used for further refinement.')
+        # form.addParam('snrWiener', FloatParam,
+        #               label='Apply a Wiener filter with this SNR',
+        #               default=0,
+        #               help='If set to a positive value, apply a Wiener filter with this signal-to-noise ratio. If '
+        #                    'omitted, the reconstruction will use a heuristic to prevent divisions by excessively '
+        #                    'small numbers. Please note that using a low (even though realistic) SNR might wash out the '
+        #                    'higher frequencies, which could make the map unsuitable to be used for further refinement.')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -95,24 +97,34 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
                              numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
+        inParticles = self.inReParticles.get()
+        postProccesMrc = None
+        halves = [self._getExtraPath('half1.mrc'), self._getExtraPath('half2.mrc')]
+
         # Fix headers to be interpreted as volumes instead of stacks
         [fixVolume(mrcFile) for mrcFile in glob.glob(self._getExtraPath('*.mrc'))]
 
-        inParticles = self.inReParticles.get()
-        # Particles (the set may be updated with and FSC mask generated, that why this output is also created here)
-        super().createOutputStep()
-        self._defineOutputs(**{outputObjects.relionParticles.name: self.psubtomoSet})
+        # Output psubtomos
+        psubtomoSet = super().createOutputStep()
 
         # Output average
         vol = AverageSubTomogram()
         vol.setFileName(self._getExtraPath('merged.mrc'))
-        vol.setHalfMaps([self._getExtraPath('half1.mrc'), self._getExtraPath('half2.mrc')])
-        vol.setSamplingRate(self.psubtomoSet.getSamplingRate())
+        vol.setHalfMaps(halves)
+        vol.setSamplingRate(inParticles.getSamplingRate())
+        outputsDir = {outputObjects.relionParticles.name: psubtomoSet, outputObjects.average.name: vol}
 
-        self._defineOutputs(**{outputObjects.average.name: vol,
-                               outputObjects.relionParticles.name: self.psubtomoSet})
-        self._defineSourceRelation(inParticles, self.psubtomoSet)
+        # Output solvent mask
+        if self.solventMask.get():
+            postProccesMrc = self._genPostProcessOutputMrcFile(POST_PROCESS_MRC)
+            postProccesMrc.setHalfMaps(halves)
+            outputsDir[outputObjects.postProcessVolume.name] = postProccesMrc
+
+        self._defineOutputs(**outputsDir)
+        self._defineSourceRelation(inParticles, psubtomoSet)
         self._defineSourceRelation(inParticles, vol)
+        if postProccesMrc:
+            self._defineSourceRelation(inParticles, postProccesMrc)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -138,12 +150,12 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
         return cmd
 
     def _genTomoMaskRefCmd(self):
-        optSet = self.inOptSet.get()
+        inParticles = self.inReParticles.get()
         cmd = ''
-        cmd += '--t %s ' % optSet.getTomograms()
-        cmd += '--p %s ' % optSet.getParticles()
+        cmd += '--t %s ' % inParticles.getTomograms()
+        cmd += '--p %s ' % inParticles.getParticles()
         cmd += '--rec %s ' % self._getExtraPath()
         cmd += '--o %s ' % self._getExtraPath()
         cmd += '--mask %s ' % self.solventMask.get().getFileName()
-        cmd += '--SNR %.2f ' % self.snrWiener.get()
+        cmd += '--angpix %.2f ' % (inParticles.getTsSamplingRate() * self.binningFactor.get())
         return cmd

@@ -28,9 +28,12 @@ from gctf.protocols import ProtTsGctf
 from imod.protocols import ProtImodImportTransformationMatrix, ProtImodApplyTransformationMatrix, \
     ProtImodTSNormalization
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
+from pwem.protocols import ProtImportMask
+from pwem.protocols.protocol_import.masks import ImportMaskOutput
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
-from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR, IN_PARTICLES_STAR
+from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR, IN_PARTICLES_STAR, POSTPROCESS_DIR, \
+    POST_PROCESS_MRC
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelionPrepareData, \
     ProtRelionMakePseudoSubtomograms, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms, \
     ProtRelionReconstructParticle, ProtExtractCoordsFromPSubtomos, ProtRelionTomoReconstruct, \
@@ -45,6 +48,7 @@ from reliontomo.protocols.protocol_prepare_data import outputObjects as prepareO
 from reliontomo.protocols.protocol_edit_particles_star import outputObjects as editStarOutputs
 from reliontomo.protocols.protocol_de_novo_initial_model import outputObjects as iniModelOutputs
 from reliontomo.protocols.protocol_rec_tomogram import outputObjects as recTomoRelionOutputs
+from reliontomo.protocols.protocol_reconstruc_particle_from_ts import outputObjects as recParticleFromTsOutputs
 from reliontomo.protocols.protocol_rec_tomogram import SINGLE_TOMO, ALL_TOMOS
 from reliontomo.tests import RE4_TOMO, DataSetRe4Tomo
 from reliontomo.utils import genEnumParamDict
@@ -59,6 +63,7 @@ OUTPUT_CLASSES = cl3dOutputs.classes.name
 
 
 class TestRefinceCycle(BaseTest):
+    fscMaskBin2 = None
     normTS = None
     alignedTS = None
     tsWithAlignment = None
@@ -87,6 +92,7 @@ class TestRefinceCycle(BaseTest):
     def setUpClass(cls):
         setupTestProject(cls)
         cls.dataset = DataSet.getDataSet(RE4_TOMO)
+        cls.fscMaskBin2 = cls._importMask()
         cls.inTS = cls._importTS()
         cls.ctfTomoSeries = cls._estimateCTF()
         cls.tsWithAlignment = cls._importTransformationMatrix()
@@ -108,6 +114,7 @@ class TestRefinceCycle(BaseTest):
         cls.protCl3dWithAlign = cls._3dClassify(doAlingment=True)
         cls.protAutoRefine = cls._autoRefine()
         cls.protRecPartFromTS = cls._recParticleFromTS()
+        cls.protRecPartFromTsWithSolvent = cls._recParticleFromTsWithSolventMask()
 
     @classmethod
     def _importTS(cls):
@@ -122,6 +129,17 @@ class TestRefinceCycle(BaseTest):
         cls.launchProtocol(protImportTS)
         outputTS = getattr(protImportTS, 'outputTiltSeries', None)
         return outputTS
+
+    @classmethod
+    def _importMask(cls):
+        print(magentaStr("\n==> Importing the FSC mask:"))
+        protImportMask = cls.newProtocol(ProtImportMask,
+                                         maskPath=cls.dataset.getFile(DataSetRe4Tomo.maskFscBin2.name),
+                                         samplingRate=2 * cls.samplingRateOrig)
+        protImportMask.setObjLabel('Import FSC mask, bin2')
+        cls.launchProtocol(protImportMask)
+        outputMask = getattr(protImportMask, ImportMaskOutput.outputMask.name, None)
+        return outputMask
 
     @classmethod
     def _importTransformationMatrix(cls):
@@ -144,7 +162,7 @@ class TestRefinceCycle(BaseTest):
 
     @classmethod
     def _noramlizeTS(cls):
-        print(magentaStr("\n==> Normalizing the tilt series to bin 4:"))
+        print(magentaStr("\n==> Binning the tilt series to bin 4:"))
         protNormTS = cls.newProtocol(ProtImodTSNormalization,
                                      inputSetOfTiltSeries=cls.alignedTS,
                                      binning=4)
@@ -358,17 +376,30 @@ class TestRefinceCycle(BaseTest):
         return protAutoRefine
 
     @classmethod
+    def _genRecPartFromTsDict(cls):
+        return {'inReParticles': getattr(cls.protAutoRefine, RELION_TOMO_PARTICLES, None),
+                'boxSize': 256,
+                'croppedBoxSize': cls.boxSizeBin2,
+                'binningFactor': 2,
+                'symmetry': cls.symmetry,
+                'outputInFloat16': False,
+                'numberOfThreads': 5,
+                'numberOfMpi': 3}
+
+    @classmethod
     def _recParticleFromTS(cls):
         print(magentaStr("\n==> Reconstructing the particle from the TS using a binning factor of 2:"))
-        protRecPartFromTS = cls.newProtocol(ProtRelionReconstructParticle,
-                                            inReParticles=getattr(cls.protAutoRefine, RELION_TOMO_PARTICLES, None),
-                                            boxSize=256,
-                                            croppedBoxSize=cls.boxSizeBin2,
-                                            binningFactor=2,
-                                            symmetry=cls.symmetry,
-                                            outputInFloat16=False,
-                                            numberOfThreads=5,
-                                            numberOfMpi=3)
+        protRecPartFromTS = cls.newProtocol(ProtRelionReconstructParticle, **cls._genRecPartFromTsDict())
+        cls.launchProtocol(protRecPartFromTS)
+        return protRecPartFromTS
+
+    @classmethod
+    def _recParticleFromTsWithSolventMask(cls):
+        print(magentaStr("\n==> Reconstructing the particle from the TS using a binning factor of 2 "
+                         "with solvent mask:"))
+        paramsDict = cls._genRecPartFromTsDict()
+        paramsDict['solventMask'] = cls.fscMaskBin2
+        protRecPartFromTS = cls.newProtocol(ProtRelionReconstructParticle, **paramsDict)
         cls.launchProtocol(protRecPartFromTS)
         return protRecPartFromTS
 
@@ -535,7 +566,9 @@ class TestRefinceCycle(BaseTest):
     def testInitialModel(self):
         protInitialModel = self.protInitialModel
         recVol = getattr(protInitialModel, OUTPUT_MODEL, None)
-        self._checkRecVolume(recVol, optSet=protInitialModel.inReParticles.get(), boxSize=self.boxSizeBin4)
+        self._checkRecVolume(recVol,
+                             optSet=protInitialModel.inReParticles.get(),
+                             boxSize=self.boxSizeBin4)
 
     def testCl3d(self):
         self._runTestCl3d(self.protCl3d)
@@ -592,24 +625,39 @@ class TestRefinceCycle(BaseTest):
                              boxSize=self.boxSizeBin4,
                              halves=[half1, half2])
 
-    def testRecParticleFromTS(self):
-        protRecPartFromTS = self.protRecPartFromTS
-        mdObj = getattr(protRecPartFromTS, RELION_TOMO_PARTICLES, None)
-        # Check RelionTomoMetadata: only the particles file is generated
-        self._checkRe4Metadata(mdObj,
-                               tomogramsFile=self.protPrepare._getExtraPath(OUT_TOMOS_STAR),
-                               particlesFile=protRecPartFromTS._getExtraPath(IN_PARTICLES_STAR),
-                               trajectoriesFile=None,
-                               manifoldsFile=None,
-                               referenceFscFile=None,
-                               relionBinning=2
-                               )
-        # Check the output volume
-        recVol = getattr(protRecPartFromTS, OUTPUT_MODEL, None)
+    def _checkRecVolFromTs(self, protRecPartFromTS, recVol):
         self._checkRecVolume(recVol,
-                             optSet=mdObj,
+                             optSet=protRecPartFromTS.inReParticles.get(),
                              boxSize=self.boxSizeBin2,
                              halves=[protRecPartFromTS._getExtraPath('half1.mrc'),
                                      protRecPartFromTS._getExtraPath('half2.mrc')])
 
-        # TODO: make a star file comparer for testing
+    def _checkPSubtomosFromTS(self, protRecPartFromTS, fscFile=None):
+        self._checkRe4Metadata(getattr(protRecPartFromTS, RELION_TOMO_PARTICLES, None),
+                               tomogramsFile=self.protPrepare._getExtraPath(OUT_TOMOS_STAR),
+                               particlesFile=protRecPartFromTS._getExtraPath(IN_PARTICLES_STAR),
+                               trajectoriesFile=None,
+                               manifoldsFile=None,
+                               referenceFscFile=fscFile,
+                               relionBinning=2
+                               )
+
+    def testRecParticleFromTS(self):
+        protRecPartFromTS = self.protRecPartFromTS
+        # Check the generated volume
+        self._checkRecVolFromTs(protRecPartFromTS, getattr(protRecPartFromTS, OUTPUT_MODEL, None))
+        # Check the generated psubtomos
+        self._checkPSubtomosFromTS(protRecPartFromTS)
+
+    def testRecParticleFromTsWithSolventMask(self):
+        protRecPartFromTsWithSolvent = self.protRecPartFromTsWithSolvent
+        # Check the generated volume
+        recVol = getattr(protRecPartFromTsWithSolvent, OUTPUT_MODEL, None)
+        self._checkRecVolFromTs(protRecPartFromTsWithSolvent, recVol)
+        # Check the generated psubtomos: when a solvent mask is introduced, a fsc mask is also generated
+        fscFile = protRecPartFromTsWithSolvent._getExtraPath(POSTPROCESS_DIR, POST_PROCESS_MRC)
+        self._checkPSubtomosFromTS(protRecPartFromTsWithSolvent, fscFile=fscFile)
+        # Check the generated FSC mask
+        fscSolvent = getattr(protRecPartFromTsWithSolvent, recParticleFromTsOutputs.postProcessVolume.name, None)
+        self._checkRecVolFromTs(protRecPartFromTsWithSolvent, fscSolvent)
+

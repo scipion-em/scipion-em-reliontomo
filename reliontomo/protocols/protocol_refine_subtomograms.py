@@ -36,7 +36,7 @@ from os.path import getmtime
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, StringParam, BooleanParam, EnumParam
 from pyworkflow.utils import createLink
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, OUT_PARTICLES_STAR
-from reliontomo.utils import getProgram, genRelionParticles
+from reliontomo.utils import getProgram
 from tomo.objects import AverageSubTomogram
 
 
@@ -217,7 +217,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         createLink(self._getExtraPath('_data.star'), self._getExtraPath(OUT_PARTICLES_STAR))
 
         # Output RelionParticles
-        relionParticles = genRelionParticles(self._getExtraPath(), inParticles)
+        relionParticles = self.genRelionParticles()
 
         # Output volume
         vol = AverageSubTomogram()
@@ -244,6 +244,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         self._defineOutputs(**outputDict)
         self._defineSourceRelation(inParticles, relionParticles)
         self._defineSourceRelation(inParticles, vol)
+        self._defineSourceRelation(inParticles, fsc)
 
     # -------------------------- INFO functions -------------------------------
 

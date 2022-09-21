@@ -36,7 +36,7 @@ from reliontomo.protocols import ProtRelionRefineSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
 from pyworkflow.protocol import FloatParam, BooleanParam, GE, LE, IntParam, StringParam
-from reliontomo.utils import getProgram, genRelionParticles
+from reliontomo.utils import getProgram
 from tomo.objects import SetOfClassesSubTomograms, SetOfAverageSubTomograms
 
 
@@ -169,7 +169,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         createLink(self._getIterGenFileName('data', self.nIterations.get()), self._getExtraPath(OUT_PARTICLES_STAR))
 
         # Output RelionParticles
-        relionParticles = genRelionParticles(self._getExtraPath(), inParticles)
+        relionParticles = self.genRelionParticles()
 
         # Output classes
         classes3D = self._createSetOfClassesSubTomograms(relionParticles)
@@ -187,6 +187,8 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         outputDict = {outputObjects.relionParticles.name: relionParticles,
                       outputObjects.classes.name: classes3D}
         self._defineOutputs(**outputDict)
+        self._defineSourceRelation(inParticles, relionParticles)
+        self._defineSourceRelation(inParticles, classes3D)
 
         if self.keepOnlyLastIterFiles.get():
             self._cleanUndesiredFiles()
