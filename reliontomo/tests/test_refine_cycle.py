@@ -194,7 +194,7 @@ class TestRefinceCycle(BaseTest):
 
     @classmethod
     def _estimateCTF(cls):
-        print(magentaStr("\n==> Estimating the CTF with gctf - ctffind:"))
+        print(magentaStr("\n==> Estimating the CTF with gctf:"))
         protCtfEst = cls.newProtocol(ProtTsGctf,
                                      inputTiltSeries=cls.inTS,
                                      numberOfThreads=6)
@@ -390,6 +390,7 @@ class TestRefinceCycle(BaseTest):
     def _recParticleFromTS(cls):
         print(magentaStr("\n==> Reconstructing the particle from the TS using a binning factor of 2:"))
         protRecPartFromTS = cls.newProtocol(ProtRelionReconstructParticle, **cls._genRecPartFromTsDict())
+        protRecPartFromTS.setObjLabel('rec part from ts')
         cls.launchProtocol(protRecPartFromTS)
         return protRecPartFromTS
 
@@ -400,6 +401,7 @@ class TestRefinceCycle(BaseTest):
         paramsDict = cls._genRecPartFromTsDict()
         paramsDict['solventMask'] = cls.fscMaskBin2
         protRecPartFromTS = cls.newProtocol(ProtRelionReconstructParticle, **paramsDict)
+        protRecPartFromTS.setObjLabel('rec part from ts with solvent mask')
         cls.launchProtocol(protRecPartFromTS)
         return protRecPartFromTS
 

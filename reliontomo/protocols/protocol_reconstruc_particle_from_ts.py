@@ -153,7 +153,7 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
         inParticles = self.inReParticles.get()
         cmd = ''
         cmd += '--t %s ' % inParticles.getTomograms()
-        cmd += '--p %s ' % inParticles.getParticles()
+        cmd += '--p %s ' % self.getOutStarFileName()
         cmd += '--rec %s ' % self._getExtraPath()
         cmd += '--o %s ' % self._getExtraPath()
         cmd += '--mask %s ' % self.solventMask.get().getFileName()
