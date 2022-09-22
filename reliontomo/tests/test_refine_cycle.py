@@ -657,7 +657,7 @@ class TestRefinceCycle(BaseTest):
         recVol = getattr(protRecPartFromTsWithSolvent, OUTPUT_MODEL, None)
         self._checkRecVolFromTs(protRecPartFromTsWithSolvent, recVol)
         # Check the generated psubtomos: when a solvent mask is introduced, a fsc mask is also generated
-        fscFile = protRecPartFromTsWithSolvent._getExtraPath(POSTPROCESS_DIR, POST_PROCESS_MRC)
+        fscFile = protRecPartFromTsWithSolvent._getExtraPath(POSTPROCESS_DIR, POST_PROCESS_MRC.replace('.mrc', '.star'))
         self._checkPSubtomosFromTS(protRecPartFromTsWithSolvent, fscFile=fscFile)
         # Check the generated FSC mask
         fscSolvent = getattr(protRecPartFromTsWithSolvent, recParticleFromTsOutputs.postProcessVolume.name, None)
