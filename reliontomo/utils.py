@@ -70,16 +70,5 @@ def isPseudoSubtomogram(subtomo):
     return hasattr(subtomo, '_ctfImage')
 
 
-def genOutputPseudoSubtomograms(prot, currentSamplingRate):
-    """Centralized code to generate the output set of pseudosubtomograms for protocols make pseudosubtomograms,
-     auto-refine, CTF refine and frame align"""
-    from reliontomo.convert import createReaderTomo
-    reader, _ = createReaderTomo(prot._getExtraPath(OUT_PARTICLES_STAR))
-    outputSet = prot._createSet(RelionSetOfPseudoSubtomograms, PSUBTOMOS_SQLITE, '')
-    outputSet.setSamplingRate(currentSamplingRate)
-    reader.starFile2PseudoSubtomograms(outputSet)
-    return outputSet
-
-
 def genEnumParamDict(keyList):
     return OrderedDict((key, val) for key, val in zip(keyList, range(len(keyList))))

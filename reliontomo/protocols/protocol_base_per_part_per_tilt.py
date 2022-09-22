@@ -23,25 +23,21 @@
 # *
 # **************************************************************************
 from enum import Enum
-from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, IntParam, GE, LE
-from pyworkflow.utils import Message
-from reliontomo.constants import OPTIMISATION_SET_STAR
-from reliontomo.objects import relionTomoMetadata, RelionSetOfPseudoSubtomograms
-from reliontomo.utils import genOutputPseudoSubtomograms
+from reliontomo.objects import RelionSetOfPseudoSubtomograms
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
 
 class outputObjects(Enum):
-    relionParticles = relionTomoMetadata
-    volumes = RelionSetOfPseudoSubtomograms
+    relionParticles = RelionSetOfPseudoSubtomograms
 
 
-class ProtRelionPerParticlePerTiltBase(EMProtocol):
+class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
     """Base protocol used for the getting the frame alignment and ctf-refinment"""
 
     _devStatus = BETA
-    _boxSize4Est = None
+    _possibleOutputs = outputObjects
 
     # -------------------------- DEFINE param functions -----------------------
 
@@ -50,10 +46,7 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
         self.inParticlesStar = None
 
     def _defineParams(self, form):
-        form.addSection(label=Message.LABEL_INPUT)
-        form.addParam('inOptSet', PointerParam,
-                      pointerClass='relionTomoMetadata',
-                      label='Input Relion Tomo Metadata')
+        super()._defineCommonInputParams(form)
         form.addParam('recVolume', PointerParam,
                       pointerClass='AverageSubTomogram',
                       allowsNull=False,
@@ -78,20 +71,12 @@ class ProtRelionPerParticlePerTiltBase(EMProtocol):
         pass
 
     def createOutputStep(self):
-        inOptSet = self.inOptSet.get()
+        inPSubtomos = self.inReParticles.get()
         # Output RelionParticles
-        relionParticles = relionTomoMetadata(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
-                                             tsSamplingRate=inOptSet.getTsSamplingRate(),
-                                             relionBinning=inOptSet.getRelionBinning(),
-                                             nParticles=inOptSet.getNumParticles())
+        pSubtomos = self.genRelionParticles()
 
-        # Output pseudosubtomograms --> set of volumes for visualization purposes
-        outputSet = genOutputPseudoSubtomograms(self, relionParticles.getCurrentSamplingRate())
-
-        self._defineOutputs(**{outputObjects.relionParticles.name: relionParticles,
-                               outputObjects.volumes.name: outputSet})
-        self._defineSourceRelation(inOptSet, relionParticles)
-        self._defineSourceRelation(inOptSet, outputSet)
+        self._defineOutputs(**{outputObjects.relionParticles.name: pSubtomos})
+        self._defineSourceRelation(inPSubtomos, pSubtomos)
 
     # -------------------------- UTILS functions -----------------------------
     def _genIOCommand(self):

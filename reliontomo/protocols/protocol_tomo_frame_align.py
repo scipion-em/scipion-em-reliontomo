@@ -23,14 +23,11 @@
 # *
 # **************************************************************************
 from enum import Enum
-
 from pyworkflow.protocol import IntParam, BooleanParam, GE, LE, FloatParam, EnumParam
 from reliontomo import Plugin
 from reliontomo.objects import relionTomoMetadata, RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_per_part_per_tilt import ProtRelionPerParticlePerTiltBase
 from reliontomo.utils import getProgram
-from tomo.objects import SetOfSubTomograms
-from tomo.protocols import ProtTomoBase
 
 
 class alignModels(Enum):
@@ -49,19 +46,19 @@ class outputObjects(Enum):
     outputVolumes = RelionSetOfPseudoSubtomograms
 
 
-class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
+class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase):
     """Tomo frame align"""
 
     _label = 'Tomo frame align'
 
-    def __init__(self, **args):
-        ProtRelionPerParticlePerTiltBase.__init__(self, **args)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        ProtRelionPerParticlePerTiltBase._defineParams(self, form)
+        super()._defineParams(form)
         form.addSection(label='Polish')
-        ProtRelionPerParticlePerTiltBase._insertBoxSizeForEstimationParam(form)
+        super()._insertBoxSizeForEstimationParam(form)
         form.addParam('maxPosErr', IntParam,
                       label='Max position error (pix)',
                       default=5,
