@@ -135,8 +135,8 @@ class TestRefinceCycle(BaseTest):
         print(magentaStr("\n==> Importing the FSC mask:"))
         protImportMask = cls.newProtocol(ProtImportMask,
                                          maskPath=cls.dataset.getFile(DataSetRe4Tomo.maskFscBin2.name),
-                                         samplingRate=2 * cls.samplingRateOrig)
-        protImportMask.setObjLabel('Import FSC mask, bin2')
+                                         samplingRate=cls.samplingRateOrig)
+        protImportMask.setObjLabel('Import FSC mask')
         cls.launchProtocol(protImportMask)
         outputMask = getattr(protImportMask, ImportMaskOutput.outputMask.name, None)
         return outputMask

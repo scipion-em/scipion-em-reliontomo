@@ -25,7 +25,6 @@
 from enum import Enum
 from pyworkflow.protocol import IntParam, BooleanParam, GE, LE, FloatParam, EnumParam
 from reliontomo import Plugin
-from reliontomo.objects import relionTomoMetadata, RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_per_part_per_tilt import ProtRelionPerParticlePerTiltBase
 from reliontomo.utils import getProgram
 
@@ -39,11 +38,6 @@ class deformationModels(Enum):
     linear = 0
     spline = 1
     fourier = 2
-
-
-class outputObjects(Enum):
-    outputRelionParticles = relionTomoMetadata
-    outputVolumes = RelionSetOfPseudoSubtomograms
 
 
 class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase):

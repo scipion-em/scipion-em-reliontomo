@@ -98,6 +98,7 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
 
     def createOutputStep(self):
         inParticles = self.inReParticles.get()
+        currentSamplingRate = inParticles.getTsSamplingRate() * self.binningFactor.get()
         postProccesMrc = None
         halves = [self._getExtraPath('half1.mrc'), self._getExtraPath('half2.mrc')]
 
@@ -111,14 +112,15 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
         vol = AverageSubTomogram()
         vol.setFileName(self._getExtraPath('merged.mrc'))
         vol.setHalfMaps(halves)
-        vol.setSamplingRate(inParticles.getSamplingRate())
+        vol.setSamplingRate(currentSamplingRate)
         outputsDir = {outputObjects.relionParticles.name: psubtomoSet, outputObjects.average.name: vol}
 
         # Output solvent mask
         if self.solventMask.get():
             postProccesMrc = self._genPostProcessOutputMrcFile(POST_PROCESS_MRC)
             postProccesMrc.setHalfMaps(halves)
-            outputsDir[outputObjects.postProcessVolume.name] = postProccesMrc
+            postProccesMrc.setSamplingRate(currentSamplingRate)
+            outputsDir.update({outputObjects.postProcessVolume.name: postProccesMrc})
 
         self._defineOutputs(**outputsDir)
         self._defineSourceRelation(inParticles, psubtomoSet)
