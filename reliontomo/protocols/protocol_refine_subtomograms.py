@@ -25,31 +25,28 @@
 import glob
 import re
 from enum import Enum
-
 from emtable import Table
 from pwem.convert.headers import fixVolume
 from pwem.objects import FSC
 from pyworkflow import BETA
-from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
+from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
 from os.path import getmtime
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, StringParam, BooleanParam, EnumParam
 from pyworkflow.utils import createLink
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, OUT_PARTICLES_STAR
-from reliontomo.utils import getProgram, genRelionParticles, genOutputPseudoSubtomograms
+from reliontomo.utils import getProgram
 from tomo.objects import AverageSubTomogram
-from tomo.protocols import ProtTomoBase
 
 
 class outputObjects(Enum):
-    relionParticles = relionTomoMetadata
-    volumes = SetOfPseudoSubtomograms
+    relionParticles = RelionSetOfPseudoSubtomograms
     average = AverageSubTomogram
     outputFSC = FSC
 
 
-class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
+class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
     """Auto-refinement of subtomograms."""
 
     _label = 'Auto-refinement of subtomograms'
@@ -58,8 +55,8 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     FILE_KEYS = ['data', 'optimiser', 'sampling']
     PREFIXES = ['half1_', 'half2_']
 
-    def __init__(self, **args):
-        ProtRelionRefineBase.__init__(self, **args)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -69,12 +66,12 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         self._defineOptimisationParamsCommon2All(form)
         self._defineAutoSamplingParams(form)
         self._defineComputeParams(form)
-        ProtRelionRefineBase._insertGpuParams(form)
-        ProtRelionRefineBase._defineAdditionalParams(form)
+        super()._insertGpuParams(form)
+        super()._defineAdditionalParams(form)
+        form.addParallelSection(threads=1, mpi=1)
 
-    @staticmethod
-    def _defineInputParams(form):
-        ProtRelionRefineBase._defineIOParams(form)
+    def _defineInputParams(self, form):
+        super()._defineIOParams(form)
         form.addParam('referenceVolume', PointerParam,
                       pointerClass='Volume',
                       allowsNull=False,
@@ -103,8 +100,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
                            'set to a constant. Note that this second mask should have one-values inside the '
                            'virion and zero-values in the capsid and the solvent areas.')
 
-    @staticmethod
-    def _defineReferenceParams(form):
+    def _defineReferenceParams(self, form):
         form.addSection(label='Reference')
         form.addParam('isMapAbsoluteGreyScale', BooleanParam,
                       default=True,
@@ -129,13 +125,12 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
                       help='It is recommended to strongly low-pass filter your initial reference map. '
                            'If it has not yet been low-pass filtered, it may be done internally using this option. '
                            'If set to 0, no low-pass filter will be applied to the initial reference(s).')
-        ProtRelionRefineBase._insertSymmetryParam(form)
+        super()._insertSymmetryParam(form)
 
-    @staticmethod
-    def _defineOptimisationParamsCommon2All(form):
-        ProtRelionRefineSubtomograms._insertOptimisationSection(form)
-        ProtRelionRefineBase._insertMaskDiameterParam(form)
-        ProtRelionRefineBase._insertZeroMaskParam(form)
+    def _defineOptimisationParamsCommon2All(self, form):
+        super()._insertOptimisationSection(form)
+        super()._insertMaskDiameterParam(form)
+        super()._insertZeroMaskParam(form)
         form.addParam('solventCorrectFSC', BooleanParam,
                       default=False,
                       condition='solventMask',
@@ -147,10 +142,9 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
                            "higher-resolution maps, especially when the mask contains only a relatively small "
                            "volume inside the box.")
 
-    @staticmethod
-    def _defineAutoSamplingParams(form):
+    def _defineAutoSamplingParams(self, form):
         form.addSection(label='Auto-sampling')
-        ProtRelionRefineBase._insertAngularCommonParams(form)
+        super()._insertAngularCommonParams(form)
         form.addParam('localSearchAutoSampling', EnumParam,
                       default=4,
                       choices=ANGULAR_SAMPLING_LIST,
@@ -173,9 +167,8 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
                            "hasn't been tested for many cases for potential loss in reconstruction quality upon "
                            "convergence.")
 
-    @staticmethod
-    def _defineComputeParams(form):
-        ProtRelionRefineBase._defineComputeParams(form)
+    def _defineComputeParams(self, form, isOnlyClassif=False):
+        super()._defineComputeParams(form, isOnlyClassif=isOnlyClassif)
         form.addParam('skipPadding', BooleanParam,
                       default=False,
                       label='Skip padding?',
@@ -201,16 +194,100 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._initialize()
-        self._insertFunctionStep(self._autoRefine)
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.autoRefineStep)
         self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
-        """ This function is mean to be called after the
+        """ This function is meant to be called after the
         working dir for the protocol have been set. (maybe after recovery from mapper)
         """
         self._createFilenameTemplates()
         self._createIterTemplates()
+
+    def autoRefineStep(self):
+        nMpi = self.numberOfMpi.get()
+        Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genAutoRefineCommand(), numberOfMpi=nMpi)
+
+    def createOutputStep(self):
+        inParticles = self.inReParticles.get()
+
+        # Rename the particles file generated (_data.star) to follow the name convention
+        createLink(self._getExtraPath('_data.star'), self._getExtraPath(OUT_PARTICLES_STAR))
+
+        # Output RelionParticles
+        relionParticles = self.genRelionParticles()
+
+        # Output volume
+        vol = AverageSubTomogram()
+        volName = self._getExtraPath('_class001.mrc')
+        fixVolume(volName)  # Fix header for xmipp to consider it a volume instead of a stack
+        vol.setFileName(volName)
+        vol.setSamplingRate(relionParticles.getCurrentSamplingRate())
+        pattern = '*it*half%s_class*.mrc'
+        half1 = self._getLastFileName(self._getExtraPath(pattern % 1))
+        half2 = self._getLastFileName(self._getExtraPath(pattern % 2))
+        vol.setHalfMaps([half1, half2])
+
+        # Output FSC
+        fsc = FSC(objLabel=self.getRunName())
+        fn = self._getExtraPath("_model.star")
+        table = Table(fileName=fn, tableName='model_class_1')
+        resolution_inv = table.getColumnValues('rlnResolution')
+        frc = table.getColumnValues('rlnGoldStandardFsc')
+        fsc.setData(resolution_inv, frc)
+
+        outputDict = {outputObjects.relionParticles.name: relionParticles,
+                      outputObjects.average.name: vol,
+                      outputObjects.outputFSC.name: fsc}
+        self._defineOutputs(**outputDict)
+        self._defineSourceRelation(inParticles, relionParticles)
+        self._defineSourceRelation(inParticles, vol)
+        self._defineSourceRelation(inParticles, fsc)
+
+    # -------------------------- INFO functions -------------------------------
+
+    # --------------------------- UTILS functions -----------------------------
+    def _genAutoRefineCommand(self):
+        cmd = self._genBaseCommand()
+        cmd += ' --auto_refine --split_random_halves --low_resol_join_halves 40 --norm --scale --flatten_solvent '
+        # I/O args
+        cmd += '--ref %s ' % self.referenceVolume.get().getFileName()
+        if self.solventMask.get():
+            cmd += '--solvent_mask %s ' % self.solventMask.get().getFileName()
+        if self.solventMask2.get():
+            cmd += '--solvent_mask2 %s ' % self.solventMask2.get().getFileName()
+        # Reference args
+        if not self.isMapAbsoluteGreyScale.get():
+            cmd += '--firstiter_cc '
+        if self.initialLowPassFilterA.get():
+            cmd += '--ini_high %.2f ' % self.initialLowPassFilterA.get()
+        cmd += '--sym %s ' % self.symmetry.get()
+        # Optimisation args
+        if self.solventCorrectFSC.get():
+            cmd += '--solvent_correct_fsc '
+        if self.zeroMask.get():
+            cmd += '--zero_mask '
+        # Angular sampling args
+        cmd += '--healpix_order %i ' % self.angularSamplingDeg.get()  # - self.oversampling.get())
+        cmd += '--offset_range %i ' % self.offsetSearchRangePix.get()
+        cmd += '--offset_step %i ' % (self.offsetSearchStepPix.get() * 2 ** self.oversampling.get())
+        cmd += '--auto_local_healpix_order %i ' % self.localSearchAutoSampling.get()  # - self.oversampling.get())
+        if self.relaxSym.get():
+            cmd += '--relax_sym %s ' % self.relaxSym.get()
+        if self.useFinerAngularSampling.get():
+            cmd += '--auto_ignore_angles --auto_resol_angles '
+        # Compute args
+        cmd += '--pad %i ' % (1 if self.skipPadding.get() else 2)
+
+        return cmd
+
+    @staticmethod
+    def _getLastFileName(pattern):
+        files = glob.glob(pattern)
+        files.sort(key=getmtime)
+        return files[-1]
 
     def _createFilenameTemplates(self):
         """ Centralize how files are called for iterations and references. """
@@ -256,92 +333,4 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase, ProtTomoBase):
         # Iterations will be identify by _itXXX_ where XXX is the iteration number
         # and is restricted to only 3 digits.
         self._iterRegex = re.compile('_it(\d{3})_')
-
-    def _autoRefine(self):
-        nMpi = self.numberOfMpi.get()
-        Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genAutoRefineCommand(), numberOfMpi=nMpi)
-
-    def createOutputStep(self):
-        # Rename the particles file generated (_data.star) to follow the name convention
-        createLink(self._getExtraPath('_data.star'), self._getExtraPath(OUT_PARTICLES_STAR))
-
-        # Output RelionParticles
-        relionParticles = genRelionParticles(self._getExtraPath(), self.inOptSet.get())
-
-        # Output pseudosubtomograms --> set of volumes for visualization purposes
-        outputSet = genOutputPseudoSubtomograms(self, relionParticles.getCurrentSamplingRate())
-
-        # Output volume
-        vol = AverageSubTomogram()
-        volName = self._getExtraPath('_class001.mrc')
-        fixVolume(volName)  # Fix header for xmipp to consider it a volume instead of a stack
-        vol.setFileName(volName)
-        vol.setSamplingRate(relionParticles.getCurrentSamplingRate())
-        pattern = '*it*half%s_class*.mrc'
-        half1 = self._getLastFileName(self._getExtraPath(pattern % 1))
-        half2 = self._getLastFileName(self._getExtraPath(pattern % 2))
-        vol.setHalfMaps([half1, half2])
-
-        # Output FSC
-        fsc = FSC(objLabel=self.getRunName())
-        fn = self._getExtraPath("_model.star")
-        table = Table(fileName=fn, tableName='model_class_1')
-        resolution_inv = table.getColumnValues('rlnResolution')
-        frc = table.getColumnValues('rlnGoldStandardFsc')
-        fsc.setData(resolution_inv, frc)
-
-        outputDict = {outputObjects.relionParticles.name: relionParticles,
-                      outputObjects.volumes.name: outputSet,
-                      outputObjects.average.name: vol,
-                      outputObjects.outputFSC.name: fsc}
-        self._defineOutputs(**outputDict)
-        inOptSet = self.inOptSet.get()
-        self._defineSourceRelation(inOptSet, relionParticles)
-        self._defineSourceRelation(inOptSet, outputSet)
-        self._defineSourceRelation(inOptSet, vol)
-
-    # -------------------------- INFO functions -------------------------------
-    def _validate(self):
-        pass
-
-    # --------------------------- UTILS functions -----------------------------
-    def _genAutoRefineCommand(self):
-        cmd = self._genBaseCommand()
-        cmd += ' --auto_refine --split_random_halves --low_resol_join_halves 40 --norm --scale --flatten_solvent '
-        # I/O args
-        cmd += '--ref %s ' % self.referenceVolume.get().getFileName()
-        if self.solventMask.get():
-            cmd += '--solvent_mask %s ' % self.solventMask.get().getFileName()
-        if self.solventMask2.get():
-            cmd += '--solvent_mask2 %s ' % self.solventMask2.get().getFileName()
-        # Reference args
-        if not self.isMapAbsoluteGreyScale.get():
-            cmd += '--firstiter_cc '
-        if self.initialLowPassFilterA.get():
-            cmd += '--ini_high %.2f ' % self.initialLowPassFilterA.get()
-        cmd += '--sym %s ' % self.symmetry.get()
-        # Optimisation args
-        if self.solventCorrectFSC.get():
-            cmd += '--solvent_correct_fsc '
-        if self.zeroMask.get():
-            cmd += '--zero_mask '
-        # Angular sampling args
-        cmd += '--healpix_order %i ' % self.angularSamplingDeg.get()  # - self.oversampling.get())
-        cmd += '--offset_range %i ' % self.offsetSearchRangePix.get()
-        cmd += '--offset_step %i ' % (self.offsetSearchStepPix.get() * 2 ** self.oversampling.get())
-        cmd += '--auto_local_healpix_order %i ' % self.localSearchAutoSampling.get()  # - self.oversampling.get())
-        if self.relaxSym.get():
-            cmd += '--relax_sym %s ' % self.relaxSym.get()
-        if self.useFinerAngularSampling.get():
-            cmd += '--auto_ignore_angles --auto_resol_angles '
-        # Compute args
-        cmd += '--pad %i ' % (1 if self.skipPadding.get() else 2)
-
-        return cmd
-
-    @staticmethod
-    def _getLastFileName(pattern):
-        files = glob.glob(pattern)
-        files.sort(key=getmtime)
-        return files[-1]
 

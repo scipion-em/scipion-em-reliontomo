@@ -25,15 +25,14 @@
 # *
 # **************************************************************************
 from enum import Enum
-from pwem.protocols import EMProtocol
 from pyworkflow import BETA
-from pyworkflow.protocol import PointerParam, BooleanParam, FloatParam, EnumParam
-from pyworkflow.utils import Message
+from pyworkflow.protocol import BooleanParam, FloatParam, EnumParam
 from reliontomo import Plugin
 from reliontomo.constants import OUT_PARTICLES_STAR, COORD_X, COORD_Y, COORD_Z, SHIFTX_ANGST, SHIFTY_ANGST, \
     SHIFTZ_ANGST, ROT, TILT, PSI
-from reliontomo.objects import relionTomoMetadata
-from reliontomo.utils import genEnumParamDict, genRelionParticles
+from reliontomo.objects import RelionSetOfPseudoSubtomograms
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
+from reliontomo.utils import genEnumParamDict
 
 # Operation labels and values
 NO_OPERATION = 'No operation'
@@ -50,10 +49,10 @@ LABELS_TO_OPERATE_WITH = [COORDINATES, SHIFTS, ANGLES]
 
 
 class outputObjects(Enum):
-    relionParticles = relionTomoMetadata
+    relionParticles = RelionSetOfPseudoSubtomograms
 
 
-class ProtRelionEditParticlesStar(EMProtocol):
+class ProtRelionEditParticlesStar(ProtRelionTomoBase):
     """Operate on the particles star file"""
 
     _label = 'Apply operation to Relion particles'
@@ -64,17 +63,10 @@ class ProtRelionEditParticlesStar(EMProtocol):
 
     def __init__(self, **kargs):
         super().__init__(**kargs)
-        self.label1 = None
-        self.label2 = None
-        self.label3 = None
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        form.addSection(label=Message.LABEL_INPUT)
-        form.addParam('inOptSet', PointerParam,
-                      pointerClass='relionTomoMetadata',
-                      label='Input Relion Tomo Metadata',
-                      important=True)
+        super()._defineCommonInputParams(form)
         form.addSection(label='Center')
         form.addParam('doRecenter', BooleanParam,
                       label='Perform centering of particles',
@@ -99,6 +91,7 @@ class ProtRelionEditParticlesStar(EMProtocol):
                       default=self.operationDict[NO_OPERATION],
                       label='Choose operation')
         form.addParam('opValue', FloatParam,
+                      condition='chosenOperation != %i' % self.operationDict[NO_OPERATION],
                       default=1,
                       label='Value to operate the selected labels')
         group = form.addGroup('Operation', condition='chosenOperation > 0')
@@ -145,22 +138,21 @@ class ProtRelionEditParticlesStar(EMProtocol):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._initialize()
-        self._insertFunctionStep(self._operateStep)
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.operateStep)
         self._insertFunctionStep(self.createOutputStep)
 
-    def _initialize(self):
-        self._manageOperateLabels()
+    def convertInputStep(self):
+        self.genInStarFile()
 
-    def _operateStep(self):
+    def operateStep(self):
         Plugin.runRelionTomo(self, 'relion_star_handler', self._getOperateCommand())
 
     def createOutputStep(self):
-        inOptSet = self.inOptSet.get()
-        # Output RelionParticles
-        relionParticles = genRelionParticles(self._getExtraPath(), inOptSet)
-        self._defineOutputs(**{outputObjects.relionParticles.name: relionParticles})
-        self._defineSourceRelation(inOptSet, relionParticles)
+        inParticles = self.inReParticles.get()
+        psubtomoSet = self.genRelionParticles()
+        self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet})
+        self._defineSourceRelation(inParticles, psubtomoSet)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -170,25 +162,9 @@ class ProtRelionEditParticlesStar(EMProtocol):
         return valMsg
 
     # --------------------------- UTILS functions -----------------------------
-    def _manageOperateLabels(self):
-        if self.chosenOperation.get() != self.operationDict[NO_OPERATION]:
-            labelGroup = self.operateWith.get()
-            if labelGroup == self.labelsDict[COORDINATES]:
-                self.label1 = (COORD_X, self.label1x.get())
-                self.label2 = (COORD_Y, self.label2y.get())
-                self.label3 = (COORD_Z, self.label3z.get())
-            elif labelGroup == self.labelsDict[SHIFTS]:
-                self.label1 = (SHIFTX_ANGST, self.label1sx.get())
-                self.label2 = (SHIFTY_ANGST, self.label2sy.get())
-                self.label3 = (SHIFTZ_ANGST, self.label3sz.get())
-            else:
-                self.label1 = (ROT, self.label1rot.get())
-                self.label2 = (TILT, self.label2tilt.get())
-                self.label3 = (PSI, self.label3psi.get())
-
     def _getOperateCommand(self):
         cmd = ''
-        cmd += '--i %s ' % self.inOptSet.get().getParticles()
+        cmd += '--i %s ' % self.getOutStarFileName()
         cmd += '--o %s ' % self._getExtraPath(OUT_PARTICLES_STAR)
         if self.doRecenter.get():
             cmd += '--center '
@@ -200,17 +176,43 @@ class ProtRelionEditParticlesStar(EMProtocol):
                 cmd += '--center_Z %.2f ' % self.shiftZ.get()
         if self.chosenOperation.get() != self.operationDict[NO_OPERATION]:
             opValue = self.opValue.get()
-            if self.chosenOperation.get() == self.operationDict[OP_ADDITION]:
+            chosenOp = self.chosenOperation.get()
+            # Chosen operation
+            if chosenOp == self.operationDict[OP_ADDITION]:
                 cmd += '--add_to %.2f ' % opValue
-            elif self.chosenOperation.get() == self.operationDict[OP_MULTIPLICATION]:
+            elif chosenOp == self.operationDict[OP_MULTIPLICATION]:
                 cmd += '--multiply_by %.2f ' % opValue
             else:
                 cmd += '--set_to %.2f ' % opValue
-            if self.label1.get()[1]:
-                cmd += 'operate %.2f ' % self.label1.get()[0]
-            if self.label2.get()[1]:
-                cmd += 'operate2 %.2f ' % self.label2.get()[0]
-            if self.label3.get()[1]:
-                cmd += 'operate3 %.2f ' % self.label3.get()[0]
+            # Chosen values
+            cmd += self._genOperateCmd()
         return cmd
+
+    def _genOperateCmd(self):
+        """Three are the maximum number of labels able to be edited at once. Relion offers 3 arguments to add them
+        to the generated command: --operate, --operate2, --operate3."""
+        operateWith = self.operateWith.get()
+        if operateWith == self.labelsDict[COORDINATES]:
+            label1, label2, label3 = COORD_X, COORD_Y, COORD_Z
+            edit1, edit2, edit3 = self.label1x.get(), self.label2y.get(), self.label3z.get()
+        elif operateWith == self.labelsDict[ANGLES]:
+            label1, label2, label3 = ROT, TILT, PSI
+            edit1, edit2, edit3 = self.label1rot.get(), self.label2tilt.get(), self.label3psi.get()
+        else:
+            label1, label2, label3 = SHIFTX_ANGST, SHIFTY_ANGST, SHIFTZ_ANGST
+            edit1, edit2, edit3 = self.label1sx.get(), self.label2sy.get(), self.label3sz.get()
+
+        operateCmd = ''
+        labelList = [label1, label2, label3]
+        editList = [edit1, edit2, edit3]
+        counter = 1
+        for label, editVal in zip(labelList, editList):
+            if editVal:
+                if counter == 1:
+                    operateCmd += '--operate %s ' % label
+                else:
+                    operateCmd += '--operate%i %s ' % (counter, label)
+                counter += 1
+
+        return operateCmd
 

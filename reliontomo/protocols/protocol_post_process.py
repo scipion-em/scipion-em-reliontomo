@@ -25,26 +25,24 @@
 # *
 # **************************************************************************
 from enum import Enum
-
 from pwem.objects import VolumeMask
-from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, BooleanParam, FloatParam, GE, LE, IntParam, FileParam
-from pyworkflow.utils import Message, makePath
+from pyworkflow.utils import makePath
 from reliontomo import Plugin
-from reliontomo.constants import POST_PROCESS_MRC, POST_PROCESS_MASKED_MRC, POSTPROCESS_DIR
-from reliontomo.objects import relionTomoMetadata
-from reliontomo.utils import genRelionParticles
+from reliontomo.constants import POST_PROCESS_MRC, POSTPROCESS_DIR
+from reliontomo.objects import RelionSetOfPseudoSubtomograms
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
 NO_MTF_FILE = 0
 
 
 class outputObjects(Enum):
-    relionParticles = relionTomoMetadata
+    relionParticles = RelionSetOfPseudoSubtomograms
     postProcessVolume = VolumeMask
 
 
-class ProtRelionPostProcess(EMProtocol):
+class ProtRelionPostProcess(ProtRelionTomoBase):
     """Sharpen a 3D reference map and estimate the gold-standard FSC curves for subtomogram averaging"""
 
     _label = 'Sharpen a 3D reference maps'
@@ -56,11 +54,7 @@ class ProtRelionPostProcess(EMProtocol):
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        form.addSection(label=Message.LABEL_INPUT)
-        form.addParam('inOptSet', PointerParam,
-                      pointerClass='relionTomoMetadata',
-                      label='Input Relion Tomo Metadata',
-                      important=True)
+        super()._defineCommonInputParams(form)
         form.addParam('inVolume', PointerParam,
                       pointerClass='AverageSubTomogram',
                       label='Use halves from this refined volume',
@@ -157,18 +151,13 @@ class ProtRelionPostProcess(EMProtocol):
         Plugin.runRelionTomo(self, 'relion_postprocess', self.genPostProcessCmd())
 
     def createOutputStep(self):
-        inOptSet = self.inOptSet.get()
-        # Output RelionParticles
-        relionParticles = genRelionParticles(self._getExtraPath(), inOptSet)
-        # Output FSC masks
+        inParticles = self.inReParticles.get()
+        pSubtomoSet = self.genRelionParticles()
         postProccesMrc = self._genPostProcessOutputMrcFile(POST_PROCESS_MRC)
-        # postProcessMaskedMrc = self._genPostProcessOutputMrcFile(POST_PROCESS_MASKED_MRC)
-
-        outputDict = {outputObjects.relionParticles.name: relionParticles,
-                      outputObjects.postProcessVolume.name: postProccesMrc}
-        self._defineOutputs(**outputDict)
-        self._defineSourceRelation(inOptSet, relionParticles)
-        self._defineSourceRelation(inOptSet, postProccesMrc)
+        self._defineOutputs(**{outputObjects.postProcessVolume.name: postProccesMrc,
+                               outputObjects.relionParticles.name: pSubtomoSet})
+        self._defineSourceRelation(inParticles, postProccesMrc)
+        self._defineSourceRelation(inParticles, pSubtomoSet)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -196,10 +185,3 @@ class ProtRelionPostProcess(EMProtocol):
             cmd += '--skip_fsc_weighting --low_pass %i ' % self.adHocLowPassFilter.get()
 
         return cmd
-
-    def _genPostProcessOutputMrcFile(self, fileName):
-        postProccesMrc = VolumeMask()
-        postProccesMrc.setFileName(self._getExtraPath(POSTPROCESS_DIR, fileName))
-        postProccesMrc.setSamplingRate(self.inOptSet.get().getCurrentSamplingRate())
-
-        return postProccesMrc

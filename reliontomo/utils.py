@@ -25,7 +25,7 @@
 from collections import OrderedDict
 from os.path import isabs, join, exists
 from reliontomo.constants import OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE
-from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
+from reliontomo.objects import RelionSetOfPseudoSubtomograms, createSetOfRelionPSubtomograms
 
 
 def getProgram(program, nMpi):
@@ -68,35 +68,6 @@ def _gen2LevelBaseName(fullFileName):
 
 def isPseudoSubtomogram(subtomo):
     return hasattr(subtomo, '_ctfImage')
-
-
-def genRelionParticles(extraPath, inOptSet, binningFactor=None, nParticles=None):
-    """Generate a relionParticles object containing the files involved for the next protocol, considering that some
-    protocols don't generate the optimisation_set.star file. In that case, the input Object which represents it will
-    be copied and, after that, this method will be used to update the corresponding attribute."""
-    optimSetStar = join(extraPath, OPTIMISATION_SET_STAR)
-    if exists(optimSetStar):
-        relionParticles = relionTomoMetadata(optimSetStar=optimSetStar,
-                                             tsSamplingRate=inOptSet.getTsSamplingRate(),
-                                             relionBinning=binningFactor if binningFactor else inOptSet.getRelionBinning(),
-                                             nParticles=nParticles if nParticles else inOptSet.getNumParticles())
-    else:
-        relionParticles = relionTomoMetadata()
-        relionParticles.copyInfo(inOptSet)
-        relionParticles.updateGenFiles(extraPath)
-
-    return relionParticles
-
-
-def genOutputPseudoSubtomograms(prot, currentSamplingRate):
-    """Centralized code to generate the output set of pseudosubtomograms for protocols make pseudosubtomograms,
-     auto-refine, CTF refine and frame align"""
-    from reliontomo.convert import createReaderTomo
-    reader, _ = createReaderTomo(prot._getExtraPath(OUT_PARTICLES_STAR))
-    outputSet = prot._createSet(SetOfPseudoSubtomograms, PSUBTOMOS_SQLITE, '')
-    outputSet.setSamplingRate(currentSamplingRate)
-    reader.starFile2PseudoSubtomograms(outputSet)
-    return outputSet
 
 
 def genEnumParamDict(keyList):

@@ -42,18 +42,19 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
     _label = 'De novo 3D initial model'
     _possibleOutputs = outputObjects
 
-    def __init__(self, **args):
-        ProtRelionRefineBase.__init__(self, **args)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     # -------------------------- DEFINE param functions -----------------------
 
     def _defineParams(self, form):
-        ProtRelionRefineBase._defineIOParams(form)
-        ProtRelionRefineBase._defineCTFParams(form)
+        super()._defineIOParams(form)
+        super()._defineCTFParams(form)
         self._defineOptimisationParams(form)
-        ProtRelionRefineBase._defineComputeParams(form)
-        ProtRelionRefineBase._insertGpuParams(form)
-        ProtRelionRefineBase._defineAdditionalParams(form)
+        super()._defineComputeParams(form)
+        super()._insertGpuParams(form)
+        super()._defineAdditionalParams(form)
+        form.addParallelSection(threads=1, mpi=1)
 
     @staticmethod
     def _defineOptimisationParams(form):
@@ -73,6 +74,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
+        self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self.generateDeNovo3DModel)
         self._insertFunctionStep(self.alignSymmetry)
         self._insertFunctionStep(self.createOutputStep)
@@ -86,13 +88,14 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         Plugin.runRelionTomo(self, 'relion_align_symmetry', self._genApplySymCmd())
 
     def createOutputStep(self):
+        inRelionParticles = self.inReParticles.get()
         vol = AverageSubTomogram()
         iniModel = self._getExtraPath(INITIAL_MODEL)
         fixVolume(iniModel)  # Fix header to make it interpreted as volume instead of a stack by xmipp
         vol.setFileName(iniModel)
-        vol.setSamplingRate(self.inOptSet.get().getCurrentSamplingRate())
+        vol.setSamplingRate(inRelionParticles.getSamplingRate())
         self._defineOutputs(**{outputObjects.average.name: vol})
-        self._defineSourceRelation(self.inOptSet.get(), vol)
+        self._defineSourceRelation(inRelionParticles, vol)
 
     # -------------------------- INFO functions -------------------------------
 

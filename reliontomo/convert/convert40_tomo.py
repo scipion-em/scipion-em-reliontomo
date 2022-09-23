@@ -24,7 +24,6 @@
 # **************************************************************************
 import logging
 import csv
-from os import symlink
 
 from emtable import Table
 from pwem import ALIGN_NONE, ALIGN_2D, ALIGN_PROJ
@@ -36,19 +35,18 @@ from relion.convert import OpticsGroups
 from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, IMOD_DIR, FRACTIONAL_DOSE, \
     ACQ_ORDER_FILE, CULLED_FILE, SUBTOMO_NAME, COORD_X, COORD_Y, COORD_Z, ROT, TILT, PSI, CLASS_NUMBER, \
     TOMO_PARTICLE_NAME, RANDOM_SUBSET, OPTICS_GROUP, SHIFTX_ANGST, SHIFTY_ANGST, SHIFTZ_ANGST, CTF_IMAGE, \
-    TOMO_PARTICLE_ID, MANIFOLD_INDEX, MRC, FILE_NOT_FOUND, TILT_PRIOR, PSI_PRIOR
+    TOMO_PARTICLE_ID, MANIFOLD_INDEX, MRC, FILE_NOT_FOUND, TILT_PRIOR, PSI_PRIOR, PARTICLES_TABLE, \
+    RELION_3D_COORD_ORIGIN
 import pwem.convert.transformations as tfs
 import numpy as np
-from os.path import join, basename, abspath
+from os.path import join, basename
 from reliontomo.convert.convertBase import checkSubtomogramFormat, getTransformInfoFromCoordOrSubtomo, WriterTomo, \
     ReaderTomo, getTransformMatrixFromRow
-from reliontomo.objects import PSubtomogram
-from reliontomo.utils import _gen2LevelBaseName, getAbsPath
-from tomo.constants import BOTTOM_LEFT_CORNER
+from reliontomo.objects import RelionPSubtomogram
+from tomo.constants import BOTTOM_LEFT_CORNER, TR_SCIPION, TR_RELION
 from tomo.objects import Coordinate3D, SubTomogram, TomoAcquisition
 
 logger = logging.getLogger(__name__)
-RELION_3D_COORD_ORIGIN = BOTTOM_LEFT_CORNER
 
 
 class Writer(WriterTomo):
@@ -73,7 +71,7 @@ class Writer(WriterTomo):
 
             if whiteList is None or tsId in whiteList:
                 tsTable.addRow(tsId,  # _rlnTomoName #1
-                               ts.getFirstItem().getFileName() + ':mrc',  # _rlnTomoTiltSeriesName #2
+                               ts.getFirstItem().getFileName(),  # _rlnTomoTiltSeriesName #2
                                self._getCtfPlotterFile(tsId, ctfPlotterParentDir),  # _rlnTomoImportCtfPlotterFile #3
                                join(eTomoParentDir, tsId),  # _rlnTomoImportImodDir #4
                                ts.getAcquisition().getDosePerFrame(),  # _rlnTomoImportFractionalDose #5
@@ -117,30 +115,33 @@ class Writer(WriterTomo):
         # Write the STAR file
         tomoTable.write(subtomosStar)
 
-    def pseudoSubtomograms2Star(self, pSubtomoSet, subtomosStar):
+    def pseudoSubtomograms2Star(self, pSubtomoSet, outStar):
         sRate = pSubtomoSet.getSamplingRate()
         tomoTable = Table(columns=self._getPseudoSubtomogramStarFileLabels())
 
         # Write the STAR file
         optGroup = OpticsGroups.fromString(pSubtomoSet.getAcquisition().opticsGroupInfo.get())
-        with open(subtomosStar, 'w') as f:
+        with open(outStar, 'w') as f:
             optGroup.toStar(f)
             # Write header first
             partsWriter = Table.Writer(f)
-            partsWriter.writeTableName('particles')
+            partsWriter.writeTableName(PARTICLES_TABLE)
             partsWriter.writeHeader(tomoTable.getColumns())
-            for subtomo in pSubtomoSet:
-                coord = subtomo._coordinate
-                angles, shifts = getTransformInfoFromCoordOrSubtomo(subtomo)
+            for pSubtomo in pSubtomoSet:
+                angles, shifts = getTransformInfoFromCoordOrSubtomo(pSubtomo, convention=TR_SCIPION)
+                pSubtomoFile = pSubtomo.getFileName()
+                pSubtomoFile = pSubtomoFile.replace(':' + MRC, '') if pSubtomoFile else FILE_NOT_FOUND
+                pSubtomoCtfFile = pSubtomo.getCtfFile() if pSubtomo.getCtfFile() else FILE_NOT_FOUND
+
                 # Add row to the table which will be used to generate the STAR file
                 partsWriter.writeRowValues([
-                    coord.getTomoId(),  # _rlnTomoName #1
-                    subtomo.getObjId(),  # rlnTomoParticleId #2
-                    coord.getGroupId(),  # rlnTomoManifoldIndex #3
+                    pSubtomo.getTsId(),  # _rlnTomoName #1
+                    pSubtomo.getObjId(),  # rlnTomoParticleId #2
+                    pSubtomo.getManifoldIndex(),  # rlnTomoManifoldIndex #3
                     # Coords in pixels
-                    coord.getX(RELION_3D_COORD_ORIGIN),  # _rlnCoordinateX #4
-                    coord.getY(RELION_3D_COORD_ORIGIN),  # _rlnCoordinateY #5
-                    coord.getZ(RELION_3D_COORD_ORIGIN),  # _rlnCoordinateZ #6
+                    pSubtomo.getX(),  # _rlnCoordinateX #4
+                    pSubtomo.getY(),  # _rlnCoordinateY #5
+                    pSubtomo.getZ(),  # _rlnCoordinateZ #6
                     # pix * Å/pix = [shifts in Å]
                     shifts[0] * sRate,  # _rlnOriginXAngst #7
                     shifts[1] * sRate,  # _rlnOriginYAngst #8
@@ -150,12 +151,12 @@ class Writer(WriterTomo):
                     angles[1],  # _rlnAngleTilt #11
                     angles[2],  # _rlnAnglePsi #12
 
-                    subtomo.getClassId(),  # _rlnClassNumber #13
-                    subtomo._randomSubset.get(),  # _rlnRandomSubset #14
-                    subtomo._particleName.get(),  # _rlnTomoParticleName #15
-                    subtomo._opticsGroupId.get(),  # _rlnOpticsGroup #16
-                    subtomo.getFileName().replace(':' + MRC, ''),  # _rlnImageName #17
-                    subtomo._ctfImage.get()  # _rlnCtfImage #18
+                    pSubtomo.getClassId(),  # _rlnClassNumber #13
+                    pSubtomo.getRdnSubset(),  # _rlnRandomSubset #14
+                    pSubtomo.getRe4ParticleName(),  # _rlnTomoParticleName #15
+                    pSubtomo.getOpticsGroupId(),  # _rlnOpticsGroup #16
+                    pSubtomoFile,  # _rlnImageName #17
+                    pSubtomoCtfFile  # _rlnCtfImage #18
                 ])
 
     def subtomograms2Star(self, subtomoSet, subtomosStar):
@@ -321,7 +322,7 @@ class Reader(ReaderTomo):
             coordinate3d.setX(float(x) * factor, RELION_3D_COORD_ORIGIN)
             coordinate3d.setY(float(y) * factor, RELION_3D_COORD_ORIGIN)
             coordinate3d.setZ(float(z) * factor, RELION_3D_COORD_ORIGIN)
-            coordinate3d.setMatrix(getTransformMatrixFromRow(row, sRate=sRate))
+            coordinate3d.setMatrix(getTransformMatrixFromRow(row, sRate=sRate), convention=TR_RELION)
             coordinate3d.setGroupId(row.get(MANIFOLD_INDEX, 1))
             # Extended fields
             coordinate3d._classNumber = Integer(row.get(CLASS_NUMBER, -1))
@@ -351,25 +352,42 @@ class Reader(ReaderTomo):
                             'in the introduced set of tomograms: %s' % nonMatchingTomoIds))
 
     def starFile2PseudoSubtomograms(self, outputSet):
-        samplingRate = outputSet.getSamplingRate()
+        sRate = outputSet.getSamplingRate()
         listOfFilesToFixVolume = []
-
         for counter, row in enumerate(self.dataTable):
-            particleFile = row.get(SUBTOMO_NAME)
-            ctfFile = row.get(CTF_IMAGE)
-            psubtomo = PSubtomogram(fileName=particleFile,
-                                    samplingRate=samplingRate,
-                                    ctfFile=ctfFile,
-                                    tsId=row.get(TOMO_NAME),
-                                    classId=row.get(CLASS_NUMBER, -1))
+            t = Transform()
+            particleFile = row.get(SUBTOMO_NAME, None)
+            ctfFile = row.get(CTF_IMAGE, None)
+            psubtomo = RelionPSubtomogram(fileName=particleFile,
+                                          samplingRate=sRate,
+                                          ctfFile=ctfFile,
+                                          tsId=row.get(TOMO_NAME),
+                                          classId=row.get(CLASS_NUMBER, -1),
+                                          x=row.get(COORD_X),
+                                          y=row.get(COORD_Y),
+                                          z=row.get(COORD_Z),
+                                          rdnSubset=row.get(RANDOM_SUBSET, counter % 2),  # 1 and 2 alt. by default
+                                          re4ParticleName=row.get(TOMO_PARTICLE_NAME),
+                                          opticsGroupId=row.get(OPTICS_GROUP, 1),
+                                          manifoldIndex=row.get(MANIFOLD_INDEX, 1 if counter % 2 else -1))  # 1 and -1
+
+            # Set the transformation matrix
+            t.setMatrix(getTransformMatrixFromRow(row, sRate=sRate))
+            psubtomo.setTransform(t)
+
             # Add the files to the list of files whose header has to be corrected to be interpreted as volumes
-            listOfFilesToFixVolume.append(particleFile)
-            listOfFilesToFixVolume.append(ctfFile)
+            if particleFile:
+                listOfFilesToFixVolume.append(particleFile)
+            if ctfFile:
+                listOfFilesToFixVolume.append(ctfFile)
             # Add current pseudosubtomogram to the output set
             outputSet.append(psubtomo)
 
+        # Keep the number of particles to compare sizes in case of subset
+        outputSet.setNReParticles(self.dataTable.size())
         # Fix volume headers
-        fixVolume(listOfFilesToFixVolume)
+        if listOfFilesToFixVolume:
+            fixVolume(listOfFilesToFixVolume)
 
     def starFile2SubtomogramsImport(self, subtomoSet, coordSet, linkedSubtomosDir, starFilePath):
         samplingRate = subtomoSet.getSamplingRate()
@@ -391,7 +409,7 @@ class Reader(ReaderTomo):
             # Subtomograms
             tiltPrior = row.get(TILT_PRIOR, 0)
             psiPrior = row.get(PSI_PRIOR, 0)
-            transform.setMatrix(coordinate3d.getMatrix())
+            transform.setMatrix(coordinate3d.getMatrix(convention=TR_RELION))
 
             subtomo.setVolName(tomoName)
             subtomo.setFileName(linkedSubtomoName)

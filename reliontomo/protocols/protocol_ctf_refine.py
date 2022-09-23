@@ -22,37 +22,28 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-from enum import Enum
-
 from pyworkflow.protocol import IntParam, BooleanParam, GE, LE, FloatParam, EnumParam
 from reliontomo import Plugin
-from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_per_part_per_tilt import ProtRelionPerParticlePerTiltBase
 from reliontomo.utils import getProgram
-from tomo.protocols import ProtTomoBase
 
 oddAberrationOrders = [3, 5, 7]
 evenAberrationOrders = [4, 6, 8]
 
 
-class outputObjects(Enum):
-    relionParticles = relionTomoMetadata
-    volumes = SetOfPseudoSubtomograms
-
-
-class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase, ProtTomoBase):
+class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase):
     """Tomo CTF refine"""
 
     _label = 'Tomo CTF refine'
 
-    def __init__(self, **args):
-        ProtRelionPerParticlePerTiltBase.__init__(self, **args)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        ProtRelionPerParticlePerTiltBase._defineParams(self, form)
+        super()._defineParams(form)
         form.addSection(label='Defocus')
-        ProtRelionPerParticlePerTiltBase._insertBoxSizeForEstimationParam(form)
+        super()._insertBoxSizeForEstimationParam(form)
         form.addParam('refineDefocus', BooleanParam,
                       label='Refine defocus?',
                       default=True,

@@ -31,18 +31,17 @@ from emtable import Table
 from pyworkflow.object import Float
 from pyworkflow.utils import moveFile, createLink
 from reliontomo.constants import OUT_PARTICLES_STAR
-from reliontomo.objects import relionTomoMetadata, SetOfPseudoSubtomograms
+from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols import ProtRelionRefineSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
 from pyworkflow.protocol import FloatParam, BooleanParam, GE, LE, IntParam, StringParam
-from reliontomo.utils import getProgram, genRelionParticles, genOutputPseudoSubtomograms
+from reliontomo.utils import getProgram
 from tomo.objects import SetOfClassesSubTomograms, SetOfAverageSubTomograms
 
 
 class outputObjects(Enum):
-    relionParticles = relionTomoMetadata
-    volumes = SetOfPseudoSubtomograms
+    relionParticles = RelionSetOfPseudoSubtomograms
     classes = SetOfClassesSubTomograms
 
 
@@ -55,19 +54,20 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
     opticsTable = Table()
     particlesTable = Table()
 
-    def __init__(self, **args):
-        ProtRelionRefineSubtomograms.__init__(self, **args)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        ProtRelionRefineSubtomograms._defineInputParams(form)
-        ProtRelionRefineSubtomograms._defineReferenceParams(form)
-        ProtRelionRefineSubtomograms._defineCTFParams(form)
+        super()._defineInputParams(form)
+        super()._defineReferenceParams(form)
+        super()._defineCTFParams(form)
         self._defineOptimisationParams(form)
         self._defineSamplingParams(form)
-        ProtRelionRefineSubtomograms._defineComputeParams(form)
+        super()._defineComputeParams(form)
         self._insertGpuParams(form)
-        ProtRelionRefineSubtomograms._defineAdditionalParams(form)
+        super()._defineAdditionalParams(form)
+        form.addParallelSection(threads=1, mpi=1)
 
     @staticmethod
     def _defineOptimisationParams(form):
@@ -153,6 +153,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
+        self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self._classify3d)
         self._insertFunctionStep(self.createOutputStep)
 
@@ -162,37 +163,32 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genCl3dCommand(), numberOfMpi=nMpi)
 
     def createOutputStep(self):
+        inParticles = self.inReParticles.get()
+
         # Rename the particles file generated (_data.star) to follow the name convention
         createLink(self._getIterGenFileName('data', self.nIterations.get()), self._getExtraPath(OUT_PARTICLES_STAR))
 
         # Output RelionParticles
-        relionParticles = genRelionParticles(self._getExtraPath(), self.inOptSet.get())
-
-        # Output pseudosubtomograms --> set of volumes for visualization purposes
-        pSubtomoSet = genOutputPseudoSubtomograms(self, relionParticles.getCurrentSamplingRate())
+        relionParticles = self.genRelionParticles()
 
         # Output classes
-        classes3D = self._createSetOfClassesSubTomograms(pSubtomoSet)
-        classes3D.setImages(pSubtomoSet)
+        classes3D = self._createSetOfClassesSubTomograms(relionParticles)
+        classes3D.setImages(relionParticles)
         self._fillClassesFromIter(classes3D, self.nIterations.get())
         averages = SetOfAverageSubTomograms.create(self._getPath(),
-                                                   template='avgSubtomograms%s.sqlite',
+                                                   template='avgPSubtomograms%s.sqlite',
                                                    suffix='')
-        averages.setSamplingRate(pSubtomoSet.getSamplingRate())
+        averages.setSamplingRate(relionParticles.getCurrentSamplingRate())
         for class3D in classes3D:
             vol = class3D.getRepresentative()
             vol.setObjId(class3D.getObjId())
             averages.append(vol)
 
         outputDict = {outputObjects.relionParticles.name: relionParticles,
-                      outputObjects.volumes.name: pSubtomoSet,
                       outputObjects.classes.name: classes3D}
         self._defineOutputs(**outputDict)
-
-        inOptSet = self.inOptSet.get()
-        self._defineSourceRelation(inOptSet, relionParticles)
-        self._defineSourceRelation(inOptSet, pSubtomoSet)
-        self._defineSourceRelation(inOptSet, classes3D)
+        self._defineSourceRelation(inParticles, relionParticles)
+        self._defineSourceRelation(inParticles, classes3D)
 
         if self.keepOnlyLastIterFiles.get():
             self._cleanUndesiredFiles()
@@ -314,14 +310,14 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
     def _cleanUndesiredFiles(self):
         """Remove all files generated by relion_classify 3d excepting the ones which
         correspond to the last iteration. Example for iteration 25:
-        relion_it025_class002.mrc
-        relion_it025_class001.mrc
-        relion_it025_model.star
-        relion_it025_sampling.star
-        relion_it025_optimiser.star
-        relion_it025_data.star
+        it025_class002.mrc
+        it025_class001.mrc
+        it025_model.star
+        it025_sampling.star
+        it025_optimiser.star
+        it025_data.star
         """
-        itPref = 'relion_it'
+        itPref = 'it'
         clPref = 'class'
         starExt = '.star'
         mrcExt = '.mrc'
