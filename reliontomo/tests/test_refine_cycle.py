@@ -628,7 +628,7 @@ class TestRefinceCycle(BaseTest):
 
     def _checkRecVolFromTs(self, protRecPartFromTS, recVol):
         self._checkRecVolume(recVol,
-                             optSet=protRecPartFromTS.inReParticles.get(),
+                             optSet=getattr(protRecPartFromTS, RELION_TOMO_PARTICLES, None),
                              boxSize=self.boxSizeBin2,
                              halves=[protRecPartFromTS._getExtraPath('half1.mrc'),
                                      protRecPartFromTS._getExtraPath('half2.mrc')])
