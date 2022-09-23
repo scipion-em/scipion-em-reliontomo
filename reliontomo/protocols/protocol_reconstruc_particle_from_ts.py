@@ -66,13 +66,13 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
                       label='FSC solvent mask (opt.)',
                       allowsNull=True,
                       help='Provide a soft mask to automatically estimate the postprocess FSC.')
-        # form.addParam('snrWiener', FloatParam,
-        #               label='Apply a Wiener filter with this SNR',
-        #               default=0,
-        #               help='If set to a positive value, apply a Wiener filter with this signal-to-noise ratio. If '
-        #                    'omitted, the reconstruction will use a heuristic to prevent divisions by excessively '
-        #                    'small numbers. Please note that using a low (even though realistic) SNR might wash out the '
-        #                    'higher frequencies, which could make the map unsuitable to be used for further refinement.')
+        form.addParam('snrWiener', FloatParam,
+                      label='Apply a Wiener filter with this SNR',
+                      default=0,
+                      help='If set to a positive value, apply a Wiener filter with this signal-to-noise ratio. If '
+                           'omitted, the reconstruction will use a heuristic to prevent divisions by excessively '
+                           'small numbers. Please note that using a low (even though realistic) SNR might wash out the '
+                           'higher frequencies, which could make the map unsuitable to be used for further refinement.')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -149,6 +149,8 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
         #        available.
         cmd += '--j_out %i ' % self.numberOfThreads.get()
         cmd += '--j_in %i ' % 1
+        if self.snrWiener.get() > 0:
+            cmd += '--SNR %.2f ' % self.snrWiener.get()
         return cmd
 
     def _genTomoMaskRefCmd(self):

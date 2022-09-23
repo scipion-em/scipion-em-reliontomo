@@ -75,7 +75,7 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase):
                            'instead of by predicting entire micrographs. In this case, only misalignments smaller than '
                            'half the box size of the particle can be corrected.')
 
-        form.addSection(label='Motion')
+        form.addSection(label='Motion & deformations')
         form.addParam('fitPerParticleMotion', BooleanParam,
                       default=False,
                       label='Fit per particle motion?',
