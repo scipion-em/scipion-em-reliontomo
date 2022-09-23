@@ -618,12 +618,11 @@ class TestRefinceCycle(BaseTest):
                                       currentSRate=mdObj.getCurrentSamplingRate()
                                       )
         # Check the output volume
-        recVol = getattr(protAutoRefine, OUTPUT_MODEL, None)
         pattern = '*it*half%s_class*.mrc'
         half1 = self._getLastFileName(protAutoRefine._getExtraPath(pattern % 1))
         half2 = self._getLastFileName(protAutoRefine._getExtraPath(pattern % 2))
-        self._checkRecVolume(recVol,
-                             optSet=protAutoRefine.inReParticles.get(),
+        self._checkRecVolume(getattr(protAutoRefine, OUTPUT_MODEL, None),
+                             optSet=getattr(protAutoRefine, RELION_TOMO_PARTICLES, None),
                              boxSize=self.boxSizeBin4,
                              halves=[half1, half2])
 
