@@ -339,7 +339,7 @@ class TestRefinceCycle(BaseTest):
                       'maskDiameter': 230,
                       'nIterations': 3,
                       'pooledSubtomos': 6,
-                      'numberOfMpi': 3,
+                      'numberOfMpi': 1,
                       'numberOfThreads': 3}
 
         if doAlingment:
