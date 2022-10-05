@@ -166,9 +166,9 @@ class ProtRelionPrepareData(EMProtocol):
                                               isRelion=True)
         # Thickness of the tomogram
         tomoSizeDict = {}
-        tomoSet = self.coords.getPrecedents()
+        tomoList = [tomo.clone() for tomo in self.coords.getPrecedents()]
         coordScale = self.coordScale.get()
-        for tomo in tomoSet:
+        for tomo in tomoList:
             x, y, thickness = tomo.getDim()
             tomoSizeDict[tomo.getTsId()] = {X_SIZE: x * coordScale,
                                             Y_SIZE: y * coordScale,
