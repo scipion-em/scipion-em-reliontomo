@@ -41,6 +41,10 @@ from tomo.utils import getNonInterpolatedTsFromRelations
 
 # Other constants
 DEFOCUS = 'defocus'
+THICKNESS = 'thickness'
+X_SIZE = 'x'
+Y_SIZE = 'y'
+DIMS = 'dims'
 
 
 class outputObjects(Enum):
@@ -161,15 +165,19 @@ class ProtRelionPrepareData(EMProtocol):
                                               join(defocusPath, ctfTomo.getTsId() + '.' + DEFOCUS),
                                               isRelion=True)
         # Thickness of the tomogram
-        x, y, thickness = self.coords.getPrecedents().getDim()
-        # Dimensions at TS sampling rate
-        x = x * self.coordScale.get()
-        y = y * self.coordScale.get()
-        thickness = thickness * self.coordScale.get()
+        tomoSizeDict = {}
+        tomoList = [tomo.clone() for tomo in self.coords.getPrecedents()]
+        coordScale = self.coordScale.get()
+        for tomo in tomoList:
+            x, y, thickness = tomo.getDim()
+            tomoSizeDict[tomo.getTsId()] = {X_SIZE: x * coordScale,
+                                            Y_SIZE: y * coordScale,
+                                            THICKNESS: thickness * coordScale}
 
         # Simulate the etomo files that serve as entry point to relion4
-        self._simulateETomoFiles(self.tsSet, thickness=thickness, binned=1, dims=(x, y),
-                                 binByFactor=self.coordScale, whiteList=self.coordsVolIds, swapDims=self.swapXY.get())
+        self._simulateETomoFiles(self.tsSet, tomoSizeDict, binned=1, binByFactor=self.coordScale,
+                                 whiteList=self.coordsVolIds, swapDims=self.swapXY.get())
+
         # Write the tomograms star file
         writeSetOfTomograms(self.tsSet,
                             self._getStarFilename(IN_TOMOS_STAR),
@@ -254,12 +262,16 @@ class ProtRelionPrepareData(EMProtocol):
     def _decodeHandeness(self):
         return -1 if self.handeness.get() else 1
 
-    def _simulateETomoFiles(self, imgSet, whiteList=None, **kwargs):
+    def _simulateETomoFiles(self, imgSet, tomoSizeDict, whiteList=None, **kwargs):
         """Simulate the etomo files that serve as entry point to relion4
         """
         for ts in imgSet:
             tsId = ts.getTsId()
-            if whiteList is None or tsId in whiteList:
+            # Get the size of the corresponding tomogram, as it may differ from one to another
+            tomoIdMatchDict = tomoSizeDict.get(tsId, None)
+            if tomoIdMatchDict and (whiteList is None or tsId in whiteList):
+                kwargs[THICKNESS] = tomoIdMatchDict[THICKNESS]
+                kwargs[DIMS] = (tomoIdMatchDict[X_SIZE], tomoIdMatchDict[Y_SIZE])
                 # creating a folder where all data will be generate
                 folderName = self._getTmpPath(tsId)
                 makePath(folderName)

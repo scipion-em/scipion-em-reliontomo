@@ -145,7 +145,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                       label='Use GPU acceleration?',
                       help='If set to Yes, it will use available gpu resources for some calculations.')
         form.addParam('gpusToUse', StringParam,
-                      condition='doGpu',
+                      condition='doImageAlignment and doGpu',
                       default='0',
                       label='GPUs to use:',
                       help='It can be used to provide a list of which GPUs (e. g. "0:1:2:3") to use. MPI-processes are '
@@ -248,7 +248,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
             cmd += '--skip_align '
 
         # Compute args
-        cmd += self._genComputeBaseCmd()
+        cmd += self._genComputeBaseCmd(onlyCl3d=not self.doImageAlignment.get())
         cmd += '--pad %i ' % (1 if self.skipPadding.get() else 2)
 
         # Additional args

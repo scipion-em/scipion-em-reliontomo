@@ -75,7 +75,7 @@ class TestImportFromStarFile(BaseTest):
                                            inputSetOfTomograms=cls.inTomoSet,
                                            binning=2)
         cls.launchProtocol(protNormTomogram)
-        outputTomos = getattr(protNormTomogram, 'outputSetOfTomograms', None)
+        outputTomos = protNormTomogram.Tomograms
         cls.assertIsNotNone(outputTomos, 'No tomograms were genetated.')
         return outputTomos
 

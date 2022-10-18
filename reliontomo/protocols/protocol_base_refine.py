@@ -306,7 +306,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         cmd += '--particle_diameter %i ' % self.maskDiameter.get()
         return cmd
 
-    def _genComputeBaseCmd(self):
+    def _genComputeBaseCmd(self, onlyCl3d=False):
         cmd = ''
         if not self.parallelDiscIO.get():
             cmd += '--no_parallel_disc_io '
@@ -319,7 +319,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
             cmd += '--dont_combine_weights_via_disc '
         if self.scratchDir.get():
             cmd += '--scratch_dir %s ' % self.scratchDir.get()
-        if self.doGpu.get():
+        if self.doGpu.get() and not onlyCl3d:
             cmd += '--gpu "%s" ' % self.gpusToUse.get()
         return cmd
 
