@@ -62,7 +62,7 @@ OUTPUT_COORDS = importStarOutputs.coordinates.name
 OUTPUT_CLASSES = cl3dOutputs.classes.name
 
 
-class TestRefinceCycle(BaseTest):
+class TestRefineCycle(BaseTest):
     fscMaskBin2 = None
     normTS = None
     alignedTS = None
