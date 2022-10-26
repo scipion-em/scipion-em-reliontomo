@@ -217,7 +217,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         cmd += '--sym %s ' % self.symmetry.get()
 
         # CTF args
-        self._genCTFBaseCmd()
+        cmd += self._genCTFBaseCmd()
 
         # Optimisation args
         cmd += self._genOptimisationBaseCmd()
