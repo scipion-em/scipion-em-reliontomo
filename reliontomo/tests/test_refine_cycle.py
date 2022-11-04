@@ -80,7 +80,7 @@ class TestRefineCycle(BaseTest):
     nParticles = 108
     boxSizeBin4 = 96
     boxSizeBin2 = 128
-    samplingRateOrig = 1.35
+    samplingRateOrig = 2.7
     tsIds = ['TS_45', 'TS_54']
     symmetry = 'C6'
     nClasses = 2
