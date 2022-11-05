@@ -33,20 +33,25 @@ from pyworkflow.object import Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED
 from pyworkflow.utils import makePath
 from reliontomo import Plugin
-from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR, OPTIMISATION_SET_STAR)
+from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR,
+                                  OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR)
 from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates
 from reliontomo.objects import relionTomoMetadata
+from reliontomo.utils import generateProjections
 from tomo.utils import getNonInterpolatedTsFromRelations
+import tomo.objects as tomoObj
+from tomo.protocols.protocol_base import ProtTomoBase
 
 # Other constants
 DEFOCUS = 'defocus'
+OUTPUT_FIDUCIAL_GAPS_NAME = "FiducialModelGaps"
 
 
 class outputObjects(Enum):
     relionParticles = relionTomoMetadata
 
 
-class ProtRelionPrepareData(EMProtocol):
+class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
     """Prepare data for Relion 4
     """
     _label = 'Prepare data for Relion 4'
@@ -195,7 +200,39 @@ class ProtRelionPrepareData(EMProtocol):
 
         self._defineOutputs(**{outputObjects.relionParticles.name: relionParticles})
         self._defineSourceRelation(self.inputCoords.get(), relionParticles)
-        self._store()
+
+        # Generate the fiducial model
+        projections = generateProjections(self._getStarFilename(OUT_PARTICLES_STAR),
+                                          self._getStarFilename(OUT_TOMOS_STAR))
+
+        self.fiducialModelGaps = self._createSetOfLandmarkModels(suffix='Gaps')
+        self.fiducialModelGaps.copyInfo(self.tsSet)
+        self.fiducialModelGaps.setSetOfTiltSeries(self.tsSet)
+
+        pos = 0
+        for ts in self.tsSet:
+            tsId = ts.getTsId()
+            landmarkModelGapsFilePath = os.path.join(self._getExtraPath(),
+                                                     str(tsId) + "_gaps.sfid")
+
+            landmarkModelGaps = tomoObj.LandmarkModel(tsId=tsId,
+                                              tiltSeriesPointer=ts,
+                                              fileName=landmarkModelGapsFilePath,
+                                              modelName=None)
+            landmarkModelGaps.setTiltSeries(ts)
+
+            while pos < len(projections) and projections[pos][0] == tsId:
+                tiltIm = projections[pos][1] + 1
+                chainId = projections[pos][2] + 1
+                xCoor = int(round(projections[pos][3]))
+                yCoor = int(round(projections[pos][4]))
+                landmarkModelGaps.addLandmark(xCoor, yCoor, tiltIm,
+                                              chainId, 0, 0)
+                pos += 1
+            self.fiducialModelGaps.append(landmarkModelGaps)
+
+        self._defineOutputs(**{OUTPUT_FIDUCIAL_GAPS_NAME: self.fiducialModelGaps})
+        self._defineSourceRelation(self.tsSet,  self.fiducialModelGaps)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
