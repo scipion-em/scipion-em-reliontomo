@@ -36,6 +36,7 @@ class DataSetRe4Tomo(Enum):
     alignments = '*/TS_*.xf'
     tiltSeries = '*/TS_*.mrc'
     mdocs = '*/*.mdoc'
+    maskFscBin2 = 'mask_fsc_bin2.mrc'
     coordinates = 'coords.star'
     starFilesComparerDir = 'starFilesComparer'
     generalTestingDir = 'starFilesComparer/generalTesting'
@@ -56,12 +57,12 @@ class DataSetRe4Tomo(Enum):
 
 
 class DataSetEmd10439(Enum):
-    tomoEmd10439 = 'tomograms/emd_10439.mrc',
-    coords3dStarFile = 'importFromStarFiles/picking_001_parts.star',
-    coords3dStarFileWithSRate = 'importFromStarFiles/picking_001_parts_with_sRate.star',
-    subtomogramsStarFile = 'importFromStarFiles/class_ap_r_ali_k1_split.star',
+    tomoEmd10439 = 'tomograms/emd_10439.mrc'
+    coords3dStarFile = 'importFromStarFiles/picking_001_parts.star'
+    coords3dStarFileWithSRate = 'importFromStarFiles/picking_001_parts_with_sRate.star'
+    subtomogramsStarFile = 'importFromStarFiles/class_ap_r_ali_k1_split.star'
     scipionSqlite3dCoords = 'importFromScipionSqlite/coordinates.sqlite'
 
 
 DataSet(name=RE4_TOMO, folder=RE4_TOMO, files={el.name: el.value for el in DataSetRe4Tomo})
-DataSet(name=EMD_10439, folder=EMD_10439, files={el.name: el.value[0] for el in DataSetEmd10439})
+DataSet(name=EMD_10439, folder=EMD_10439, files={el.name: el.value for el in DataSetEmd10439})

@@ -24,19 +24,21 @@
 # **************************************************************************
 from os import remove
 from os.path import abspath, exists
-from pwem.protocols import EMProtocol
 from pyworkflow import BETA
-from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, StringParam, BooleanParam, \
+from pyworkflow.protocol import LEVEL_ADVANCED, IntParam, StringParam, BooleanParam, \
     EnumParam, PathParam, FloatParam, LEVEL_NORMAL, GE, LE
-from pyworkflow.utils import Message
-from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, IN_PARTICLES_STAR
-from reliontomo.protocols import ProtRelionMakePseudoSubtomograms
+from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG
+from reliontomo.convert import writeSetOfPseudoSubtomograms
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
 
-class ProtRelionRefineBase(EMProtocol):
+class ProtRelionRefineBase(ProtRelionTomoBase):
     """Base protocol used for the getting the initial model and performing the auto-refinment"""
 
     _devStatus = BETA
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     # -------------------------- DEFINE param functions -----------------------
 
@@ -44,14 +46,8 @@ class ProtRelionRefineBase(EMProtocol):
         pass
 
     # I/O PARAMS -------------------------------------------------------------------------------------------------------
-    @staticmethod
-    def _defineIOParams(form):
-        form.addSection(label=Message.LABEL_INPUT)
-        form.addParam('inOptSet', PointerParam,
-                      pointerClass='relionTomoMetadata',
-                      label='Input Relion Tomo Metadata',
-                      important=True,
-                      allowsNull=False)
+    def _defineIOParams(self, form):
+        super()._defineCommonInputParams(form)
 
     # CTF PARAMS -------------------------------------------------------------------------------------------------------
     @staticmethod
@@ -156,8 +152,7 @@ class ProtRelionRefineBase(EMProtocol):
                            "symmetry point group indicated above.")
 
     # COMPUTE PARAMS ---------------------------------------------------------------------------------------------------
-    @staticmethod
-    def _defineComputeParams(form, isOnlyClassif=False):
+    def _defineComputeParams(self, form, isOnlyClassif=False):
         form.addSection(label='Compute')
         form.addParam('parallelDiscIO', BooleanParam,
                       default=True,
@@ -277,13 +272,10 @@ class ProtRelionRefineBase(EMProtocol):
     def _insertAllSteps(self):
         pass
 
+    def convertInputStep(self):
+        self.genInStarFile()
+
     # -------------------------- INFO functions -------------------------------
-    def _validate(self):
-        msg = []
-        optSet = self.inOptSet.get()
-        if ProtRelionMakePseudoSubtomograms().getClassName() not in optSet.getParticles():
-            msg.append('Input metadata is expected to come from making a set of pseudosubtomograms.')
-        return msg
 
     # --------------------------- UTILS functions -----------------------------
     def _genBaseCommand(self):
@@ -296,7 +288,7 @@ class ProtRelionRefineBase(EMProtocol):
         return cmd
 
     def _genIOBaseCmd(self):
-        cmd = '--i %s ' % self.inOptSet.get().getParticles()
+        cmd = '--i %s ' % self.getOutStarFileName()
         cmd += '--o %s ' % (self._getExtraPath() + '/')  # If not, Relion will concatenate it directly as a prefix
         cmd += '--j %i ' % self.numberOfThreads
         return cmd
@@ -314,7 +306,7 @@ class ProtRelionRefineBase(EMProtocol):
         cmd += '--particle_diameter %i ' % self.maskDiameter.get()
         return cmd
 
-    def _genComputeBaseCmd(self):
+    def _genComputeBaseCmd(self, onlyCl3d=False):
         cmd = ''
         if not self.parallelDiscIO.get():
             cmd += '--no_parallel_disc_io '
@@ -327,7 +319,7 @@ class ProtRelionRefineBase(EMProtocol):
             cmd += '--dont_combine_weights_via_disc '
         if self.scratchDir.get():
             cmd += '--scratch_dir %s ' % self.scratchDir.get()
-        if self.doGpu.get():
+        if self.doGpu.get() and not onlyCl3d:
             cmd += '--gpu "%s" ' % self.gpusToUse.get()
         return cmd
 

@@ -31,11 +31,12 @@ from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.object import Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED
-from pyworkflow.utils import makePath
+from pyworkflow.utils import makePath, Message
 from reliontomo import Plugin
+from reliontomo.objects import createSetOfRelionPSubtomograms, RelionSetOfPseudoSubtomograms
 from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR,
-                                  OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR)
-from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates
+                                  OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE)
+from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates, readSetOfPseudoSubtomograms
 from reliontomo.objects import relionTomoMetadata
 from reliontomo.utils import generateProjections
 from tomo.utils import getNonInterpolatedTsFromRelations
@@ -44,11 +45,15 @@ from tomo.protocols.protocol_base import ProtTomoBase
 
 # Other constants
 DEFOCUS = 'defocus'
+THICKNESS = 'thickness'
+X_SIZE = 'x'
+Y_SIZE = 'y'
+DIMS = 'dims'
 OUTPUT_FIDUCIAL_GAPS_NAME = "FiducialModelGaps"
 
 
 class outputObjects(Enum):
-    relionParticles = relionTomoMetadata
+    relionParticles = RelionSetOfPseudoSubtomograms
 
 
 class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
@@ -62,14 +67,14 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
         EMProtocol.__init__(self, **args)
         self.tsSet = None
         self.tomoSet = None
-        self.tsReducedSet = None # Reduced list of tiltseries with only those in the coordinates
+        self.tsReducedSet = None  # Reduced list of tiltseries with only those in the coordinates
         self.coordsVolIds = None  # Unique tomogram identifiers volId used in the coordinate set. In case is a subset
         self.coordScale = Float(1)
 
     # -------------------------- DEFINE param functions -----------------------
 
     def _defineParams(self, form):
-        form.addSection(label='Input')
+        form.addSection(label=Message.LABEL_INPUT)
 
         form.addParam('inputCtfTs', PointerParam,
                       pointerClass='SetOfCTFTomoSeries',
@@ -81,16 +86,15 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
                       default=True,
                       expertLevel=LEVEL_ADVANCED,
                       help='It is the handedness of the tilt geometry and it is used to describe '
-                           'whether the focus increases or decreases as a function of Z distance.'
-                      )
+                           'whether the focus increases or decreases as a function of Z distance.')
         form.addParam('inputCoords', PointerParam,
                       pointerClass='SetOfCoordinates3D',
                       label="Input coordinates",
                       important=True,
                       allowsNull=False)
-
         form.addParam('inputTS', PointerParam,
-                      help="Tilt series with alignment (non interpolated) used in the tomograms recnstruction. To be deprecated!! ",
+                      help="Tilt series with alignment (non interpolated) used in the tomograms recnstruction. "
+                           "To be deprecated!!",
                       pointerClass='SetOfTiltSeries',
                       label="Input tilt series",
                       important=True,
@@ -166,13 +170,19 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
                                               join(defocusPath, ctfTomo.getTsId() + '.' + DEFOCUS),
                                               isRelion=True)
         # Thickness of the tomogram
-        thickness = self.coords.getPrecedents().getDim()[2]
-        # Thickness at TS sampling rate
-        thickness = thickness * self.coordScale.get()
+        tomoSizeDict = {}
+        tomoList = [tomo.clone() for tomo in self.coords.getPrecedents()]
+        coordScale = self.coordScale.get()
+        for tomo in tomoList:
+            x, y, thickness = tomo.getDim()
+            tomoSizeDict[tomo.getTsId()] = {X_SIZE: x * coordScale,
+                                            Y_SIZE: y * coordScale,
+                                            THICKNESS: thickness * coordScale}
 
         # Simulate the etomo files that serve as entry point to relion4
-        self._simulateETomoFiles(self.tsSet, thickness=thickness, binned=1,
-                                 binByFactor=self.coordScale, whiteList=self.coordsVolIds, swapDims=self.swapXY.get())
+        self._simulateETomoFiles(self.tsSet, tomoSizeDict, binned=1, binByFactor=self.coordScale,
+                                 whiteList=self.coordsVolIds, swapDims=self.swapXY.get())
+
         # Write the tomograms star file
         writeSetOfTomograms(self.tsSet,
                             self._getStarFilename(IN_TOMOS_STAR),
@@ -193,13 +203,20 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
         Plugin.runRelionTomo(self, 'relion_tomo_import_particles', self._genImportSubtomosCmd())
 
     def createOutputStep(self):
-        relionParticles = relionTomoMetadata(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
-                                             tsSamplingRate=self.tsSet.getSamplingRate(),
-                                             relionBinning=self.coordScale.get(),
-                                             nParticles=self.coords.getSize())
+        # Pseudosubtomos
+        psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
+                                                     self._getExtraPath(OPTIMISATION_SET_STAR),
+                                                     template=PSUBTOMOS_SQLITE,
+                                                     tsSamplingRate=self.tsSet.getSamplingRate(),
+                                                     relionBinning=1,  # Coords are re-sampled to fit the TS size
+                                                     boxSize=self.inputCoords.get().getBoxSize())
+        # Fill the set with the generated particles
+        readSetOfPseudoSubtomograms(psubtomoSet)
 
-        self._defineOutputs(**{outputObjects.relionParticles.name: relionParticles})
-        self._defineSourceRelation(self.inputCoords.get(), relionParticles)
+        self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet})
+        self._defineSourceRelation(self.inputCoords.get(), psubtomoSet)
+        self._defineSourceRelation(self.inputCtfTs.get(), psubtomoSet)
+
 
         # Generate the fiducial model
         projections = generateProjections(self._getStarFilename(OUT_PARTICLES_STAR),
@@ -233,6 +250,8 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
 
         self._defineOutputs(**{OUTPUT_FIDUCIAL_GAPS_NAME: self.fiducialModelGaps})
         self._defineSourceRelation(self.tsSet,  self.fiducialModelGaps)
+
+        self._store()
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -283,12 +302,16 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
     def _decodeHandeness(self):
         return -1 if self.handeness.get() else 1
 
-    def _simulateETomoFiles(self, imgSet, whiteList=None, **kwargs):
+    def _simulateETomoFiles(self, imgSet, tomoSizeDict, whiteList=None, **kwargs):
         """Simulate the etomo files that serve as entry point to relion4
         """
         for ts in imgSet:
             tsId = ts.getTsId()
-            if whiteList is None or tsId in whiteList:
+            # Get the size of the corresponding tomogram, as it may differ from one to another
+            tomoIdMatchDict = tomoSizeDict.get(tsId, None)
+            if tomoIdMatchDict and (whiteList is None or tsId in whiteList):
+                kwargs[THICKNESS] = tomoIdMatchDict[THICKNESS]
+                kwargs[DIMS] = (tomoIdMatchDict[X_SIZE], tomoIdMatchDict[Y_SIZE])
                 # creating a folder where all data will be generate
                 folderName = self._getTmpPath(tsId)
                 makePath(folderName)

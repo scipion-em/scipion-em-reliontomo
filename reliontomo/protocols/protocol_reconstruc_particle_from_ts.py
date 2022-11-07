@@ -22,19 +22,24 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+import glob
 from enum import Enum
-from pyworkflow.protocol import StringParam, PointerParam
+
+from pwem.convert.headers import fixVolume
+from pwem.objects import VolumeMask
+from pyworkflow.protocol import StringParam, PointerParam, FloatParam
 from reliontomo import Plugin
-from reliontomo.constants import SYMMETRY_HELP_MSG, OPTIMISATION_SET_STAR
-from reliontomo.objects import relionTomoMetadata
+from reliontomo.constants import SYMMETRY_HELP_MSG, POST_PROCESS_MRC
+from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
     ProtRelionMakePseudoSubtomoAndRecParticleBase
 from tomo.objects import AverageSubTomogram
 
 
 class outputObjects(Enum):
-    relionParticles = relionTomoMetadata
     average = AverageSubTomogram
+    postProcessVolume = VolumeMask
+    relionParticles = RelionSetOfPseudoSubtomograms
 
 
 class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBase):
@@ -44,13 +49,14 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
     _possibleOutputs = outputObjects
 
     def __init__(self, **args):
-        ProtRelionMakePseudoSubtomoAndRecParticleBase.__init__(self, **args)
+        super().__init__(**args)
 
     # -------------------------- DEFINE param functions -----------------------
 
     def _defineParams(self, form):
         ProtRelionMakePseudoSubtomoAndRecParticleBase._defineParams(self, form)
         form.addSection(label='Reconstruct particle')
+        super()._defineCommonRecParams(form)
         form.addParam('symmetry', StringParam,
                       label='Symmetry group',
                       default='C1',
@@ -60,9 +66,17 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
                       label='FSC solvent mask (opt.)',
                       allowsNull=True,
                       help='Provide a soft mask to automatically estimate the postprocess FSC.')
+        form.addParam('snrWiener', FloatParam,
+                      label='Apply a Wiener filter with this SNR',
+                      default=0,
+                      help='If set to a positive value, apply a Wiener filter with this signal-to-noise ratio. If '
+                           'omitted, the reconstruction will use a heuristic to prevent divisions by excessively '
+                           'small numbers. Please note that using a low (even though realistic) SNR might wash out the '
+                           'higher frequencies, which could make the map unsuitable to be used for further refinement.')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
+        self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self.relionReconstructParticle)
         if self.solventMask.get():
             self._insertFunctionStep(self.relionTomoMaskReference)
@@ -83,23 +97,36 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
                              numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
-        inOptSet = self.inOptSet.get()
-        # Output Relion Particles
-        relionParticles = relionTomoMetadata(optimSetStar=self._getExtraPath(OPTIMISATION_SET_STAR),
-                                             tsSamplingRate=inOptSet.getTsSamplingRate(),
-                                             relionBinning=self.binningFactor.get(),
-                                             nParticles=inOptSet.getNumParticles())
+        inParticles = self.inReParticles.get()
+        currentSamplingRate = inParticles.getTsSamplingRate() * self.binningFactor.get()
+        postProccesMrc = None
+        halves = [self._getExtraPath('half1.mrc'), self._getExtraPath('half2.mrc')]
+
+        # Fix headers to be interpreted as volumes instead of stacks
+        [fixVolume(mrcFile) for mrcFile in glob.glob(self._getExtraPath('*.mrc'))]
+
+        # Output psubtomos
+        psubtomoSet = super().createOutputStep()
 
         # Output average
         vol = AverageSubTomogram()
         vol.setFileName(self._getExtraPath('merged.mrc'))
-        vol.setHalfMaps([self._getExtraPath('half1.mrc'), self._getExtraPath('half2.mrc')])
-        vol.setSamplingRate(relionParticles.getCurrentSamplingRate())
+        vol.setHalfMaps(halves)
+        vol.setSamplingRate(currentSamplingRate)
+        outputsDir = {outputObjects.relionParticles.name: psubtomoSet, outputObjects.average.name: vol}
 
-        self._defineOutputs(**{outputObjects.average.name: vol,
-                               outputObjects.relionParticles.name: relionParticles})
-        self._defineSourceRelation(inOptSet, relionParticles)
-        self._defineSourceRelation(inOptSet, vol)
+        # Output solvent mask
+        if self.solventMask.get():
+            postProccesMrc = self._genPostProcessOutputMrcFile(POST_PROCESS_MRC)
+            postProccesMrc.setHalfMaps(halves)
+            postProccesMrc.setSamplingRate(currentSamplingRate)
+            outputsDir.update({outputObjects.postProcessVolume.name: postProccesMrc})
+
+        self._defineOutputs(**outputsDir)
+        self._defineSourceRelation(inParticles, psubtomoSet)
+        self._defineSourceRelation(inParticles, vol)
+        if postProccesMrc:
+            self._defineSourceRelation(inParticles, postProccesMrc)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -122,15 +149,17 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
         #        available.
         cmd += '--j_out %i ' % self.numberOfThreads.get()
         cmd += '--j_in %i ' % 1
+        if self.snrWiener.get() > 0:
+            cmd += '--SNR %.2f ' % self.snrWiener.get()
         return cmd
 
     def _genTomoMaskRefCmd(self):
-        optSet = self.inOptSet.get()
+        inParticles = self.inReParticles.get()
         cmd = ''
-        cmd += '--t %s ' % optSet.getTomograms()
-        cmd += '--p %s ' % optSet.getParticles()
+        cmd += '--t %s ' % inParticles.getTomograms()
+        cmd += '--p %s ' % self.getOutStarFileName()
         cmd += '--rec %s ' % self._getExtraPath()
         cmd += '--o %s ' % self._getExtraPath()
         cmd += '--mask %s ' % self.solventMask.get().getFileName()
-
+        cmd += '--angpix %.2f ' % (inParticles.getTsSamplingRate() * self.binningFactor.get())
         return cmd

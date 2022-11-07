@@ -48,8 +48,8 @@ class ReaderTomo:
         self.dataTable = dataTable
 
 
-def getTransformInfoFromCoordOrSubtomo(obj, calcInv=True):
-    M = obj.getMatrix(convention=TR_RELION) if type(obj) is Coordinate3D else obj.getTransform(convention=TR_RELION).getMatrix()
+def getTransformInfoFromCoordOrSubtomo(obj, convention=TR_RELION, calcInv=True):
+    M = obj.getMatrix(convention=convention) if type(obj) is Coordinate3D else obj.getTransform(convention=convention).getMatrix()
     shifts = translation_from_matrix(M)
     if calcInv:
         shifts = -shifts

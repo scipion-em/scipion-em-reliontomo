@@ -22,85 +22,72 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-from pwem.protocols import EMProtocol
 from pyworkflow import BETA
-from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, IntParam, FloatParam
-from pyworkflow.utils import Message
+from pyworkflow.protocol import IntParam, FloatParam
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
 
-class ProtRelionMakePseudoSubtomoAndRecParticleBase(EMProtocol):
+class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
     """Reconstruct particle and make pseudo-subtomograms base class"""
 
     _label = None
     _devStatus = BETA
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        form.addSection(label=Message.LABEL_INPUT)
-
-        form.addParam('inOptSet', PointerParam,
-                      pointerClass='relionTomoMetadata',
-                      label='Input Relion Tomo Metadata')
-        group = form.addGroup('Reconstruct')
-        group.addParam('boxSize', IntParam,
-                       label='Box size (pix.)',
-                       important=True,
-                       allowsNull=False,
-                       help='Box size, in pixels,  of the reconstruction. Note that this is independent of the '
-                            'box size used to refine the particle. This allows the user to construct a 3D map of '
-                            'arbitrary size to gain an overview of the structure surrounding the particle. A '
-                            'sufficiently large box size also allows more of the high-frequency signal to be '
-                            'captured that has been delocalized by the CTF.')
-        group.addParam('croppedBoxSize', IntParam,
-                       label="Cropped box size (pix.)",
-                       allowsNull=True,
-                       help='Cropped box size in pixels. If set, the program will output an additional set of '
-                            'maps that have been cropped to this size. This is useful if a map is desired that '
-                            'is smaller than the box size required to retrieve the CTF-delocalized signal.')
-        group.addParam('binningFactor', FloatParam,
-                       label='Binning factor',
-                       default=1,
-                       allowsNull=False,
-                       help='Downsampling (binning) factor. Note that this does not alter the box size. The '
-                            'reconstructed region instead becomes larger.')
-        group.addParam('snrWiener', FloatParam,
-                       label='Apply a Wiener filter with this SNR',
-                       default=-1,
-                       expertLevel=LEVEL_ADVANCED,
-                       help='Assumed signal-to-noise ratio (negative means use a heuristic to prevent divisions by '
-                            'excessively small numbers.) Please note that using a low (even though realistic) SNR '
-                            'might wash out the higher frequencies, which could make the map unsuitable to be used '
-                            'for further refinement. More information about the Wiener Filter can be found here: '
-                            'https://en.wikipedia.org/wiki/Wiener_filter')
-
+        super()._defineCommonInputParams(form)
         form.addParallelSection(threads=1, mpi=1)
+
+    @staticmethod
+    def _defineCommonRecParams(form):
+        form.addParam('boxSize', IntParam,
+                      label='Box size (pix.)',
+                      important=True,
+                      allowsNull=False,
+                      help='Box size, in pixels,  of the reconstruction. Note that this is independent of the '
+                           'box size used to refine the particle. This allows the user to construct a 3D map of '
+                           'arbitrary size to gain an overview of the structure surrounding the particle. A '
+                           'sufficiently large box size also allows more of the high-frequency signal to be '
+                           'captured that has been delocalized by the CTF.')
+        form.addParam('croppedBoxSize', IntParam,
+                      label="Cropped box size (pix.)",
+                      allowsNull=True,
+                      help='Cropped box size in pixels. If set, the program will output an additional set of '
+                           'maps that have been cropped to this size. This is useful if a map is desired that '
+                           'is smaller than the box size required to retrieve the CTF-delocalized signal.')
+        form.addParam('binningFactor', FloatParam,
+                      label='Binning factor',
+                      default=1,
+                      allowsNull=False,
+                      help='Downsampling (binning) factor. Note that this does not alter the box size. The '
+                           'reconstructed region instead becomes larger.')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         pass
 
-    # # -------------------------- INFO functions -------------------------------
-    # def _validate(self):
-    #     errorMsg = []
-    #     if self.inputParticles.get():
-    #         if not isPseudoSubtomogram(self.inputParticles.get().getFirstElement()):
-    #             errorMsg.append('Introduced subtomograms do not contain the required data to be considered '
-    #                             'pseudosubtomograms. This set can be generated using the output of the protocol for '
-    #                             'preparing the data for Relion 4.')
+    def convertInputStep(self):
+        self.genInStarFile()
 
-    # # --------------------------- UTILS functions -----------------------------
+    def createOutputStep(self):
+        return self.genRelionParticles(binningFactor=self.binningFactor.get(), boxSize=self.croppedBoxSize.get())
+
+    # -------------------------- INFO functions -------------------------------
+
+    # --------------------------- UTILS functions -----------------------------
     def _genCommonCmd(self):
-        inRelionParticles = self.inOptSet.get()
+        inRelionParticles = self.inReParticles.get()
         cmd = ''
         cmd += '--t %s ' % inRelionParticles.getTomograms()
-        cmd += '--p %s ' % inRelionParticles.getParticles()
+        cmd += '--p %s ' % self.getOutStarFileName()
         if inRelionParticles.getTrajectories():
             cmd += '--mot %s ' % inRelionParticles.getTrajectories()
         cmd += '--b %i ' % self.boxSize.get()
         cmd += '--crop %i ' % self.croppedBoxSize.get()
         cmd += '--bin %.1f ' % self.binningFactor.get()
-        cmd += '--SNR %.2f ' % self.snrWiener.get()
         cmd += '--j %i ' % self.numberOfThreads.get()
         return cmd
-
 
