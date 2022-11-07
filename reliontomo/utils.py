@@ -22,11 +22,10 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+import numpy as np
+import emtable
 from collections import OrderedDict
-from os.path import isabs, join, exists
-from reliontomo.constants import OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE
-from reliontomo.objects import RelionSetOfPseudoSubtomograms, createSetOfRelionPSubtomograms
-
+from os.path import isabs, join
 
 def getProgram(program, nMpi):
     """ Get the program name depending on the MPI use or not."""
@@ -72,3 +71,45 @@ def isPseudoSubtomogram(subtomo):
 
 def genEnumParamDict(keyList):
     return OrderedDict((key, val) for key, val in zip(keyList, range(len(keyList))))
+
+
+def generateProjections(particlesFilePath, tomogramsFilePath):
+    mdFileName = '%s@%s' % ('particles', particlesFilePath)
+    table = emtable.Table(fileName=particlesFilePath)
+    particles = []
+    tomoNames = []
+
+    for row in table.iterRows(mdFileName):
+        if not row.get('rlnTomoName') in tomoNames:
+            tomoNames.append(row.get('rlnTomoName'))
+        particles.append([row.get('rlnTomoName'),
+                          np.array([row.get('rlnCoordinateX'),
+                                    row.get('rlnCoordinateY'),
+                                    row.get('rlnCoordinateZ'), 1])])
+
+    tomograms = {}
+    for tomoName in tomoNames:
+        mdFileName = '%s@%s' % (tomoName, tomogramsFilePath)
+        table = emtable.Table(fileName=tomogramsFilePath)
+        projections = []
+        for row in table.iterRows(mdFileName):
+            projections.append(np.array([eval(row.get('rlnTomoProjX')),
+                                         eval(row.get('rlnTomoProjY')),
+                                         eval(row.get('rlnTomoProjZ')),
+                                         eval(row.get('rlnTomoProjW'))]))
+        tomograms[tomoName] = projections
+
+    return projectParticles(particles, tomograms)
+
+
+def projectParticles(particles, tomograms):
+    projections = []
+
+    for partId, particle in enumerate(particles):
+        tomoName = particle[0]
+        tomoProjections = tomograms[tomoName]
+        for tiltId, tomoProjection in enumerate(tomoProjections):
+            multproj = tomoProjection.dot(particle[1])
+            projections.append([tomoName,  tiltId, partId, multproj[0], multproj[1]])
+
+    return projections

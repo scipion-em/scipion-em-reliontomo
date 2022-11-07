@@ -33,11 +33,14 @@ from pyworkflow.object import Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED
 from pyworkflow.utils import makePath, Message
 from reliontomo import Plugin
-from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR, OPTIMISATION_SET_STAR,
-                                  PSUBTOMOS_SQLITE)
-from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates, readSetOfPseudoSubtomograms
 from reliontomo.objects import createSetOfRelionPSubtomograms, RelionSetOfPseudoSubtomograms
+from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR,
+                                  OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE)
+from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates, readSetOfPseudoSubtomograms
+from reliontomo.utils import generateProjections
 from tomo.utils import getNonInterpolatedTsFromRelations
+import tomo.objects as tomoObj
+from tomo.protocols.protocol_base import ProtTomoBase
 
 # Other constants
 DEFOCUS = 'defocus'
@@ -45,13 +48,14 @@ THICKNESS = 'thickness'
 X_SIZE = 'x'
 Y_SIZE = 'y'
 DIMS = 'dims'
+OUTPUT_FIDUCIAL_GAPS_NAME = "FiducialModelGaps"
 
 
 class outputObjects(Enum):
     relionParticles = RelionSetOfPseudoSubtomograms
 
 
-class ProtRelionPrepareData(EMProtocol):
+class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
     """Prepare data for Relion 4
     """
     _label = 'Prepare data for Relion 4'
@@ -199,18 +203,56 @@ class ProtRelionPrepareData(EMProtocol):
 
     def createOutputStep(self):
         # Pseudosubtomos
+        coordSize = self.inputCoords.get().getBoxSize()
+
         psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
                                                      self._getExtraPath(OPTIMISATION_SET_STAR),
                                                      template=PSUBTOMOS_SQLITE,
                                                      tsSamplingRate=self.tsSet.getSamplingRate(),
                                                      relionBinning=1,  # Coords are re-sampled to fit the TS size
-                                                     boxSize=self.inputCoords.get().getBoxSize())
+                                                     boxSize=coordSize)
         # Fill the set with the generated particles
         readSetOfPseudoSubtomograms(psubtomoSet)
 
         self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet})
         self._defineSourceRelation(self.inputCoords.get(), psubtomoSet)
         self._defineSourceRelation(self.inputCtfTs.get(), psubtomoSet)
+
+
+        # Generate the fiducial model
+        projections = generateProjections(self._getStarFilename(OUT_PARTICLES_STAR),
+                                          self._getStarFilename(OUT_TOMOS_STAR))
+
+        fiducialModelGaps = self._createSetOfLandmarkModels(suffix='Gaps')
+        fiducialModelGaps.copyInfo(self.tsSet)
+        fiducialModelGaps.setSetOfTiltSeries(self.tsSet)
+
+        pos = 0
+        for ts in self.tsSet:
+            tsId = ts.getTsId()
+            landmarkModelGapsFilePath = os.path.join(self._getExtraPath(),
+                                                     str(tsId) + "_gaps.sfid")
+
+            landmarkModelGaps = tomoObj.LandmarkModel(tsId=tsId,
+                                              tiltSeriesPointer=ts,
+                                              fileName=landmarkModelGapsFilePath,
+                                              modelName=None,
+                                              size=coordSize)
+            landmarkModelGaps.setTiltSeries(ts)
+
+            while pos < len(projections) and projections[pos][0] == tsId:
+                tiltIm = projections[pos][1] + 1
+                chainId = projections[pos][2] + 1
+                xCoor = int(round(projections[pos][3]))
+                yCoor = int(round(projections[pos][4]))
+                landmarkModelGaps.addLandmark(xCoor, yCoor, tiltIm,
+                                              chainId, 0, 0)
+                pos += 1
+            fiducialModelGaps.append(landmarkModelGaps)
+
+        self._defineOutputs(**{OUTPUT_FIDUCIAL_GAPS_NAME: fiducialModelGaps})
+        self._defineSourceRelation(self.tsSet,  fiducialModelGaps)
+
         self._store()
 
     # -------------------------- INFO functions -------------------------------
