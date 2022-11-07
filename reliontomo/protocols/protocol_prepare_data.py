@@ -37,7 +37,6 @@ from reliontomo.objects import createSetOfRelionPSubtomograms, RelionSetOfPseudo
 from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR,
                                   OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE)
 from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates, readSetOfPseudoSubtomograms
-from reliontomo.objects import relionTomoMetadata
 from reliontomo.utils import generateProjections
 from tomo.utils import getNonInterpolatedTsFromRelations
 import tomo.objects as tomoObj
@@ -204,12 +203,14 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
 
     def createOutputStep(self):
         # Pseudosubtomos
+        coordSize = self.inputCoords.get().getBoxSize()
+
         psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
                                                      self._getExtraPath(OPTIMISATION_SET_STAR),
                                                      template=PSUBTOMOS_SQLITE,
                                                      tsSamplingRate=self.tsSet.getSamplingRate(),
                                                      relionBinning=1,  # Coords are re-sampled to fit the TS size
-                                                     boxSize=self.inputCoords.get().getBoxSize())
+                                                     boxSize=coordSize)
         # Fill the set with the generated particles
         readSetOfPseudoSubtomograms(psubtomoSet)
 
@@ -222,9 +223,9 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
         projections = generateProjections(self._getStarFilename(OUT_PARTICLES_STAR),
                                           self._getStarFilename(OUT_TOMOS_STAR))
 
-        self.fiducialModelGaps = self._createSetOfLandmarkModels(suffix='Gaps')
-        self.fiducialModelGaps.copyInfo(self.tsSet)
-        self.fiducialModelGaps.setSetOfTiltSeries(self.tsSet)
+        fiducialModelGaps = self._createSetOfLandmarkModels(suffix='Gaps')
+        fiducialModelGaps.copyInfo(self.tsSet)
+        fiducialModelGaps.setSetOfTiltSeries(self.tsSet)
 
         pos = 0
         for ts in self.tsSet:
@@ -235,7 +236,8 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
             landmarkModelGaps = tomoObj.LandmarkModel(tsId=tsId,
                                               tiltSeriesPointer=ts,
                                               fileName=landmarkModelGapsFilePath,
-                                              modelName=None)
+                                              modelName=None,
+                                              size=coordSize)
             landmarkModelGaps.setTiltSeries(ts)
 
             while pos < len(projections) and projections[pos][0] == tsId:
@@ -246,10 +248,10 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
                 landmarkModelGaps.addLandmark(xCoor, yCoor, tiltIm,
                                               chainId, 0, 0)
                 pos += 1
-            self.fiducialModelGaps.append(landmarkModelGaps)
+            fiducialModelGaps.append(landmarkModelGaps)
 
-        self._defineOutputs(**{OUTPUT_FIDUCIAL_GAPS_NAME: self.fiducialModelGaps})
-        self._defineSourceRelation(self.tsSet,  self.fiducialModelGaps)
+        self._defineOutputs(**{OUTPUT_FIDUCIAL_GAPS_NAME: fiducialModelGaps})
+        self._defineSourceRelation(self.tsSet,  fiducialModelGaps)
 
         self._store()
 
