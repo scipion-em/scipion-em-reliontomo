@@ -199,7 +199,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
 
     # --------------------------- UTILS functions -----------------------------
     def _genCl3dCommand(self):
-        cmd = '--norm --scale '
+        cmd = '--norm --scale --flatten_solvent '
 
         # I/O args
         cmd += self._genIOBaseCmd()
@@ -210,8 +210,8 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
             cmd += '--solvent_mask2 %s ' % self.solventMask2.get().getFileName()
 
         # Reference args
-        if self.isMapAbsoluteGreyScale.get():
-            cmd += 'firstiter_cc '
+        if not self.isMapAbsoluteGreyScale.get():
+            cmd += '--firstiter_cc '
         if self.initialLowPassFilterA.get():
             cmd += '--ini_high %.2f ' % self.initialLowPassFilterA.get()
         cmd += '--sym %s ' % self.symmetry.get()
