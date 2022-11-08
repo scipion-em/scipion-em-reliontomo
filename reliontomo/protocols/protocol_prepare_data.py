@@ -48,11 +48,11 @@ THICKNESS = 'thickness'
 X_SIZE = 'x'
 Y_SIZE = 'y'
 DIMS = 'dims'
-OUTPUT_FIDUCIAL_GAPS_NAME = "FiducialModelGaps"
 
 
 class outputObjects(Enum):
     relionParticles = RelionSetOfPseudoSubtomograms
+    projected2DCoordinates = tomoObj.SetOfLandmarkModels
 
 
 class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
@@ -237,7 +237,8 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
                                               tiltSeriesPointer=ts,
                                               fileName=landmarkModelGapsFilePath,
                                               modelName=None,
-                                              size=coordSize)
+                                              size=coordSize,
+                                              applyTSTransformation=False)
             landmarkModelGaps.setTiltSeries(ts)
 
             while pos < len(projections) and projections[pos][0] == tsId:
@@ -250,9 +251,8 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
                 pos += 1
             fiducialModelGaps.append(landmarkModelGaps)
 
-        self._defineOutputs(**{OUTPUT_FIDUCIAL_GAPS_NAME: fiducialModelGaps})
+        self._defineOutputs(**{outputObjects.projected2DCoordinates.name: fiducialModelGaps})
         self._defineSourceRelation(self.tsSet,  fiducialModelGaps)
-
         self._store()
 
     # -------------------------- INFO functions -------------------------------
