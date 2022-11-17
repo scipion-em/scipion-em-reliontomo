@@ -258,12 +258,16 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
         # TODO: generar los nombres culled --> tsId_culled.st:mrc cuando se quiten vistas con IMOD
-        errorMsg = []
-        tsSet = self._getTiltSeriesNonInterpolated()
-        if tsSet is None:
-            errorMsg.append("Could not find any SetOfTiltSeries associated "
-                            "with a transformation matrix")
-        return errorMsg
+        valMsg = []
+
+        if not self.inputTS.get():
+            try:
+                self._getTiltSeriesNonInterpolated()
+            except AttributeError:
+                valMsg.append('Unable to go via relations from the introduced coordinates to the '
+                              'corresponding non-interpolated tilt series. Please introduce them using the '
+                              'advanced parameter "Tilt series with alignment..."')
+        return valMsg
 
     def _summary(self):
         msg = []
