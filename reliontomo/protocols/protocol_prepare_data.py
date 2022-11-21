@@ -263,7 +263,7 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
         if not self.inputTS.get():
             try:
                 self._getTiltSeriesNonInterpolated()
-            except AttributeError:
+            except:
                 valMsg.append('Unable to go via relations from the introduced coordinates to the '
                               'corresponding non-interpolated tilt series. Please introduce them using the '
                               'advanced parameter "Tilt series with alignment..."')
