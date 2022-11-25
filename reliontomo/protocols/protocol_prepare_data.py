@@ -218,7 +218,6 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
         self._defineSourceRelation(self.inputCoords.get(), psubtomoSet)
         self._defineSourceRelation(self.inputCtfTs.get(), psubtomoSet)
 
-
         # Generate the fiducial model
         projections = generateProjections(self._getStarFilename(OUT_PARTICLES_STAR),
                                           self._getStarFilename(OUT_TOMOS_STAR))
@@ -234,11 +233,11 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
                                                      str(tsId) + "_gaps.sfid")
 
             landmarkModelGaps = tomoObj.LandmarkModel(tsId=tsId,
-                                              tiltSeriesPointer=ts,
-                                              fileName=landmarkModelGapsFilePath,
-                                              modelName=None,
-                                              size=coordSize,
-                                              applyTSTransformation=False)
+                                                      tiltSeriesPointer=ts,
+                                                      fileName=landmarkModelGapsFilePath,
+                                                      modelName=None,
+                                                      size=coordSize,
+                                                      applyTSTransformation=False)
             landmarkModelGaps.setTiltSeries(ts)
 
             while pos < len(projections) and projections[pos][0] == tsId:
@@ -252,7 +251,7 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
             fiducialModelGaps.append(landmarkModelGaps)
 
         self._defineOutputs(**{outputObjects.projected2DCoordinates.name: fiducialModelGaps})
-        self._defineSourceRelation(self.tsSet,  fiducialModelGaps)
+        self._defineSourceRelation(self.tsSet, fiducialModelGaps)
         self._store()
 
     # -------------------------- INFO functions -------------------------------
