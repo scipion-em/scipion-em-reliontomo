@@ -80,12 +80,12 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
 
     # -------------------------- UTILS functions -----------------------------
     def _genIOCommand(self):
-        optSet = self.inOptSet.get()
-        trajectories = optSet.getTrajectories()
-        postProcess = optSet.getReferenceFsc()
+        inPSubtomos = self.inReParticles.get()
+        trajectories = inPSubtomos.getTrajectories()
+        postProcess = inPSubtomos.getReferenceFsc()
         half1, half2 = self.recVolume.get().getHalfMaps().split(',')
-        cmd = '--p %s ' % optSet.getParticles()
-        cmd += '--t %s ' % optSet.getTomograms()
+        cmd = '--p %s ' % inPSubtomos.getParticles()
+        cmd += '--t %s ' % inPSubtomos.getTomograms()
         cmd += '--o %s ' % self._getExtraPath()
         if trajectories:
             cmd += '--mot %s ' % trajectories
