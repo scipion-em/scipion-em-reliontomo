@@ -28,7 +28,6 @@ from pyworkflow.tests import DataSet
 
 OUTPUT_TOMOS = 'outputTomograms'
 RE4_TOMO = 're4tomo'
-EMD_10439 = 'emd_10439'
 
 
 class DataSetRe4Tomo(Enum):
@@ -56,13 +55,5 @@ class DataSetRe4Tomo(Enum):
     zShiftedScipion = 'starFilesComparer/re4ScipionStars/scipion_z2_75.star'
 
 
-class DataSetEmd10439(Enum):
-    tomoEmd10439 = 'tomograms/emd_10439.mrc'
-    coords3dStarFile = 'importFromStarFiles/picking_001_parts.star'
-    coords3dStarFileWithSRate = 'importFromStarFiles/picking_001_parts_with_sRate.star'
-    subtomogramsStarFile = 'importFromStarFiles/class_ap_r_ali_k1_split.star'
-    scipionSqlite3dCoords = 'importFromScipionSqlite/coordinates.sqlite'
-
-
 DataSet(name=RE4_TOMO, folder=RE4_TOMO, files={el.name: el.value for el in DataSetRe4Tomo})
-DataSet(name=EMD_10439, folder=EMD_10439, files={el.name: el.value for el in DataSetEmd10439})
+

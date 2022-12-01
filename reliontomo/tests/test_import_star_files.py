@@ -27,9 +27,10 @@ from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtImportSubtomogramsFromStar
 from reliontomo.protocols.protocol_import_subtomograms_from_star import outputObjects as importSubtomosOutputs
-from reliontomo.tests import DataSetEmd10439, EMD_10439, OUTPUT_TOMOS
+from reliontomo.tests import OUTPUT_TOMOS
 from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.protocols import ProtImportTomograms
+from tomo.tests import EMD_10439, DataSetEmd10439
 
 
 class TestImportFromStarFile(BaseTest):
