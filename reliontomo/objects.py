@@ -26,15 +26,16 @@ from enum import Enum
 from os.path import exists, join
 
 from emtable import Table
-from pwem import EMObject
-from pwem.objects import Volume, SetOfVolumes
 from pyworkflow.object import String, Integer, Float
 from relion.convert import OpticsGroups
-from reliontomo.constants import OPT_TOMOS_STAR, OPT_PARTICLES_STAR, OPT_TRAJECTORIES_STAR, OPT_MANIFOLDS_STAR, \
-    OPT_FSC_STAR, OUT_TOMOS_STAR, OUT_PARTICLES_STAR, TRAJECTORIES_STAR, MANIFOLDS_STAR, \
-    FSC_REF_STAR, STAR_DIFF_SIZE, STAR_DIFF_LABELS, STAR_DIFF_VALUES, STAR_FILES_EQUAL, PSUBTOMOS_SQLITE, OPTICS_TABLE
+from reliontomo.constants import (OPT_TOMOS_STAR, OPT_PARTICLES_STAR,
+                                  OPT_TRAJECTORIES_STAR, OPT_MANIFOLDS_STAR,
+                                  OPT_FSC_STAR, OUT_TOMOS_STAR, OUT_PARTICLES_STAR,
+                                  TRAJECTORIES_STAR, MANIFOLDS_STAR, FSC_REF_STAR,
+                                  STAR_DIFF_SIZE, STAR_DIFF_LABELS, STAR_DIFF_VALUES,
+                                  STAR_FILES_EQUAL, PSUBTOMOS_SQLITE, OPTICS_TABLE)
 from tomo.constants import SCIPION, TR_SCIPION
-from tomo.objects import SetOfSubTomograms, TiltSeries, SubTomogram
+from tomo.objects import SetOfSubTomograms, SubTomogram
 
 
 class EnumRe4GenFilesProps(Enum):
@@ -284,7 +285,7 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     #     self._acquisition.copyInfo(other._acquisition)
 
 
-def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, template=PSUBTOMOS_SQLITE, tsSamplingRate=1,
+def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, coordsPointer, template=PSUBTOMOS_SQLITE, tsSamplingRate=1,
                                    relionBinning=1, boxSize=24, nReParticles=0):
     psubtomoSet = RelionSetOfPseudoSubtomograms.create(protocolPath, template=template)
     psubtomoSet.filesMaster = optimSetStar
@@ -293,6 +294,7 @@ def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, template=PSUBTOMO
     psubtomoSet.setSamplingRate(psubtomoSet.getCurrentSamplingRate())
     psubtomoSet.setBoxSize(boxSize)
     psubtomoSet.setNReParticles(nReParticles)
+    psubtomoSet.setCoordinates3D(coordsPointer)
     return psubtomoSet
 
 

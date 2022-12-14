@@ -89,6 +89,11 @@ OPT_TRAJECTORIES_STAR = 'rlnTomoTrajectoriesFile'
 OPT_MANIFOLDS_STAR = 'rlnTomoManifoldsFile'
 OPT_FSC_STAR = 'rlnTomoReferenceFscFile'
 
+# Scipion Coordinates fields
+SCIPION_COORD_X = 'sciXCoord'
+SCIPION_COORD_Y = 'sciYCoord'
+SCIPION_COORD_Z = 'sciZCoord'
+
 FILE_NOT_FOUND = 'FileNotFound'
 
 RELION_30_TOMO_LABELS = [TOMO_NAME_30,

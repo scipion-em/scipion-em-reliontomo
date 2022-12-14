@@ -74,11 +74,13 @@ class ProtRelionTomoBase(EMProtocol):
         attribute."""
         extraPath = self._getExtraPath()
         inParticlesSet = self.inReParticles.get()
+        coordsPointer = inParticlesSet._coordsPointer
         optimSetStar = join(extraPath, OPTIMISATION_SET_STAR)
         protocolPath = join(extraPath, '..')
         if exists(optimSetStar):
             psubtomoSet = createSetOfRelionPSubtomograms(protocolPath,
                                                          optimSetStar,
+                                                         coordsPointer,
                                                          template=PSUBTOMOS_SQLITE,
                                                          tsSamplingRate=inParticlesSet.getTsSamplingRate(),
                                                          relionBinning=binningFactor if binningFactor else inParticlesSet.getRelionBinning(),

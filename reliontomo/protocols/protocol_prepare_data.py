@@ -207,10 +207,12 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
 
         psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
                                                      self._getExtraPath(OPTIMISATION_SET_STAR),
+                                                     self.inputCoords,
                                                      template=PSUBTOMOS_SQLITE,
                                                      tsSamplingRate=self.tsSet.getSamplingRate(),
                                                      relionBinning=1,  # Coords are re-sampled to fit the TS size
                                                      boxSize=coordSize)
+        psubtomoSet.setCoordinates3D(self.inputCoords)
         # Fill the set with the generated particles
         readSetOfPseudoSubtomograms(psubtomoSet)
 
@@ -252,7 +254,6 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
 
         self._defineOutputs(**{outputObjects.projected2DCoordinates.name: fiducialModelGaps})
         self._defineSourceRelation(self.tsSet, fiducialModelGaps)
-        self._store()
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
