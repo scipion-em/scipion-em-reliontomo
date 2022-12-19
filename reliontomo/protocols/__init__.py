@@ -37,4 +37,4 @@ from .protocol_3d_classify_subtomograms import ProtRelion3DClassifySubtomograms
 from .protocol_tomo_frame_align import ProtRelionTomoFrameAlign
 from .protocol_ctf_refine import ProtRelionCtfRefine
 from .protocol_rec_particle_from_subtomograms import ProtRelionSubTomoReconstructAvg
-from .protocol_matching_coordinates import MatchingCoordinates
+from .protocol_matching_coordinates import RelionTomoCoordinatesMatcher

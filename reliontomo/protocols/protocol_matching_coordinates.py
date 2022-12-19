@@ -37,7 +37,7 @@ from tomo.objects import SetOfSubTomograms
 class outputObjects(Enum):
     relionParticles = RelionSetOfPseudoSubtomograms
 
-class MatchingCoordinates(EMProtocol, ProtTomoBase):
+class RelionTomoCoordinatesMatcher(EMProtocol, ProtTomoBase):
     """
     """
     _label = 'Matching coordinates'
