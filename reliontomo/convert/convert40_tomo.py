@@ -32,18 +32,15 @@ from pwem.objects import Transform
 from pyworkflow.object import Integer, Float
 from pyworkflow.utils import getParentFolder, yellowStr, createLink, makePath
 from relion.convert import OpticsGroups
-from reliontomo.constants import TOMO_NAME, TILT_SERIES_NAME, CTFPLOTTER_FILE, IMOD_DIR, FRACTIONAL_DOSE, \
-    ACQ_ORDER_FILE, CULLED_FILE, SUBTOMO_NAME, COORD_X, COORD_Y, COORD_Z, ROT, TILT, PSI, CLASS_NUMBER, \
-    TOMO_PARTICLE_NAME, RANDOM_SUBSET, OPTICS_GROUP, SHIFTX_ANGST, SHIFTY_ANGST, SHIFTZ_ANGST, CTF_IMAGE, \
-    TOMO_PARTICLE_ID, MANIFOLD_INDEX, MRC, FILE_NOT_FOUND, TILT_PRIOR, PSI_PRIOR, PARTICLES_TABLE, \
-    RELION_3D_COORD_ORIGIN
+from reliontomo.constants import *
 import pwem.convert.transformations as tfs
 import numpy as np
 from os.path import join, basename
-from reliontomo.convert.convertBase import checkSubtomogramFormat, getTransformInfoFromCoordOrSubtomo, WriterTomo, \
-    ReaderTomo, getTransformMatrixFromRow
+from reliontomo.convert.convertBase import (checkSubtomogramFormat,
+                                            getTransformInfoFromCoordOrSubtomo,
+                                            WriterTomo, ReaderTomo, getTransformMatrixFromRow)
 from reliontomo.objects import RelionPSubtomogram
-from tomo.constants import BOTTOM_LEFT_CORNER, TR_SCIPION, TR_RELION
+from tomo.constants import BOTTOM_LEFT_CORNER, TR_SCIPION, TR_RELION, SCIPION
 from tomo.objects import Coordinate3D, SubTomogram, TomoAcquisition
 
 logger = logging.getLogger(__name__)
@@ -110,6 +107,9 @@ class Writer(WriterTomo):
                 int(getattr(coord, '_classNumber', -1)),  # 13_rlnClassNumber
                 # Alternated 1 and 2 values
                 int(getattr(coord, '_randomSubset', (i % 2) + 1)),  # 14 _rlnRandomSubset
+                int(coord.getX(SCIPION)),  # 15 _sciXCoord
+                int(coord.getY(SCIPION)),  # 16 _sciYCoord
+                int(coord.getZ(SCIPION))   # 17 _sciZCoord
             )
             i += 1
         # Write the STAR file
@@ -245,7 +245,11 @@ class Writer(WriterTomo):
             TILT,
             PSI,
             CLASS_NUMBER,
-            RANDOM_SUBSET
+            RANDOM_SUBSET,
+            SCIPION_COORD_X,
+            SCIPION_COORD_Y,
+            SCIPION_COORD_Z,
+
         ]
 
     @staticmethod
@@ -369,7 +373,19 @@ class Reader(ReaderTomo):
                                           rdnSubset=row.get(RANDOM_SUBSET, counter % 2),  # 1 and 2 alt. by default
                                           re4ParticleName=row.get(TOMO_PARTICLE_NAME),
                                           opticsGroupId=row.get(OPTICS_GROUP, 1),
-                                          manifoldIndex=row.get(MANIFOLD_INDEX, 1 if counter % 2 else -1))  # 1 and -1
+                                          manifoldIndex=row.get(MANIFOLD_INDEX, 1 if counter % 2 else -1),
+                                          )  # 1 and -1
+
+            # Keeping particle id
+            psubtomo.setObjId(row.get(TOMO_PARTICLE_ID))
+
+            # Set the coordinate3D
+            sciCoord = Coordinate3D()
+            sciCoord.setX(row.get(SCIPION_COORD_X), SCIPION)
+            sciCoord.setY(row.get(SCIPION_COORD_Y), SCIPION)
+            sciCoord.setZ(row.get(SCIPION_COORD_Z), SCIPION)
+            sciCoord.setTomoId(row.get(TOMO_NAME))
+            psubtomo.setCoordinate3D(sciCoord)
 
             # Set the transformation matrix
             t.setMatrix(getTransformMatrixFromRow(row, sRate=sRate))
