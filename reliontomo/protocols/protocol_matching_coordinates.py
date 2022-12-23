@@ -37,8 +37,12 @@ from tomo.objects import SetOfSubTomograms
 class outputObjects(Enum):
     relionParticles = RelionSetOfPseudoSubtomograms
 
+
 class RelionTomoCoordinatesMatcher(EMProtocol, ProtTomoBase):
     """
+    Protocol to generate a set of pseudosubtomograms taking into account the
+    intersection of  a set of 3D coordinates and a set of pseudosubtomograms
+    as input.
     """
     _label = 'Matching coordinates'
     _devStatus = BETA
