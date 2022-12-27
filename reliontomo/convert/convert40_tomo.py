@@ -153,10 +153,15 @@ class Writer(WriterTomo):
 
                     pSubtomo.getClassId(),  # _rlnClassNumber #13
                     pSubtomo.getRdnSubset(),  # _rlnRandomSubset #14
-                    pSubtomo.getRe4ParticleName(),  # _rlnTomoParticleName #15
-                    pSubtomo.getOpticsGroupId(),  # _rlnOpticsGroup #16
-                    pSubtomoFile,  # _rlnImageName #17
-                    pSubtomoCtfFile  # _rlnCtfImage #18
+
+                    pSubtomo.getCoordinate3D().getX(SCIPION),  # _sciXCoord #15
+                    pSubtomo.getCoordinate3D().getY(SCIPION),  # _sciYCoord #16
+                    pSubtomo.getCoordinate3D().getZ(SCIPION),  # _sciZCoord #17
+
+                    pSubtomo.getRe4ParticleName(),  # _rlnTomoParticleName #18
+                    pSubtomo.getOpticsGroupId(),  # _rlnOpticsGroup #19
+                    pSubtomoFile,  # _rlnImageName #20
+                    pSubtomoCtfFile  # _rlnCtfImage #21
                 ])
 
     def subtomograms2Star(self, subtomoSet, subtomosStar):
