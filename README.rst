@@ -95,10 +95,10 @@ Buildbot status
 
 Status devel version:
 
-.. image:: http://scipion-test.cnb.csic.es:9980/badges/tomo_devel.svg
+.. image:: http://scipion-test.cnb.csic.es:9980/badges/reliontomo_devel.svg
 
 
 Status production version:
 
-.. image:: http://scipion-test.cnb.csic.es:9980/badges/tomo_prod.svg
+.. image:: http://scipion-test.cnb.csic.es:9980/badges/reliontomo_prod.svg
 
