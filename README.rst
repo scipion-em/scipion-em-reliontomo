@@ -15,7 +15,7 @@ This plugin is currently in **BETA** mode.
 Installation
 ------------
 
-You will need to use `3.0 <https://scipion-em.github.io/docs/docs/scipion-modes/how-to-install.html>`_ version of Scipion to be able to run these protocols.
+You will need to use `3.0 <https://scipion-em.github.io/docs/release-3.0.0/docs/scipion-modes/how-to-install.htmll>`_ version of Scipion to be able to run these protocols.
 
 
 
