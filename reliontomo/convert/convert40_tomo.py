@@ -117,7 +117,8 @@ class Writer(WriterTomo):
 
     def pseudoSubtomograms2Star(self, pSubtomoSet, outStar):
         sRate = pSubtomoSet.getSamplingRate()
-        tomoTable = Table(columns=self._getPseudoSubtomogramStarFileLabels())
+        hasCoords = pSubtomoSet.getFirstItem().hasCoordinate3D()
+        tomoTable = Table(columns=self._getPseudoSubtomogramStarFileLabels(hasCoords))
 
         # Write the STAR file
         optGroup = OpticsGroups.fromString(pSubtomoSet.getAcquisition().opticsGroupInfo.get())
@@ -134,7 +135,7 @@ class Writer(WriterTomo):
                 pSubtomoCtfFile = pSubtomo.getCtfFile() if pSubtomo.getCtfFile() else FILE_NOT_FOUND
 
                 # Add row to the table which will be used to generate the STAR file
-                partsWriter.writeRowValues([
+                rowsValues = [
                     pSubtomo.getTsId(),  # _rlnTomoName #1
                     pSubtomo.getObjId(),  # rlnTomoParticleId #2
                     pSubtomo.getManifoldIndex(),  # rlnTomoManifoldIndex #3
@@ -153,16 +154,18 @@ class Writer(WriterTomo):
 
                     pSubtomo.getClassId(),  # _rlnClassNumber #13
                     pSubtomo.getRdnSubset(),  # _rlnRandomSubset #14
+                ]
+                if hasCoords:
+                    rowsValues += [pSubtomo.getCoordinate3D().getX(SCIPION),  # _sciXCoord #15
+                                   pSubtomo.getCoordinate3D().getY(SCIPION),  # _sciYCoord #16
+                                   pSubtomo.getCoordinate3D().getZ(SCIPION)]  # _sciZCoord #17
 
-                    pSubtomo.getCoordinate3D().getX(SCIPION),  # _sciXCoord #15
-                    pSubtomo.getCoordinate3D().getY(SCIPION),  # _sciYCoord #16
-                    pSubtomo.getCoordinate3D().getZ(SCIPION),  # _sciZCoord #17
+                rowsValues += [pSubtomo.getRe4ParticleName(),  # _rlnTomoParticleName #18
+                               pSubtomo.getOpticsGroupId(),  # _rlnOpticsGroup #19
+                               pSubtomoFile,  # _rlnImageName #20
+                               pSubtomoCtfFile]  # _rlnCtfImage #21
 
-                    pSubtomo.getRe4ParticleName(),  # _rlnTomoParticleName #18
-                    pSubtomo.getOpticsGroupId(),  # _rlnOpticsGroup #19
-                    pSubtomoFile,  # _rlnImageName #20
-                    pSubtomoCtfFile  # _rlnCtfImage #21
-                ])
+                partsWriter.writeRowValues(rowsValues)
 
     def subtomograms2Star(self, subtomoSet, subtomosStar):
         logger.info("Writing relion4 star file (%s) from subtomograms." % subtomosStar)
@@ -235,8 +238,8 @@ class Writer(WriterTomo):
         ]
 
     @staticmethod
-    def _getCoordinatesStarFileLabels():
-        return [
+    def _getCoordinatesStarFileLabels(hasCoords=True):
+        starFileLabels = [
             TOMO_NAME,
             TOMO_PARTICLE_ID,
             MANIFOLD_INDEX,
@@ -250,16 +253,17 @@ class Writer(WriterTomo):
             TILT,
             PSI,
             CLASS_NUMBER,
-            RANDOM_SUBSET,
-            SCIPION_COORD_X,
-            SCIPION_COORD_Y,
-            SCIPION_COORD_Z,
+            RANDOM_SUBSET
 
         ]
+        if hasCoords:
+            starFileLabels += [SCIPION_COORD_X, SCIPION_COORD_Y, SCIPION_COORD_Z]
+
+        return starFileLabels
 
     @staticmethod
-    def _getPseudoSubtomogramStarFileLabels():
-        pSubtomosLabels = Writer._getCoordinatesStarFileLabels()
+    def _getPseudoSubtomogramStarFileLabels(hasCoords=True):
+        pSubtomosLabels = Writer._getCoordinatesStarFileLabels(hasCoords)
         pSubtomosLabels.extend([
             CLASS_NUMBER,
             RANDOM_SUBSET,
