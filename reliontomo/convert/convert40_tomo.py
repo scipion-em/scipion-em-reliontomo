@@ -385,12 +385,13 @@ class Reader(ReaderTomo):
             psubtomo.setObjId(row.get(TOMO_PARTICLE_ID))
 
             # Set the coordinate3D
-            sciCoord = Coordinate3D()
-            sciCoord.setX(row.get(SCIPION_COORD_X), SCIPION)
-            sciCoord.setY(row.get(SCIPION_COORD_Y), SCIPION)
-            sciCoord.setZ(row.get(SCIPION_COORD_Z), SCIPION)
-            sciCoord.setTomoId(row.get(TOMO_NAME))
-            psubtomo.setCoordinate3D(sciCoord)
+            if row.get(SCIPION_COORD_X) is not None:  # Assume that the coordinates exists
+                sciCoord = Coordinate3D()
+                sciCoord.setX(row.get(SCIPION_COORD_X), SCIPION)
+                sciCoord.setY(row.get(SCIPION_COORD_Y), SCIPION)
+                sciCoord.setZ(row.get(SCIPION_COORD_Z), SCIPION)
+                sciCoord.setTomoId(row.get(TOMO_NAME))
+                psubtomo.setCoordinate3D(sciCoord)
 
             # Set the transformation matrix
             t.setMatrix(getTransformMatrixFromRow(row, sRate=sRate))
