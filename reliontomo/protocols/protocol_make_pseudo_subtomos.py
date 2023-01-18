@@ -64,11 +64,6 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
                       help='It is the (full) opening angle of the cone to be suppressed, given in degrees. This angle '
                            'should  include both the uncertainty about the membrane orientation and its variation '
                            'across the region represented in the subtomogram.')
-        form.addParam('applyOffsets', BooleanParam,
-                      label='Apply offsets?',
-                      default=False,
-                      help='If set to Yes, rlnOrigin<X/Y/Z> translations are combined with rlnCoordinate<X/Y/Z> to '
-                           'construct subtomos on their refined centers.')
         form.addParam('outputInFloat16', BooleanParam,
                       label='Write output in float16?',
                       default=True,
@@ -101,8 +96,6 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
         if self.applyConeWeight.get():
             cmd += '--cone_weight '
             cmd += '--cone_angle %.2f ' % self.coneAngle.get()
-        if self.applyOffsets.get():
-            cmd += '--apply_offsets '
         if self.outputInFloat16.get():
             cmd += '--float16 '
         return cmd

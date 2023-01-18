@@ -514,9 +514,9 @@ class TestRefineCycle(BaseTest):
         protEdit = self.protEditStarAngles
         inPSubtomos = protEdit.inReParticles.get()
         outPSubtomos = getattr(protEdit, editStarOutputs.relionParticles.name, None)
-        for inPSubtomo, outPSubtomo in zip (inPSubtomos, outPSubtomos):
-            irot, itilt, ipsi = self._getShiftsFromPSubtomogram(inPSubtomo)
-            orot, otilt, opsi = self._getShiftsFromPSubtomogram(outPSubtomo)
+        for inPSubtomo, outPSubtomo in zip(inPSubtomos, outPSubtomos):
+            irot, itilt, ipsi = self._getAnglesFromPSubtomogram(inPSubtomo)
+            orot, otilt, opsi = self._getAnglesFromPSubtomogram(outPSubtomo)
             self.assertTrue(abs(irot * 5 - orot) < self.editTestsTol)
             self.assertTrue(abs(itilt - otilt) < self.editTestsTol)
             self.assertTrue(abs(ipsi - opsi) < self.editTestsTol)
