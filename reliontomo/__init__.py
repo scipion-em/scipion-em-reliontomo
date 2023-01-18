@@ -22,6 +22,8 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from relion import V3_1
+
 import pwem
 import relion
 from reliontomo.constants import RELIONTOMO_HOME, RELIONTOMO_DEFAULT, RELION, RELIONTOMO_CUDA_LIB, V4_0
@@ -43,7 +45,8 @@ class Plugin(relion.Plugin):
 
     @staticmethod
     def isRe40():
-        return True if Plugin.getHome().endswith(V4_0) else False
+        """We only allow one version older than 4.0, which is 3.1"""
+        return False if Plugin.getHome().endswith(V3_1) else True
 
     @classmethod
     def runRelionTomo(cls, protocol, program, args, cwd=None, numberOfMpi=1):
