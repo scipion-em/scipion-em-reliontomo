@@ -64,13 +64,22 @@ class Writer(WriterTomo):
                 ih.convert(subtomo.getFileName(), mrcFile)
             angles, shifts = getTransformInfoFromCoordOrSubtomo(subtomo)
             magn = subtomo.getAcquisition().getMagnification()
-            ctfFile = getattr(subtomo.getCoordinate3D(), '_3dcftMrcFile', None)
+
+            rlnCoordinateX = 0
+            rlnCoordinateY = 0
+            rlnCoordinateZ = 0
+            coord3D = subtomo.getCoordinate3D()
+
+            ctfFile = getattr(coord3D, '_3dcftMrcFile', None)
             if ctfFile:
                 ctfFile = ctfFile.get()
+
             rlnMicrographName = subtomo.getVolName()
-            rlnCoordinateX = subtomo.getCoordinate3D().getX(BOTTOM_LEFT_CORNER)
-            rlnCoordinateY = subtomo.getCoordinate3D().getY(BOTTOM_LEFT_CORNER)
-            rlnCoordinateZ = subtomo.getCoordinate3D().getZ(BOTTOM_LEFT_CORNER)
+            if coord3D:
+                rlnCoordinateX = coord3D.getX(BOTTOM_LEFT_CORNER)
+                rlnCoordinateY = coord3D.getY(BOTTOM_LEFT_CORNER)
+                rlnCoordinateZ = coord3D.getZ(BOTTOM_LEFT_CORNER)
+
             rlnImageName = subtomo.getFileName().replace(':' + MRC, '')
             rlnCtfImage = ctfFile if ctfFile else FILE_NOT_FOUND
             rlnMagnification = magn if magn else 10000 #64000

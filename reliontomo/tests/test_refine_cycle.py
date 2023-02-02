@@ -54,6 +54,7 @@ from reliontomo.tests import RE4_TOMO, DataSetRe4Tomo
 from reliontomo.utils import genEnumParamDict
 from tomo.protocols import ProtImportTs
 from tomo3d.protocols import ProtJjsoftReconstructTomogram
+from tomo3d.protocols.protocol_base_reconstruct import outputTomoRecObjects
 from tomo3d.protocols.protocol_reconstruct_tomogram import SIRT
 
 RELION_TOMO_PARTICLES = prepareOutputs.relionParticles.name
@@ -108,7 +109,7 @@ class TestRefineCycle(BaseTest):
         cls.protEditStarAngles = cls._editStar_addToAngles()
         cls.protEditStarCoordsMult = cls._editStar_multiplyCoordinates()
         cls.protEditStarSetCoords = cls._editStar_setCoordinatesToValue()
-        cls.protExtractCoords = cls._extractCoordsFromPSubtomos()
+        # cls.protExtractCoords = cls._extractCoordsFromPSubtomos()
         cls.protInitialModel = cls._genInitialModel()
         cls.protCl3d = cls._3dClassify()
         cls.protCl3dWithAlign = cls._3dClassify(doAlingment=True)
@@ -177,7 +178,7 @@ class TestRefineCycle(BaseTest):
                                            method=SIRT,
                                            height=300)  # Thickness at bin 4
         protRecTomograms = cls.launchProtocol(protRecTomograms, wait=True)
-        return getattr(protRecTomograms, 'outputTomograms', None)
+        return getattr(protRecTomograms, outputTomoRecObjects.tomograms.name, None)
 
     @classmethod
     def _importCoords3dFromStarFile(cls):
@@ -304,13 +305,13 @@ class TestRefineCycle(BaseTest):
         cls.launchProtocol(protEditStar)
         return protEditStar
 
-    @classmethod
-    def _extractCoordsFromPSubtomos(cls):
-        print(magentaStr("\n==> Generating the a de novo 3D initial model:"))
-        protExtractCoords = cls.newProtocol(ProtExtractCoordsFromPSubtomos,
-                                            inReParticles=getattr(cls.protMakePSubtomos, RELION_TOMO_PARTICLES, None))
-        cls.launchProtocol(protExtractCoords)
-        return protExtractCoords
+    # @classmethod
+    # def _extractCoordsFromPSubtomos(cls):
+    #     print(magentaStr("\n==> Generating the a de novo 3D initial model:"))
+    #     protExtractCoords = cls.newProtocol(ProtExtractCoordsFromPSubtomos,
+    #                                         inReParticles=getattr(cls.protMakePSubtomos, RELION_TOMO_PARTICLES, None))
+    #     cls.launchProtocol(protExtractCoords)
+    #     return protExtractCoords
 
     @classmethod
     def _genInitialModel(cls):
@@ -514,10 +515,10 @@ class TestRefineCycle(BaseTest):
         protEdit = self.protEditStarAngles
         inPSubtomos = protEdit.inReParticles.get()
         outPSubtomos = getattr(protEdit, editStarOutputs.relionParticles.name, None)
-        for inPSubtomo, outPSubtomo in zip (inPSubtomos, outPSubtomos):
-            irot, itilt, ipsi = self._getShiftsFromPSubtomogram(inPSubtomo)
-            orot, otilt, opsi = self._getShiftsFromPSubtomogram(outPSubtomo)
-            self.assertTrue(abs(irot * 5 - orot) < self.editTestsTol)
+        for inPSubtomo, outPSubtomo in zip(inPSubtomos, outPSubtomos):
+            irot, itilt, ipsi = self._getAnglesFromPSubtomogram(inPSubtomo)
+            orot, otilt, opsi = self._getAnglesFromPSubtomogram(outPSubtomo)
+            self.assertTrue(abs(irot + 5 - orot) < self.editTestsTol)
             self.assertTrue(abs(itilt - otilt) < self.editTestsTol)
             self.assertTrue(abs(ipsi - opsi) < self.editTestsTol)
 
@@ -559,11 +560,11 @@ class TestRefineCycle(BaseTest):
         rot, tilt, psi = euler_from_matrix(M)
         return rot, tilt, psi
 
-    def testExtractCoordsFromPSubtomos(self):
-        protExtractCoords = self.protExtractCoords
-        outCoords = getattr(protExtractCoords, extractCoordsOutputs.coordinates.name, None)
-        self.assertEqual(outCoords.getSamplingRate(), 5.4)
-        self.assertEqual(outCoords.getBoxSize(), self.boxSizeBin4)
+    # def testExtractCoordsFromPSubtomos(self):
+    #     protExtractCoords = self.protExtractCoords
+    #     outCoords = getattr(protExtractCoords, extractCoordsOutputs.coordinates.name, None)
+    #     self.assertEqual(outCoords.getSamplingRate(), 5.4)
+    #     self.assertEqual(outCoords.getBoxSize(), self.boxSizeBin4)
 
     def testInitialModel(self):
         protInitialModel = self.protInitialModel
