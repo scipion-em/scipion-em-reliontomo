@@ -97,33 +97,38 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
                       pointerClass='SetOfTiltSeries',
                       label="Input tilt series",
                       important=True,
-                      expertLevel=LEVEL_ADVANCED,
                       allowsNull=True)
 
         form.addParam('flipZCoords', BooleanParam,
                       label='Flip Z coordinate?',
                       default=False,
+                      help='This option is generally False if your coordinates are displayed correctly in Scipion. '
+                           'You may want to check this to True only if you see that the extracted subtomograms'
+                           ' are wrong.',
                       expertLevel=LEVEL_ADVANCED
                       )
 
         form.addParam('flipYZ', BooleanParam,
                       label='Has tomogram been flipped along Y and Z?',
-                      default=False,
-                      help='If the tomogram has been flipped along Y and Z (i.e. rotated around X) '
-                           'after the reconstruction and before the particles have been picked, this '
-                           'will apply the same transformation to the relion coordinate system. This will '
-                           'allow relion to use particle positions defined in the X-rotated tomogram unchanged.')
+                      default=True,
+                      help='This option is generally True if the slices of your tomogram are displayed on slice Z in '
+                           'Imod. '
+                           'Usually, a tomogram is flipped along Y and Z (i.e. rotated around X with 90 degrees) '
+                           'after the reconstruction and before the particles have been picked. This '
+                           'will tell Relion to apply the same transformation to the coordinate system.')
         form.addParam('flipZ', BooleanParam,
                       label='Has the Z axis been flipped?',
-                      default=False,
-                      help='Same as above, in case the Z axis has been flipped. This can be used together with '
-                           'the flipYZ option.')
+                      default=True,
+                      help='This option is generally True when you apply reconstrucion in Imod. This is usually used '
+                           'together with the flipYZ option.')
 
         form.addParam('swapXY', BooleanParam,
                       label='Swap X with Y dimensions of the tilt series',
-                      default=True,
+                      default=False,
+                      expertLevel=LEVEL_ADVANCED,
                       help='This may be a trial and error parameter. Depending of the reconstruction path of '
-                           'your tomograms we you may need to deactivate this option to get good results.')
+                           'your tomograms we you may need to deactivate this option to get good results. '
+                           'This option will be deprecated in the future')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
