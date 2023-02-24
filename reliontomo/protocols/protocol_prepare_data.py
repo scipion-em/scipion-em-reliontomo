@@ -208,13 +208,16 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
 
     def createOutputStep(self):
         # Pseudosubtomos
-        coordSize = self.inputCoords.get().getBoxSize()
+        coords=self.inputCoords.get()
+        coordSize = coords.getBoxSize()
+        tsSamplingRate = self.tsSet.getSamplingRate()
+        coordSizeAng = coordSize / coords.getSamplingRate()
 
         psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
                                                      self._getExtraPath(OPTIMISATION_SET_STAR),
                                                      self.inputCoords,
                                                      template=PSUBTOMOS_SQLITE,
-                                                     tsSamplingRate=self.tsSet.getSamplingRate(),
+                                                     tsSamplingRate=tsSamplingRate,
                                                      relionBinning=1,  # Coords are re-sampled to fit the TS size
                                                      boxSize=coordSize)
         psubtomoSet.setCoordinates3D(self.inputCoords)
@@ -243,7 +246,7 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
                                                       tiltSeriesPointer=ts,
                                                       fileName=landmarkModelGapsFilePath,
                                                       modelName=None,
-                                                      size=coordSize,
+                                                      size=coordSizeAng,
                                                       applyTSTransformation=False)
             landmarkModelGaps.setTiltSeries(ts)
 
