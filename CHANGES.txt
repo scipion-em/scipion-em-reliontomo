@@ -1,3 +1,5 @@
+v3.1.2:
+  - Fix: Fiducial size in prepare is now correct (in Å)
 v3.1.0:
   - First plugin release
 
