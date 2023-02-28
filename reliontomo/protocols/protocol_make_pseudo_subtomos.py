@@ -24,6 +24,7 @@
 # **************************************************************************
 from enum import Enum
 from pyworkflow.protocol import FloatParam, BooleanParam
+from pyworkflow.protocol.constants import LEVEL_ADVANCED
 from reliontomo import Plugin
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_make_pseusosubtomos_and_rec_particle import \
@@ -66,7 +67,8 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
                            'across the region represented in the subtomogram.')
         form.addParam('outputInFloat16', BooleanParam,
                       label='Write output in float16?',
-                      default=True,
+                      expertLevel=LEVEL_ADVANCED,
+                      default=False,
                       help='If set to Yes, this program will write output images in float16 MRC format. This will '
                            'save a factor of two in disk space compared to the default of writing in float32. Note '
                            'that RELION and CCPEM will read float16 images, but other programs may not (yet) do so.')

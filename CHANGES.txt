@@ -1,3 +1,6 @@
+v3.1.2:
+  - Fix: Fiducial size in prepare is now correct (in Å)
+  - Make pseudo subtomograms: float 16 is False by default and hidden. Prevents manual subsets.
 v3.1.0:
   - First plugin release
 
