@@ -1,3 +1,5 @@
+v3.1.3:
+  - Fix: Use one of the halves map in auto-refine if it exists
 v3.1.2:
   - Fix: Fiducial size in prepare is now correct (in Å)
   - Make pseudo subtomograms: float 16 is False by default and hidden. Prevents manual subsets.
