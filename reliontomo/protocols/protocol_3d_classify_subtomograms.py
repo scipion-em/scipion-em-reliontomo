@@ -128,6 +128,28 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                            "the optimal orientation in the previous iteration.\n\nA Gaussian prior (also see previous "
                            "option) will be applied, so that orientations closer to the optimal orientation in the "
                            "previous iteration will get higher weights than those further away.")
+        #
+        # form.addParam('sigma_rot', FloatParam,
+        #               label='Limit rot angle search(deg.)',
+        #               condition='doImageAlignment and doLocalAngleSearch',
+        #               default=-1,
+        #               validators=[GE(-1), LE(15)],
+        #               help="Stddev on the first Euler angle for local angular searches (of +/- 3 stddev)")
+        #
+        # form.addParam('sigma_tilt', FloatParam,
+        #               label='Limit tilt angle search(deg.)',
+        #               condition='doImageAlignment and doLocalAngleSearch',
+        #               default=-1,
+        #               validators=[GE(-1), LE(15)],
+        #               help="Stddev on the second Euler angle for local angular searches (of +/- 3 stddev)")
+        #
+        # form.addParam('sigma_psi', FloatParam,
+        #               label='Limit psi angle search(deg.)',
+        #               condition='doImageAlignment and doLocalAngleSearch',
+        #               default=-1,
+        #               validators=[GE(-1), LE(15)],
+        #               help="Stddev on the in-plane angle for local angular searches (of +/- 3 stddev)")
+
         ProtRelionRefineSubtomograms._insertRelaxSymmetry(form, condition='doImageAlignment and doLocalAngleSearch')
         form.addParam('allowCoarser', BooleanParam,
                       label='Allow coarser sampling?',
@@ -240,6 +262,12 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
             cmd += '--offset_step %d ' % (self.offsetSearchStepPix.get() * 2 ** self.oversampling.get())
             if self.doLocalAngleSearch.get():
                 cmd += '--sigma_ang %d ' % (self.localAngularSearchRange.get() / 3)
+
+                # # Per angle restriction
+                # cmd += '--sigma_rot %d ' % (self.sigma_rot.get() / 3)
+                # cmd += '--sigma_tilt %d ' % (self.sigma_tilt.get() / 3)
+                # cmd += '--sigma_psi %d ' % (self.sigma_psi.get() / 3)
+
                 if self.relaxSym.get():
                     cmd += '--relax_sym %s ' % self.relaxSym.get()
             if self.allowCoarser.get():

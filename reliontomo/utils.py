@@ -91,25 +91,33 @@ def generateProjections(particlesFilePath, tomogramsFilePath):
     for tomoName in tomoNames:
         mdFileName = '%s@%s' % (tomoName, tomogramsFilePath)
         table = emtable.Table(fileName=tomogramsFilePath)
-        projections = []
+        tomoProjections = []
         for row in table.iterRows(mdFileName):
-            projections.append(np.array([eval(row.get('rlnTomoProjX')),
+            tomoProjections.append(np.array([eval(row.get('rlnTomoProjX')),
                                          eval(row.get('rlnTomoProjY')),
                                          eval(row.get('rlnTomoProjZ')),
                                          eval(row.get('rlnTomoProjW'))]))
-        tomograms[tomoName] = projections
+        tomograms[tomoName] = tomoProjections
 
     return projectParticles(particles, tomograms)
 
 
 def projectParticles(particles, tomograms):
-    projections = []
+    """ Returns a dictionary with the projections grouped by tomoId"""
+    projections = {}
 
     for partId, particle in enumerate(particles):
         tomoName = particle[0]
         tomoProjections = tomograms[tomoName]
+
+        particleProjections = projections.get(tomoName, None)
+
+        if particleProjections is None:
+            particleProjections = []
+            projections[tomoName] = particleProjections
+
         for tiltId, tomoProjection in enumerate(tomoProjections):
             multproj = tomoProjection.dot(particle[1])
-            projections.append([tomoName,  tiltId, partId, multproj[0], multproj[1]])
+            particleProjections.append([tomoName,  tiltId, partId, multproj[0], multproj[1]])
 
     return projections
