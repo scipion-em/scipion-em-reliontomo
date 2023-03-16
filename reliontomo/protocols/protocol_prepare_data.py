@@ -211,7 +211,7 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
         coords=self.inputCoords.get()
         coordSize = coords.getBoxSize()
         tsSamplingRate = self.tsSet.getSamplingRate()
-        coordSizeAng = coordSize / coords.getSamplingRate()
+        fiducialSize = int((coordSize * coords.getSamplingRate()) / (2*10)) # Box size is too large, a tenth of the half (radius)
 
         psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
                                                      self._getExtraPath(OPTIMISATION_SET_STAR),
@@ -246,15 +246,18 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
                                                       tiltSeriesPointer=ts,
                                                       fileName=landmarkModelGapsFilePath,
                                                       modelName=None,
-                                                      size=coordSizeAng,
+                                                      size=fiducialSize,
                                                       applyTSTransformation=False)
             landmarkModelGaps.setTiltSeries(ts)
 
-            while pos < len(projections) and projections[pos][0] == tsId:
-                tiltIm = projections[pos][1] + 1
-                chainId = projections[pos][2] + 1
-                xCoor = int(round(projections[pos][3]))
-                yCoor = int(round(projections[pos][4]))
+            # Get the projections for the tilt series
+            tsProjections = projections[tsId]
+
+            for projection in tsProjections:
+                tiltIm = projection[1] + 1
+                chainId = projection[2] + 1
+                xCoor = int(round(projection[3]))
+                yCoor = int(round(projection[4]))
                 landmarkModelGaps.addLandmark(xCoor, yCoor, tiltIm,
                                               chainId, 0, 0)
                 pos += 1

@@ -59,8 +59,8 @@ def writeSetOfSubtomograms(particlesSet, starFile, **kwargs):
     return writer.subtomograms2Star(particlesSet, starFile)
 
 
-def writeSetOfPseudoSubtomograms(particlesSet, starFile, **kwargs):
-    return createWriterTomo40(**kwargs).pseudoSubtomograms2Star(particlesSet, starFile)
+def writeSetOfPseudoSubtomograms(particlesSet, starFile, withPriors=False,**kwargs):
+    return createWriterTomo40(**kwargs).pseudoSubtomograms2Star(particlesSet, starFile, withPriors=withPriors)
 
 
 def writeSetOfTomograms(imgSet, starFile, whiteList=None, **kwargs):

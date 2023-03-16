@@ -253,7 +253,15 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         cmd = self._genBaseCommand()
         cmd += ' --auto_refine --split_random_halves --low_resol_join_halves 40 --norm --scale --flatten_solvent '
         # I/O args
-        cmd += '--ref %s ' % self.referenceVolume.get().getFileName()
+
+        ref = self.referenceVolume.get()
+        refFile = ref.getFileName()
+        # If halves exists, use a half as explained here:
+        # https://relion.readthedocs.io/en/release-4.0/STA_tutorial/Refine3D.html#high-resolution-3d-refinement
+        if ref.hasHalfMaps():
+            refFile = ref._halfMapFilenames[0]
+
+        cmd += '--ref %s ' % refFile
         if self.solventMask.get():
             cmd += '--solvent_mask %s ' % self.solventMask.get().getFileName()
         if self.solventMask2.get():
