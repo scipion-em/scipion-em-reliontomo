@@ -23,7 +23,7 @@
 # *
 # **************************************************************************
 from .protocol_edit_particles_star import ProtRelionEditParticlesStar
-from .protocol_extract_coordinates_from_psubtomos import ProtExtractCoordsFromPSubtomos
+# from .protocol_extract_coordinates_from_psubtomos import ProtExtractCoordsFromPSubtomos
 from .protocol_import_coordinates_from_star import ProtImportCoordinates3DFromStar
 from .protocol_import_subtomograms_from_star import ProtImportSubtomogramsFromStar
 from .protocol_post_process import ProtRelionPostProcess

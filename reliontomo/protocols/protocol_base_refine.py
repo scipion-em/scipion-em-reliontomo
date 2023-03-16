@@ -237,9 +237,9 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         form.addParam('offsetSearchRangePix', IntParam,
                       default=offsetRange,
                       condition=condition,
-                      label='Initial offset search range (pix.)',
+                      label='Initial offset range (pix.)',
                       expertLevel=expertLevel,
-                      validators=[GE(0.1), LE(30)],
+                      validators=[GE(0), LE(30)],
                       help='Probabilities will be calculated only for translations in a circle '
                            'with this radius (in pixels). The center of this circle changes at '
                            'every iteration and is placed at the optimal translation for each '
@@ -247,7 +247,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         form.addParam('offsetSearchStepPix', FloatParam,
                       default=offsetStep,
                       condition=condition,
-                      label='Initial offset search step (pix.)',
+                      label='Initial offset step (pix.)',
                       expertLevel=expertLevel,
                       validators=[GE(0.1), LE(5)],
                       help='Translations will be sampled with this step-size (in pixels). '
