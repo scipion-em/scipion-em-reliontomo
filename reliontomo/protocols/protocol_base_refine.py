@@ -234,7 +234,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                            'we use the HealPix library to generate the sampling of the first '
                            'two Euler angles on the sphere. The samplings are approximate numbers '
                            'and vary slightly over the sphere.')
-        form.addParam('offsetSearchRangePix', IntParam,
+        form.addParam('offsetSearchRangePix', FloatParam,
                       default=offsetRange,
                       condition=condition,
                       label='Initial offset range (pix.)',
