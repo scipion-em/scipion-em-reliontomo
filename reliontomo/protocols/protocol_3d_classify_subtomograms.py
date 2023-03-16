@@ -28,6 +28,7 @@ from os.path import abspath, exists, isfile, join
 
 from emtable import Table
 
+from pyworkflow.protocol import Form
 from pyworkflow.object import Float
 from pyworkflow.utils import moveFile, createLink
 from reliontomo.constants import OUT_PARTICLES_STAR
@@ -102,7 +103,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                            'range of 7-12 Angstroms have proven useful.')
 
     @staticmethod
-    def _defineSamplingParams(form):
+    def _defineSamplingParams(form:Form):
         form.addSection(label='Sampling')
         form.addParam('doImageAlignment', BooleanParam,
                       label='Perform image alignment?',
@@ -110,7 +111,9 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                       help='If set to No, then rather than performing both alignment and classification, only '
                            'classification will be performed. This allows the use of very focused masks. It requires '
                            'that the optimal orientations of all particles are already stored in the input STAR file.')
+
         ProtRelionRefineBase._insertAngularCommonParams(form, condition='doImageAlignment')
+
         form.addParam('doLocalAngleSearch', BooleanParam,
                       label='Perform local angular searches?',
                       default=False,
@@ -129,26 +132,6 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                            "option) will be applied, so that orientations closer to the optimal orientation in the "
                            "previous iteration will get higher weights than those further away.")
 
-        form.addParam('sigma_rot', FloatParam,
-                      label='Limit rot angle search(deg.)',
-                      condition='doImageAlignment and doLocalAngleSearch',
-                      default=-1,
-                      validators=[GE(-1), LE(15)],
-                      help="Stddev on the first Euler angle for local angular searches (of +/- 3 stddev)")
-
-        form.addParam('sigma_tilt', FloatParam,
-                      label='Limit tilt angle search(deg.)',
-                      condition='doImageAlignment and doLocalAngleSearch',
-                      default=-1,
-                      validators=[GE(-1), LE(15)],
-                      help="Stddev on the second Euler angle for local angular searches (of +/- 3 stddev)")
-
-        form.addParam('sigma_psi', FloatParam,
-                      label='Limit psi angle search(deg.)',
-                      condition='doImageAlignment and doLocalAngleSearch',
-                      default=-1,
-                      validators=[GE(-1), LE(15)],
-                      help="Stddev on the in-plane angle for local angular searches (of +/- 3 stddev)")
 
         ProtRelionRefineSubtomograms._insertRelaxSymmetry(form, condition='doImageAlignment and doLocalAngleSearch')
         form.addParam('allowCoarser', BooleanParam,
@@ -262,11 +245,6 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
             cmd += '--offset_step %d ' % (self.offsetSearchStepPix.get() * 2 ** self.oversampling.get())
             if self.doLocalAngleSearch.get():
                 cmd += '--sigma_ang %d ' % (self.localAngularSearchRange.get() / 3)
-
-                # Per angle restriction
-                cmd += '--sigma_rot %f ' % self.sigma_rot.get()
-                cmd += '--sigma_tilt %f ' % self.sigma_tilt.get()
-                cmd += '--sigma_psi %f ' % self.sigma_psi.get()
 
                 if self.relaxSym.get():
                     cmd += '--relax_sym %s ' % self.relaxSym.get()
