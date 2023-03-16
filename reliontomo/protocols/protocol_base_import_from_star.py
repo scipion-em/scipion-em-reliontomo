@@ -147,10 +147,9 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
     def _summary(self):
         summary = []
         if self.isFinished():
-            if hasattr(self, 'outputTomograms'):
-                summary.append('The output set of tomogrmas was generated using the data read from the star file.')
             if not self.samplingRate.get():
                 summary.append('The sampling rate considered was the one read from the star file.')
+            summary.append("Coordinates imported from %s." % self.starFile.get())
 
         return summary
 

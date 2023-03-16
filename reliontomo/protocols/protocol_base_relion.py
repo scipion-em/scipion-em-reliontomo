@@ -47,16 +47,16 @@ class ProtRelionTomoBase(EMProtocol):
     def getOutStarFileName(self):
         return self._getExtraPath(IN_PARTICLES_STAR)
 
-    def genInStarFile(self):
+    def genInStarFile(self, withPriors=False):
         """It will check if the set size and the stored particles star file are of the same size or not. In
         the first case, a link will be made to the previous particles star file to avoid generating it and in the
         second case, a new file will be generated containing only the ones present in the input set."""
         inReParticlesSet = self.inReParticles.get()
         outStarFileName = self.getOutStarFileName()
-        if inReParticlesSet.getSize() == inReParticlesSet.getNReParticles():
-            createLink(inReParticlesSet.getParticles(), outStarFileName)
-        else:
-            writeSetOfPseudoSubtomograms(inReParticlesSet, outStarFileName)
+        # if inReParticlesSet.getSize() == inReParticlesSet.getNReParticles():
+        #     createLink(inReParticlesSet.getParticles(), outStarFileName)
+        # else:
+        writeSetOfPseudoSubtomograms(inReParticlesSet, outStarFileName, withPriors=withPriors)
 
     def _genPostProcessOutputMrcFile(self, fileName):
         """File generated using the sharpening protocol (called post-process protocol) and also using the
