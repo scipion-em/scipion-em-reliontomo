@@ -188,8 +188,9 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
             # Based on this: https://github.com/3dem/relion/blob/ver4.0/src/jaz/tomography/programs/convert_projections.cpp#L368
             # First element is X, second Z!
             shiftsAngs = tomo.getShiftsFromOrigin()
-            shiftX = int(shiftsAngs[0] / tomo.getSamplingRate())
-            shiftZ = int(shiftsAngs[2] / tomo.getSamplingRate())
+
+            shiftX = int((shiftsAngs[0] / tomo.getSamplingRate()) + x/2)
+            shiftZ = int((shiftsAngs[2] / tomo.getSamplingRate()) + thickness/2)
             tomoShiftsDict[tomo.getTsId()] = (shiftX, shiftZ)
 
         # Simulate the etomo files that serve as entry point to relion4
