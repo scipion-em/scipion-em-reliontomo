@@ -36,14 +36,12 @@ from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR, IN_PARTICLE
     POST_PROCESS_MRC
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelionPrepareData, \
     ProtRelionMakePseudoSubtomograms, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms, \
-    ProtRelionReconstructParticle, ProtExtractCoordsFromPSubtomos, ProtRelionTomoReconstruct, \
-    ProtRelionEditParticlesStar
+    ProtRelionReconstructParticle, ProtRelionTomoReconstruct, ProtRelionEditParticlesStar
 from reliontomo.protocols.protocol_3d_classify_subtomograms import outputObjects as cl3dOutputs, \
     ProtRelion3DClassifySubtomograms
 from reliontomo.protocols.protocol_base_import_from_star import outputObjects as importStarOutputs
 from reliontomo.protocols.protocol_edit_particles_star import OPERATION_LABELS, LABELS_TO_OPERATE_WITH, ANGLES, \
     OP_ADDITION, OP_MULTIPLICATION, COORDINATES, OP_SET_TO
-from reliontomo.protocols.protocol_extract_coordinates_from_psubtomos import outputObjects as extractCoordsOutputs
 from reliontomo.protocols.protocol_prepare_data import outputObjects as prepareOutputs
 from reliontomo.protocols.protocol_edit_particles_star import outputObjects as editStarOutputs
 from reliontomo.protocols.protocol_de_novo_initial_model import outputObjects as iniModelOutputs

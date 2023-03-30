@@ -115,10 +115,10 @@ class Writer(WriterTomo):
         # Write the STAR file
         tomoTable.write(subtomosStar)
 
-    def pseudoSubtomograms2Star(self, pSubtomoSet, outStar):
+    def pseudoSubtomograms2Star(self, pSubtomoSet, outStar, withPriors=False):
         sRate = pSubtomoSet.getSamplingRate()
         hasCoords = pSubtomoSet.getFirstItem().hasCoordinate3D()
-        tomoTable = Table(columns=self._getPseudoSubtomogramStarFileLabels(hasCoords))
+        tomoTable = Table(columns=self._getPseudoSubtomogramStarFileLabels(hasCoords, withPriors=withPriors))
 
         # Write the STAR file
         optGroup = OpticsGroups.fromString(pSubtomoSet.getAcquisition().opticsGroupInfo.get())
@@ -155,6 +155,9 @@ class Writer(WriterTomo):
                     pSubtomo.getClassId(),  # _rlnClassNumber #13
                     pSubtomo.getRdnSubset(),  # _rlnRandomSubset #14
                 ]
+
+                if withPriors:
+                    rowsValues += [angles[0], angles[1], angles[2]]
                 if hasCoords:
                     rowsValues += [pSubtomo.getCoordinate3D().getX(SCIPION),  # _sciXCoord #15
                                    pSubtomo.getCoordinate3D().getY(SCIPION),  # _sciYCoord #16
@@ -238,7 +241,7 @@ class Writer(WriterTomo):
         ]
 
     @staticmethod
-    def _getCoordinatesStarFileLabels(hasCoords=True):
+    def _getCoordinatesStarFileLabels(hasCoords=True, withPriors=False):
         starFileLabels = [
             TOMO_NAME,
             TOMO_PARTICLE_ID,
@@ -256,17 +259,19 @@ class Writer(WriterTomo):
             RANDOM_SUBSET
 
         ]
+
+        if withPriors:
+            starFileLabels+=[ROT_PRIOR, TILT_PRIOR, PSI_PRIOR]
+
         if hasCoords:
             starFileLabels += [SCIPION_COORD_X, SCIPION_COORD_Y, SCIPION_COORD_Z]
 
         return starFileLabels
 
     @staticmethod
-    def _getPseudoSubtomogramStarFileLabels(hasCoords=True):
-        pSubtomosLabels = Writer._getCoordinatesStarFileLabels(hasCoords)
+    def _getPseudoSubtomogramStarFileLabels(hasCoords=True, withPriors=False):
+        pSubtomosLabels = Writer._getCoordinatesStarFileLabels(hasCoords, withPriors=withPriors)
         pSubtomosLabels.extend([
-            CLASS_NUMBER,
-            RANDOM_SUBSET,
             TOMO_PARTICLE_NAME,
             OPTICS_GROUP,
             SUBTOMO_NAME,

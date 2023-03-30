@@ -1,3 +1,9 @@
+v3.1.3:
+  - Fix: Use one of the halves map in auto-refine if it exists
+  - Fix: LandMark model generation in prepare when a join coordinates has happened. Sorting issue.
+  - Reconstruct does not generate PseudoSubtomograms.
+  - Option to "consider angles as priors" in refine and 3d classification
+  - Takes into account tomogram shift (X,  Z) in prepare
 v3.1.2:
   - Fix: Fiducial size in prepare is now correct (in Å)
   - Make pseudo subtomograms: float 16 is False by default and hidden. Prevents manual subsets.
