@@ -93,8 +93,7 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
                       important=True,
                       allowsNull=False)
         form.addParam('inputTS', PointerParam,
-                      help="Tilt series with alignment (non interpolated) used in the tomograms recnstruction. "
-                           "To be deprecated!!",
+                      help="Tilt series with alignment (non interpolated) used in the tomograms reconstruction.",
                       pointerClass='SetOfTiltSeries',
                       label="Input tilt series",
                       important=True,
@@ -245,7 +244,7 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
 
         fiducialModelGaps = self._createSetOfLandmarkModels(suffix='Gaps')
         fiducialModelGaps.copyInfo(self.tsSet)
-        fiducialModelGaps.setSetOfTiltSeries(self.inputTs) # Use the pointer better when scheduling
+        fiducialModelGaps.setSetOfTiltSeries(self.inputTS) # Use the pointer better when scheduling
 
         pos = 0
         for ts in self.tsSet:
