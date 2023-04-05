@@ -25,7 +25,7 @@
 from os.path import join
 import numpy as np
 from pwem.convert import transformations
-from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
+from pwem.convert.transformations import translation_from_matrix, euler_from_matrix, euler_matrix
 from pwem.emlib.image import ImageHandler
 from pyworkflow.utils import getExt, removeBaseExt, replaceBaseExt, makePath
 from relion.convert.convert_base import WriterBase
@@ -48,7 +48,7 @@ class ReaderTomo:
         self.dataTable = dataTable
 
 
-def getTransformInfoFromCoordOrSubtomo(obj, convention=TR_RELION, calcInv=True):
+def getTransformInfoFromCoordOrSubtomo(obj, samplingRate, convention=TR_RELION, calcInv=True):
     M = obj.getMatrix(convention=convention) if type(obj) is Coordinate3D else obj.getTransform(convention=convention).getMatrix()
     shifts = translation_from_matrix(M)
     if calcInv:
@@ -56,6 +56,7 @@ def getTransformInfoFromCoordOrSubtomo(obj, convention=TR_RELION, calcInv=True):
         M = np.linalg.inv(M)
 
     angles = -np.rad2deg(euler_from_matrix(M, axes='szyz'))
+    shifts *=samplingRate
 
     return angles, shifts
 
@@ -75,11 +76,11 @@ def getTransformMatrixFromRow(row, sRate=1, invert=True):
     shiftx = float(row.get(SHIFTX_ANGST, 0)) / sRate
     shifty = float(row.get(SHIFTY_ANGST, 0)) / sRate
     shiftz = float(row.get(SHIFTZ_ANGST, 0)) / sRate
+    rot = row.get(ROT, 0)
     tilt = row.get(TILT, 0)
     psi = row.get(PSI, 0)
-    rot = row.get(ROT, 0)
 
-    return genTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, invert)
+    return genTransformMatrix2(shiftx, shifty, shiftz, rot, tilt, psi, invert)
 
 
 def genTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, invert):
@@ -97,4 +98,21 @@ def genTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, invert):
         M[1, 3] = shifts[1]
         M[2, 3] = shifts[2]
 
+    return M
+
+def genTransformMatrix2(shiftx, shifty, shiftz, rot, tilt, psi, invert):
+
+    # Angles
+    angles = (float(rot), float(tilt), float(psi))
+    radAngles = -np.deg2rad(angles)
+    M = euler_matrix(radAngles[0], radAngles[1], radAngles[2], 'szyz')
+
+    # Shifts
+    shifts = np.zeros(3)
+    shifts[0] = float(shiftx)
+    shifts[1] = float(shifty)
+    shifts[2] = float(shiftz)
+
+    M[:3, 3] = -shifts[:3]
+    M = np.linalg.inv(M)
     return M

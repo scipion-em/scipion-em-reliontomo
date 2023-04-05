@@ -43,9 +43,9 @@ class outputObjects(Enum):
 
 
 class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBase):
-    """Reconstruct particle from the original tilt series images"""
+    """Reconstructs/averages from the tilt series projected particles"""
 
-    _label = 'Reconstruct particle from tilt series'
+    _label = 'Average from tilt series'
     _possibleOutputs = outputObjects
 
     def __init__(self, **args):

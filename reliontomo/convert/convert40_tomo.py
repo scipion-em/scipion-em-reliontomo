@@ -85,7 +85,7 @@ class Writer(WriterTomo):
         tomoTable = Table(columns=self._getCoordinatesStarFileLabels())
         i = 0
         for coord in coordSet.iterCoordinates():
-            angles, shifts = getTransformInfoFromCoordOrSubtomo(coord)
+            angles, shifts = getTransformInfoFromCoordOrSubtomo(coord, coordSet.getSamplingRate())
             # Add row to the table which will be used to generate the STAR file
             tomoTable.addRow(
                 coord.getTomoId(),  # 1 _rlnTomoName
@@ -96,9 +96,9 @@ class Writer(WriterTomo):
                 coord.getY(RELION_3D_COORD_ORIGIN) * coordsScale,  # 5 _rlnCoordinateY
                 coord.getZ(RELION_3D_COORD_ORIGIN) * coordsScale,  # 6 _rlnCoordinateZ
                 # pix * Å/pix = [shifts in Å]
-                shifts[0] * sRate,  # 7 _rlnOriginXAngst
-                shifts[1] * sRate,  # 8 _rlnOriginYAngst
-                shifts[2] * sRate,  # 9 _rlnOriginZAngst
+                shifts[0], #* sRate,  # 7 _rlnOriginXAngst
+                shifts[1], #* sRate,  # 8 _rlnOriginYAngst
+                shifts[2], #* sRate,  # 9 _rlnOriginZAngst
                 # Angles in degrees
                 angles[0],  # 10 _rlnAngleRot
                 angles[1],  # 11 _rlnAngleTilt
@@ -129,7 +129,7 @@ class Writer(WriterTomo):
             partsWriter.writeTableName(PARTICLES_TABLE)
             partsWriter.writeHeader(tomoTable.getColumns())
             for pSubtomo in pSubtomoSet:
-                angles, shifts = getTransformInfoFromCoordOrSubtomo(pSubtomo, convention=TR_SCIPION)
+                angles, shifts = getTransformInfoFromCoordOrSubtomo(pSubtomo, pSubtomo.getSamplingRate(), convention=TR_RELION)
                 pSubtomoFile = pSubtomo.getFileName()
                 pSubtomoFile = pSubtomoFile.replace(':' + MRC, '') if pSubtomoFile else FILE_NOT_FOUND
                 pSubtomoCtfFile = pSubtomo.getCtfFile() if pSubtomo.getCtfFile() else FILE_NOT_FOUND
@@ -144,9 +144,9 @@ class Writer(WriterTomo):
                     pSubtomo.getY(),  # _rlnCoordinateY #5
                     pSubtomo.getZ(),  # _rlnCoordinateZ #6
                     # pix * Å/pix = [shifts in Å]
-                    shifts[0] * sRate,  # _rlnOriginXAngst #7
-                    shifts[1] * sRate,  # _rlnOriginYAngst #8
-                    shifts[2] * sRate,  # _rlnOriginZAngst #9
+                    shifts[0], #* sRate,  # _rlnOriginXAngst #7
+                    shifts[1], #* sRate,  # _rlnOriginYAngst #8
+                    shifts[2], #* sRate,  # _rlnOriginZAngst #9
                     # Angles in degrees
                     angles[0],  # _rlnAngleRot #10
                     angles[1],  # _rlnAngleTilt #11
@@ -177,7 +177,7 @@ class Writer(WriterTomo):
         extraPath = join(getParentFolder(subtomosStar), 'extra')
         for subtomo in subtomoSet.iterSubtomos():
             checkSubtomogramFormat(subtomo, extraPath)
-            angles, shifts = getTransformInfoFromCoordOrSubtomo(subtomo)
+            angles, shifts = getTransformInfoFromCoordOrSubtomo(subtomo, subtomo.getSamplingRate())
             ctfFile = getattr(subtomo, '_ctfImage', None)
             if ctfFile:
                 ctfFile = ctfFile.get()
@@ -200,9 +200,9 @@ class Writer(WriterTomo):
             rlnAngleTilt = angles[1]
             rlnAnglePsi = angles[2]
             # pix * Å/pix = [shifts in Å]
-            rlnOriginX = shifts[0] * sRate
-            rlnOriginY = shifts[1] * sRate
-            rlnOriginZ = shifts[2] * sRate
+            rlnOriginX = shifts[0] #* sRate
+            rlnOriginY = shifts[1] #* sRate
+            rlnOriginZ = shifts[2] #* sRate
             # Angles in degrees
             rlnTiltPrior = subtomo._tiltPriorAngle.get() if hasattr(subtomo, '_tiltPriorAngle') else rlnAngleTilt
             rlnPsiPrior = subtomo._psiPriorAngle.get() if hasattr(subtomo, '_psiPriorAngle') else rlnAnglePsi
@@ -407,9 +407,9 @@ class Reader(ReaderTomo):
             psubtomo.setTransform(t)
 
             # Add the files to the list of files whose header has to be corrected to be interpreted as volumes
-            if particleFile:
+            if particleFile is not None and particleFile != FILE_NOT_FOUND:
                 listOfFilesToFixVolume.append(particleFile)
-            if ctfFile:
+            if ctfFile is not None and ctfFile!=FILE_NOT_FOUND:
                 listOfFilesToFixVolume.append(ctfFile)
             # Add current pseudosubtomogram to the output set
             outputSet.append(psubtomo)
@@ -460,59 +460,3 @@ class Reader(ReaderTomo):
         # Set the set of coordinates which corresponds to the current set of subtomograms
         subtomoSet.setCoordinates3D(coordSet)
 
-    def setParticleTransform(self, particle, row, sRate):
-        """ Set the transform values from the row. """
-
-        if (self._alignType == ALIGN_NONE) or not row.hasAnyColumn(self.ALIGNMENT_LABELS):
-            self.setParticleTransform = self.__setParticleTransformNone
-        else:
-            # Ensure the Transform object exists
-            self._angles = np.zeros(3)
-            self._shifts = np.zeros(3)
-
-            particle.setTransform(Transform())
-
-            if self._alignType == ALIGN_2D:
-                self.setParticleTransform = self.__setParticleTransform2D
-            elif self._alignType == ALIGN_PROJ:
-                self.setParticleTransform = self.__setParticleTransformProj
-            else:
-                raise TypeError("Unexpected alignment type: %s"
-                                % self._alignType)
-
-        # Call again the modified function
-        self.setParticleTransform(particle, row, sRate)
-
-    @staticmethod
-    def __setParticleTransformNone(particle, row, sRate):
-        particle.setTransform(None)
-
-    def __setParticleTransform2D(self, particle, row, sRate):
-        angles = self._angles
-        shifts = self._shifts
-
-        shifts[0] = float(row.get(SHIFTX_ANGST / sRate, 0))
-        shifts[1] = float(row.get(SHIFTY_ANGST / sRate, 0))
-        angles[2] = float(row.get(PSI, 0))
-        radAngles = -np.deg2rad(angles)
-        M = tfs.euler_matrix(radAngles[0], radAngles[1], radAngles[2], 'szyz')
-        M[:3, 3] = shifts[:3]
-        particle.getTransform().setMatrix(M)
-
-    def __setParticleTransformProj(self, particle, row, sRate):
-        angles = self._angles
-        shifts = self._shifts
-
-        shifts[0] = float(row.get(SHIFTX_ANGST, 0)) / sRate
-        shifts[1] = float(row.get(SHIFTY_ANGST, 0)) / sRate
-        shifts[2] = float(row.get(SHIFTZ_ANGST, 0)) / sRate
-
-        angles[0] = float(row.get(ROT, 0))
-        angles[1] = float(row.get(TILT, 0))
-        angles[2] = float(row.get(PSI, 0))
-
-        radAngles = -np.deg2rad(angles)
-        M = tfs.euler_matrix(radAngles[0], radAngles[1], radAngles[2], 'szyz')
-        M[:3, 3] = -shifts[:3]
-        M = np.linalg.inv(M)
-        particle.getTransform().setMatrix(M)

@@ -62,7 +62,7 @@ class Writer(WriterTomo):
                     mkdir(mrcDir)
                 mrcFile = join(mrcDir, pwutils.replaceBaseExt(subtomo.getFileName(), MRC))
                 ih.convert(subtomo.getFileName(), mrcFile)
-            angles, shifts = getTransformInfoFromCoordOrSubtomo(subtomo)
+            angles, shifts = getTransformInfoFromCoordOrSubtomo(subtomo, 1)
             magn = subtomo.getAcquisition().getMagnification()
 
             rlnCoordinateX = 0

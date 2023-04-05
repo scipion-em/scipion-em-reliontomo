@@ -41,11 +41,11 @@ class outputObjects(Enum):
 
 class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
     """ This protocol reconstructs a volume using Relion.
-    Reconstruct a volume from a given set of particles.
+    Reconstruct a volume from a given set of subtomograms.
     The alignment parameters will be converted to a Relion star file
     and used as direction projections to reconstruct.
     """
-    _label = 'Rec. particle averaging subtomograms'
+    _label = 'Average from subtomograms'
     _devStatus = BETA
     inStarName = 'input_particles'
     outTomoName = 'output_volume'

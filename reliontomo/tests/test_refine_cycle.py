@@ -107,7 +107,6 @@ class TestRefineCycle(BaseTest):
         cls.protEditStarAngles = cls._editStar_addToAngles()
         cls.protEditStarCoordsMult = cls._editStar_multiplyCoordinates()
         cls.protEditStarSetCoords = cls._editStar_setCoordinatesToValue()
-        # cls.protExtractCoords = cls._extractCoordsFromPSubtomos()
         cls.protInitialModel = cls._genInitialModel()
         cls.protCl3d = cls._3dClassify()
         cls.protCl3dWithAlign = cls._3dClassify(doAlingment=True)
@@ -302,14 +301,6 @@ class TestRefineCycle(BaseTest):
         protEditStar.setObjLabel('Set coords to value')
         cls.launchProtocol(protEditStar)
         return protEditStar
-
-    # @classmethod
-    # def _extractCoordsFromPSubtomos(cls):
-    #     print(magentaStr("\n==> Generating the a de novo 3D initial model:"))
-    #     protExtractCoords = cls.newProtocol(ProtExtractCoordsFromPSubtomos,
-    #                                         inReParticles=getattr(cls.protMakePSubtomos, RELION_TOMO_PARTICLES, None))
-    #     cls.launchProtocol(protExtractCoords)
-    #     return protExtractCoords
 
     @classmethod
     def _genInitialModel(cls):
@@ -557,12 +548,6 @@ class TestRefineCycle(BaseTest):
         M = pSubtomo.getTransform().getMatrix()
         rot, tilt, psi = euler_from_matrix(M)
         return rot, tilt, psi
-
-    # def testExtractCoordsFromPSubtomos(self):
-    #     protExtractCoords = self.protExtractCoords
-    #     outCoords = getattr(protExtractCoords, extractCoordsOutputs.coordinates.name, None)
-    #     self.assertEqual(outCoords.getSamplingRate(), 5.4)
-    #     self.assertEqual(outCoords.getBoxSize(), self.boxSizeBin4)
 
     def testInitialModel(self):
         protInitialModel = self.protInitialModel

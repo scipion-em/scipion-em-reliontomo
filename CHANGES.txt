@@ -1,3 +1,8 @@
+v3.1.5:
+  - Export pseudo to coordinated removed completely
+  - Transformation from and to relion refactored. Still reading from star file to scipion is not exact.
+  - Apply operation works on non extracted pseudo subtomograms
+  - Dataviewer shows Pseudosubtomograms better.
 v3.1.4:
   - Import coordinates from star: fix scheduling (indirect pointer to precedents)
   - Prepare data:
