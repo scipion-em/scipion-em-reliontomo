@@ -23,6 +23,7 @@
 # *
 # **************************************************************************
 import logging
+logger = logging.getLogger(__name__)
 import csv
 
 from emtable import Table
@@ -33,7 +34,6 @@ from pyworkflow.object import Integer, Float
 from pyworkflow.utils import getParentFolder, yellowStr, createLink, makePath
 from relion.convert import OpticsGroups
 from reliontomo.constants import *
-import pwem.convert.transformations as tfs
 import numpy as np
 from os.path import join, basename
 from reliontomo.convert.convertBase import (checkSubtomogramFormat,
@@ -116,6 +116,8 @@ class Writer(WriterTomo):
         tomoTable.write(subtomosStar)
 
     def pseudoSubtomograms2Star(self, pSubtomoSet, outStar, withPriors=False):
+
+        logger.info("Generating particles file (%s) from pseudosubtomogram set." % outStar)
         sRate = pSubtomoSet.getSamplingRate()
         hasCoords = pSubtomoSet.getFirstItem().hasCoordinate3D()
         tomoTable = Table(columns=self._getPseudoSubtomogramStarFileLabels(hasCoords, withPriors=withPriors))
@@ -366,7 +368,7 @@ class Reader(ReaderTomo):
                     nonMatchingTomoIds += '%s ' % tomoId
 
         if nonMatchingTomoIds:
-            print(yellowStr('The star file contains coordinates that belong to tomograms not present '
+            logger.info(yellowStr('The star file contains coordinates that belong to tomograms not present '
                             'in the introduced set of tomograms: %s' % nonMatchingTomoIds))
 
     def starFile2PseudoSubtomograms(self, outputSet):
