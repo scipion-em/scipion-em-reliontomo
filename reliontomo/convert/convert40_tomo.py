@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 import csv
 
 from emtable import Table
-from pwem import ALIGN_NONE, ALIGN_2D, ALIGN_PROJ
+from pwem import ALIGN_NONE
 from pwem.convert.headers import fixVolume
 from pwem.objects import Transform
 from pyworkflow.object import Integer, Float

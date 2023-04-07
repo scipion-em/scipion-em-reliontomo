@@ -28,7 +28,8 @@ from pwem.objects import VolumeMask
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol import PointerParam
 from pyworkflow.utils import Message, createLink
-from reliontomo.constants import IN_PARTICLES_STAR, POSTPROCESS_DIR, OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE
+from reliontomo.constants import IN_PARTICLES_STAR, POSTPROCESS_DIR, OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE, \
+    OUT_PARTICLES_STAR
 from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms
 from reliontomo.objects import createSetOfRelionPSubtomograms, RelionSetOfPseudoSubtomograms
 
@@ -68,29 +69,36 @@ class ProtRelionTomoBase(EMProtocol):
 
         return postProccesMrc
 
-    def genRelionParticles(self, binningFactor=None, boxSize=24):
+    def genRelionParticles(self, optimisationFileName=OPTIMISATION_SET_STAR, particles=OUT_PARTICLES_STAR, binningFactor=None, boxSize=24):
         """Generate a RelionSetOfPseudoSubtomograms object containing the files involved for the next protocol,
         considering that some protocols don't generate the optimisation_set.star file. In that case, the input Object
         which represents it will be copied and, after that, this method will be used to update the corresponding
         attribute."""
-        extraPath = self._getExtraPath()
-        inParticlesSet = self.inReParticles.get()
-        coordsPointer = inParticlesSet._coordsPointer
-        optimSetStar = join(extraPath, OPTIMISATION_SET_STAR)
-        protocolPath = join(extraPath, '..')
-        if exists(optimSetStar):
-            psubtomoSet = createSetOfRelionPSubtomograms(protocolPath,
-                                                         optimSetStar,
-                                                         coordsPointer,
-                                                         template=PSUBTOMOS_SQLITE,
-                                                         tsSamplingRate=inParticlesSet.getTsSamplingRate(),
-                                                         relionBinning=binningFactor if binningFactor else inParticlesSet.getRelionBinning(),
-                                                         boxSize=boxSize if boxSize else inParticlesSet.getBoxSize())
-        else:
-            psubtomoSet = RelionSetOfPseudoSubtomograms.create(protocolPath, template=PSUBTOMOS_SQLITE)
-            psubtomoSet.copyInfo(inParticlesSet)
-            psubtomoSet.updateGenFiles(extraPath)
 
-        # Fill the set with the generated particles
+        # Create the set
+        inParticlesSet = self.inReParticles.get()
+        psubtomoSet = RelionSetOfPseudoSubtomograms.create(self.getPath(), template=PSUBTOMOS_SQLITE)
+        psubtomoSet.copyInfo(inParticlesSet)
+
+        # Verify out star file
+        extraPath = self._getExtraPath()
+        optimSetStar = join(extraPath, optimisationFileName)
+        if exists(optimSetStar):
+            psubtomoSet.filesMaster = optimSetStar
+
+        particles = join(extraPath, particles)
+        if exists(particles):
+            psubtomoSet._particles.set(particles)
+
+
+        if binningFactor:
+            psubtomoSet.setRelionBinning(binningFactor)
+
+        if boxSize:
+            psubtomoSet.setBoxSize(boxSize)
+
+        # Fill the items (pseudo subtomos/particles) from de particles star file
         readSetOfPseudoSubtomograms(psubtomoSet)
+
         return psubtomoSet
+

@@ -78,13 +78,22 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
     # -------------------------- INFO functions -------------------------------
 
     # --------------------------- UTILS functions -----------------------------
-    def _genCommonCmd(self):
+    def _genCommonCmd(self, fromOptimisation=True):
         inRelionParticles = self.inReParticles.get()
         cmd = ''
-        cmd += '--t %s ' % inRelionParticles.getTomograms()
-        cmd += '--p %s ' % self.getOutStarFileName()
-        if inRelionParticles.getTrajectories():
-            cmd += '--mot %s ' % inRelionParticles.getTrajectories()
+
+        # Cancel this for now
+        if fromOptimisation:
+            self.info("Using optimization_set: %s" % inRelionParticles.getTrajectories())
+            cmd += '--i %s ' % inRelionParticles.filesMaster
+            cmd += '--p %s ' % inRelionParticles.getParticles() # TODO: This will not work for subsets!!
+        else:
+            cmd += '--t %s ' % inRelionParticles.getTomograms()
+            cmd += '--p %s ' % self.getOutStarFileName()
+            if inRelionParticles.getTrajectories():
+                cmd += '--mot %s ' % inRelionParticles.getTrajectories()
+
+
         cmd += '--b %i ' % self.boxSize.get()
         cmd += '--crop %i ' % self.croppedBoxSize.get()
         cmd += '--bin %.1f ' % self.binningFactor.get()

@@ -121,6 +121,11 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
 
         self._defineSourceRelation(inParticles, vol)
 
+        # Create the output set with the new optimization set
+        outParticles = self.genRelionParticles(boxSize=self.boxSize.get(),
+                                      binningFactor=self.binningFactor.get())
+        self._defineOutputs(**{outputObjects.relionParticles.name:outParticles})
+
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
