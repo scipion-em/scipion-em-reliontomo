@@ -22,6 +22,9 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+
+import logging
+logger = logging.getLogger(__name__)
 from os import symlink
 from emtable import Table
 from pwem.emlib.image import ImageHandler
@@ -51,6 +54,8 @@ class Writer(WriterTomo):
         super().__init__(**kwargs)
 
     def subtomograms2Star(self, subtomoSet, subtomosStar):
+
+        logger.info("Converting scipion subtomograms to relion 3 format.")
         currentTomo = ''
         ih = ImageHandler()
         tomoTable = Table(columns=self.starHeaders)

@@ -205,6 +205,7 @@ class TestRefineCycle(BaseTest):
         protPrepare = cls.newProtocol(ProtRelionPrepareData,
                                       inputCtfTs=cls.ctfTomoSeries,
                                       inputCoords=cls.inCoords,
+                                      inputTS=cls.inTS,
                                       flipYZ=True,
                                       flipZ=True)
         return cls.launchProtocol(protPrepare)
@@ -236,6 +237,7 @@ class TestRefineCycle(BaseTest):
         print(magentaStr("\n==> Making the psudosubtomograms:"))
         protMakePsubtomos = cls.newProtocol(ProtRelionMakePseudoSubtomograms,
                                             inReParticles=getattr(cls.protPrepare, RELION_TOMO_PARTICLES, None),
+
                                             boxSize=192,
                                             croppedBoxSize=cls.boxSizeBin4,
                                             binningFactor=4,

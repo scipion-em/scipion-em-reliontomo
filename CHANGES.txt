@@ -1,3 +1,5 @@
+v3.1.6:
+  - Fix shifts conversion in subsets: Scipion-Relion and viceversa
 v3.1.5:
   - Export pseudo to coordinated removed completely
   - Transformation from and to relion refactored. Still reading from star file to scipion is not exact.

@@ -72,9 +72,6 @@ class RelionPSubtomogram(SubTomogram):
     def getTsId(self):
         return self._tsId.get()
 
-    def getTransform(self, convention=SCIPION):
-        return super().getTransform(convention=TR_SCIPION)
-
     def getBoxSize(self):
         return self._boxSize.get()
 

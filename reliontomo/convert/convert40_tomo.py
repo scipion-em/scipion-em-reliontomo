@@ -131,7 +131,7 @@ class Writer(WriterTomo):
             partsWriter.writeTableName(PARTICLES_TABLE)
             partsWriter.writeHeader(tomoTable.getColumns())
             for pSubtomo in pSubtomoSet:
-                angles, shifts = getTransformInfoFromCoordOrSubtomo(pSubtomo, pSubtomo.getSamplingRate(), convention=TR_RELION)
+                angles, shifts = getTransformInfoFromCoordOrSubtomo(pSubtomo, pSubtomo.getSamplingRate())
                 pSubtomoFile = pSubtomo.getFileName()
                 pSubtomoFile = pSubtomoFile.replace(':' + MRC, '') if pSubtomoFile else FILE_NOT_FOUND
                 pSubtomoCtfFile = pSubtomo.getCtfFile() if pSubtomo.getCtfFile() else FILE_NOT_FOUND

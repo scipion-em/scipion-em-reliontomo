@@ -48,12 +48,14 @@ class ReaderTomo:
         self.dataTable = dataTable
 
 
-def getTransformInfoFromCoordOrSubtomo(obj, samplingRate, convention=TR_RELION, calcInv=True):
-    M = obj.getMatrix(convention=convention) if type(obj) is Coordinate3D else obj.getTransform(convention=convention).getMatrix()
+def getTransformInfoFromCoordOrSubtomo(obj, samplingRate):
+
+    M = obj.getMatrix(convention=TR_RELION) if isinstance(obj, Coordinate3D) else obj.getTransform(convention=TR_RELION).getMatrix()
     shifts = translation_from_matrix(M)
-    if calcInv:
-        shifts = -shifts
-        M = np.linalg.inv(M)
+
+    # These 2 lines below were done when inverting, which is now what we always do.
+    shifts = -shifts
+    M = np.linalg.inv(M)
 
     angles = -np.rad2deg(euler_from_matrix(M, axes='szyz'))
     shifts *=samplingRate
@@ -72,47 +74,32 @@ def checkSubtomogramFormat(subtomo, extraPath):
         ih.convert(subtomo.getFileName(), mrcFile)
 
 
-def getTransformMatrixFromRow(row, sRate=1, invert=True):
-    shiftx = float(row.get(SHIFTX_ANGST, 0)) / sRate
-    shifty = float(row.get(SHIFTY_ANGST, 0)) / sRate
-    shiftz = float(row.get(SHIFTZ_ANGST, 0)) / sRate
+def getTransformMatrixFromRow(row, sRate=1):
+    shiftx = float(row.get(SHIFTX_ANGST, 0))
+    shifty = float(row.get(SHIFTY_ANGST, 0))
+    shiftz = float(row.get(SHIFTZ_ANGST, 0))
     rot = row.get(ROT, 0)
     tilt = row.get(TILT, 0)
     psi = row.get(PSI, 0)
 
-    return genTransformMatrix2(shiftx, shifty, shiftz, rot, tilt, psi, invert)
+    return genTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, sRate)
 
 
-def genTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, invert):
-    shifts = (float(shiftx), float(shifty), float(shiftz))
+def genTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, sRate):
+    shifts = (float(shiftx)/sRate, float(shifty)/sRate, float(shiftz)/sRate)
     angles = (float(rot), float(tilt), float(psi))
     radAngles = -np.deg2rad(angles)
     M = transformations.euler_matrix(radAngles[0], radAngles[1], radAngles[2], 'szyz')
-    if invert:
-        M[0, 3] = -shifts[0]
-        M[1, 3] = -shifts[1]
-        M[2, 3] = -shifts[2]
-        M = np.linalg.inv(M)
-    else:
-        M[0, 3] = shifts[0]
-        M[1, 3] = shifts[1]
-        M[2, 3] = shifts[2]
 
-    return M
-
-def genTransformMatrix2(shiftx, shifty, shiftz, rot, tilt, psi, invert):
-
-    # Angles
-    angles = (float(rot), float(tilt), float(psi))
-    radAngles = -np.deg2rad(angles)
-    M = euler_matrix(radAngles[0], radAngles[1], radAngles[2], 'szyz')
-
-    # Shifts
-    shifts = np.zeros(3)
-    shifts[0] = float(shiftx)
-    shifts[1] = float(shifty)
-    shifts[2] = float(shiftz)
-
-    M[:3, 3] = -shifts[:3]
+    # These 3 lines are the ones for "invert" flag.
+    M[0, 3] = -shifts[0]
+    M[1, 3] = -shifts[1]
+    M[2, 3] = -shifts[2]
     M = np.linalg.inv(M)
+
+    # These line were fot the non invert mode. Not used
+    #     M[0, 3] = shifts[0]
+    #     M[1, 3] = shifts[1]
+    #     M[2, 3] = shifts[2]
+
     return M
