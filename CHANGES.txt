@@ -1,11 +1,8 @@
-v3.1.6:
+v3.1.4:
   - Fix shifts conversion in subsets: Scipion-Relion and viceversa
-v3.1.5:
-  - Export pseudo to coordinated removed completely
-  - Transformation from and to relion refactored. Still reading from star file to scipion is not exact.
+  - Export pseudo to coordinates removed completely
   - Apply operation works on non extracted pseudo subtomograms
   - Dataviewer shows Pseudosubtomograms better.
-v3.1.4:
   - Import coordinates from star: fix scheduling (indirect pointer to precedents)
   - Prepare data:
       Fix scheduling (indirect pointer to ts from fiducials)
