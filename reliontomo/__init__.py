@@ -30,7 +30,7 @@ from reliontomo.constants import RELIONTOMO_HOME, RELIONTOMO_DEFAULT, RELION, RE
 
 _logo = "relion_logo.png"
 _references = ['Scheres2012a', 'Scheres2012b', 'Kimanius2016', 'Zivanov2018']
-__version__ = '3.1.6'
+__version__ = '3.1.4'
 
 
 class Plugin(relion.Plugin):
