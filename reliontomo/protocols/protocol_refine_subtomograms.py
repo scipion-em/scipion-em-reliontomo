@@ -213,11 +213,9 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
     def createOutputStep(self):
         inParticles = self.inReParticles.get()
 
-        # Rename the particles file generated (_data.star) to follow the name convention
-        createLink(self._getExtraPath('_data.star'), self._getExtraPath(OUT_PARTICLES_STAR))
-
-        # Output RelionParticles
-        relionParticles = self.genRelionParticles()
+        # Output Relion particles
+        relionParticles = self.genRelionParticles(optimisationFileName=self._getExtraPath('run_optimization_set.star'),
+                                                  particles=self._getExtraPath('_data.star'))
 
         # Output volume
         vol = AverageSubTomogram()

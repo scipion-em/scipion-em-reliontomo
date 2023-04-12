@@ -26,6 +26,7 @@ from enum import Enum
 from os.path import exists, join
 
 from emtable import Table
+
 from pyworkflow.object import String, Integer, Float
 from relion.convert import OpticsGroups
 from reliontomo.constants import (OPT_TOMOS_STAR, OPT_PARTICLES_STAR,
@@ -70,9 +71,6 @@ class RelionPSubtomogram(SubTomogram):
 
     def getTsId(self):
         return self._tsId.get()
-
-    def getTransform(self, convention=SCIPION):
-        return super().getTransform(convention=TR_SCIPION)
 
     def getBoxSize(self):
         return self._boxSize.get()
@@ -145,21 +143,31 @@ class RelionPSubtomogram(SubTomogram):
 
 
 class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
+    """ Set to persist relion's metadata files and particles.
+    Approach: heep always the generated optimization_set.star file. Additionally,
+    Keep the particles.star file is apply (e.g.: apply operation)
+
+    Run relion with optimization star file and additionally, particles if is not none (empty it when apply)
+
+    For subsets... we could generate always a new particles star file, either based on this set
+    (when we fixed the shifts conversion  problem) or alternatively read the relion starfile and generate
+    a new one filtered out base on  this set ids? (warning, ids will fail if there are joins!!)
+    """
     ITEM_TYPE = RelionPSubtomogram
 
     def __init__(self, optimSetStar=None, relionBinning=None, tsSamplingRate=None, boxSize=24,
                  nReParticles=0, **kwargs):
         super().__init__(**kwargs)
-        self._filesMaster = String()
+        self._filesMaster = String() # Optimisation set file path
         self._boxSize = Integer(boxSize)
-        self._tomograms = String()
-        self._particles = String()
-        self._trajectories = String()
-        self._manifolds = String()
-        self._referenceFsc = String()
-        self._relionBinning = Float(relionBinning)
-        self._tsSamplingRate = Float(tsSamplingRate)
-        self._nReParticles = Integer(nReParticles)
+        self._tomograms = String() # Path to tomograms star file, usually the one prepared by relion at the beginning
+        self._particles = String() # Path to particles.star file where particles metadata
+        self._trajectories = String() # Path to trajectories file
+        self._manifolds = String() # Path to manifolds file
+        self._referenceFsc = String() # FSC file
+        self._relionBinning = Float(relionBinning) # Binning of this set
+        self._tsSamplingRate = Float(tsSamplingRate) # Sampling rate of the tilt series
+        self._nReParticles = Integer(nReParticles) # number of relion particles in the particles star file
 
         if optimSetStar:
             self.filesMaster = optimSetStar
@@ -253,7 +261,7 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
         self._boxSize.set(val)
 
     def copyInfo(self, other):
-        self.copyAttributes(other, '_tomograms', '_particles', '_trajectories', '_manifolds', '_referenceFsc',
+        self.copyAttributes(other,'_filesMaster', '_tomograms', '_particles', '_trajectories', '_manifolds', '_referenceFsc',
                             '_relionBinning', '_tsSamplingRate', '_samplingRate', '_boxSize', '_nReParticles',
                             '_coordsPointer')
         self._acquisition.copyInfo(other._acquisition)
@@ -288,6 +296,17 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
 
 def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, coordsPointer, template=PSUBTOMOS_SQLITE, tsSamplingRate=1,
                                    relionBinning=1, boxSize=24, nReParticles=0):
+    """ Creates the RelionSetOfSubtomograms from the input arguments
+
+    :param protocolPath: Path of the protocol where to create the sqlite
+    :param optimSetStar: optimization set star file. This file is a small collection of files(images and metadata to pass to future jobs
+    :param coordsPointer: Pointer to the set of coordinates
+    :param tsSamplingRate: Sampling rate of the tilt series
+    :param relionBinning: binning of the set
+    :param boxSize: Box size of the set
+    :param nReParticles: Number of particles in relion's particles star file
+
+    """
     psubtomoSet = RelionSetOfPseudoSubtomograms.create(protocolPath, template=template)
     psubtomoSet.filesMaster = optimSetStar
     psubtomoSet.setTsSamplingRate(tsSamplingRate)

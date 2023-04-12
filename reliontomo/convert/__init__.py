@@ -24,8 +24,11 @@
 # **************************************************************************
 
 from emtable import Table
+
+from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo import Plugin
-from reliontomo.constants import TOMO_NAME_30, PARTICLES_TABLE, RELION_30_TOMO_LABELS, RELION_40_TOMO_LABELS
+from reliontomo.constants import TOMO_NAME_30, PARTICLES_TABLE, RELION_30_TOMO_LABELS, RELION_40_TOMO_LABELS, \
+    PSUBTOMOS_SQLITE
 from reliontomo.convert import convert40_tomo, convert30_tomo
 
 
@@ -89,6 +92,6 @@ def createReaderTomo(starFile, **kwargs):
 
 def readSetOfPseudoSubtomograms(outputSet):
     """ Convenience function to write a SetOfPseudoSubtomograms as Relion metadata using a Reader."""
-    # Subtomogras are represented in Relion 4 as Pseudosubtomograms
+    # Subtomograms are represented in Relion 4 as Pseudosubtomograms
     reader, _ = createReaderTomo(outputSet.getParticles())
     return reader.starFile2PseudoSubtomograms(outputSet)

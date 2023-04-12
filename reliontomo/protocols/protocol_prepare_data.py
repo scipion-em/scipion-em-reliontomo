@@ -93,12 +93,11 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
                       important=True,
                       allowsNull=False)
         form.addParam('inputTS', PointerParam,
-                      help="Tilt series with alignment (non interpolated) used in the tomograms recnstruction. "
-                           "To be deprecated!!",
+                      help="Tilt series with alignment (non interpolated) used in the tomograms reconstruction.",
                       pointerClass='SetOfTiltSeries',
                       label="Input tilt series",
                       important=True,
-                      allowsNull=True)
+                      allowsNull=False)
 
         form.addParam('flipZCoords', BooleanParam,
                       label='Flip Z coordinate?',
@@ -155,8 +154,8 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
             self.coordScale.set(self.tomoSet.getSamplingRate() / self.tsSet.getSamplingRate())
 
     def _getTiltSeriesNonInterpolated(self):
-        return self.inputTS.get() if self.inputTS.get() is not None else \
-            getNonInterpolatedTsFromRelations(self.inputCoords.get(), self)
+        return self.inputTS.get() # if self.inputTS.get() is not None else \
+            #getNonInterpolatedTsFromRelations(self.inputCoords.get(), self)
 
     def _getTSIDFromCoordinates(self):
         # TODO: Add this functionality to the SetOFCoordinates. May be useful for other cases
@@ -189,8 +188,9 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
             # First element is X, second Z!
             shiftsAngs = tomo.getShiftsFromOrigin()
 
-            shiftX = int((shiftsAngs[0] / tomo.getSamplingRate()) + x/2)
-            shiftZ = int((shiftsAngs[2] / tomo.getSamplingRate()) + thickness/2)
+            # shifts are stored in Angstrom, we convert to tomo SR and then add the half and the to TS pixel size
+            shiftX = int(((shiftsAngs[0] / tomo.getSamplingRate()) + x/2) * self.coordScale.get())
+            shiftZ = int(((shiftsAngs[2] / tomo.getSamplingRate()) + thickness/2) * self.coordScale.get())
             tomoShiftsDict[tomo.getTsId()] = (shiftX, shiftZ)
 
         # Simulate the etomo files that serve as entry point to relion4
@@ -244,7 +244,7 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
 
         fiducialModelGaps = self._createSetOfLandmarkModels(suffix='Gaps')
         fiducialModelGaps.copyInfo(self.tsSet)
-        fiducialModelGaps.setSetOfTiltSeries(self.tsSet)
+        fiducialModelGaps.setSetOfTiltSeries(self.inputTS) # Use the pointer better when scheduling
 
         pos = 0
         for ts in self.tsSet:
@@ -277,18 +277,18 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
         self._defineSourceRelation(self.tsSet, fiducialModelGaps)
 
     # -------------------------- INFO functions -------------------------------
-    def _validate(self):
-        # TODO: generar los nombres culled --> tsId_culled.st:mrc cuando se quiten vistas con IMOD
-        valMsg = []
-
-        if not self.inputTS.get():
-            try:
-                self._getTiltSeriesNonInterpolated()
-            except:
-                valMsg.append('Unable to go via relations from the introduced coordinates to the '
-                              'corresponding non-interpolated tilt series. Please introduce them using the '
-                              'advanced parameter "Tilt series with alignment..."')
-        return valMsg
+    # def _validate(self):
+    #     # TODO: generar los nombres culled --> tsId_culled.st:mrc cuando se quiten vistas con IMOD
+    #     valMsg = []
+    #
+    #     if not self.inputTS.get():
+    #         try:
+    #             self._getTiltSeriesNonInterpolated()
+    #         except:
+    #             valMsg.append('Unable to go via relations from the introduced coordinates to the '
+    #                           'corresponding non-interpolated tilt series. Please introduce them using the '
+    #                           'advanced parameter "Tilt series with alignment..."')
+    #     return valMsg
 
     def _summary(self):
         msg = []

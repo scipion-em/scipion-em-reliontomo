@@ -100,7 +100,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
     def _importStep(self):
         precedentsSet = self.inTomos.get()
         coordSet = SetOfCoordinates3D.create(self._getPath(), template='coordinates%s.sqlite')
-        coordSet.setPrecedents(precedentsSet)
+        coordSet.setPrecedents(self.inTomos) # As a pointer is better for streaming
         coordSet.setSamplingRate(precedentsSet.getSamplingRate())
         coordSet.setBoxSize(self.boxSize.get())
         self.reader.starFile2Coords3D(coordSet, precedentsSet, self.coordsSRate / precedentsSet.getSamplingRate())
