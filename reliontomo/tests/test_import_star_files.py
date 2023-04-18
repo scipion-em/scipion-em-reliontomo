@@ -65,8 +65,8 @@ class TestImportFromStarFile(BaseTest):
                                              samplingRate=cls.samplingRate)
 
         cls.launchProtocol(protImportTomogram)
-        outputTomos = getattr(protImportTomogram, OUTPUT_TOMOS, None)
-        cls.assertIsNotNone(outputTomos, 'No tomograms were genetated.')
+        outputTomos = protImportTomogram.Tomograms
+        cls.assertIsNotNone(outputTomos, 'No tomograms were generated.')
         return outputTomos
 
     @classmethod
