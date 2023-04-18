@@ -1,4 +1,5 @@
 v3.1.4:
+  - GroupId is not lost through reliontomo processing
   - Fix shifts conversion in subsets: Scipion-Relion and viceversa
   - Export pseudo to coordinates removed completely
   - Apply operation works on non extracted pseudo subtomograms

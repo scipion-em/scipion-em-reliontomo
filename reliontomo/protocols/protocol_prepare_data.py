@@ -193,6 +193,8 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
             shiftZ = int(((shiftsAngs[2] / tomo.getSamplingRate()) + thickness/2) * self.coordScale.get())
             tomoShiftsDict[tomo.getTsId()] = (shiftX, shiftZ)
 
+            self.info("Shifts detected for %s are: %s" % (tomo.getTsId(), (shiftX, shiftZ)))
+
         # Simulate the etomo files that serve as entry point to relion4
         self._simulateETomoFiles(self.tsSet, tomoSizeDict, tomoShiftsDict, binned=1, binByFactor=self.coordScale,
                                  whiteList=self.coordsVolIds, swapDims=self.swapXY.get())

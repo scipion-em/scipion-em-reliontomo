@@ -109,7 +109,8 @@ class Writer(WriterTomo):
                 int(getattr(coord, '_randomSubset', (i % 2) + 1)),  # 14 _rlnRandomSubset
                 int(coord.getX(SCIPION)),  # 15 _sciXCoord
                 int(coord.getY(SCIPION)),  # 16 _sciYCoord
-                int(coord.getZ(SCIPION))   # 17 _sciZCoord
+                int(coord.getZ(SCIPION)),   # 17 _sciZCoord
+                coord.getGroupId() # 18 _sciGroupId
             )
             i += 1
         # Write the STAR file
@@ -163,7 +164,9 @@ class Writer(WriterTomo):
                 if hasCoords:
                     rowsValues += [pSubtomo.getCoordinate3D().getX(SCIPION),  # _sciXCoord #15
                                    pSubtomo.getCoordinate3D().getY(SCIPION),  # _sciYCoord #16
-                                   pSubtomo.getCoordinate3D().getZ(SCIPION)]  # _sciZCoord #17
+                                   pSubtomo.getCoordinate3D().getZ(SCIPION),  # _sciZCoord #17
+                                   pSubtomo.getCoordinate3D().getGroupId(),   # _sciGroupId #18
+                                   ]
 
                 rowsValues += [pSubtomo.getRe4ParticleName(),  # _rlnTomoParticleName #18
                                pSubtomo.getOpticsGroupId(),  # _rlnOpticsGroup #19
@@ -266,7 +269,7 @@ class Writer(WriterTomo):
             starFileLabels+=[ROT_PRIOR, TILT_PRIOR, PSI_PRIOR]
 
         if hasCoords:
-            starFileLabels += [SCIPION_COORD_X, SCIPION_COORD_Y, SCIPION_COORD_Z]
+            starFileLabels += [SCIPION_COORD_X, SCIPION_COORD_Y, SCIPION_COORD_Z, SCIPION_COORD_GROUP_ID]
 
         return starFileLabels
 
@@ -401,6 +404,7 @@ class Reader(ReaderTomo):
                 sciCoord.setX(row.get(SCIPION_COORD_X), SCIPION)
                 sciCoord.setY(row.get(SCIPION_COORD_Y), SCIPION)
                 sciCoord.setZ(row.get(SCIPION_COORD_Z), SCIPION)
+                sciCoord.setGroupId(row.get(SCIPION_COORD_GROUP_ID,1))
                 sciCoord.setTomoId(row.get(TOMO_NAME))
                 psubtomo.setCoordinate3D(sciCoord)
 

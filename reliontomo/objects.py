@@ -56,7 +56,7 @@ class RelionPSubtomogram(SubTomogram):
         self.setFileName(fileName)
         self.setSamplingRate(samplingRate)
         self.setClassId(classId)
-        self._tsId = String(tsId)
+        self._volName.set(tsId)
         self._ctfFile = String(ctfFile)
         self._x = Float(x)
         self._y = Float(y)
@@ -70,7 +70,7 @@ class RelionPSubtomogram(SubTomogram):
         return self._ctfFile.get()
 
     def getTsId(self):
-        return self._tsId.get()
+        return self.getVolName()
 
     def getBoxSize(self):
         return self._boxSize.get()
@@ -103,7 +103,7 @@ class RelionPSubtomogram(SubTomogram):
         self._ctfFile.set(val)
 
     def setTsId(self, val):
-        self._tsId.set(val)
+        self._volName.set(val)
 
     def setTransform(self, newTransform, convention=TR_SCIPION):
         super().setTransform(newTransform, convention=convention)
@@ -137,9 +137,9 @@ class RelionPSubtomogram(SubTomogram):
     def setManifoldIndex(self, val):
         self._manifoldIndex.set(val)
 
-    def copyInfo(self, other):
-        self.copyAttributes(other, '_samplingRate', '_tsId', '_tsName', '_rdnSubset',
-                            '_re4ParticleName', '_opticsGroupId', '_boxSize')
+    # def copyInfo(self, other):
+    #     self.copyAttributes(other, '_samplingRate', '_tsId', '_rdnSubset',
+    #                         '_re4ParticleName', '_opticsGroupId', '_boxSize')
 
 
 class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
