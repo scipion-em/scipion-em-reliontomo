@@ -54,7 +54,7 @@ class ProtRelionTomoBase(EMProtocol):
         second case, a new file will be generated containing only the ones present in the input set."""
         inReParticlesSet = self.inReParticles.get()
         outStarFileName = self.getOutStarFileName()
-        if inReParticlesSet.getSize() == inReParticlesSet.getNReParticles():
+        if inReParticlesSet.getSize() == inReParticlesSet.getNReParticles() and not withPriors:
              self.info("Using existing star (%s) file instead of generating a new one." % inReParticlesSet.getParticles())
              createLink(inReParticlesSet.getParticles(), outStarFileName)
         else:
