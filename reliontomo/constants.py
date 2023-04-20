@@ -94,6 +94,7 @@ OPT_FSC_STAR = 'rlnTomoReferenceFscFile'
 SCIPION_COORD_X = 'sciXCoord'
 SCIPION_COORD_Y = 'sciYCoord'
 SCIPION_COORD_Z = 'sciZCoord'
+SCIPION_COORD_GROUP_ID = 'sciGroupId'
 
 FILE_NOT_FOUND = 'FileNotFound'
 

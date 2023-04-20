@@ -1,4 +1,5 @@
 v3.1.4:
+  - GroupId is not lost through reliontomo processing
   - Fix shifts conversion in subsets: Scipion-Relion and viceversa
   - Export pseudo to coordinates removed completely
   - Apply operation works on non extracted pseudo subtomograms
@@ -8,6 +9,7 @@ v3.1.4:
       Fix scheduling (indirect pointer to ts from fiducials)
       Shifts in z and x are now taken from tomogram origin and into imod files
       Tilt series input is now mandatory until we manage to get the right one though the other inputs.
+  - Fix refine: uses now the latest star file and priors are produced without a subset
 
 v3.1.3:
   - Fix: Use one of the halves map in auto-refine if it exists

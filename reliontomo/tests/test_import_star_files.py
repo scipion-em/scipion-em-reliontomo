@@ -65,8 +65,8 @@ class TestImportFromStarFile(BaseTest):
                                              samplingRate=cls.samplingRate)
 
         cls.launchProtocol(protImportTomogram)
-        outputTomos = getattr(protImportTomogram, OUTPUT_TOMOS, None)
-        cls.assertIsNotNone(outputTomos, 'No tomograms were genetated.')
+        outputTomos = protImportTomogram.Tomograms
+        cls.assertIsNotNone(outputTomos, 'No tomograms were generated.')
         return outputTomos
 
     @classmethod
@@ -77,7 +77,7 @@ class TestImportFromStarFile(BaseTest):
                                            binning=2)
         cls.launchProtocol(protNormTomogram)
         outputTomos = protNormTomogram.Tomograms
-        cls.assertIsNotNone(outputTomos, 'No tomograms were genetated.')
+        cls.assertIsNotNone(outputTomos, 'No tomograms were generated.')
         return outputTomos
 
     @classmethod
@@ -90,7 +90,7 @@ class TestImportFromStarFile(BaseTest):
 
         cls.launchProtocol(protImportCoords3dFromStar)
         outCoords = getattr(protImportCoords3dFromStar, importSubtomosOutputs.coordinates.name)
-        cls.assertIsNotNone(outCoords, 'No coordinates were genetated.')
+        cls.assertIsNotNone(outCoords, 'No coordinates were generated.')
         return outCoords
 
     def _checkCoordinates(self, outputCoordsSet, coordSetSize=None, inTomos=None):
