@@ -43,9 +43,9 @@ class outputObjects(Enum):
 
 
 class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBase):
-    """Reconstruct particle from the original tilt series images"""
+    """Reconstructs/averages from the tilt series projected particles"""
 
-    _label = 'Reconstruct particle from tilt series'
+    _label = 'Average from tilt series'
     _possibleOutputs = outputObjects
 
     def __init__(self, **args):
@@ -86,10 +86,10 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
     def relionReconstructParticle(self):
         cmd = self._genRecParticleCmd()
         try:
-            Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_particle', cmd, numberOfMpi=self.numberOfMpi.get())
+            Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_particle_mpi', cmd, numberOfMpi=self.numberOfMpi.get())
         except:
             # The --mem argument should also be set using around 80-90% to keep a safety margin
-            Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_particle', cmd + '--mem 50 ',
+            Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_particle_mpi', cmd + '--mem 50 ',
                                  numberOfMpi=self.numberOfMpi.get())
 
     def relionTomoMaskReference(self):
@@ -120,6 +120,11 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
             self._defineSourceRelation(inParticles, postProccesMrc)
 
         self._defineSourceRelation(inParticles, vol)
+
+        # Create the output set with the new optimization set
+        outParticles = self.genRelionParticles(boxSize=self.boxSize.get(),
+                                      binningFactor=self.binningFactor.get())
+        self._defineOutputs(**{outputObjects.relionParticles.name:outParticles})
 
 
     # -------------------------- INFO functions -------------------------------

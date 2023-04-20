@@ -33,9 +33,9 @@ class outputObjects(Enum):
 
 
 class ProtImportCoordinates3DFromStar(ProtBaseImportFromStar):
-    """Protocol to import a set of 3D coordinates from a star file"""
+    """Protocol to import a 3D coordinates from a relion star file as the one provided in the tutorial"""
 
-    _label = 'import coordinates 3D from a star file'
+    _label = 'import 3D coordinates'
     _possibleOutputs = outputObjects
 
     def __init__(self, **kwargs):
