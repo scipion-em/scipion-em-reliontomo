@@ -52,8 +52,8 @@ def createWriterTomo40(**kwargs):
     return Writer(**kwargs)
 
 
-def writeSetOfCoordinates(coordSet, starFile, **kwargs):
-    return createWriterTomo40().coordinates2Star(coordSet, starFile, **kwargs)
+def writeSetOfCoordinates(coordSet, starFile, whitelist, **kwargs):
+    return createWriterTomo40().coordinates2Star(coordSet, starFile, whitelist, **kwargs)
 
 
 def writeSetOfSubtomograms(particlesSet, starFile, **kwargs):

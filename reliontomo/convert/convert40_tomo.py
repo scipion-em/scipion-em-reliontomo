@@ -80,15 +80,20 @@ class Writer(WriterTomo):
         # Write the STAR file
         tsTable.write(outStarFileName)
 
-    def coordinates2Star(self, coordSet, subtomosStar, sRate=1, coordsScale=1):
+    def coordinates2Star(self, coordSet, subtomosStar, whitelist, sRate=1, coordsScale=1):
         """Input coordsScale is used to scale the coordinates so they are expressed in bin 1, as expected by Relion 4"""
         tomoTable = Table(columns=self._getCoordinatesStarFileLabels())
         i = 0
         for coord in coordSet.iterCoordinates():
+            tsId = coord.getTomoId()
+
+            if tsId not in whitelist:
+                continue
+
             angles, shifts = getTransformInfoFromCoordOrSubtomo(coord, coordSet.getSamplingRate())
             # Add row to the table which will be used to generate the STAR file
             tomoTable.addRow(
-                coord.getTomoId(),  # 1 _rlnTomoName
+                tsId,  # 1 _rlnTomoName
                 coord.getObjId(),  # 2 _rlnTomoParticleId
                 coord.getGroupId() if coord.getGroupId() else 1,  # 3 _rlnTomoManifoldIndex
                 # coord in pix at scale of bin1

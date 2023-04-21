@@ -38,7 +38,6 @@ from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR,
                                   OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE)
 from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates, readSetOfPseudoSubtomograms
 from reliontomo.utils import generateProjections
-from tomo.utils import getNonInterpolatedTsFromRelations
 import tomo.objects as tomoObj
 from tomo.protocols.protocol_base import ProtTomoBase
 
@@ -68,7 +67,7 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
         self.tsSet = None
         self.tomoSet = None
         self.tsReducedSet = None  # Reduced list of tiltseries with only those in the coordinates
-        self.coordsVolIds = None  # Unique tomogram identifiers volId used in the coordinate set. In case is a subset
+        self.matchingTSIds = None  # Unique tomogram identifiers volId used in the coordinate set. In case is a subset
         self.coordScale = Float(1)
 
     # -------------------------- DEFINE param functions -----------------------
@@ -144,8 +143,22 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
         if not exists(defocusDir):  # It can exist in case of Continue execution
             mkdir(defocusDir)
         self.coords = self.inputCoords.get()
-        self.coordsVolIds = self._getTSIDFromCoordinates()
         self.tsSet = self._getTiltSeriesNonInterpolated()
+
+        # Compute matching TS id among coordinates and tilt series, both could be a subset
+        coordsTsIds = self.coords.getTSIds()
+        self.info("Tilt series present in coordinates are: %s" % coordsTsIds)
+
+        tsIds = self.tsSet.getTSIds()
+        self.info("Tilt series present in Tilt series are: %s" % tsIds)
+
+        # Intersection
+        self.matchingTSIds = set(coordsTsIds).intersection(tsIds)
+        if len(self.matchingTSIds):
+            self.info("Tilt series associated in both, coordinates and tilt series are %s" % self.matchingTSIds)
+        else:
+            raise Exception("There isn't any common tilt series among the coordinates and tilt series chosen.")
+
         self.tomoSet = self.coords.getPrecedents()
         self.inputCtfs = self.inputCtfTs.get()
         # If coordinates are referred to a set of tomograms, they'll be rescaled
@@ -153,20 +166,16 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
         if self.tomoSet:
             self.coordScale.set(self.tomoSet.getSamplingRate() / self.tsSet.getSamplingRate())
 
-    def _getTiltSeriesNonInterpolated(self):
+    def _getTiltSeriesNonInterpolated(self) ->tomoObj.SetOfTiltSeries:
         return self.inputTS.get() # if self.inputTS.get() is not None else \
             #getNonInterpolatedTsFromRelations(self.inputCoords.get(), self)
-
-    def _getTSIDFromCoordinates(self):
-        # TODO: Add this functionality to the SetOFCoordinates. May be useful for other cases
-        volIds = self.coords.aggregate(["MAX"], "_tomoId", ["_tomoId"])
-        volIds = [d['_tomoId'] for d in volIds]
-        self.info("Involved tomograms in the coordinates: %s" % volIds)
-        return volIds
 
     def convertInputStep(self):
         # Generate defocus files
         for ctfTomo in self.inputCtfs:
+            tsId = ctfTomo.getTsId()
+            if tsId not in self.matchingTSIds:
+                continue
             defocusPath = self._getExtraPath(DEFOCUS, ctfTomo.getTsId())
             if not exists(defocusPath):  # It can exist in case of mode Continue execution
                 mkdir(defocusPath)
@@ -179,8 +188,12 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
         tomoList = [tomo.clone() for tomo in self.coords.getPrecedents()]
         coordScale = self.coordScale.get()
         for tomo in tomoList:
+            tsId = tomo.getTsId()
+            if tsId not in self.matchingTSIds:
+                continue
+
             x, y, thickness = tomo.getDim()
-            tomoSizeDict[tomo.getTsId()] = {X_SIZE: x * coordScale,
+            tomoSizeDict[tsId] = {X_SIZE: x * coordScale,
                                             Y_SIZE: y * coordScale,
                                             THICKNESS: thickness * coordScale}
 
@@ -191,13 +204,13 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
             # shifts are stored in Angstrom, we convert to tomo SR and then add the half and the to TS pixel size
             shiftX = int(((shiftsAngs[0] / tomo.getSamplingRate()) + x/2) * self.coordScale.get())
             shiftZ = int(((shiftsAngs[2] / tomo.getSamplingRate()) + thickness/2) * self.coordScale.get())
-            tomoShiftsDict[tomo.getTsId()] = (shiftX, shiftZ)
+            tomoShiftsDict[tsId] = (shiftX, shiftZ)
 
             self.info("Shifts detected for %s are: %s" % (tomo.getTsId(), (shiftX, shiftZ)))
 
         # Simulate the etomo files that serve as entry point to relion4
         self._simulateETomoFiles(self.tsSet, tomoSizeDict, tomoShiftsDict, binned=1, binByFactor=self.coordScale,
-                                 whiteList=self.coordsVolIds, swapDims=self.swapXY.get())
+                                 whiteList=self.matchingTSIds, swapDims=self.swapXY.get())
 
         # Write the tomograms star file
         writeSetOfTomograms(self.tsSet,
@@ -205,10 +218,11 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
                             prot=self,
                             ctfPlotterParentDir=self._getExtraPath(DEFOCUS),
                             eTomoParentDir=self._getTmpPath(),
-                            whiteList=self.coordsVolIds)
+                            whiteList=self.matchingTSIds)
         # Write the particles star file
         writeSetOfCoordinates(self.inputCoords.get(),
                               self._getStarFilename(IN_COORDS_STAR),
+                              self.matchingTSIds,
                               sRate=self.tsSet.getSamplingRate(),
                               coordsScale=self.coordScale.get())
 
@@ -251,6 +265,9 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
         pos = 0
         for ts in self.tsSet:
             tsId = ts.getTsId()
+
+            if tsId not in self.matchingTSIds:
+                continue
             landmarkModelGapsFilePath = os.path.join(self._getExtraPath(),
                                                      str(tsId) + "_gaps.sfid")
 
