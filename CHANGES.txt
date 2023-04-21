@@ -1,3 +1,6 @@
+v3.1.5:
+  - Prepare more robust and optimized to subsets of coordinates and Tilt series. Still ctf could be added to the ecuation.
+
 v3.1.4:
   - GroupId is not lost through reliontomo processing
   - Fix shifts conversion in subsets: Scipion-Relion and viceversa
