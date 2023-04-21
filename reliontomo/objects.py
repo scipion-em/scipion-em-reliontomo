@@ -218,7 +218,7 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
             if exists(currentFile):
                 setattr(self, p.name, String(currentFile))
 
-    def getTomograms(self):
+    def getTomogramsStar(self):
         return self._tomograms.get()
 
     def getParticles(self):
@@ -266,7 +266,9 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
                             '_coordsPointer')
         self._acquisition.copyInfo(other._acquisition)
         # self._relionMd = relionMd if relionMd else relionTomoMetadata
-
+    def _samplingRateStr(self):
+        return "%0.2f Å/px" % self.getCurrentSamplingRate()
+        
     # def iterPSubtomos(self, ts=None, orderBy='id'):
     #     if ts is None:
     #         tsId = None

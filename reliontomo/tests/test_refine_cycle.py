@@ -401,7 +401,7 @@ class TestRefineCycle(BaseTest):
                           manifoldsFile=None, referenceFscFile=None, relionBinning=None):
         self.assertEqual(self.nParticles, pSubtomoSet.getNReParticles())
         self.assertEqual(self.samplingRateOrig, pSubtomoSet.getTsSamplingRate())
-        self.assertEqual(tomogramsFile, pSubtomoSet.getTomograms())
+        self.assertEqual(tomogramsFile, pSubtomoSet.getTomogramsStar())
         self.assertEqual(particlesFile, pSubtomoSet.getParticles())
         self.assertEqual(trajectoriesFile, pSubtomoSet.getTrajectories())
         self.assertEqual(manifoldsFile, pSubtomoSet.getManifolds())
