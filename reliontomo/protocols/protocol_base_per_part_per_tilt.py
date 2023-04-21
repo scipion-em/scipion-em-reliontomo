@@ -85,7 +85,7 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
         postProcess = inPSubtomos.getReferenceFsc()
         half1, half2 = self.recVolume.get().getHalfMaps().split(',')
         cmd = '--p %s ' % inPSubtomos.getParticles()
-        cmd += '--t %s ' % inPSubtomos.getTomograms()
+        cmd += '--t %s ' % inPSubtomos.getTomogramsStar()
         cmd += '--o %s ' % self._getExtraPath()
         if trajectories:
             cmd += '--mot %s ' % trajectories

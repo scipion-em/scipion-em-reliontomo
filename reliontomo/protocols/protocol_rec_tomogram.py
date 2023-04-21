@@ -146,7 +146,7 @@ class ProtRelionTomoReconstruct(EMProtocol):
     # --------------------------- UTILS functions -----------------------------
 
     def _genTomoRecCommand(self, tomoId):
-        cmd = '--t %s ' % self.inReParticles.getTomograms()
+        cmd = '--t %s ' % self.inReParticles.getTomogramsStar()
         cmd += '--tn %s ' % tomoId
         cmd += '--o %s ' % self._getOutTomoFileName(tomoId)
         cmd += '--bin %.1f ' % self.binFactor.get()
