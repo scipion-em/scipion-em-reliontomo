@@ -45,6 +45,9 @@ class ProtRelionTomoBase(EMProtocol):
                       pointerClass='RelionSetOfPseudoSubtomograms',
                       label='Relion particles')
 
+    def getInputParticles(self):
+        return self.inReParticles.get()
+
     def getOutStarFileName(self):
         return self._getExtraPath(IN_PARTICLES_STAR)
 

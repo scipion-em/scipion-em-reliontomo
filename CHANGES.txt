@@ -1,3 +1,8 @@
+v3.1.6:
+  - 3D Classification more completed/standard
+  - 3D classes can be fed to mapback or others
+  - Refine and 3D classification use and register optimisation_set.star files
+
 v3.1.5:
   - Prepare more robust and optimized to subsets of coordinates and Tilt series. Still ctf could be added to the ecuation.
 

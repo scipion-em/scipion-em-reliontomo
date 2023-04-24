@@ -155,7 +155,7 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
     def _genTomoMaskRefCmd(self):
         inParticles = self.inReParticles.get()
         cmd = ''
-        cmd += '--t %s ' % inParticles.getTomograms()
+        cmd += '--t %s ' % inParticles.getTomogramsStar()
         cmd += '--p %s ' % self.getOutStarFileName()
         cmd += '--rec %s ' % self._getExtraPath()
         cmd += '--o %s ' % self._getExtraPath()

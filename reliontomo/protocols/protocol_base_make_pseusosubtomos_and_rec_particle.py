@@ -79,7 +79,7 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
 
     # --------------------------- UTILS functions -----------------------------
     def _genCommonCmd(self):
-        inRelionParticles = self.inReParticles.get()
+        inRelionParticles = self.getInputParticles()
         cmd = ''
 
         # Cancel this for now

@@ -38,7 +38,7 @@ from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
 from pyworkflow.protocol import FloatParam, BooleanParam, GE, LE, IntParam, StringParam
 from reliontomo.utils import getProgram
-from tomo.objects import SetOfClassesSubTomograms, SetOfAverageSubTomograms
+from tomo.objects import SetOfClassesSubTomograms, SetOfSubTomograms
 
 
 class outputObjects(Enum):
@@ -180,14 +180,15 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         classes3D = self._createSetOfClassesSubTomograms(relionParticles)
         classes3D.setImages(relionParticles)
         self._fillClassesFromIter(classes3D, self.nIterations.get())
-        averages = SetOfAverageSubTomograms.create(self._getPath(),
-                                                   template='avgPSubtomograms%s.sqlite',
-                                                   suffix='')
-        averages.setSamplingRate(relionParticles.getCurrentSamplingRate())
-        for class3D in classes3D:
-            vol = class3D.getRepresentative()
-            vol.setObjId(class3D.getObjId())
-            averages.append(vol)
+
+        # averages = SetOfAverageSubTomograms.create(self._getPath(),
+        #                                            template='avgPSubtomograms%s.sqlite',
+        #                                            suffix='')
+        # averages.setSamplingRate(relionParticles.getCurrentSamplingRate())
+        # for class3D in classes3D:
+        #     vol = class3D.getRepresentative()
+        #     vol.setObjId(class3D.getObjId())
+        #     averages.append(vol)
 
         outputDict = {outputObjects.relionParticles.name: relionParticles,
                       outputObjects.classes.name: classes3D}
@@ -262,11 +263,12 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
 
         return cmd
 
-    def _createSetOfClassesSubTomograms(self, subTomograms, suffix=''):
+    def _createSetOfClassesSubTomograms(self, subTomograms:SetOfSubTomograms, suffix=''):
         classes = SetOfClassesSubTomograms.create(self._getPath(),
                                                   template='subtomogramClasses%s.sqlite',
                                                   suffix=suffix)
         classes.setImages(subTomograms)
+        classes.setCoordinates3D(subTomograms.getCoordinates3D(asPointer=True))
         return classes
 
     def _fillClassesFromIter(self, clsSet, iteration):
@@ -306,9 +308,16 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         classId = item.getObjId()
         if classId in self._classesInfo:
             _, row = self._classesInfo[classId]
-            fn = row.rlnReferenceImage + ":mrc"
+            fn = row.rlnReferenceImage
             item.setAlignment3D()
-            item.getRepresentative().setLocation(fn)
+
+            # Representative stuff
+            representative =item.getRepresentative()
+            representative.setLocation(fn)
+            representative.setSamplingRate(self.inReParticles.get().getCurrentSamplingRate())
+            # relion mrc are technically stacks. Fix this
+            representative.fixMRCVolume()
+
             item._rlnclassDistribution = Float(row.rlnClassDistribution)
             item._rlnAccuracyRotations = Float(row.rlnAccuracyRotations)
             item._rlnAccuracyTranslations = Float(row.rlnAccuracyTranslationsAngst)
