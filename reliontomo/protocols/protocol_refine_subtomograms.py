@@ -214,7 +214,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         inParticles = self.inReParticles.get()
 
         # Output Relion particles
-        relionParticles = self.genRelionParticles(optimisationFileName='run_optimization_set.star',
+        relionParticles = self.genRelionParticles(optimisationFileName='_optimisation_set.star',
                                                   particles='_data.star')
 
         # Output volume
