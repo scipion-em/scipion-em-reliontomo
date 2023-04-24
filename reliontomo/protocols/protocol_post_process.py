@@ -45,7 +45,7 @@ class outputObjects(Enum):
 class ProtRelionPostProcess(ProtRelionTomoBase):
     """Sharpen a 3D reference map and estimate the gold-standard FSC curves for subtomogram averaging"""
 
-    _label = 'Sharpen a 3D reference maps'
+    _label = 'postprocessing'
     _devStatus = BETA
     _possibleOutputs = outputObjects
 

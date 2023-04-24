@@ -300,7 +300,14 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         return cmd
 
     def _genIOBaseCmd(self):
-        cmd = '--i %s ' % self.getOutStarFileName()
+
+        inRelionParticles = self.getInputParticles()
+
+        # Use optimization set file
+        self.info("Using optimization_set: %s" % inRelionParticles.filesMaster)
+        cmd = '--ios %s ' % inRelionParticles.filesMaster
+
+        cmd += '--i %s ' % self.getOutStarFileName()
         cmd += '--o %s ' % (self._getExtraPath() + '/')  # If not, Relion will concatenate it directly as a prefix
         cmd += '--j %i ' % self.numberOfThreads
         return cmd
