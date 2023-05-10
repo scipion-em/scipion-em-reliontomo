@@ -27,7 +27,7 @@ import re
 from enum import Enum
 from emtable import Table
 from pwem.convert.headers import fixVolume
-from pwem.objects import FSC
+from pwem.objects import SetOfFSCs
 from pyworkflow import BETA
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
@@ -35,7 +35,9 @@ from reliontomo import Plugin
 from os.path import getmtime
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, StringParam, BooleanParam, EnumParam
 from pyworkflow.utils import createLink
-from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, OUT_PARTICLES_STAR
+from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, \
+    OUT_PARTICLES_STAR, REFINE_FSC_REF_STAR, REFINE_STAR_FSC_TABLE, \
+    REFINE_STAR_FSC_COLUMNS
 from reliontomo.utils import getProgram
 from tomo.objects import AverageSubTomogram
 
@@ -43,7 +45,7 @@ from tomo.objects import AverageSubTomogram
 class outputObjects(Enum):
     relionParticles = RelionSetOfPseudoSubtomograms
     average = AverageSubTomogram
-    outputFSC = FSC
+    outputFSC = SetOfFSCs
 
 
 class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
@@ -229,20 +231,18 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         vol.setHalfMaps([half1, half2])
 
         # Output FSC
-        fsc = FSC(objLabel=self.getRunName())
-        fn = self._getExtraPath("_model.star")
-        table = Table(fileName=fn, tableName='model_class_1')
-        resolution_inv = table.getColumnValues('rlnResolution')
-        frc = table.getColumnValues('rlnGoldStandardFsc')
-        fsc.setData(resolution_inv, frc)
+        fn = self._getExtraPath(REFINE_FSC_REF_STAR)
+
+        setOfFSC = self.genFSCs(fn, REFINE_STAR_FSC_TABLE,
+                                REFINE_STAR_FSC_COLUMNS)
 
         outputDict = {outputObjects.relionParticles.name: relionParticles,
                       outputObjects.average.name: vol,
-                      outputObjects.outputFSC.name: fsc}
+                      outputObjects.outputFSC.name: setOfFSC}
         self._defineOutputs(**outputDict)
         self._defineSourceRelation(inParticles, relionParticles)
         self._defineSourceRelation(inParticles, vol)
-        self._defineSourceRelation(inParticles, fsc)
+        self._defineSourceRelation(inParticles, setOfFSC)
 
     # -------------------------- INFO functions -------------------------------
 
