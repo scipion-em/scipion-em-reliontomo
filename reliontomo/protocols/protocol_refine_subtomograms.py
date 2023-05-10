@@ -213,8 +213,6 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genAutoRefineCommand(), numberOfMpi=nMpi)
 
     def createOutputStep(self):
-        import time
-        time.sleep(10)
         inParticles = self.inReParticles.get()
 
         # Output Relion particles
