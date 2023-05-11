@@ -102,7 +102,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
     # --------------------------- UTILS functions -----------------------------
     def _genInitModelCommand(self):
         # Common parameters from base protocol
-        cmd = self._genBaseCommand()
+        cmd = self._genBaseCommand(useOptimizationSet=False)
 
         # Initial model specific commands
         cmd += ' --denovo_3dref --grad --zero_mask --auto_sampling --pad 1 '

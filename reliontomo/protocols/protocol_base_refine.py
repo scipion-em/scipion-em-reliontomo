@@ -290,22 +290,26 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
     # -------------------------- INFO functions -------------------------------
 
     # --------------------------- UTILS functions -----------------------------
-    def _genBaseCommand(self):
+    def _genBaseCommand(self, useOptimizationSet=True ):
         cmd = ''
-        cmd += self._genIOBaseCmd()  # I/O args
+        cmd += self._genIOBaseCmd(useOptimizationSet=useOptimizationSet)  # I/O args
         cmd += self._genCTFBaseCmd()  # CTF args
         cmd += self._genOptimisationBaseCmd()  # Optimisation args
         cmd += self._genComputeBaseCmd()  # Compute args
         cmd += self._genAddiotionalBaseCmd()  # Additional args
         return cmd
 
-    def _genIOBaseCmd(self):
+    def _genIOBaseCmd(self, useOptimizationSet=True):
 
         inRelionParticles = self.getInputParticles()
 
-        # Use optimization set file
-        self.info("Using optimization_set: %s" % inRelionParticles.filesMaster)
-        cmd = '--ios %s ' % inRelionParticles.filesMaster
+        cmd = ''
+
+        if useOptimizationSet:
+            # Use optimization set file
+            self.info("Using optimization_set: %s" % inRelionParticles.filesMaster)
+            cmd += '--ios %s ' % inRelionParticles.filesMaster
+
 
         cmd += '--i %s ' % self.getOutStarFileName()
         cmd += '--o %s ' % (self._getExtraPath() + '/')  # If not, Relion will concatenate it directly as a prefix

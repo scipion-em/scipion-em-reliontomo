@@ -54,6 +54,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
     classesTable = Table()
     opticsTable = Table()
     particlesTable = Table()
+    _possibleOutputs = outputObjects
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
