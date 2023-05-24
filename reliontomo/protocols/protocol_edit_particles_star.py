@@ -26,7 +26,8 @@
 # **************************************************************************
 from enum import Enum
 from pyworkflow import BETA
-from pyworkflow.protocol import BooleanParam, FloatParam, EnumParam
+from pyworkflow.protocol import BooleanParam, FloatParam, EnumParam, \
+    PointerParam
 from reliontomo import Plugin
 from reliontomo.constants import OUT_PARTICLES_STAR, COORD_X, COORD_Y, COORD_Z, SHIFTX_ANGST, SHIFTY_ANGST, \
     SHIFTZ_ANGST, ROT, TILT, PSI
@@ -73,6 +74,12 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
                       default=False,
                       help='Perform centering of particles according to a position in the reference.')
         group = form.addGroup('Shift center', condition='doRecenter')
+        group.addParam('averageSubTomogram', PointerParam, pointerClass='AverageSubTomogram',
+                      label='Relion average of subtomogram (optional)', allowsNull=True,
+                      )
+        group.addParam('refMask', PointerParam, pointerClass='VolumeMask',
+                       label='Reference mask (optional)', allowsNull=True,
+                       )
         group.addParam('shiftX', FloatParam,
                        label='X (pix.)',
                        default=0,
@@ -215,4 +222,10 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
                 counter += 1
 
         return operateCmd
+
+    def getAverageSubTomogram(self):
+        return self.averageSubTomogram.get()
+
+    def getMask3D(self):
+        return self.refMask.get()
 
