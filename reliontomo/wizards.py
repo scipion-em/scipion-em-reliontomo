@@ -38,7 +38,8 @@ from matplotlib.figure import Figure
 
 from pwem.wizards import EmWizard
 from pyworkflow.gui import (ListTreeProviderString, dialog, configureWeigths,
-                            Dialog, RESULT_CLOSE, RESULT_YES)
+                            Dialog, RESULT_CLOSE, RESULT_YES, MessageDialog,
+                            showError)
 from pyworkflow.object import String
 from relion.wizards import RelionWizMtfSelector
 from reliontomo.protocols import (ProtRelionTomoReconstruct,
@@ -297,6 +298,10 @@ class RelionWizEditParticleDisplay(EmWizard):
                 else:
                     form.setVar('shiftX', apply.axesToShow[apply.axesLabels[0]])
                     form.setVar('shiftY', apply.axesToShow[apply.axesLabels[1]])
+        else:
+            showError("Input validation error",
+                      "You need to select a subtomogram and a referenece mask",
+                      form.getRoot())
 
     def selectAxesToShow(self, axis, form):
         """ Method to select the axes to show """
