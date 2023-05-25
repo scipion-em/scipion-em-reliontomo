@@ -112,8 +112,8 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         labelFrameText = 'Shift center '
         if self.slices == 0:  # will be selected the central slice in Y
             labelFrameText += '(selected the central slice in Y Negative (Top))'
-            xdirection = 1
-            ydirection = -1
+            xdirection = -1
+            ydirection = 1
         else:  # will be selected the central slice in Z
             labelFrameText += '(selected the central slice in Z Negative (Front))'
             xdirection = 1
