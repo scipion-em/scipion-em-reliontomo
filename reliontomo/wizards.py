@@ -46,7 +46,8 @@ from reliontomo.protocols import (ProtRelionTomoReconstruct,
 from reliontomo.protocols.protocol_post_process import ProtRelionPostProcess
 from tomo.objects import SetOfTomograms
 from tomo.utils import getObjFromRelation
-from reliontomo.protocols.protocol_prepare_data import outputObjects as prepareProtOutputs
+from reliontomo.protocols.protocol_prepare_data import \
+    outputObjects as prepareProtOutputs
 
 RelionWizMtfSelector._targets.append((ProtRelionPostProcess, ['mtf']))
 
@@ -75,16 +76,19 @@ class RelionTomoIdsWizard(EmWizard):
 
 
 class RelionWizEditParticleDisplayWindows(Dialog):
-    def __init__(self, master,  tittle, subtomogram, mask3D, slices, axes, **args):
+    def __init__(self, master, tittle, subtomogram, mask3D, slices, axes,
+                 **args):
         self.subtomogram = subtomogram
         self.mask3D = mask3D
         self.axesToShow = axes
         self.axesLabels = list(self.axesToShow.keys())
         self.slices = slices
+        self.invertContrast = False
         Dialog.__init__(self, master, tittle, buttons=[('Close', RESULT_CLOSE),
                                                        ('Apply', RESULT_YES)],
-                default='Apply', icons={RESULT_CLOSE: Icon.BUTTON_CLOSE,
-                                        RESULT_YES: Icon.BUTTON_SELECT}, **args)
+                        default='Apply', icons={RESULT_CLOSE: Icon.BUTTON_CLOSE,
+                                                RESULT_YES: Icon.BUTTON_SELECT},
+                        **args)
 
     def body(self, master):
         # Creating the layout where all application elements will be placed
@@ -106,10 +110,14 @@ class RelionWizEditParticleDisplayWindows(Dialog):
 
         # Slider Frame
         labelFrameText = 'Shift center '
-        if self.slices == 0:  # will be selected the central slice in X
-            labelFrameText += '(selected the central slice in X)'
+        if self.slices == 0:  # will be selected the central slice in Y
+            labelFrameText += '(selected the central slice in Y Negative (Top))'
+            xdirection = 1
+            ydirection = -1
         else:  # will be selected the central slice in Z
-            labelFrameText += '(selected the central slice in Z)'
+            labelFrameText += '(selected the central slice in Z Negative (Front))'
+            xdirection = 1
+            ydirection = 1
 
         labelFrame = tk.LabelFrame(mainFrame, text=labelFrameText)
         labelFrame.grid(row=1, column=0, padx=0, pady=0, sticky='news')
@@ -125,7 +133,7 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         self.ax.get_xaxis().set_visible(False)
         self.ax.get_yaxis().set_visible(False)
         self.figure.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0,
-                               hspace=0)
+                                    hspace=0)
 
         # overlapping the images
         overlay_image = self.overlay_images(self.mask3D, self.subtomogram, 0, 0)
@@ -137,8 +145,11 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         self.canvas = FigureCanvasTkAgg(self.figure, master=plotFrame)
         self.canvas.draw()
         self.canvas.get_tk_widget().grid(row=0, column=0, columnspan=2)
-        self.canvas.get_tk_widget().bind("<Button-1>", self.get_sliders_position)
+        self.canvas.get_tk_widget().bind("<Button-1>",
+                                         self.get_sliders_position)
         self.canvas.get_tk_widget().bind("<B1-Motion>", self.update_sliders)
+        self.canvas.get_tk_widget().bind("<Double-Button-1>",
+                                         self.invert_contrast)
 
         # Creating the sliders
         dimension = self.subtomogram.shape[1]
@@ -157,7 +168,9 @@ class RelionWizEditParticleDisplayWindows(Dialog):
                                          value,
                                          self.second_slider.get(),
                                          self.ax,
-                                         self.canvas))
+                                         self.canvas,
+                                         xdirection,
+                                         ydirection))
         self.first_slider.grid(row=0, column=2, padx=10, pady=10, sticky='we')
         self.first_slider.set(self.axesToShow[self.axesLabels[0]])
 
@@ -165,16 +178,16 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         second_slider_label = tk.Label(sliderFrame, text=self.axesLabels[1])
         second_slider_label.grid(row=0, column=4, padx=10, pady=10, sticky='e')
         self.second_slider = tk.Scale(sliderFrame, from_=widgetRange[0],
-                                 to=widgetRange[1],
-                                 orient=tk.HORIZONTAL, length=100,
-                                 command=lambda
-                                     value: self.update_overlay_image(
-                                     self.mask3D,
-                                     self.subtomogram,
-                                     self.first_slider.get(),
-                                     value,
-                                     self.ax,
-                                     self.canvas))
+                                      to=widgetRange[1],
+                                      orient=tk.HORIZONTAL, length=100,
+                                      command=lambda
+                                          value: self.update_overlay_image(
+                                          self.mask3D,
+                                          self.subtomogram,
+                                          self.first_slider.get(),
+                                          value,
+                                          self.ax,
+                                          self.canvas))
         self.second_slider.grid(row=0, column=5, padx=10, pady=10, sticky='we')
         self.second_slider.set(self.axesToShow[self.axesLabels[1]])
 
@@ -189,13 +202,22 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         ratio = 5
         x = event.x
         y = event.y
-        moveX = int((self.last_x - x)/ratio)
-        moveY = int((self.last_y - y)/ratio)
+        moveX = int((self.last_x - x) / ratio)
+        moveY = int((self.last_y - y) / ratio)
 
         self.first_slider.set(self.first_sliderValue - moveX)
         self.second_slider.set(self.second_sliderValue - moveY)
 
-    def overlay_images(self, mask, subtomogram, shift_x, shift_y):
+    def invert_contrast(self, event):
+        self.invertContrast = not self.invertContrast
+        overlay_image = self.overlay_images(self.mask3D, self.subtomogram,
+                                            self.first_slider.get(),
+                                            self.second_slider.get())
+        self.ax.imshow(overlay_image, cmap='gray')
+        self.canvas.draw()
+
+    def overlay_images(self, mask, subtomogram, shift_x, shift_y, x_direction=1,
+                       y_direction=1):
         """
         Method to overlay the images
         """
@@ -204,10 +226,13 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         image2_norm = subtomogram / np.max(subtomogram)
 
         # Using np.roll function to roll the images along a given axis
-        shifted_image2 = np.roll(image2_norm, int(shift_x), axis=1)
-        shifted_image2 = np.roll(shifted_image2, int(shift_y), axis=0)
+        shifted_image2 = np.roll(image2_norm, int(x_direction * shift_x),
+                                 axis=1)
+        shifted_image2 = np.roll(shifted_image2, int(y_direction * shift_y),
+                                 axis=0)
         # # Invert contrast
-        shifted_image2 = np.subtract(1, shifted_image2)
+        if self.invertContrast:
+            shifted_image2 = np.subtract(1, shifted_image2)
         # Overlapping the images
         overlay_image = image1_norm * shifted_image2
         overlay_image = np.clip(overlay_image, 0, 1)
@@ -215,13 +240,15 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         return overlay_image
 
     def update_overlay_image(self, mask, subtomogram, slider_x_value,
-                             slider_y_value, ax, canvas):
+                             slider_y_value, ax, canvas, x_direction=1,
+                             y_direction=1):
 
         self.axesToShow[self.axesLabels[0]] = slider_x_value
         self.axesToShow[self.axesLabels[1]] = slider_y_value
         overlay_image = self.overlay_images(mask, subtomogram,
                                             int(slider_x_value),
-                                            int(slider_y_value))
+                                            int(slider_y_value), x_direction,
+                                            y_direction)
         ax.imshow(overlay_image, cmap='gray')
         canvas.draw()
 
@@ -252,21 +279,23 @@ class RelionWizEditParticleDisplay(EmWizard):
 
             # Taking the central slice of one axis
             dimension = subTomogram.shape[2]
-            central_slice = int(dimension/2)
+            central_slice = int(dimension / 2)
 
-            if slices == 0:  # will be selected a central slice in X
-                image_data_2d = subTomogram[:, :, central_slice]
-                mask = mask3D[:, :, central_slice]
+            if slices == 0:  # will be selected a central slice in Y
+                image_data_2d = subTomogram[:, central_slice, :]
+                mask = mask3D[:, central_slice, :]
             else:  # will be selected a central slice in Z
                 image_data_2d = subTomogram[central_slice, :, :]
                 mask = mask3D[central_slice, :, :]
 
-            apply = RelionWizEditParticleDisplayWindows(form.getRoot(), "Relion edit particle display wizard",
-                                                        image_data_2d, mask, slices, axes)
+            apply = RelionWizEditParticleDisplayWindows(form.getRoot(),
+                                                        "Relion edit particle display wizard",
+                                                        image_data_2d, mask,
+                                                        slices, axes)
 
             if apply.result == RESULT_YES:
                 if paramName == 'shiftZ':
-                    form.setVar('shiftY', apply.axesToShow[apply.axesLabels[0]])
+                    form.setVar('shiftX', apply.axesToShow[apply.axesLabels[0]])
                     form.setVar('shiftZ', apply.axesToShow[apply.axesLabels[1]])
                 else:
                     form.setVar('shiftX', apply.axesToShow[apply.axesLabels[0]])
@@ -278,10 +307,11 @@ class RelionWizEditParticleDisplay(EmWizard):
         """
         label, value = self._getInputProtocol(self._targets, form.protocol)
         if axis == 'shiftZ':
-            axes = {'Y': value[1], 'Z': value[2]}  # will be selected the slice in X
+            axes = {'X': value[0],
+                    'Z': value[2]}  # will be selected the slice in Y
             slices = 0
         else:  # 'shiftX or shiftY'
-            axes = {'X': value[0], 'Y': value[1]}  # will be selected the slice in Z
-            slices = 2
+            axes = {'X': value[0],
+                    'Y': value[1]}  # will be selected the slice in Z
+            slices = 1 if axis == 'shiftY' else 2
         return slices, axes
-
