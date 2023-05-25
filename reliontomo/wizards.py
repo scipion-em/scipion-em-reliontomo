@@ -98,6 +98,7 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         self.fillWizard(parentFrame)
 
     def fillWizard(self, parentFrame):
+        """Method to create the wizard window"""
         mainFrame = tk.Frame(parentFrame)
         mainFrame.grid(row=0, column=0, sticky='news')
         configureWeigths(mainFrame)
@@ -108,16 +109,12 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         plotFrame.grid(row=0, column=0, padx=0, pady=10, sticky='news')
         configureWeigths(plotFrame)
 
-        # Slider Frame
+        # Sliders Frame block
         labelFrameText = 'Shift center '
         if self.slices == 0:  # will be selected the central slice in Y
             labelFrameText += '(selected the central slice in Y Negative (Top))'
-            self.xdirection = -1
-            self.ydirection = 1
         else:  # will be selected the central slice in Z
             labelFrameText += '(selected the central slice in Z Negative (Front))'
-            self.xdirection = 1
-            self.ydirection = 1
 
         labelFrame = tk.LabelFrame(mainFrame, text=labelFrameText)
         labelFrame.grid(row=1, column=0, padx=0, pady=0, sticky='news')
@@ -168,9 +165,7 @@ class RelionWizEditParticleDisplayWindows(Dialog):
                                          value,
                                          self.second_slider.get(),
                                          self.ax,
-                                         self.canvas,
-                                         self.xdirection,
-                                         self.ydirection))
+                                         self.canvas))
         self.first_slider.grid(row=0, column=2, padx=10, pady=10, sticky='we')
         self.first_slider.set(self.axesToShow[self.axesLabels[0]])
 
@@ -187,9 +182,7 @@ class RelionWizEditParticleDisplayWindows(Dialog):
                                           self.first_slider.get(),
                                           value,
                                           self.ax,
-                                          self.canvas,
-                                         self.xdirection,
-                                         self.ydirection))
+                                          self.canvas))
         self.second_slider.grid(row=0, column=5, padx=10, pady=10, sticky='we')
         self.second_slider.set(self.axesToShow[self.axesLabels[1]])
 
@@ -200,17 +193,19 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         self.second_sliderValue = self.second_slider.get()
 
     def update_sliders(self, event):
+        """Method to update the sliders when drag and drop the image """
         # Ratio between canvas and slider values
         ratio = 5
         x = event.x
         y = event.y
-        moveX = int((self.last_x - x) / ratio) * self.xdirection
-        moveY = int((self.last_y - y) / ratio) * self.ydirection
+        moveX = -int((self.last_x - x) / ratio)
+        moveY = -int((self.last_y - y) / ratio)
 
         self.first_slider.set(self.first_sliderValue - moveX)
         self.second_slider.set(self.second_sliderValue - moveY)
 
     def invert_contrast(self, event):
+        """ Method to invert the contrast when double-click mouse action"""
         self.invertContrast = not self.invertContrast
         overlay_image = self.overlay_images(self.mask3D, self.subtomogram,
                                             self.first_slider.get(),
@@ -218,8 +213,7 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         self.ax.imshow(overlay_image, cmap='gray')
         self.canvas.draw()
 
-    def overlay_images(self, mask, subtomogram, shift_x, shift_y, x_direction=1,
-                       y_direction=1):
+    def overlay_images(self, mask, subtomogram, shift_x, shift_y):
         """
         Method to overlay the images
         """
@@ -228,9 +222,9 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         image2_norm = subtomogram / np.max(subtomogram)
 
         # Using np.roll function to roll the images along a given axis
-        shifted_image2 = np.roll(image2_norm, int(x_direction * shift_x),
+        shifted_image2 = np.roll(image2_norm, int(-shift_x),
                                  axis=1)
-        shifted_image2 = np.roll(shifted_image2, int(y_direction * shift_y),
+        shifted_image2 = np.roll(shifted_image2, int(-shift_y),
                                  axis=0)
         # # Invert contrast
         if self.invertContrast:
@@ -242,15 +236,15 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         return overlay_image
 
     def update_overlay_image(self, mask, subtomogram, slider_x_value,
-                             slider_y_value, ax, canvas, x_direction=1,
-                             y_direction=1):
+                             slider_y_value, ax, canvas):
+        """ Method to save the slider values in order to update the protocol
+        parameter and draw the overlapped images """
 
         self.axesToShow[self.axesLabels[0]] = slider_x_value
         self.axesToShow[self.axesLabels[1]] = slider_y_value
         overlay_image = self.overlay_images(mask, subtomogram,
                                             int(slider_x_value),
-                                            int(slider_y_value), x_direction,
-                                            y_direction)
+                                            int(slider_y_value))
         ax.imshow(overlay_image, cmap='gray')
         canvas.draw()
 
@@ -259,6 +253,7 @@ class RelionWizEditParticleDisplay(EmWizard):
     _targets = [(ProtRelionEditParticlesStar, ['shiftX', 'shiftY', 'shiftZ'])]
 
     def readMRC(self, file):
+        """Read an image using the imageHandler """
         image = ImageHandler().read(file + ':mrc')
         data = image.getData()
         return data
@@ -304,9 +299,7 @@ class RelionWizEditParticleDisplay(EmWizard):
                     form.setVar('shiftY', apply.axesToShow[apply.axesLabels[1]])
 
     def selectAxesToShow(self, axis, form):
-        """
-        Method to select the axes to show
-        """
+        """ Method to select the axes to show """
         label, value = self._getInputProtocol(self._targets, form.protocol)
         if axis == 'shiftZ':
             axes = {'X': value[0],

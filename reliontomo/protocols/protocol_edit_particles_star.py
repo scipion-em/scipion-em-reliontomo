@@ -75,7 +75,7 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
                       help='Perform centering of particles according to a position in the reference.')
         group = form.addGroup('Shift center', condition='doRecenter')
         group.addParam('averageSubTomogram', PointerParam, pointerClass='AverageSubTomogram',
-                      label='Relion average of subtomogram (optional)', allowsNull=True,
+                      label='Average of subtomogram (optional)', allowsNull=True,
                       )
         group.addParam('refMask', PointerParam, pointerClass='VolumeMask',
                        label='Reference mask (optional)', allowsNull=True,
