@@ -112,12 +112,12 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         labelFrameText = 'Shift center '
         if self.slices == 0:  # will be selected the central slice in Y
             labelFrameText += '(selected the central slice in Y Negative (Top))'
-            xdirection = -1
-            ydirection = 1
+            self.xdirection = -1
+            self.ydirection = 1
         else:  # will be selected the central slice in Z
             labelFrameText += '(selected the central slice in Z Negative (Front))'
-            xdirection = 1
-            ydirection = 1
+            self.xdirection = 1
+            self.ydirection = 1
 
         labelFrame = tk.LabelFrame(mainFrame, text=labelFrameText)
         labelFrame.grid(row=1, column=0, padx=0, pady=0, sticky='news')
@@ -169,8 +169,8 @@ class RelionWizEditParticleDisplayWindows(Dialog):
                                          self.second_slider.get(),
                                          self.ax,
                                          self.canvas,
-                                         xdirection,
-                                         ydirection))
+                                         self.xdirection,
+                                         self.ydirection))
         self.first_slider.grid(row=0, column=2, padx=10, pady=10, sticky='we')
         self.first_slider.set(self.axesToShow[self.axesLabels[0]])
 
@@ -187,7 +187,9 @@ class RelionWizEditParticleDisplayWindows(Dialog):
                                           self.first_slider.get(),
                                           value,
                                           self.ax,
-                                          self.canvas))
+                                          self.canvas,
+                                         self.xdirection,
+                                         self.ydirection))
         self.second_slider.grid(row=0, column=5, padx=10, pady=10, sticky='we')
         self.second_slider.set(self.axesToShow[self.axesLabels[1]])
 
@@ -202,8 +204,8 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         ratio = 5
         x = event.x
         y = event.y
-        moveX = int((self.last_x - x) / ratio)
-        moveY = int((self.last_y - y) / ratio)
+        moveX = int((self.last_x - x) / ratio) * self.xdirection
+        moveY = int((self.last_y - y) / ratio) * self.ydirection
 
         self.first_slider.set(self.first_sliderValue - moveX)
         self.second_slider.set(self.second_sliderValue - moveY)
