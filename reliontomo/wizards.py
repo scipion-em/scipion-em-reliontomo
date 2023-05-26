@@ -25,6 +25,8 @@
 # *
 # **************************************************************************
 import tkinter as tk
+from tkinter import BOTH
+
 import matplotlib as plt
 
 from pwem.emlib.image import ImageHandler
@@ -80,11 +82,13 @@ class RelionWizEditParticleDisplayWindows(Dialog):
     def __init__(self, master, tittle, subtomogram, mask3D, slices, axes,
                  **args):
         self.subtomogram = subtomogram
+        self.invert_contrast(doOverlay=False)
         self.mask3D = mask3D
         self.axesToShow = axes
         self.axesLabels = list(self.axesToShow.keys())
         self.slices = slices
-        self.invertContrast = False
+        self.hideMask = False
+
         Dialog.__init__(self, master, tittle, buttons=[('Close', RESULT_CLOSE),
                                                        ('Apply', RESULT_YES)],
                         default='Apply', icons={RESULT_CLOSE: Icon.BUTTON_CLOSE,
@@ -96,6 +100,7 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         parentFrame = tk.Frame(master)
         parentFrame.grid(row=0, column=0, sticky='news')
         configureWeigths(parentFrame)
+        self.resizable(False, False)
         self.fillWizard(parentFrame)
 
     def fillWizard(self, parentFrame):
@@ -104,6 +109,20 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         mainFrame.grid(row=0, column=0, sticky='news')
         configureWeigths(mainFrame)
         mainFrame.pack()
+
+        # Menu bar
+        menubar = tk.Menu(mainFrame)
+        menu_operation = tk.Menu(menubar, tearoff=False)
+        menu_operation.add_command(label="Invert contrast",
+                                   accelerator="(double-click)",
+                                   command=self.invert_contrast
+                                   )
+        menu_operation.add_command(label="Hide/show mask",
+                                   accelerator="(Ctrl-h)",
+                                   command=self.hide_mask
+                                   )
+        menubar.add_cascade(menu=menu_operation, label="Operations")
+        self.configure(menu=menubar)
 
         # Plot Frame
         plotFrame = tk.Frame(mainFrame)
@@ -124,9 +143,9 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         sliderFrame = tk.Frame(labelFrame)
         sliderFrame.grid(row=1, column=0, padx=0, pady=0, sticky='news')
         fill_label = tk.Label(sliderFrame, text='')
-        fill_label.grid(row=0, column=0, padx=90, pady=0, sticky='we')
+        fill_label.grid(row=0, column=0, padx=10, pady=0, sticky='we')
 
-        self.figure = Figure(figsize=(7, 7))
+        self.figure = Figure(figsize=(4, 4))
         self.ax = self.figure.add_subplot(111)
         self.ax.get_xaxis().set_visible(False)
         self.ax.get_yaxis().set_visible(False)
@@ -134,9 +153,9 @@ class RelionWizEditParticleDisplayWindows(Dialog):
                                     hspace=0)
 
         # overlapping the images
-        overlay_image = self.overlay_images(self.mask3D, self.subtomogram, 0, 0)
+        overlay_image = self.overlay_images(0, 0)
 
-        # Showing the image overlapped in the plot
+        # Showing the images overlapped in the plot
         self.ax.imshow(overlay_image, cmap='gray')
 
         # Creating the canvas
@@ -148,6 +167,7 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         self.canvas.get_tk_widget().bind("<B1-Motion>", self.update_sliders)
         self.canvas.get_tk_widget().bind("<Double-Button-1>",
                                          self.invert_contrast)
+        self.canvas.get_tk_widget().bind("<Control-h>", self.hide_mask)
 
         # Creating the sliders
         dimension = self.subtomogram.shape[1]
@@ -161,8 +181,6 @@ class RelionWizEditParticleDisplayWindows(Dialog):
                                      orient=tk.HORIZONTAL, length=100,
                                      command=lambda
                                          value: self.update_overlay_image(
-                                         self.mask3D,
-                                         self.subtomogram,
                                          value,
                                          self.second_slider.get(),
                                          self.ax,
@@ -178,8 +196,6 @@ class RelionWizEditParticleDisplayWindows(Dialog):
                                       orient=tk.HORIZONTAL, length=100,
                                       command=lambda
                                           value: self.update_overlay_image(
-                                          self.mask3D,
-                                          self.subtomogram,
                                           self.first_slider.get(),
                                           value,
                                           self.ax,
@@ -196,7 +212,7 @@ class RelionWizEditParticleDisplayWindows(Dialog):
     def update_sliders(self, event):
         """Method to update the sliders when drag and drop the image """
         # Ratio between canvas and slider values
-        ratio = 5
+        ratio = 4.15
         x = event.x
         y = event.y
         moveX = -int((self.last_x - x) / ratio)
@@ -205,46 +221,47 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         self.first_slider.set(self.first_sliderValue - moveX)
         self.second_slider.set(self.second_sliderValue - moveY)
 
-    def invert_contrast(self, event):
+    def invert_contrast(self, event=None, doOverlay=True):
         """ Method to invert the contrast when double-click mouse action"""
-        self.invertContrast = not self.invertContrast
-        overlay_image = self.overlay_images(self.mask3D, self.subtomogram,
-                                            self.first_slider.get(),
-                                            self.second_slider.get())
-        self.ax.imshow(overlay_image, cmap='gray')
-        self.canvas.draw()
+        self.subtomogram = np.subtract(1, self.subtomogram)
 
-    def overlay_images(self, mask, subtomogram, shift_x, shift_y):
+        if doOverlay:
+            self.update_overlay_image(self.first_slider.get(),
+                                      self.second_slider.get(),
+                                      self.ax, self.canvas)
+
+    def hide_mask(self, event=None):
+        """ Method to hide the mask when <ctrl-h> are preset"""
+        self.hideMask = not self.hideMask
+        self.update_overlay_image(self.first_slider.get(),
+                                  self.second_slider.get(),
+                                  self.ax, self.canvas)
+
+    def overlay_images(self, shift_x, shift_y):
         """
         Method to overlay the images
         """
-        # Normalizing the pixels values between 0 and 1
-        image1_norm = mask / np.max(mask)
-        image2_norm = subtomogram / np.max(subtomogram)
 
         # Using np.roll function to roll the images along a given axis
-        shifted_image2 = np.roll(image2_norm, int(-shift_x),
+        shifted_image2 = np.roll(self.subtomogram, int(-shift_x),
                                  axis=1)
         shifted_image2 = np.roll(shifted_image2, int(-shift_y),
                                  axis=0)
-        # # Invert contrast
-        if self.invertContrast:
-            shifted_image2 = np.subtract(1, shifted_image2)
+
         # Overlapping the images
-        overlay_image = image1_norm * shifted_image2
+        overlay_image = self.mask3D * shifted_image2 if not self.hideMask else shifted_image2
         overlay_image = np.clip(overlay_image, 0, 1)
 
         return overlay_image
 
-    def update_overlay_image(self, mask, subtomogram, slider_x_value,
+    def update_overlay_image(self, slider_x_value,
                              slider_y_value, ax, canvas):
         """ Method to save the slider values in order to update the protocol
         parameter and draw the overlapped images """
 
         self.axesToShow[self.axesLabels[0]] = slider_x_value
         self.axesToShow[self.axesLabels[1]] = slider_y_value
-        overlay_image = self.overlay_images(mask, subtomogram,
-                                            int(slider_x_value),
+        overlay_image = self.overlay_images(int(slider_x_value),
                                             int(slider_y_value))
         ax.imshow(overlay_image, cmap='gray')
         canvas.draw()
@@ -286,8 +303,12 @@ class RelionWizEditParticleDisplay(EmWizard):
                 image_data_2d = subTomogram[central_slice, :, :]
                 mask = mask3D[central_slice, :, :]
 
+            # Normalizing the pixels values between 0 and 1
+            mask = mask / np.max(mask)
+            image_data_2d = image_data_2d / np.max(image_data_2d)
+
             apply = RelionWizEditParticleDisplayWindows(form.getRoot(),
-                                                        "Relion edit particle display wizard",
+                                                        "Relion shifts wizard",
                                                         image_data_2d, mask,
                                                         slices, axes)
 
