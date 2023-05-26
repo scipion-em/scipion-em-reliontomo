@@ -82,11 +82,11 @@ class RelionWizEditParticleDisplayWindows(Dialog):
     def __init__(self, master, tittle, subtomogram, mask3D, slices, axes,
                  **args):
         self.subtomogram = subtomogram
+        self.invert_contrast(doOverlay=False)
         self.mask3D = mask3D
         self.axesToShow = axes
         self.axesLabels = list(self.axesToShow.keys())
         self.slices = slices
-        self.invertContrast = True
         self.hideMask = False
 
         Dialog.__init__(self, master, tittle, buttons=[('Close', RESULT_CLOSE),
@@ -153,7 +153,7 @@ class RelionWizEditParticleDisplayWindows(Dialog):
                                     hspace=0)
 
         # overlapping the images
-        overlay_image = self.overlay_images(self.mask3D, self.subtomogram, 0, 0)
+        overlay_image = self.overlay_images(0, 0)
 
         # Showing the images overlapped in the plot
         self.ax.imshow(overlay_image, cmap='gray')
@@ -181,8 +181,6 @@ class RelionWizEditParticleDisplayWindows(Dialog):
                                      orient=tk.HORIZONTAL, length=100,
                                      command=lambda
                                          value: self.update_overlay_image(
-                                         self.mask3D,
-                                         self.subtomogram,
                                          value,
                                          self.second_slider.get(),
                                          self.ax,
@@ -198,8 +196,6 @@ class RelionWizEditParticleDisplayWindows(Dialog):
                                       orient=tk.HORIZONTAL, length=100,
                                       command=lambda
                                           value: self.update_overlay_image(
-                                          self.mask3D,
-                                          self.subtomogram,
                                           self.first_slider.get(),
                                           value,
                                           self.ax,
@@ -216,7 +212,7 @@ class RelionWizEditParticleDisplayWindows(Dialog):
     def update_sliders(self, event):
         """Method to update the sliders when drag and drop the image """
         # Ratio between canvas and slider values
-        ratio = 4.4
+        ratio = 4.15
         x = event.x
         y = event.y
         moveX = -int((self.last_x - x) / ratio)
@@ -225,53 +221,47 @@ class RelionWizEditParticleDisplayWindows(Dialog):
         self.first_slider.set(self.first_sliderValue - moveX)
         self.second_slider.set(self.second_sliderValue - moveY)
 
-    def invert_contrast(self, event=None):
+    def invert_contrast(self, event=None, doOverlay=True):
         """ Method to invert the contrast when double-click mouse action"""
-        self.invertContrast = not self.invertContrast
-        self.update_overlay_image(self.mask3D, self.subtomogram,
-                                  self.first_slider.get(),
-                                  self.second_slider.get(),
-                                  self.ax, self.canvas)
+        self.subtomogram = np.subtract(1, self.subtomogram)
+
+        if doOverlay:
+            self.update_overlay_image(self.first_slider.get(),
+                                      self.second_slider.get(),
+                                      self.ax, self.canvas)
 
     def hide_mask(self, event=None):
         """ Method to hide the mask when <ctrl-h> are preset"""
         self.hideMask = not self.hideMask
-        self.update_overlay_image(self.mask3D, self.subtomogram,
-                                  self.first_slider.get(),
+        self.update_overlay_image(self.first_slider.get(),
                                   self.second_slider.get(),
                                   self.ax, self.canvas)
 
-    def overlay_images(self, mask, subtomogram, shift_x, shift_y):
+    def overlay_images(self, shift_x, shift_y):
         """
         Method to overlay the images
         """
-        # Normalizing the pixels values between 0 and 1
-        image1_norm = mask / np.max(mask)
-        image2_norm = subtomogram / np.max(subtomogram)
 
         # Using np.roll function to roll the images along a given axis
-        shifted_image2 = np.roll(image2_norm, int(-shift_x),
+        shifted_image2 = np.roll(self.subtomogram, int(-shift_x),
                                  axis=1)
         shifted_image2 = np.roll(shifted_image2, int(-shift_y),
                                  axis=0)
-        # # Invert contrast
-        if self.invertContrast:
-            shifted_image2 = np.subtract(1, shifted_image2)
+
         # Overlapping the images
-        overlay_image = image1_norm * shifted_image2 if not self.hideMask else shifted_image2
+        overlay_image = self.mask3D * shifted_image2 if not self.hideMask else shifted_image2
         overlay_image = np.clip(overlay_image, 0, 1)
 
         return overlay_image
 
-    def update_overlay_image(self, mask, subtomogram, slider_x_value,
+    def update_overlay_image(self, slider_x_value,
                              slider_y_value, ax, canvas):
         """ Method to save the slider values in order to update the protocol
         parameter and draw the overlapped images """
 
         self.axesToShow[self.axesLabels[0]] = slider_x_value
         self.axesToShow[self.axesLabels[1]] = slider_y_value
-        overlay_image = self.overlay_images(mask, subtomogram,
-                                            int(slider_x_value),
+        overlay_image = self.overlay_images(int(slider_x_value),
                                             int(slider_y_value))
         ax.imshow(overlay_image, cmap='gray')
         canvas.draw()
@@ -312,6 +302,10 @@ class RelionWizEditParticleDisplay(EmWizard):
             else:  # will be selected a central slice in Z
                 image_data_2d = subTomogram[central_slice, :, :]
                 mask = mask3D[central_slice, :, :]
+
+            # Normalizing the pixels values between 0 and 1
+            mask = mask / np.max(mask)
+            image_data_2d = image_data_2d / np.max(image_data_2d)
 
             apply = RelionWizEditParticleDisplayWindows(form.getRoot(),
                                                         "Relion edit particle display wizard",
