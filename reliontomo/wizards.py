@@ -308,7 +308,7 @@ class RelionWizEditParticleDisplay(EmWizard):
             image_data_2d = image_data_2d / np.max(image_data_2d)
 
             apply = RelionWizEditParticleDisplayWindows(form.getRoot(),
-                                                        "Relion edit particle display wizard",
+                                                        "Relion shifts wizard",
                                                         image_data_2d, mask,
                                                         slices, axes)
 
