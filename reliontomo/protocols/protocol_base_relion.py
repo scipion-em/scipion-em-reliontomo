@@ -23,8 +23,9 @@
 # *
 # **************************************************************************
 from os.path import exists, join
+from emtable import Table
 
-from pwem.objects import VolumeMask
+from pwem.objects import VolumeMask, FSC
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol import PointerParam
 from pyworkflow.utils import Message, createLink
@@ -104,4 +105,17 @@ class ProtRelionTomoBase(EMProtocol):
         readSetOfPseudoSubtomograms(psubtomoSet)
 
         return psubtomoSet
+
+    def genFSCs(self, starFile, tableName, fscColumns):
+        fscSet = self._createSetOfFSCs()
+        table = Table(fileName=starFile, tableName=tableName)
+        resolution_inv = table.getColumnValues('rlnResolution')
+        for columnName in fscColumns:
+            columValues = table.getColumnValues(columnName)
+            fsc = FSC(objLabel=columnName[3:])
+            fsc.setData(resolution_inv, columValues)
+            fscSet.append(fsc)
+
+        fscSet.write()
+        return fscSet
 

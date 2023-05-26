@@ -25,12 +25,14 @@
 # *
 # **************************************************************************
 from enum import Enum
-from pwem.objects import VolumeMask
+from pwem.objects import VolumeMask, FSC
 from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, BooleanParam, FloatParam, GE, LE, IntParam, FileParam
 from pyworkflow.utils import makePath
 from reliontomo import Plugin
-from reliontomo.constants import POST_PROCESS_MRC, POSTPROCESS_DIR
+from reliontomo.constants import POST_PROCESS_MRC, POSTPROCESS_DIR, \
+    POSTPROCESS_STAR_FSC_TABLE, \
+    POSTPROCESS_STAR_FSC_COLUMNS, FSC_REF_STAR
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
@@ -40,6 +42,7 @@ NO_MTF_FILE = 0
 class outputObjects(Enum):
     relionParticles = RelionSetOfPseudoSubtomograms
     postProcessVolume = VolumeMask
+    outputFSC = FSC
 
 
 class ProtRelionPostProcess(ProtRelionTomoBase):
@@ -154,8 +157,16 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
         inParticles = self.inReParticles.get()
         pSubtomoSet = self.genRelionParticles()
         postProccesMrc = self._genPostProcessOutputMrcFile(POST_PROCESS_MRC)
+
+        # Output FSC
+
+        fn = self._getExtraPath(FSC_REF_STAR)
+        setOfFSC = self.genFSCs(fn, POSTPROCESS_STAR_FSC_TABLE,
+                                POSTPROCESS_STAR_FSC_COLUMNS)
+
         self._defineOutputs(**{outputObjects.postProcessVolume.name: postProccesMrc,
-                               outputObjects.relionParticles.name: pSubtomoSet})
+                               outputObjects.relionParticles.name: pSubtomoSet,
+                               outputObjects.outputFSC.name: setOfFSC})
         self._defineSourceRelation(inParticles, postProccesMrc)
         self._defineSourceRelation(inParticles, pSubtomoSet)
 

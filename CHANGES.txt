@@ -1,3 +1,8 @@
+v3.2.0:
+  - Wizard to apply operation in relion particles
+  - 3D Classification defines its possible outputs
+  - An initio fixed (not using optimization set)
+  - Other FSCs are plotted in the refine and postprocess protocols
 v3.1.6:
   - 3D Classification more completed/standard
   - 3D classes can be fed to mapback or others

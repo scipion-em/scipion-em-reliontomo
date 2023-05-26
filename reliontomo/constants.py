@@ -143,8 +143,19 @@ IN_PARTICLES_STAR = 'inSubtomos.star'
 OUT_PARTICLES_STAR = 'particles.star'
 TRAJECTORIES_STAR = 'trajectories.star'
 MANIFOLDS_STAR = 'manifolds.star'
+
+REFINE_FSC_REF_STAR = '_model.star'
+REFINE_STAR_FSC_TABLE = 'model_class_1'
+REFINE_STAR_FSC_COLUMNS = ['rlnGoldStandardFsc', 'rlnFourierCompleteness']
+
 POSTPROCESS_DIR = 'PostProcess'
 FSC_REF_STAR = join(POSTPROCESS_DIR, 'postprocess.star')
+POSTPROCESS_STAR_FSC_TABLE = 'fsc'
+POSTPROCESS_STAR_FSC_COLUMNS = ['rlnFourierShellCorrelationCorrected',
+                                'rlnFourierShellCorrelationUnmaskedMaps',
+                                'rlnFourierShellCorrelationMaskedMaps',
+                                'rlnCorrectedFourierShellCorrelationPhaseRandomizedMaskedMaps']
+
 RE4_INDIV_GEN_FILES = [OUT_TOMOS_STAR, OUT_PARTICLES_STAR, TRAJECTORIES_STAR, MANIFOLDS_STAR, FSC_REF_STAR]
 OPTIMISATION_SET_STAR = 'optimisation_set.star'
 PSUBTOMOS_SQLITE = 'pseudosubtomograms%s.sqlite'
