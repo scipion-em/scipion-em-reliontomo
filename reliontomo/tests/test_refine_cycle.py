@@ -412,6 +412,9 @@ class TestRefineCycle(BaseTest):
     def _checkPseudosubtomograms(self, pSubtomosSet, boxSize=None, currentSRate=None):
         self.assertSetSize(pSubtomosSet, self.nParticles)
         self.assertEqual(currentSRate, pSubtomosSet.getSamplingRate())
+
+        self.assertEqual(300, pSubtomosSet.getAcquisition().getVoltage())
+
         for pSubtomo in pSubtomosSet:
             self.assertTrue(exists(pSubtomo.getFileName()))
             self.assertTrue(exists(pSubtomo.getCtfFile()))
