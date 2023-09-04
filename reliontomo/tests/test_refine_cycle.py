@@ -511,23 +511,23 @@ class TestRefineCycle(BaseTest):
         inPSubtomos = protEdit.inReParticles.get()
         outPSubtomos = getattr(protEdit, editStarOutputs.relionParticles.name, None)
 
-        fname = "/home/jjimenez/Desktop/test_JJ.txt"
-        with open(fname, 'a+') as fid:
-            counter = 0
-            for inPSubtomo, outPSubtomo in zip(inPSubtomos, outPSubtomos):
-                irot, itilt, ipsi = self._getAnglesFromPSubtomogram(inPSubtomo)
-                orot, otilt, opsi = self._getAnglesFromPSubtomogram(outPSubtomo)
-                fid.write(f'\n\nIteration {counter} -------------------------------------------\n'
-                          f'IROT={irot:.2f}\n'
-                          f'ITILT={itilt:.2f}\n'
-                          f'IPSI={ipsi:.2f}\n'
-                          f'OROT={orot:.2f}\n'
-                          f'OTILT={otilt:.2f}\n'
-                          f'OPSI={opsi:.2f}')
-                self.assertTrue(abs(irot + 5 - orot) < self.editTestsTol)
-                self.assertTrue(abs(itilt - otilt) < self.editTestsTol)
-                self.assertTrue(abs(ipsi - opsi) < self.editTestsTol)
-                counter += 1
+        # fname = "/home/jjimenez/Desktop/test_JJ.txt"
+        # with open(fname, 'a+') as fid:
+        #     counter = 0
+        for inPSubtomo, outPSubtomo in zip(inPSubtomos, outPSubtomos):
+            irot, itilt, ipsi = self._getAnglesFromPSubtomogram(inPSubtomo)
+            orot, otilt, opsi = self._getAnglesFromPSubtomogram(outPSubtomo)
+            # fid.write(f'\n\nIteration {counter} -------------------------------------------\n'
+            #           f'IROT={irot:.2f}\n'
+            #           f'ITILT={itilt:.2f}\n'
+            #           f'IPSI={ipsi:.2f}\n'
+            #           f'OROT={orot:.2f}\n'
+            #           f'OTILT={otilt:.2f}\n'
+            #           f'OPSI={opsi:.2f}')
+            self.assertTrue(abs(irot + 5 - orot) < self.editTestsTol)
+            self.assertTrue(abs(itilt - otilt) < self.editTestsTol)
+            self.assertTrue(abs(ipsi - opsi) < self.editTestsTol)
+            # counter += 1
 
     def testEditStar_multiplyCoordinates(self):
         # Values edited: multiply by 2 the X and Z coordinates
