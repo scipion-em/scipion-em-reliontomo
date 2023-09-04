@@ -1,3 +1,5 @@
+v3.2.1:
+  - Fix: Relion output now copies the acquisition.
 v3.2.0:
   - Wizard to apply operation in relion particles
   - 3D Classification defines its possible outputs
