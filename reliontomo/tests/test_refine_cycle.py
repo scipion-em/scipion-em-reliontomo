@@ -34,6 +34,7 @@ from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
 from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR, IN_PARTICLES_STAR, POSTPROCESS_DIR, \
     POST_PROCESS_MRC
+from reliontomo.convert.convertBase import getTransformInfoFromCoordOrSubtomo
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelionPrepareData, \
     ProtRelionMakePseudoSubtomograms, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms, \
     ProtRelionReconstructParticle, ProtRelionTomoReconstruct, ProtRelionEditParticlesStar
@@ -79,7 +80,7 @@ class TestRefineCycle(BaseTest):
     nParticles = 108
     boxSizeBin4 = 96
     boxSizeBin2 = 128
-    samplingRateOrig = 2.7
+    samplingRateOrig = 1.35
     tsIds = ['TS_45', 'TS_54']
     symmetry = 'C6'
     nClasses = 2
@@ -469,7 +470,7 @@ class TestRefineCycle(BaseTest):
     def _checkRelionRecTomos(self, protRec, expectedSize):
         outTomos = getattr(protRec, recTomoRelionOutputs.tomograms.name, None)
         self.assertSetSize(outTomos, expectedSize)
-        self.assertEqual(outTomos.getFirstItem().getDimensions(), (464, 480, 150))
+        self.assertEqual(outTomos.getFirstItem().getDimensions(), (480, 464, 150))
         self.assertEqual(outTomos.getSamplingRate(), self.samplingRateOrig * protRec.binFactor.get())
 
     def testMakePSubtomos(self):
@@ -506,12 +507,24 @@ class TestRefineCycle(BaseTest):
         protEdit = self.protEditStarAngles
         inPSubtomos = protEdit.inReParticles.get()
         outPSubtomos = getattr(protEdit, editStarOutputs.relionParticles.name, None)
-        for inPSubtomo, outPSubtomo in zip(inPSubtomos, outPSubtomos):
-            irot, itilt, ipsi = self._getAnglesFromPSubtomogram(inPSubtomo)
-            orot, otilt, opsi = self._getAnglesFromPSubtomogram(outPSubtomo)
-            self.assertTrue(abs(irot + 5 - orot) < self.editTestsTol)
-            self.assertTrue(abs(itilt - otilt) < self.editTestsTol)
-            self.assertTrue(abs(ipsi - opsi) < self.editTestsTol)
+
+        fname = "/home/jjimenez/Desktop/test_JJ.txt"
+        with open(fname, 'a+') as fid:
+            counter = 0
+            for inPSubtomo, outPSubtomo in zip(inPSubtomos, outPSubtomos):
+                irot, itilt, ipsi = self._getAnglesFromPSubtomogram(inPSubtomo)
+                orot, otilt, opsi = self._getAnglesFromPSubtomogram(outPSubtomo)
+                fid.write(f'\n\nIteration {counter} -------------------------------------------\n'
+                          f'IROT={irot:.2f}\n'
+                          f'ITILT={itilt:.2f}\n'
+                          f'IPSI={ipsi:.2f}\n'
+                          f'OROT={orot:.2f}\n'
+                          f'OTILT={otilt:.2f}\n'
+                          f'OPSI={opsi:.2f}')
+                self.assertTrue(abs(irot + 5 - orot) < self.editTestsTol)
+                self.assertTrue(abs(itilt - otilt) < self.editTestsTol)
+                self.assertTrue(abs(ipsi - opsi) < self.editTestsTol)
+                counter += 1
 
     def testEditStar_multiplyCoordinates(self):
         # Values edited: multiply by 2 the X and Z coordinates
@@ -547,9 +560,8 @@ class TestRefineCycle(BaseTest):
 
     @classmethod
     def _getAnglesFromPSubtomogram(cls, pSubtomo):
-        M = pSubtomo.getTransform().getMatrix()
-        rot, tilt, psi = euler_from_matrix(M)
-        return rot, tilt, psi
+        angles, _ = getTransformInfoFromCoordOrSubtomo(pSubtomo, pSubtomo.getSamplingRate())
+        return angles[:]
 
     def testInitialModel(self):
         protInitialModel = self.protInitialModel
@@ -592,7 +604,7 @@ class TestRefineCycle(BaseTest):
         # Check RelionTomoMetadata: only the particles file is generated
         self._checkRe4Metadata(mdObj,
                                tomogramsFile=self.protPrepare._getExtraPath(OUT_TOMOS_STAR),
-                               particlesFile=protAutoRefine._getExtraPath(OUT_PARTICLES_STAR),
+                               particlesFile=protAutoRefine._getExtraPath('_data.star'),
                                trajectoriesFile=None,
                                manifoldsFile=None,
                                referenceFscFile=None,

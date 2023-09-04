@@ -102,6 +102,7 @@ class ProtRelionTomoBase(EMProtocol):
             psubtomoSet.setBoxSize(boxSize)
 
         # Fill the items (pseudo subtomos/particles) from de particles star file
+        psubtomoSet.setSamplingRate(psubtomoSet.getCurrentSamplingRate())
         readSetOfPseudoSubtomograms(psubtomoSet)
 
         return psubtomoSet
