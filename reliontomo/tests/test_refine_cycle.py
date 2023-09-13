@@ -512,32 +512,20 @@ class TestRefineCycle(BaseTest):
         inPSubtomos = protEdit.inReParticles.get()
         outPSubtomos = getattr(protEdit, editStarOutputs.relionParticles.name, None)
 
-        fname = "/home/jjimenez/Desktop/test_JJ.txt"
-        with open(fname, 'a+') as fid:
-            counter = 0
-            for inPSubtomo, outPSubtomo in zip(inPSubtomos, outPSubtomos):
-                irot, itilt, ipsi = self._getAnglesFromPSubtomogram(inPSubtomo)
-                orot, otilt, opsi = self._getAnglesFromPSubtomogram(outPSubtomo)
-                newRot = irot + addedValue
-                # Angle must be expressed in a range of [-180, 180]
-                if newRot > 180:
-                    expectedRot = -180 + (newRot - 180)
-                elif newRot < -180:
-                    expectedRot = 180 + (newRot + 180)
-                else:
-                    expectedRot = newRot
-                fid.write(f'\n\nIteration {counter} -------------------------------------------\n'
-                          f'IROT={irot:.2f}\n'
-                          f'ITILT={itilt:.2f}\n'
-                          f'IPSI={ipsi:.2f}\n'
-                          f'OROT={orot:.2f}\n'
-                          f'OTILT={otilt:.2f}\n'
-                          f'OPSI={opsi:.2f}\n'
-                          f'EXPECTED_ROT={expectedRot:.2f}')
-                self.assertTrue(abs(orot - expectedRot) < self.editTestsTol)
-                self.assertTrue(abs(itilt - otilt) < self.editTestsTol)
-                self.assertTrue(abs(ipsi - opsi) < self.editTestsTol)
-                counter += 1
+        for inPSubtomo, outPSubtomo in zip(inPSubtomos, outPSubtomos):
+            irot, itilt, ipsi = self._getAnglesFromPSubtomogram(inPSubtomo)
+            orot, otilt, opsi = self._getAnglesFromPSubtomogram(outPSubtomo)
+            newRot = irot + addedValue
+            # Angle must be expressed in a range of [-180, 180]
+            if newRot > 180:
+                expectedRot = -180 + (newRot - 180)
+            elif newRot < -180:
+                expectedRot = 180 + (newRot + 180)
+            else:
+                expectedRot = newRot
+            self.assertTrue(abs(orot - expectedRot) < self.editTestsTol)
+            self.assertTrue(abs(itilt - otilt) < self.editTestsTol)
+            self.assertTrue(abs(ipsi - opsi) < self.editTestsTol)
 
     def testEditStar_multiplyCoordinates(self):
         # Values edited: multiply by 2 the X and Z coordinates
