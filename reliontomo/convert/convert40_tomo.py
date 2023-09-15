@@ -40,7 +40,7 @@ from reliontomo.convert.convertBase import (checkSubtomogramFormat,
                                             getTransformInfoFromCoordOrSubtomo,
                                             WriterTomo, ReaderTomo, getTransformMatrixFromRow)
 from reliontomo.objects import RelionPSubtomogram
-from tomo.constants import BOTTOM_LEFT_CORNER, TR_SCIPION, TR_RELION, SCIPION
+from tomo.constants import BOTTOM_LEFT_CORNER, TR_RELION, SCIPION
 from tomo.objects import Coordinate3D, SubTomogram, TomoAcquisition
 
 logger = logging.getLogger(__name__)

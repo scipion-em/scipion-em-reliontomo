@@ -146,7 +146,7 @@ MANIFOLDS_STAR = 'manifolds.star'
 
 REFINE_FSC_REF_STAR = '_model.star'
 REFINE_STAR_FSC_TABLE = 'model_class_1'
-REFINE_STAR_FSC_COLUMNS = ['rlnGoldStandardFsc', 'rlnFourierCompleteness']
+REFINE_STAR_FSC_COLUMNS = ['rlnGoldStandardFsc']
 
 POSTPROCESS_DIR = 'PostProcess'
 FSC_REF_STAR = join(POSTPROCESS_DIR, 'postprocess.star')
