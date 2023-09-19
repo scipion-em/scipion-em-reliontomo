@@ -409,6 +409,7 @@ class TestRefineCycle(BaseTest):
         self.assertEqual(referenceFscFile, pSubtomoSet.getReferenceFsc())
         self.assertEqual(relionBinning, pSubtomoSet.getRelionBinning())
         self.assertEqual(self.samplingRateOrig * relionBinning, pSubtomoSet.getCurrentSamplingRate())
+        self.assertTrue(pSubtomoSet.hasAlignment3D())  # Imported particles are oriented, so they have alignment
 
     def _checkPseudosubtomograms(self, pSubtomosSet, boxSize=None, currentSRate=None):
         self.assertSetSize(pSubtomosSet, self.nParticles)
