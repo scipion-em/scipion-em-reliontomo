@@ -43,6 +43,9 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
+
 # Arguments marked as "Required" below must be included for upload to PyPI.
 # Fields marked as "Optional" may be commented out.
 
@@ -199,4 +202,7 @@ setup(
         'Bug Reports': 'https://github.com/scipion-em/scipion-em-reliontomo/issues',
         'Source': 'https://github.com/scipion-em/scipion-em-reliontomo/',
     },
+    # For an analysis of "install_requires" vs pip's requirements files see:
+    # https://packaging.python.org/en/latest/requirements.html
+    install_requires=[requirements],  # Optional
 )
