@@ -1,6 +1,5 @@
-v3.2.2:
-  - Installation requirements better managed.
 v3.2.1:
+  - Installation requirements better managed.
   - Fix: Relion output now copies the acquisition.
   - Fix: The sampling rate displayed for the initial volume was incorrect.
   - Fix: FSC object stored unused data for the FSC viewer. That data was removed.
