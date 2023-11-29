@@ -206,7 +206,7 @@ class TestRefineCycle(BaseTest):
         protPrepare = cls.newProtocol(ProtRelionPrepareData,
                                       inputCtfTs=cls.ctfTomoSeries,
                                       inputCoords=cls.inCoords,
-                                      inputTS=cls.inTS,
+                                      inputTS=cls.tsWithAlignment,
                                       flipYZ=True,
                                       flipZ=True)
         return cls.launchProtocol(protPrepare)

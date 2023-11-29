@@ -1,3 +1,5 @@
+v3.2.2:
+  - Installation requirements better managed.
 v3.2.1:
   - Fix: Relion output now copies the acquisition.
   - Fix: The sampling rate displayed for the initial volume was incorrect.
