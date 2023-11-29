@@ -52,5 +52,9 @@ try:
             """ Run Relion command from a given protocol. """
             protocol.runJob(program, args, cwd=cwd, env=cls.getEnviron(), numberOfMpi=numberOfMpi)
 
+        @classmethod
+        def defineBinaries(cls, env):
+            pass
+
 except Exception as e:
     pass
