@@ -24,7 +24,7 @@
 # **************************************************************************
 _logo = "relion_logo.png"
 _references = ['Scheres2012a', 'Scheres2012b', 'Kimanius2016', 'Zivanov2018']
-__version__ = '3.2.2'
+__version__ = '3.2.1'
 
 try:
     import pwem
