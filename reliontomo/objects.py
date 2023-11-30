@@ -317,7 +317,13 @@ def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, coordsPointer, te
     psubtomoSet.setBoxSize(boxSize)
     psubtomoSet.setNReParticles(nReParticles)
     psubtomoSet.setCoordinates3D(coordsPointer)
+
+    # Clone acquisition from tomograms
+    acquisition = coordsPointer.get().getPrecedents().getAcquisition()
+    newAcquisition = acquisition.clone()
+    psubtomoSet.setAcquisition(newAcquisition)
     return psubtomoSet
+
 
 
 class StarFileComparer:

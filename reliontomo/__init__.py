@@ -22,37 +22,39 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-from relion import V3_1
-
-import pwem
-import relion
-from reliontomo.constants import RELIONTOMO_HOME, RELIONTOMO_DEFAULT, RELION, RELIONTOMO_CUDA_LIB, V4_0
-
 _logo = "relion_logo.png"
 _references = ['Scheres2012a', 'Scheres2012b', 'Kimanius2016', 'Zivanov2018']
-__version__ = '3.2.0'
+__version__ = '3.2.1'
 
+try:
+    import pwem
+    from reliontomo.constants import RELIONTOMO_HOME, RELIONTOMO_DEFAULT, RELION, RELIONTOMO_CUDA_LIB, V4_0
+    import relion
+    from relion import V3_1
 
-class Plugin(relion.Plugin):
-    _supportedVersions = [V4_0]
-    _homeVar = RELIONTOMO_HOME
-    _pathVars = [RELIONTOMO_HOME]
+    class Plugin(relion.Plugin):
+        _supportedVersions = [V4_0]
+        _homeVar = RELIONTOMO_HOME
+        _pathVars = [RELIONTOMO_HOME]
 
-    @classmethod
-    def _defineVariables(cls):
-        cls._defineEmVar(RELIONTOMO_HOME, 'relion-%s' % V4_0)
-        cls._defineVar(RELIONTOMO_CUDA_LIB, pwem.Config.CUDA_LIB)
+        @classmethod
+        def _defineVariables(cls):
+            cls._defineEmVar(RELIONTOMO_HOME, 'relion-%s' % V4_0)
+            cls._defineVar(RELIONTOMO_CUDA_LIB, pwem.Config.CUDA_LIB)
 
-    @staticmethod
-    def isRe40():
-        """We only allow one version older than 4.0, which is 3.1"""
-        return False if Plugin.getHome().endswith(V3_1) else True
+        @staticmethod
+        def isRe40():
+            """We only allow one version older than 4.0, which is 3.1"""
+            return False if Plugin.getHome().endswith(V3_1) else True
 
-    @classmethod
-    def runRelionTomo(cls, protocol, program, args, cwd=None, numberOfMpi=1):
-        """ Run Relion command from a given protocol. """
-        protocol.runJob(program, args, cwd=cwd, env=cls.getEnviron(), numberOfMpi=numberOfMpi)
+        @classmethod
+        def runRelionTomo(cls, protocol, program, args, cwd=None, numberOfMpi=1):
+            """ Run Relion command from a given protocol. """
+            protocol.runJob(program, args, cwd=cwd, env=cls.getEnviron(), numberOfMpi=numberOfMpi)
 
-    @classmethod
-    def defineBinaries(cls, env):
-        pass
+        @classmethod
+        def defineBinaries(cls, env):
+            pass
+
+except Exception as e:
+    pass

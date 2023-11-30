@@ -58,7 +58,7 @@ def getTransformInfoFromCoordOrSubtomo(obj, samplingRate):
     M = np.linalg.inv(M)
 
     angles = -np.rad2deg(euler_from_matrix(M, axes='szyz'))
-    shifts *=samplingRate
+    shifts *= samplingRate
 
     return angles, shifts
 
