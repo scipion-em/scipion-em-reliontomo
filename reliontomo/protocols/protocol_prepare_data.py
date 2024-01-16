@@ -74,10 +74,14 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
 
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
-
+        form.addParam('inputCoords', PointerParam,
+                      pointerClass='SetOfCoordinates3D',
+                      label="Coordinates",
+                      important=True,
+                      allowsNull=False)
         form.addParam('inputCtfTs', PointerParam,
                       pointerClass='SetOfCTFTomoSeries',
-                      label="Input CTF tomo series",
+                      label="CTF tomo series",
                       important=True,
                       allowsNull=False)
         form.addParam('handeness', BooleanParam,
@@ -86,27 +90,19 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
                       expertLevel=LEVEL_ADVANCED,
                       help='It is the handedness of the tilt geometry and it is used to describe '
                            'whether the focus increases or decreases as a function of Z distance.')
-        form.addParam('inputCoords', PointerParam,
-                      pointerClass='SetOfCoordinates3D',
-                      label="Input coordinates",
-                      important=True,
-                      allowsNull=False)
         form.addParam('inputTS', PointerParam,
                       help="Tilt series with alignment (non interpolated) used in the tomograms reconstruction.",
                       pointerClass='SetOfTiltSeries',
-                      label="Input tilt series",
+                      label="Tilt series",
                       important=True,
                       allowsNull=False)
-
         form.addParam('flipZCoords', BooleanParam,
                       label='Flip Z coordinate?',
                       default=False,
                       help='This option is generally False if your coordinates are displayed correctly in Scipion. '
                            'You may want to check this to True only if you see that the extracted subtomograms'
                            ' are wrong.',
-                      expertLevel=LEVEL_ADVANCED
-                      )
-
+                      expertLevel=LEVEL_ADVANCED)
         form.addParam('flipYZ', BooleanParam,
                       label='Has tomogram been flipped along Y and Z?',
                       default=True,
@@ -120,7 +116,6 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
                       default=True,
                       help='This option is generally True when you apply reconstrucion in Imod. This is usually used '
                            'together with the flipYZ option.')
-
         form.addParam('swapXY', BooleanParam,
                       label='Swap X with Y dimensions of the tilt series',
                       default=False,
@@ -147,10 +142,10 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
 
         # Compute matching TS id among coordinates and tilt series, both could be a subset
         coordsTsIds = self.coords.getTSIds()
-        self.info("Tilt series present in coordinates are: %s" % coordsTsIds)
+        self.info("TsIds present in coordinates are: %s" % coordsTsIds)
 
         tsIds = self.tsSet.getTSIds()
-        self.info("Tilt series present in Tilt series are: %s" % tsIds)
+        self.info("TsIds present in Tilt series are: %s" % tsIds)
 
         # Intersection
         self.matchingTSIds = set(coordsTsIds).intersection(tsIds)
@@ -296,18 +291,11 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
         self._defineSourceRelation(self.tsSet, fiducialModelGaps)
 
     # -------------------------- INFO functions -------------------------------
-    # def _validate(self):
-    #     # TODO: generar los nombres culled --> tsId_culled.st:mrc cuando se quiten vistas con IMOD
-    #     valMsg = []
-    #
-    #     if not self.inputTS.get():
-    #         try:
-    #             self._getTiltSeriesNonInterpolated()
-    #         except:
-    #             valMsg.append('Unable to go via relations from the introduced coordinates to the '
-    #                           'corresponding non-interpolated tilt series. Please introduce them using the '
-    #                           'advanced parameter "Tilt series with alignment..."')
-    #     return valMsg
+    def _warnings(self):
+        warnMsg = []
+        if not self.inputTS.get().hasAlignment():
+            warnMsg.append('The introduced tilt series do not have an alignment transformation associated.')
+        return warnMsg
 
     def _summary(self):
         msg = []
