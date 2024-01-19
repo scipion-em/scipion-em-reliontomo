@@ -205,7 +205,7 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
 
         # Simulate the etomo files that serve as entry point to relion4
         self._simulateETomoFiles(self.tsSet, tomoSizeDict, tomoShiftsDict, binned=1, binByFactor=self.coordScale,
-                                 whiteList=self.matchingTSIds, swapDims=self.swapXY.get())
+                                 whiteList=self.matchingTSIds, swapDims=self.swapXY.get(), tltIgnoresExcluded=True)
 
         # Write the tomograms star file
         writeSetOfTomograms(self.tsSet,
@@ -232,7 +232,7 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
         coords=self.inputCoords.get()
         coordSize = coords.getBoxSize()
         tsSamplingRate = self.tsSet.getSamplingRate()
-        fiducialSize = int((coordSize * coords.getSamplingRate()) / (2*10)) # Box size is too large, a tenth of the half (radius)
+        fiducialSize = int((coordSize * coords.getSamplingRate()) / (2*10))  # Radius in nm
 
         psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
                                                      self._getExtraPath(OPTIMISATION_SET_STAR),
