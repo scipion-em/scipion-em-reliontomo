@@ -1,5 +1,6 @@
-v3.2.1:
-  - Hotfix: the prototol visualization on the left panel was fixed.
+v3.2.2:
+  - Hotfix: the protocol visualization on the left panel was fixed.
+  - Call the tlt file generation method considering the excluded views.
 v3.2.1:
   - Installation requirements better managed.
   - Fix: Relion output now copies the acquisition.
