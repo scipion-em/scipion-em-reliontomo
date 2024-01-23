@@ -49,7 +49,7 @@ class outputObjects(Enum):
 class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
     """3D Classification of subtomograms."""
 
-    _label = '3D Classification of subtomograms'
+    _label = '3D Classification of pseudo-subtomograms'
     modelTable = Table()
     classesTable = Table()
     opticsTable = Table()
