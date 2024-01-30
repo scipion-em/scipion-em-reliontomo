@@ -336,8 +336,8 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         cmd += '--pool %i ' % self.pooledSubtomos.get()
         if self.allParticlesRam.get():
             cmd += '--preread_images '
-        if self.skipGridding.get():
-            cmd += '--skip_gridding '
+        if not self.skipGridding.get():
+            cmd += '--dont_skip_gridding '
         if not self.combineItersDisc.get():
             cmd += '--dont_combine_weights_via_disc '
         if self.scratchDir.get():
