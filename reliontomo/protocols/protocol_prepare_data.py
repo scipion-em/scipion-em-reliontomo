@@ -293,7 +293,7 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
     # -------------------------- INFO functions -------------------------------
     def _warnings(self):
         warnMsg = []
-        if not self.inputTS.get().hasAlignment():
+        if not (self.inputTS.get().hasAlignment() and not self.inputTS.get().interpolated()):
             warnMsg.append('The introduced tilt series do not have an alignment transformation associated.')
         return warnMsg
 
