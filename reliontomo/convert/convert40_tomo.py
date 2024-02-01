@@ -112,10 +112,10 @@ class Writer(WriterTomo):
                 int(getattr(coord, '_classNumber', -1)),  # 13_rlnClassNumber
                 # Alternated 1 and 2 values
                 int(getattr(coord, '_randomSubset', (i % 2) + 1)),  # 14 _rlnRandomSubset
-                int(coord.getX(SCIPION)),  # 15 _sciXCoord
-                int(coord.getY(SCIPION)),  # 16 _sciYCoord
-                int(coord.getZ(SCIPION)),   # 17 _sciZCoord
-                coord.getGroupId() # 18 _sciGroupId
+                coord.getX(SCIPION),  # 15 _sciXCoord
+                coord.getY(SCIPION),  # 16 _sciYCoord
+                coord.getZ(SCIPION),   # 17 _sciZCoord
+                coord.getGroupId()  # 18 _sciGroupId
             )
             i += 1
         # Write the STAR file
