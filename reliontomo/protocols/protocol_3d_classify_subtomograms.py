@@ -31,7 +31,7 @@ from emtable import Table
 from pyworkflow.protocol import Form
 from pyworkflow.object import Float
 from pyworkflow.utils import moveFile, createLink
-from reliontomo.constants import OUT_PARTICLES_STAR
+from reliontomo.constants import OUT_PARTICLES_STAR, TOMO_PARTICLE_ID
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols import ProtRelionRefineSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
@@ -292,6 +292,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         with open(dataStar) as fid:
             self.opticsTable.readStar(fid, 'optics')
             self.particlesTable.readStar(fid, 'particles')
+            self.particlesTable.sort(TOMO_PARTICLE_ID)
 
         # Model table has only one row, while classes table has the same number of rows as classes found
         self.nClasses = int(self.modelTable._rows[0].rlnNrClasses)

@@ -1,3 +1,5 @@
+v3.2.3:
+  - Fix the 3d classification Scipion Classes objects generation (previous bad particle assignment).
 v3.2.2:
  Users:
   - Hotfix: the protocol visualization on the left panel was fixed.
