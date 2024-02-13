@@ -49,9 +49,12 @@ class EnumRe4GenFilesProps(Enum):
 
 class RelionPSubtomogram(SubTomogram):
 
+    TS_ID_ATTRIBUTE = '_volName'
+
     def __init__(self, fileName=None, samplingRate=None, ctfFile=None, tsId=None, classId=None,
                  x=None, y=None, z=None, rdnSubset=None, re4ParticleName=None,
-                 opticsGroupId=1, manifoldIndex=None, **kwargs):
+                 opticsGroupId=1, manifoldIndex=None, logLikeliCont=None, maxValProbDist=None,
+                 noSignifSamples=None, **kwargs):
         super().__init__(**kwargs)
         self.setFileName(fileName)
         self.setSamplingRate(samplingRate)
@@ -65,6 +68,9 @@ class RelionPSubtomogram(SubTomogram):
         self._re4ParticleName = String(re4ParticleName)
         self._opticsGroupId = Integer(opticsGroupId)
         self._manifoldIndex = Integer(manifoldIndex)
+        self._logLikeliContribution = Float(logLikeliCont)
+        self._maxValueProbDistribution = Float(maxValProbDist)
+        self._nrOfSignificantSamples = Integer(noSignifSamples)
 
     def getCtfFile(self):
         return self._ctfFile.get()

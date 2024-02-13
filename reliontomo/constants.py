@@ -82,6 +82,9 @@ MANIFOLD_INDEX = 'rlnTomoManifoldIndex'
 RANDOM_SUBSET = 'rlnRandomSubset'
 OPTICS_GROUP = 'rlnOpticsGroup'
 CTF_IMAGE = 'rlnCtfImage'
+LOG_LIKELI_CONTRIB = 'rlnLogLikeliContribution'
+MAX_VALUE_PROB_DISTRIB = 'rlnMaxValueProbDistribution'
+NO_SIGNIFICANT_SAMPLES = 'rlnNrOfSignificantSamples'
 
 # Optimisation set fields
 OPT_PARTICLES_STAR = 'rlnTomoParticlesFile'

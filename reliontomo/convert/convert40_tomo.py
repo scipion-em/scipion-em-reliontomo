@@ -397,8 +397,11 @@ class Reader(ReaderTomo):
                                           rdnSubset=row.get(RANDOM_SUBSET, counter % 2),  # 1 and 2 alt. by default
                                           re4ParticleName=row.get(TOMO_PARTICLE_NAME),
                                           opticsGroupId=row.get(OPTICS_GROUP, 1),
-                                          manifoldIndex=row.get(MANIFOLD_INDEX, 1 if counter % 2 else -1),
-                                          )  # 1 and -1
+                                          manifoldIndex=row.get(MANIFOLD_INDEX, 1 if counter % 2 else -1),  # 1 and -1
+                                          logLikeliCont=row.get(LOG_LIKELI_CONTRIB, -1),
+                                          maxValProbDist=row.get(MAX_VALUE_PROB_DISTRIB, -1),
+                                          noSignifSamples=row.get(NO_SIGNIFICANT_SAMPLES, -1)
+                                          )
 
             # Keeping particle id
             psubtomo.setObjId(row.get(TOMO_PARTICLE_ID))
