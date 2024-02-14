@@ -1,5 +1,4 @@
 emtable
-scipion-em-tomo
+scipion-em-tomo>=3.5.1
 scipion-em-relion
 scipion-em-imod
-# TODO: manage the defocus files generation from em-tomo, so the imod req. can be removed from here
