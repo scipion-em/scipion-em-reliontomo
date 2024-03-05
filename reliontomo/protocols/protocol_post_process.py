@@ -26,7 +26,6 @@
 # **************************************************************************
 from enum import Enum
 from pwem.objects import VolumeMask, FSC
-from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, BooleanParam, FloatParam, GE, LE, IntParam, FileParam
 from pyworkflow.utils import makePath
 from reliontomo import Plugin
@@ -48,8 +47,7 @@ class outputObjects(Enum):
 class ProtRelionPostProcess(ProtRelionTomoBase):
     """Sharpen a 3D reference map and estimate the gold-standard FSC curves for subtomogram averaging"""
 
-    _label = 'postprocessing'
-    _devStatus = BETA
+    _label = 'Post-processing'
     _possibleOutputs = outputObjects
 
     def __init__(self, **kargs):
@@ -143,6 +141,7 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
                       label='Original detector pixel size ((Å)/pix)',
                       help='This is the original pixel size (in Angstroms) in the raw (non-super-resolution!) '
                            'micrographs.')
+        self._defineExtraParams(form)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -194,5 +193,7 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
         # Filtering
         if self.skipFscWeight.get():
             cmd += '--skip_fsc_weighting --low_pass %i ' % self.adHocLowPassFilter.get()
+        # Extra params
+        cmd += self._genExtraParamsCmd()
 
         return cmd

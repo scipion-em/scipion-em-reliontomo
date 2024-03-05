@@ -318,9 +318,7 @@ class TestRelionTomoRecParticleFromTs(TestRefineCycleBase):
                       'croppedBoxSize': cls.croppedBoxSizeBin2,
                       'binningFactor': cls.binFactor2,
                       'symmetry': cls.symmetry,
-                      'outputInFloat16': False,
-                      'numberOfThreads': 5,
-                      'numberOfMpi': 3}
+                      'outputInFloat16': False}
         if solventMask:
             paramsDict['solventMask'] = solventMask
         return paramsDict

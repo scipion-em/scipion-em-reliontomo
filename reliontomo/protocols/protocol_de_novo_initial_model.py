@@ -39,7 +39,7 @@ class outputObjects(Enum):
 class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
     """Generate a de novo 3D initial model from the pseudo-subtomograms."""
 
-    _label = 'De novo 3D initial model'
+    _label = '3D initial model'
     _possibleOutputs = outputObjects
 
     def __init__(self, **kwargs):

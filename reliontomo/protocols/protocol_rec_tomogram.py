@@ -25,7 +25,6 @@
 from enum import Enum
 from pwem.convert.headers import fixVolume
 from pwem.protocols import EMProtocol
-from pyworkflow import BETA
 from pyworkflow.protocol.params import FloatParam, IntParam, StringParam, PointerParam, EnumParam
 from pyworkflow.utils import Message
 from reliontomo import Plugin
@@ -50,7 +49,6 @@ class ProtRelionTomoReconstruct(EMProtocol):
     """
     _label = 'Reconstruct tomograms from prepare data prot'
     _possibleOutputs = OutputObjects
-    _devStatus = BETA
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

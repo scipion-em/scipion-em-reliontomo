@@ -43,7 +43,7 @@ class deformationModels(Enum):
 class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase):
     """Tomo frame align"""
 
-    _label = 'Tomo frame align'
+    _label = 'Frame alignment'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -130,6 +130,7 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase):
                        label='Refine deformations per frame?',
                        default=False,
                        help='If set to Yes, it models deformations per tilt frame instead of per tilt series.')
+        self._defineExtraParams(form)
         form.addParallelSection(threads=4, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------

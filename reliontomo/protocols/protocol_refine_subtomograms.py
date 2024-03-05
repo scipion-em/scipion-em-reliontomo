@@ -25,19 +25,15 @@
 import glob
 import re
 from enum import Enum
-from emtable import Table
 from pwem.convert.headers import fixVolume
 from pwem.objects import SetOfFSCs
-from pyworkflow import BETA
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
 from os.path import getmtime
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, StringParam, BooleanParam, EnumParam
-from pyworkflow.utils import createLink
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, \
-    OUT_PARTICLES_STAR, REFINE_FSC_REF_STAR, REFINE_STAR_FSC_TABLE, \
-    REFINE_STAR_FSC_COLUMNS
+    REFINE_FSC_REF_STAR, REFINE_STAR_FSC_TABLE, REFINE_STAR_FSC_COLUMNS
 from reliontomo.utils import getProgram
 from tomo.objects import AverageSubTomogram
 
@@ -49,10 +45,9 @@ class outputObjects(Enum):
 
 
 class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
-    """Auto-refinement of subtomograms."""
+    """3D auto-refine"""
 
     _label = 'Auto-refinement of subtomograms'
-    _devStatus = BETA
     _possibleOutputs = outputObjects
     FILE_KEYS = ['data', 'optimiser', 'sampling']
     PREFIXES = ['half1_', 'half2_']
