@@ -157,11 +157,6 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
         # if Plugin.IS_GT30():
         params += ' --class %d' % self.classNum.get()
 
-        if self.doCTF:
-            params += ' --ctf'
-            if self.ctfIntactFirstPeak:
-                params += ' --ctf_intact_first_peak'
-
         if self.extraParams.hasValue():
             params += " " + self.extraParams.get()
 
