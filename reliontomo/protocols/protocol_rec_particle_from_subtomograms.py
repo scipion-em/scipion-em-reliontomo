@@ -81,7 +81,6 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
                       label='Extra parameters: ', 
                       help='Extra parameters to *relion_reconstruct* program. '
                            'Address to Relion to see full list of options.')
-        ProtRelionTomoBase._defineExtraParams(form)
         form.addParallelSection(threads=0, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------
