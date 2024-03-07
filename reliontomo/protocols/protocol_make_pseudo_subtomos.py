@@ -40,14 +40,14 @@ class outputObjects(Enum):
 class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticleBase, ProtTomoBase):
     """Make pseudo-subtomograms"""
 
-    _label = 'Make pseudo-subtomograms'
+    _label = 'Make pseudo-subtomos'
     _possibleOutputs = outputObjects
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
         super()._defineParams(form)
         form.addSection(label='Reconstruct pseudo-Subtomograms')
-        super()._defineCommonRecParams(form)
+        self._defineCommonRecParams(form)
         form.addParam('applyConeWeight', BooleanParam,
                       label='Apply cone weight?',
                       default=False,
@@ -72,6 +72,7 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
                       help='If set to Yes, this program will write output images in float16 MRC format. This will '
                            'save a factor of two in disk space compared to the default of writing in float32. Note '
                            'that RELION and CCPEM will read float16 images, but other programs may not (yet) do so.')
+        self._defineExtraParams(form)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

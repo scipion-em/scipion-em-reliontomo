@@ -1,3 +1,10 @@
+v3.4.0:
+  Users:
+   - Add extra params to some more protocols apart from refine subtomograms.
+   - Fix some initial MPI/Threads combinations (Thanks to Bram Koster).
+   - Rename the protocols the same as in native Relion.
+  Developers:
+   - Remove BETA status
 v3.3.0:
   Users:
     - After having performed a refine or classification of particles, fields _rlnLogLikeliContribution,

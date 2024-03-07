@@ -23,7 +23,6 @@
 # *
 # **************************************************************************
 from enum import Enum
-from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, IntParam, GE, LE
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
@@ -36,7 +35,6 @@ class outputObjects(Enum):
 class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
     """Base protocol used for the getting the frame alignment and ctf-refinment"""
 
-    _devStatus = BETA
     _possibleOutputs = outputObjects
 
     # -------------------------- DEFINE param functions -----------------------
@@ -95,6 +93,7 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
         if postProcess:
             cmd += '--fsc %s ' % postProcess
         cmd += '--b %i ' % self.boxSize.get()
+        cmd += self._genExtraParamsCmd()
         return cmd
 
 

@@ -22,7 +22,6 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-from pyworkflow import BETA
 from pyworkflow.protocol import IntParam, FloatParam
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
@@ -31,15 +30,14 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
     """Reconstruct particle and make pseudo-subtomograms base class"""
 
     _label = None
-    _devStatus = BETA
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        super()._defineCommonInputParams(form)
-        form.addParallelSection(threads=1, mpi=1)
+        self._defineCommonInputParams(form)
+        form.addParallelSection(threads=1, mpi=3)
 
     @staticmethod
     def _defineCommonRecParams(form):
@@ -92,10 +90,9 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
         if inRelionParticles.getTrajectories():
             cmd += '--mot %s ' % inRelionParticles.getTrajectories()
 
-
         cmd += '--b %i ' % self.boxSize.get()
         cmd += '--crop %i ' % self.croppedBoxSize.get()
         cmd += '--bin %.1f ' % self.binningFactor.get()
         cmd += '--j %i ' % self.numberOfThreads.get()
+        cmd += self._genExtraParamsCmd()
         return cmd
-

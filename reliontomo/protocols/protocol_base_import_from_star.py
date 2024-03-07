@@ -26,7 +26,6 @@ from enum import Enum
 from os import symlink, mkdir
 from os.path import exists
 from pwem.protocols import EMProtocol
-from pyworkflow import BETA
 from pyworkflow.protocol import FileParam, FloatParam, IntParam, PointerParam
 from pyworkflow.utils import Message, getParentFolder
 from reliontomo.constants import PIXEL_SIZE, TOMO_NAME, PARTICLES_TABLE
@@ -41,8 +40,6 @@ class outputObjects(Enum):
 
 class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
     """Base protocol for importing data from a star file"""
-
-    _devStatus = BETA
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

@@ -49,7 +49,7 @@ class outputObjects(Enum):
 class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
     """3D Classification of subtomograms."""
 
-    _label = '3D Classification of pseudo-subtomograms'
+    _label = '3D classification'
     modelTable = Table()
     classesTable = Table()
     opticsTable = Table()
@@ -104,7 +104,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                            'range of 7-12 Angstroms have proven useful.')
 
     @staticmethod
-    def _defineSamplingParams(form:Form):
+    def _defineSamplingParams(form: Form):
         form.addSection(label='Sampling')
         form.addParam('doImageAlignment', BooleanParam,
                       label='Perform image alignment?',
@@ -132,7 +132,6 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                            "the optimal orientation in the previous iteration.\n\nA Gaussian prior (also see previous "
                            "option) will be applied, so that orientations closer to the optimal orientation in the "
                            "previous iteration will get higher weights than those further away.")
-
 
         ProtRelionRefineSubtomograms._insertRelaxSymmetry(form, condition='doImageAlignment and doLocalAngleSearch')
         form.addParam('allowCoarser', BooleanParam,
@@ -264,7 +263,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
 
         return cmd
 
-    def _createSetOfClassesSubTomograms(self, subTomograms:SetOfSubTomograms, suffix=''):
+    def _createSetOfClassesSubTomograms(self, subTomograms: SetOfSubTomograms, suffix=''):
         classes = SetOfClassesSubTomograms.create(self._getPath(),
                                                   template='subtomogramClasses%s.sqlite',
                                                   suffix=suffix)
@@ -314,7 +313,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
             item.setAlignment3D()
 
             # Representative stuff
-            representative =item.getRepresentative()
+            representative = item.getRepresentative()
             representative.setLocation(fn)
             representative.setSamplingRate(self.inReParticles.get().getCurrentSamplingRate())
             # relion mrc are technically stacks. Fix this

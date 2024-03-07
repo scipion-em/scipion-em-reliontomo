@@ -25,7 +25,6 @@
 # *
 # **************************************************************************
 from enum import Enum
-from pyworkflow import BETA
 from pyworkflow.protocol import BooleanParam, FloatParam, EnumParam, \
     PointerParam
 from reliontomo import Plugin
@@ -57,7 +56,6 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
     """Operate on the particles star file"""
 
     _label = 'Apply operation to Relion particles'
-    _devStatus = BETA
     _possibleOutputs = outputObjects
     operationDict = genEnumParamDict(OPERATION_LABELS)
     labelsDict = genEnumParamDict(LABELS_TO_OPERATE_WITH)

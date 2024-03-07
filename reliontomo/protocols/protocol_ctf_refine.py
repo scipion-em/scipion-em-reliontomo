@@ -34,7 +34,7 @@ evenAberrationOrders = [4, 6, 8]
 class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase):
     """Tomo CTF refine"""
 
-    _label = 'Tomo CTF refine'
+    _label = 'CTF refinement'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -105,6 +105,7 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase):
                       condition='refineOddAbe',
                       choices=oddAberrationOrders,
                       default=0)
+        self._defineExtraParams(form)
         form.addParallelSection(threads=4, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------

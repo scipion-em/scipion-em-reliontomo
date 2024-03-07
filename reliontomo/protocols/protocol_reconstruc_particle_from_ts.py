@@ -45,7 +45,7 @@ class outputObjects(Enum):
 class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBase):
     """Reconstructs/averages from the tilt series projected particles"""
 
-    _label = 'Average from tilt series'
+    _label = 'Reconstruct particle'
     _possibleOutputs = outputObjects
 
     def __init__(self, **args):
@@ -54,7 +54,7 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
     # -------------------------- DEFINE param functions -----------------------
 
     def _defineParams(self, form):
-        ProtRelionMakePseudoSubtomoAndRecParticleBase._defineParams(self, form)
+        super()._defineParams(form)
         form.addSection(label='Reconstruct particle')
         super()._defineCommonRecParams(form)
         form.addParam('symmetry', StringParam,
@@ -73,6 +73,7 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
                            'omitted, the reconstruction will use a heuristic to prevent divisions by excessively '
                            'small numbers. Please note that using a low (even though realistic) SNR might wash out the '
                            'higher frequencies, which could make the map unsuitable to be used for further refinement.')
+        self._defineExtraParams(form)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
