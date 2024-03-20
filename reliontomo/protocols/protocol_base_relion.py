@@ -44,8 +44,18 @@ class ProtRelionTomoBase(EMProtocol):
     def _defineCommonInputParams(form):
         form.addSection(label=Message.LABEL_INPUT)
         form.addParam('inReParticles', PointerParam,
+                      important=True,
                       pointerClass='RelionSetOfPseudoSubtomograms',
-                      label='Relion particles')
+                      label='Pseudo-Subtomograms',
+                      help='Pseudo-subtomograms do not aim to accurately represent the scattering potential of '
+                           'the underlying particles. Instead, they serve as a practical means to implement an '
+                           ' approximation to the 2D approach within the existing RELION framework. In the original'
+                           ' RELION4 article an accurate defition is given, see: \n '
+                           'https://doi.org/10.7554/eLife.83724 \n '
+                           ' A more technical explanation, pseudo-subtomograms are 3D-Arrays (volumes) that constructed '
+                           ' from the sums of 2D tilt-series images pre-multiplied by contrast transfer functions (CTFs), '
+                           ' along with auxiliary arrays that store the corresponding sum of squared CTFs and the frequency '
+                           ' of observation for each 3D voxel.')
 
     @staticmethod
     def _defineExtraParams(form, addAdditionalSection=True):

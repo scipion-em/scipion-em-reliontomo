@@ -56,10 +56,10 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
     @staticmethod
     def _insertBoxSizeForEstimationParam(form):
         form.addParam('boxSize', IntParam,
-                      label='Box size for estimation (pix)',
+                      label='Box size for estimation (px)',
                       default=128,
                       allowsNull=False,
-                      validators=[GE(32), LE(512)],
+                      validators=[GE(32)],
                       help="Box size to be used for the estimation. Note that this can be larger than the box size "
                            "of the reference map. A sufficiently large box size allows more of the high-frequency "
                            "signal to be captured that has been delocalized by the CTF.")
