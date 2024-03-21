@@ -141,7 +141,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
 
         help3drefine = 'If the molecule is asymmetric, set Symmetry group to C1. Note their are multiple possibilities' \
                        ' for icosahedral symmetry: \n ' \
-                       ' _* I1_: No-Crowther 222 (standard in Heymann, Chagoyen & Belnap, JSB, 151 (2005) (196-207) ' \
+                       ' _* I1_: No-Crowther 222 (standard in Heymann, Chagoyen & Belnap, JSB, 151 (2005) (196-207)\n' \
                        ' _* I2_: Crowther 222\n ' \
                        ' _* I3_: 52-setting (as used in SPIDER?) \n' \
                        ' _* I4_: A different 52 setting \n' \
