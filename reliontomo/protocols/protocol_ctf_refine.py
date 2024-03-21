@@ -32,7 +32,30 @@ evenAberrationOrders = [4, 6, 8]
 
 
 class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase):
-    """Tomo CTF refine"""
+    """Tomo CTF refine:\n
+
+    This program estimates the astigmatic defoci of the individual tilt images, the ice
+    thickness (which determines the overall signal intensity) and higher-order optical aberrations.\n
+
+    _Defocus_: In tomography, the relative depth distances between particles are known from the 3D
+    positions of the particles. Therefore, only one defocus value is estimated for all the particles
+    in each tilt image. Because of the often large number of particles in each tomogram, this value
+    can typically be estimated to greater precision than in single-particle analysis, where the defocus
+    of each particle has to be estimated independently.\n
+    _Ice-thickness_: A thicker sample permits fewer electrons to pass through, which reduces the scale
+    of the signal. In addition to the actual variation in sample thickness, the effective thickness
+    of the ice also increases as the sample is tilted. This program allows the user to estimate the
+    signal intensity either independently for each tilt image, or by fitting the base thickness,
+    the initial beam luminance and the surface normal of the sample assuming Beer-Lambert’s Law.
+    In the latter case, only one surface normal and base thickness are estimated for an entire
+    tilt series, which allows for a more stable fit from tomograms with fewer particles.\n
+    _Higher-order optical aberrations_: This algorithm works analogously to relion_ctf_refine for
+    single-particle analysis. As in single-particle analysis, the aberrations are estimated
+    per optics group. This allows the user to group particles that are expected to share the
+    same aberrations, either by image region or by subset of tilt series, or both. Both
+    symmetrical (even) and antisymmetrical (odd) aberrations are supported. A detailed description
+     of the aberrations estimation algorithm can be found in the relion aberrations paper.
+    """
 
     _label = 'CTF refinement'
 
@@ -52,7 +75,10 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase):
                       label="Defocus search range (Å)",
                       condition='refineDefocus',
                       default=3000,
-                      validators=[GE(0), LE(10000)])
+                      validators=[GE(0)],
+                      help='Defocus search range (in A). This search range will be, by default, '
+                           'sampled in 100 steps. Use the additional argument --ds to change the '
+                           'number of sampling points.')
         form.addParam('doDefocusReg', BooleanParam,
                       label="Do defocus regularisation?",
                       condition='refineDefocus',
@@ -65,7 +91,8 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase):
                       label="Defocus regularisation scale",
                       condition='doDefocusReg',
                       default=0.1,
-                      validators=[GE(0), LE(1)])
+                      validators=[GE(0), LE(1)],
+                      help='This is the strength of the defocus regularizer')
         form.addParam('refineContrast', BooleanParam,
                       label='Refine contrast scale?',
                       default=True,
@@ -85,26 +112,33 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase):
                       help="If set to Yes, then the beam luminance will be estimated separately for each tilt series. "
                            "This is not recommended.")
         form.addSection(label='Aberrations')
-        form.addParam('refineEvenAbe', BooleanParam,
-                      label="Refine even aberrations?",
-                      default=True,
-                      help="If set to Yes, then even higher-order aberrations will be estimated.")
-        form.addParam('maxAbeEvenOrder', EnumParam,
-                      display=EnumParam.DISPLAY_HLIST,
-                      label='Max order of even aberrations',
-                      condition='refineEvenAbe',
-                      choices=evenAberrationOrders,
-                      default=0)
         form.addParam('refineOddAbe', BooleanParam,
                       label="Refine odd aberrations?",
                       default=True,
-                      help="If set to Yes, then odd higher-order aberrations will be estimated.")
+                      help="If set to Yes, then odd higher-order aberrations will be estimated. These are"
+                           "the asymmetrical aberrations")
         form.addParam('maxAbeOddOrder', EnumParam,
                       display=EnumParam.DISPLAY_HLIST,
                       label='Max order of odd aberrations',
                       condition='refineOddAbe',
                       choices=oddAberrationOrders,
-                      default=0)
+                      default=0,
+                      help='The third order aberration will be comma and trefoil. Higer aberrations as pentafoil '
+                           'are barely considered')
+        form.addParam('refineEvenAbe', BooleanParam,
+                      label="Refine even aberrations?",
+                      default=True,
+                      help="If set to Yes, then even higher-order aberrations will be estimated. These are"
+                           "the symmetrical aberrations")
+        form.addParam('maxAbeEvenOrder', EnumParam,
+                      display=EnumParam.DISPLAY_HLIST,
+                      label='Max order of even aberrations',
+                      condition='refineEvenAbe',
+                      choices=evenAberrationOrders,
+                      default=0,
+                      help='The forth order aberrations are spherical aberration, quadrafoil and secondary astigmatism,'
+                           'higher aberrations are barely considered')
+
         self._defineExtraParams(form)
         form.addParallelSection(threads=4, mpi=1)
 

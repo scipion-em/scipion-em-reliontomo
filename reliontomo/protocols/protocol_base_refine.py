@@ -119,7 +119,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
     @staticmethod
     def _insertZeroMaskParam(form):
         form.addParam('zeroMask', BooleanParam,
-                      label='Mask individual particles with zeros?',
+                      label='Mask particles with zeros?',
                       default=True,
                       help="If set to Yes, then in the individual particles, the area outside a circle with the "
                            "radius of the particle will be set to zeros prior to taking the Fourier transform.\n\nThis "
@@ -196,6 +196,14 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                            'on each node that runs as many threads as available cores will have access to all available RAM.\n'
                            'If parallel disc I/O is set to No, then only the leader reads all particles into RAM and '
                            'sends those particles through the network to the MPI followers during the refinement iterations.')
+        form.addParam('scratchDir', PathParam,
+                      label='Copy particles to scratch directory',
+                      help='If a directory is provided here, then the job will create a sub-directory in it called'
+                           ' relion_volatile. If that relion_volatile directory already exists, it will be wiped. '
+                           'Then, the program will copy all input particles into a large stack inside the relion_volatile '
+                           'subdirectory. Provided this directory is on a fast local drive (e.g. an SSD drive), '
+                           'processing in all the iterations will be faster. If the job finishes correctly, '
+                           'the relion_volatile directory will be wiped. If the job crashes, you may want to remove it yourself.')
         form.addParam('combineItersDisc', BooleanParam,
                       default=False,
                       label='Combine iterations through disc?',
@@ -207,14 +215,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                            'progress-bar in the expectation step reaching its end (the mouse gets to the cheese) '
                            'and the start of the ensuing maximisation step. It will depend on your system setup'
                            ' which is most efficient.')
-        form.addParam('scratchDir', PathParam,
-                      label='Copy particles to scratch directory',
-                      help='If a directory is provided here, then the job will create a sub-directory in it called'
-                           ' relion_volatile. If that relion_volatile directory already exists, it will be wiped. '
-                           'Then, the program will copy all input particles into a large stack inside the relion_volatile '
-                           'subdirectory. Provided this directory is on a fast local drive (e.g. an SSD drive), '
-                           'processing in all the iterations will be faster. If the job finishes correctly, '
-                           'the relion_volatile directory will be wiped. If the job crashes, you may want to remove it yourself.')
+
 
     # ADDITIONAL PARAMS ------------------------------------------------------------------------------------------------
     @staticmethod
@@ -259,7 +260,9 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                       help='There are only a few discrete angular samplings possible because '
                            'we use the HealPix library to generate the sampling of the first '
                            'two Euler angles on the sphere. The samplings are approximate numbers '
-                           'and vary slightly over the sphere.')
+                           'and vary slightly over the sphere.\n  Note that this will only be the '
+                           'value for the first few iteration(s): the sampling rate will be '
+                           'increased automatically after that.')
         form.addParam('offsetSearchRangePix', FloatParam,
                       default=offsetRange,
                       condition=condition,

@@ -120,9 +120,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         form.addParam('isMapAbsoluteGreyScale', BooleanParam,
                       default=True,
                       label='Is initial 3D map on absolute greyscale?',
-                      help='Perform CC-calculation in the first iteration (use this if references are not on the '
-                           'absolute intensity scale). See detailed explanation below:\n\n '
-                           'Probabilities are calculated based on a Gaussian noise model,'
+                      help='Probabilities are calculated based on a Gaussian noise model,'
                            'which contains a squared difference term between the reference and the experimental '
                            'image.\n\n This has a consequence that the reference needs to be on the same absolute '
                            'intensity greyscale as the experimental images. RELION and XMIPP reconstruct maps at '
@@ -145,8 +143,8 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
                        ' for icosahedral symmetry: \n ' \
                        ' _* I1_: No-Crowther 222 (standard in Heymann, Chagoyen & Belnap, JSB, 151 (2005) (196-207) ' \
                        ' _* I2_: Crowther 222\n ' \
-                       '_* I3_: 52-setting (as used in SPIDER?) \n' \
-                       ' _* I4: A different 52 setting \n' \
+                       ' _* I3_: 52-setting (as used in SPIDER?) \n' \
+                       ' _* I4_: A different 52 setting \n' \
                        'RELION uses XMIPPs libraries for symmetry operations. Therefore, look at the XMIPP:\n'+ SYMMETRY_HELP_MSG
         super()._insertSymmetryParam(form, help3drefine)
 
@@ -184,8 +182,10 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
                       label='Use finer angular sampling faster?',
                       help="If set to Yes, then let auto-refinement proceed faster with finer angular samplings. "
                            "Two additional conditions will be considered:\n\n "
-                           "\t-Angular sampling will go down despite changes still happening in the angles.\n"
-                           "\t-Angular sampling will go down if the current resolution already requires that sampling\n"
+                           "\t-Angular sampling will go down despite changes still happening in the angles. (this is the"
+                           " Relion flag  --auto_ignore_angles )\n"
+                           "\t-Angular sampling will go down if the current resolution already requires that sampling "
+                           "(this is the Relion flag --auto_resol_angles)\n"
                            "\t at the edge of the particle.\n\nThis option will make the computation faster, but "
                            "hasn't been tested for many cases for potential loss in reconstruction quality upon "
                            "convergence.")
@@ -212,7 +212,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
                            "refinement or classification in C1 with symmetry relaxation by C2 might be able to improve "
                            "distinction between A and A'. Note that the reference must be more-or-less aligned to the "
                            "convention of (pseudo-)symmetry operators. For details, see Ilca et al 2019 and Abrishami "
-                           "et al 2020 cited in the About dialog.\n\n%s" % SYMMETRY_HELP_MSG)
+                           "et al 2020 cited in the About dialog.\n\n")
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

@@ -48,10 +48,14 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
         form.addParam('recVolume', PointerParam,
                       pointerClass='AverageSubTomogram',
                       allowsNull=False,
-                      label='Volume to get the halves')
+                      label='Volume to get the halves',
+                      help='Provide a volume with half maps. Note that volumes with associated'
+                           'halves in the Scipion summary as w/h.')
         form.addParam('inRefMask', PointerParam,
                       pointerClass='VolumeMask',
-                      label="Input reference mask")
+                      label="Input reference mask",
+                      help='This mask localizes the signal in the reference map. The mask should be'
+                           'soft (non-binary)')
 
     @staticmethod
     def _insertBoxSizeForEstimationParam(form):
@@ -59,7 +63,7 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
                       label='Box size for estimation (px)',
                       default=128,
                       allowsNull=False,
-                      validators=[GE(32)],
+                      validators=[GE(16)],
                       help="Box size to be used for the estimation. Note that this can be larger than the box size "
                            "of the reference map. A sufficiently large box size allows more of the high-frequency "
                            "signal to be captured that has been delocalized by the CTF.")
