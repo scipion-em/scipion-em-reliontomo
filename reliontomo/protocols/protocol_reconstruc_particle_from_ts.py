@@ -55,6 +55,7 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
 
     def _defineParams(self, form):
         super()._defineParams(form)
+        form.addSection(label='Reconstruct particle')
         super()._defineCommonRecParams(form)
         form.addParam('symmetry', StringParam,
                       label='Symmetry group',
