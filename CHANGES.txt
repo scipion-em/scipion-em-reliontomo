@@ -1,3 +1,7 @@
+v3.4.1:
+  Users:
+   - Enhancing the helps and use of RelionTomo4.
+   - Validation conditions have been release and checked.
 v3.4.0:
   Users:
    - Add extra params to some more protocols apart from refine subtomograms.
