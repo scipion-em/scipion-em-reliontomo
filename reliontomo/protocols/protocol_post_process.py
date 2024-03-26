@@ -45,7 +45,14 @@ class outputObjects(Enum):
 
 
 class ProtRelionPostProcess(ProtRelionTomoBase):
-    """Sharpen a 3D reference map and estimate the gold-standard FSC curves for subtomogram averaging"""
+    """Sharpen a 3D reference map and estimate the gold-standard FSC curves for subtomogram averaging
+    After performing a refinement, the map needs to be sharpened. Also, the gold-standard FSC curves
+    inside the auto-refine procedures only use unmasked maps (unless you’ve used the option
+    Use solvent-flattened FSCs). This means that the actual resolution is under-estimated during
+    the actual refinement, because noise in the solvent region will lower the FSC curve. relion’s
+    procedure for B-factor sharpening and calculating masked FSC curves [CMF+13] is called post-processing.
+    First however, we’ll need to make a mask to define where the protein ends and the solvent region starts.
+    """
 
     _label = 'Post-processing'
     _possibleOutputs = outputObjects
@@ -58,7 +65,7 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
         super()._defineCommonInputParams(form)
         form.addParam('inVolume', PointerParam,
                       pointerClass='AverageSubTomogram',
-                      label='Use halves from this refined volume',
+                      label='One unfiltered half map ',
                       important=True,
                       help='It will provide the two unfiltered half-reconstructions that were output upon convergence '
                            'of a 3D auto-refine run.')
@@ -71,8 +78,8 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
                            'edge of 5-10 pixels is often a good edge width.')
         form.addParam('calPixSize', FloatParam,
                       default=3,
-                      validators=[GE(0.3), LE(5)],
-                      label='Calibrated pixel size (Å/pix)',
+                      validators=[GE(0.3)],
+                      label='Calibrated pixel size (Å/px)',
                       help='Provide the final, calibrated pixel size in Angstroms. This value may be different from '
                            'the pixel-size used thus far, e.g. when you have recalibrated the pixel size using the fit '
                            'to a PDB model. The X-axis of the output FSC plot will use this calibrated value.')
@@ -89,7 +96,7 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
                       default=10,
                       validators=[GE(10), LE(15)],
                       condition='estimateBFactor',
-                      label='Lowest resolution for auto-B fit',
+                      label='Lowest resolution for auto-B factor',
                       help='This is the lowest frequency (in Angstroms) that will be included in the linear fit of '
                            'the Guinier plot as described in Rosenthal and Henderson (2003, JMB). Dont use values '
                            'much lower or higher than 10 Angstroms. If your map does not extend beyond 10 Angstroms, '
@@ -103,7 +110,7 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
                            'a suitable value (e.g. in more disordered parts of the map).')
         form.addParam('userBFactor', IntParam,
                       default=-1000,
-                      validators=[GE(-2000), LE(0)],
+                      validators=[LE(0)],
                       label='User-provided B-factor',
                       condition='useOwnBFactor',
                       help='Use negative values for sharpening. Be careful: if you over-sharpen your map, you may '
@@ -118,7 +125,7 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
                            'In such cases, set this option to Yes and provide an ad-hoc filter as described below.')
         form.addParam('adHocLowPassFilter', IntParam,
                       default=5,
-                      validators=[GE(1), LE(40)],
+                      validators=[GE(1)],
                       label='Ad-hoc low-pass filter (Å)',
                       condition='skipFscWeight',
                       help='This option allows one to low-pass filter the map at a user-provided frequency (in '
@@ -126,14 +133,14 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
                            'resolution, take care not to interpret noise in the map for signal.')
         form.addParam('mtf', FileParam,
                       label='MTF of the detector',
-                      help='User-provided STAR-file with the MTF-curve '
-                           'of the detector. Use the wizard to load one '
-                           'of the predefined ones provided at:\n'
-                           '- [[https://www3.mrc-lmb.cam.ac.uk/relion/index.php/'
-                           'FAQs#Where_can_I_find_MTF_curves_for_typical_detectors.3F]'
-                           '[Relion\'s Wiki FAQs]]\n'
-                           ' - [[https://www.gatan.com/techniques/cryo-em#MTF][Gatan\'s website]]\n\n'
-                           'Relion param: *--mtf*')
+                      help='If you know the MTF of your detector, provide it here. Curves for some well-known detectors'
+                           ' may be downloaded from the RELION Wiki \n'
+                           '- [[https://www3.mrc-lmb.cam.ac.uk/relion/index.php/ \n'
+                           'Also see there for the exact format of your detector.  If you do not know the MTF of your'
+                           ' detector and do not want to measure it, then by leaving this entry empty, you include '
+                           'the MTF of your detector in your overall estimated B-factor upon sharpening the map.'
+                           'Although that is probably slightly less accurate, the overall quality of your map '
+                           'will probably not suffer very much.')
         form.addParam('origDetectorPixSize', FloatParam,
                       default=1,
                       validators=[GE(0.1), LE(2)],

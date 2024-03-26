@@ -3,6 +3,8 @@ v3.4.0:
    - Add extra params to some more protocols apart from refine subtomograms.
    - Fix some initial MPI/Threads combinations (Thanks to Bram Koster).
    - Rename the protocols the same as in native Relion.
+   - Enhancing the helps and use of RelionTomo4 (Thanks to J. L. Vilas).
+   - Validation conditions have been release and checked (Thanks to J. L. Vilas).
   Developers:
    - Remove BETA status
 v3.3.0:

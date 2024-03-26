@@ -52,9 +52,8 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         form.addParam('doCTF', BooleanParam,
                       default=True,
                       label='Do CTF-correction?',
-                      help='If set to Yes, CTFs will be corrected inside the MAP refinement. '
-                           'The resulting algorithm intrinsically implements the optimal linear, '
-                           'or Wiener filter. Note that input particles should contains CTF parameters.')
+                      help='If set to Yes, CTFs will be applied to the projections of the map. '
+                           'Note that input particles should contains CTF parameters.')
         form.addParam('ignoreCTFUntilFirstPeak', BooleanParam,
                       default=False,
                       label='Ignore CTFs until first peak?',
@@ -75,7 +74,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                       default=200,
                       label='Number of VDAM mini-batches',
                       help="How many iterations (i.e. mini-batches) to perform with the VDAM ((variable metric "
-                           "gradient descent with adaptive moments) algorithm. Using 200 (default) has given good "
+                           "gradient descent with adaptive moments) algorithm?. Using 200 (default) has given good "
                            "results for many data sets. Using 100 will run faster, at the expense of some quality in "
                            "the results.")
 
@@ -97,7 +96,13 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         form.addParam('numberOfClasses', IntParam,
                       default=1,
                       validators=[GE(1)],
-                      label='Number of classes to be defined')
+                      label='Number of classes',
+                      help='The number of classes (K) for a multi-reference ab initio SGD refinement. These classes will '
+                           ' be made in an unsupervised manner, starting from a single reference in the initial iterations '
+                           ' of the SGD, and the references will become increasingly dissimilar during the inbetween iterations.'
+                           ' Sometimes, using more than one class may help in providing a ‘sink’ for sub-optimal particles '
+                           ' that may still exist in the data set. In this case, which is quite homogeneous, a single '
+                           ' class should work just fine.')
 
     @staticmethod
     def _insertMaskDiameterParam(form):
@@ -105,13 +110,16 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                       allowsNull=False,
                       validators=[GE(0)],
                       label='Circular mask diameter (Å)',
-                      help='Diameter of the circular mask that will be applied to the experimental images '
-                           '(in Angstroms)')
+                      help='The experimental images will be masked with a soft circular mask with this diameter. '
+                           'Make sure this radius is not set too small because that may mask away part of the signal! '
+                           'If set to a value larger than the image size no masking will be performed. \n '
+                           'The same diameter will also be used for a spherical mask of the reference structures if '
+                           ' no user-provided mask is specified.')
 
     @staticmethod
     def _insertZeroMaskParam(form):
         form.addParam('zeroMask', BooleanParam,
-                      label='Mask individual particles with zeros?',
+                      label='Mask particles with zeros?',
                       default=True,
                       help="If set to Yes, then in the individual particles, the area outside a circle with the "
                            "radius of the particle will be set to zeros prior to taking the Fourier transform.\n\nThis "
@@ -132,11 +140,11 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                            "reference to be non-negative.")
 
     @staticmethod
-    def _insertSymmetryParam(form):
+    def _insertSymmetryParam(form, help):
         form.addParam('symmetry', StringParam,
                       label='Symmetry group',
                       default='C1',
-                      help=SYMMETRY_HELP_MSG)
+                      help=help)
 
     @staticmethod
     def _insertDoInC1AndApplySymLaterParam(form):
@@ -179,17 +187,35 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         form.addParam('allParticlesRam', BooleanParam,
                       default=False,
                       label='Pre-read all particles into RAM?',
-                      help='If set to Yes, the leader process read all particles into memory. Be careful you have '
-                           'enough RAM for large data sets!')
+                      help='If set to Yes, all particle images will be read into computer memory, which will greatly '
+                           'speed up calculations on systems with slow disk access. However, one should of course '
+                           'be careful with the amount of RAM available. Because particles are read in float-precision,'
+                           ' it will take ( N * box_size * box_size * 4 / (1024 * 1024 * 1024) ) Giga-bytes to'
+                           ' read N particles into RAM. For 100 thousand 200x200 images, that becomes 15Gb, or 60 Gb'
+                           ' for the same number of 400x400 particles. Remember that running a single MPI follower '
+                           'on each node that runs as many threads as available cores will have access to all available RAM.\n'
+                           'If parallel disc I/O is set to No, then only the leader reads all particles into RAM and '
+                           'sends those particles through the network to the MPI followers during the refinement iterations.')
+        form.addParam('scratchDir', PathParam,
+                      label='Copy particles to scratch directory',
+                      help='If a directory is provided here, then the job will create a sub-directory in it called'
+                           ' relion_volatile. If that relion_volatile directory already exists, it will be wiped. '
+                           'Then, the program will copy all input particles into a large stack inside the relion_volatile '
+                           'subdirectory. Provided this directory is on a fast local drive (e.g. an SSD drive), '
+                           'processing in all the iterations will be faster. If the job finishes correctly, '
+                           'the relion_volatile directory will be wiped. If the job crashes, you may want to remove it yourself.')
         form.addParam('combineItersDisc', BooleanParam,
                       default=False,
                       label='Combine iterations through disc?',
-                      help='If set to Yes, the large arrays of summed weights will be sent through the MPI network '
-                           'instead of writing large files to disc.')
-        form.addParam('scratchDir', PathParam,
-                      label='Copy particles to scratch directory',
-                      help='If provided, particle stacks will be copied to this local scratch disk prior for '
-                           'refinement.')
+                      help='If set to Yes, at the end of every iteration all MPI followers will write out a large '
+                           'file with their accumulated results. The MPI leader will read in all these files, '
+                           'combine them all, and write out a new file with the combined results. All MPI salves '
+                           'will then read in the combined results. This reduces heavy load on the network, '
+                           'but increases load on the disc I/O. This will affect the time it takes between the '
+                           'progress-bar in the expectation step reaching its end (the mouse gets to the cheese) '
+                           'and the start of the ensuing maximisation step. It will depend on your system setup'
+                           ' which is most efficient.')
+
 
     # ADDITIONAL PARAMS ------------------------------------------------------------------------------------------------
     @staticmethod
@@ -234,7 +260,9 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                       help='There are only a few discrete angular samplings possible because '
                            'we use the HealPix library to generate the sampling of the first '
                            'two Euler angles on the sphere. The samplings are approximate numbers '
-                           'and vary slightly over the sphere.')
+                           'and vary slightly over the sphere.\n  Note that this will only be the '
+                           'value for the first few iteration(s): the sampling rate will be '
+                           'increased automatically after that.')
         form.addParam('offsetSearchRangePix', FloatParam,
                       default=offsetRange,
                       condition=condition,

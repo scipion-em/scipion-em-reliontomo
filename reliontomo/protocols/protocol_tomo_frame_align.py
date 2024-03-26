@@ -41,7 +41,20 @@ class deformationModels(Enum):
 
 
 class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase):
-    """Tomo frame align"""
+    """Tomo frame align\n
+     Relion has also implemented the analogous to Bayesian polishing in 2D for tomography.
+     This procedure refines the projections that map 3D space onto the images of the
+     tilt series. Optionally, the beam-induced motion trajectories of the particles
+     and deformations can also be estimated.\n
+
+     Each projection is optimised using the full 5 degrees of freedom: the assumption of
+     a common tilt axis is abandoned. Even if no beam-induced motion is estimated,
+     the (in that case static) 3D particle-positions are also optimised by the program.
+     This is because those 3D positions cannot be assumed to be known in advance, since
+     they have only been inferred from the observed 2D particle-positions in the
+     individual tilt images. Therefore, this program always looks for the optimal set
+     of 3D positions and projections.
+    """
 
     _label = 'Frame alignment'
 
@@ -54,7 +67,7 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase):
         form.addSection(label='Polish')
         super()._insertBoxSizeForEstimationParam(form)
         form.addParam('maxPosErr', IntParam,
-                      label='Max position error (pix)',
+                      label='Max position error (px)',
                       default=5,
                       allowsNull=False,
                       validators=[GE(0), LE(64)],
@@ -125,7 +138,8 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase):
         group.addParam('deformationRegularisation', FloatParam,
                        label='Deformation regularisation scale',
                        default=0,
-                       validators=[GE(0), LE(1)])
+                       validators=[GE(0), LE(1)],
+                       help='This is the strength of the deformation regularizer')
         group.addParam('refineDefPerFrame', BooleanParam,
                        label='Refine deformations per frame?',
                        default=False,

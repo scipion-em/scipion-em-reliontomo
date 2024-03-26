@@ -124,13 +124,15 @@ class ProtRelionReconstructParticle(ProtRelionMakePseudoSubtomoAndRecParticleBas
 
         # Create the output set with the new optimization set
         outParticles = self.genRelionParticles(boxSize=self.boxSize.get(),
-                                      binningFactor=self.binningFactor.get())
-        self._defineOutputs(**{outputObjects.relionParticles.name:outParticles})
-
+                                               binningFactor=self.binningFactor.get())
+        self._defineOutputs(**{outputObjects.relionParticles.name: outParticles})
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
-        pass
+        validateMsg = []
+        if self.numberOfMpi.get() == 1:
+            validateMsg.append('The number of MPI must be greater than 1')
+        return validateMsg
 
     # --------------------------- UTILS functions -----------------------------
     def _genRecParticleCmd(self):
