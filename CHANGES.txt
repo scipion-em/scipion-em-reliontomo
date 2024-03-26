@@ -1,20 +1,17 @@
-v3.4.0:
+v3.3.0:
   Users:
+    - After having performed a refine or classification of particles, fields _rlnLogLikeliContribution,
+      _rlnMaxValueProbDistribution and _rlnNrOfSignificantSamples are registered, so they can be plotted versus the
+      no. particles using the data viewer and used as quality control metrics.
    - Add extra params to some more protocols apart from refine subtomograms.
    - Fix some initial MPI/Threads combinations (Thanks to Bram Koster).
    - Rename the protocols the same as in native Relion.
    - Enhancing the helps and use of RelionTomo4 (Thanks to J. L. Vilas).
    - Validation conditions have been release and checked (Thanks to J. L. Vilas).
   Developers:
-   - Remove BETA status
-v3.3.0:
-  Users:
-    - After having performed a refine or classification of particles, fields _rlnLogLikeliContribution,
-      _rlnMaxValueProbDistribution and _rlnNrOfSignificantSamples are registered, so they can be plotted versus the
-      no. particles using the data viewer and used as quality control metrics.
-  Developers:
     - Tests rewritten using the test dataset relion40_sta_tutorial_data, using the Test Centralization Layer (TCL), and
       decoupled in independent tests.
+    - Remove BETA status
 v3.2.2:
  Users:
   - Hotfix: the protocol visualization on the left panel was fixed.
