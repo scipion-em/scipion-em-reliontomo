@@ -22,8 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-from pyworkflow import BETA
-from pyworkflow.protocol import IntParam, FloatParam
+from pyworkflow.protocol import IntParam, FloatParam, GE
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
 
@@ -31,39 +30,41 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
     """Reconstruct particle and make pseudo-subtomograms base class"""
 
     _label = None
-    _devStatus = BETA
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        super()._defineCommonInputParams(form)
-        form.addParallelSection(threads=1, mpi=1)
+        self._defineCommonInputParams(form)
+        form.addParallelSection(threads=1, mpi=3)
 
     @staticmethod
     def _defineCommonRecParams(form):
         form.addParam('boxSize', IntParam,
-                      label='Box size (pix.)',
+                      label='Box size (px)',
+                      validator=GE(0),
                       important=True,
                       allowsNull=False,
-                      help='Box size, in pixels,  of the reconstruction. Note that this is independent of the '
+                      help='Box size, in pixels, of the reconstruction. Note that this is independent of the '
                            'box size used to refine the particle. This allows the user to construct a 3D map of '
                            'arbitrary size to gain an overview of the structure surrounding the particle. A '
                            'sufficiently large box size also allows more of the high-frequency signal to be '
                            'captured that has been delocalized by the CTF.')
         form.addParam('croppedBoxSize', IntParam,
-                      label="Cropped box size (pix.)",
+                      label="Cropped box size (px)",
                       allowsNull=True,
-                      help='Cropped box size in pixels. If set, the program will output an additional set of '
-                           'maps that have been cropped to this size. This is useful if a map is desired that '
-                           'is smaller than the box size required to retrieve the CTF-delocalized signal.')
+                      help='The resulting pseudo subtomograms are cropped to this size. A smaller box size '
+                           ' allows the (generally expensive) refinement using relion_refine to proceed more rapidly.')
         form.addParam('binningFactor', FloatParam,
-                      label='Binning factor',
+                      label='Binning factor (downsampling)',
                       default=1,
+                      validator=GE(0),
                       allowsNull=False,
-                      help='Downsampling (binning) factor. Note that this does not alter the box size. The '
-                           'reconstructed region instead becomes larger.')
+                      help='The tilt series images will be binned by this (real-valued) factor and then '
+                           ' reconstructed in the specified box size above. Note that thereby the '
+                           ' reconstructed region becomes larger when specifying binning factors larger than one.'
+                           ' This does not alter the box size.')
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -92,10 +93,9 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
         if inRelionParticles.getTrajectories():
             cmd += '--mot %s ' % inRelionParticles.getTrajectories()
 
-
         cmd += '--b %i ' % self.boxSize.get()
         cmd += '--crop %i ' % self.croppedBoxSize.get()
         cmd += '--bin %.1f ' % self.binningFactor.get()
         cmd += '--j %i ' % self.numberOfThreads.get()
+        cmd += self._genExtraParamsCmd()
         return cmd
-

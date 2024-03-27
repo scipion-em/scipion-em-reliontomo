@@ -23,14 +23,10 @@
 # *
 # **************************************************************************
 from enum import Enum
-
 from pwem.convert.headers import fixVolume
-from pyworkflow import BETA
-from pyworkflow.protocol.params import (PointerParam, FloatParam,
-                                        StringParam, BooleanParam,
-                                        EnumParam, IntParam, LEVEL_ADVANCED)
-
+from pyworkflow.protocol.params import (PointerParam, FloatParam, StringParam, EnumParam, IntParam, LEVEL_ADVANCED)
 from pwem.protocols import ProtReconstruct3D
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 from tomo.objects import AverageSubTomogram
 from reliontomo.convert import writeSetOfSubtomograms
 
@@ -45,8 +41,7 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
     The alignment parameters will be converted to a Relion star file
     and used as direction projections to reconstruct.
     """
-    _label = 'Average from subtomograms'
-    _devStatus = BETA
+    _label = 'Average subtomo'
     inStarName = 'input_particles'
     outTomoName = 'output_volume'
     _possibleOutputs = outputObjects
@@ -86,13 +81,6 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
                       label='Extra parameters: ', 
                       help='Extra parameters to *relion_reconstruct* program. '
                            'Address to Relion to see full list of options.')
-        form.addSection('CTF')
-        form.addParam('doCTF', BooleanParam, default=False,
-                      label='Apply CTF correction?')
-        form.addParam('ctfIntactFirstPeak', BooleanParam, default=False,
-                      condition='doCTF',
-                      label='Leave CTFs intact until first peak?')
-        
         form.addParallelSection(threads=0, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------
@@ -167,11 +155,6 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
 
         # if Plugin.IS_GT30():
         params += ' --class %d' % self.classNum.get()
-
-        if self.doCTF:
-            params += ' --ctf'
-            if self.ctfIntactFirstPeak:
-                params += ' --ctf_intact_first_peak'
 
         if self.extraParams.hasValue():
             params += " " + self.extraParams.get()

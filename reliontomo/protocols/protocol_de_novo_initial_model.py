@@ -24,7 +24,7 @@
 # **************************************************************************
 from enum import Enum
 from pwem.convert.headers import fixVolume
-from reliontomo.constants import INITIAL_MODEL
+from reliontomo.constants import INITIAL_MODEL, SYMMETRY_HELP_MSG
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from tomo.objects import AverageSubTomogram
 from reliontomo import Plugin
@@ -37,9 +37,18 @@ class outputObjects(Enum):
 
 
 class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
-    """Generate a de novo 3D initial model from the pseudo-subtomograms."""
+    """ Generate a de novo 3D initial model from the pseudo-subtomograms.
 
-    _label = 'De novo 3D initial model'
+    This de novo 3D initial model allows to obtain a map without any prior knowledge.
+    Provided you have a reasonable distribution of angular directions, this algorithm
+    is likely to yield a suitable, low-resolution model that can subsequently be used
+    for 3D classification or 3D auto-refine.\n
+
+    Relion-4.0 uses a gradient-driven algorithm to generate a de novo 3D initial model
+    from the pseudo-subtomograms.
+    """
+
+    _label = '3D initial model'
     _possibleOutputs = outputObjects
 
     def __init__(self, **kwargs):
@@ -49,6 +58,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
 
     def _defineParams(self, form):
         super()._defineIOParams(form)
+        ProtRelionRefineBase._insertMaskDiameterParam(form)
         super()._defineCTFParams(form)
         self._defineOptimisationParams(form)
         super()._defineComputeParams(form)
@@ -62,9 +72,13 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         ProtRelionRefineBase._insertVdamMiniBatchesParam(form)
         ProtRelionRefineBase._insertRegularisationParam(form)
         ProtRelionRefineBase._insertNumOfClassesParam(form)
-        ProtRelionRefineBase._insertMaskDiameterParam(form)
+
         ProtRelionRefineBase._insertFlattenSolventParam(form)
-        ProtRelionRefineBase._insertSymmetryParam(form)
+        helpDeNovo = 'The initial model is always generated in C1 and then aligned to and symmetrized ' \
+                     'with the specified point group. If the automatic alignment fails, please manually  ' \
+                     'rotate run_itNNN_class001.mrc (NNN is the number of iterations) so that it conforms ' \
+                     'the symmetry convention.' + SYMMETRY_HELP_MSG
+        ProtRelionRefineBase._insertSymmetryParam(form, helpDeNovo)
         ProtRelionRefineBase._insertDoInC1AndApplySymLaterParam(form)
         ProtRelionRefineBase._insertAngularCommonParams(form,
                                                         expertLevel=LEVEL_ADVANCED,

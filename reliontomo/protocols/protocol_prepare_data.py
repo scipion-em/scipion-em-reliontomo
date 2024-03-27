@@ -28,7 +28,6 @@ from os import mkdir
 from os.path import join, exists
 from imod.utils import generateDefocusIMODFileFromObject
 from pwem.protocols import EMProtocol
-from pyworkflow import BETA
 from pyworkflow.object import Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED
 from pyworkflow.utils import makePath, Message
@@ -59,7 +58,6 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
     """Prepare data for Relion 4
     """
     _label = 'Prepare data for Relion 4'
-    _devStatus = BETA
     _possibleOutputs = outputObjects
 
     def __init__(self, **args):

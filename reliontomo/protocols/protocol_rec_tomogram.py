@@ -25,10 +25,10 @@
 from enum import Enum
 from pwem.convert.headers import fixVolume
 from pwem.protocols import EMProtocol
-from pyworkflow import BETA
 from pyworkflow.protocol.params import FloatParam, IntParam, StringParam, PointerParam, EnumParam
 from pyworkflow.utils import Message
 from reliontomo import Plugin
+from reliontomo.objects import RelionPSubtomogram
 from reliontomo.protocols.protocol_prepare_data import outputObjects as prepareProtOutputs
 from tomo.objects import Tomogram, SetOfTomograms
 from tomo.utils import getObjFromRelation
@@ -38,7 +38,7 @@ SINGLE_TOMO = 0
 ALL_TOMOS = 1
 
 
-class outputObjects(Enum):
+class OutputObjects(Enum):
     tomograms = SetOfTomograms
 
 
@@ -48,7 +48,7 @@ class ProtRelionTomoReconstruct(EMProtocol):
     options, for example).
     """
     _label = 'Reconstruct tomograms from prepare data prot'
-    _devStatus = BETA
+    _possibleOutputs = OutputObjects
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -117,7 +117,8 @@ class ProtRelionTomoReconstruct(EMProtocol):
         if self.recTomoMode.get() == SINGLE_TOMO:
             self.tomoList = [tomo.clone() for tomo in self.tomoSet if tomo.getTsId() == self.tomoId.get()]
         else:
-            self.tomoList = [tomo.clone() for tomo in self.tomoSet]
+            self.tomoList = [tomo.clone() for tomo in self.tomoSet if tomo.getTsId() in
+                             self.inReParticles.getUniqueValues(RelionPSubtomogram.TS_ID_ATTRIBUTE)]
 
     def _reconstructStep(self, tomoId):
         Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_tomogram', self._genTomoRecCommand(tomoId))
@@ -131,7 +132,7 @@ class ProtRelionTomoReconstruct(EMProtocol):
         tomo.setOrigin()
         tomo.setTsId(tomoId)
         self.outTomoSet.append(tomo)
-        self._defineOutputs(**{outputObjects.tomograms.name: self.outTomoSet})
+        self._defineOutputs(**{OutputObjects.tomograms.name: self.outTomoSet})
         self._defineSourceRelation(self.inReParticles, self.outTomoSet)
 
     # -------------------------- INFO functions -------------------------------

@@ -25,7 +25,6 @@
 # *
 # **************************************************************************
 from enum import Enum
-from pyworkflow import BETA
 from pyworkflow.protocol.params import (PointerParam)
 from pwem.protocols import EMProtocol
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
@@ -45,7 +44,6 @@ class RelionTomoCoordinatesMatcher(EMProtocol, ProtTomoBase):
     as input.
     """
     _label = 'Matching coordinates'
-    _devStatus = BETA
 
     # --------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):

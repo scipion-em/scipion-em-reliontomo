@@ -25,19 +25,15 @@
 import glob
 import re
 from enum import Enum
-from emtable import Table
 from pwem.convert.headers import fixVolume
 from pwem.objects import SetOfFSCs
-from pyworkflow import BETA
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
 from os.path import getmtime
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, StringParam, BooleanParam, EnumParam
-from pyworkflow.utils import createLink
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, \
-    OUT_PARTICLES_STAR, REFINE_FSC_REF_STAR, REFINE_STAR_FSC_TABLE, \
-    REFINE_STAR_FSC_COLUMNS
+    REFINE_FSC_REF_STAR, REFINE_STAR_FSC_TABLE, REFINE_STAR_FSC_COLUMNS
 from reliontomo.utils import getProgram
 from tomo.objects import AverageSubTomogram
 
@@ -49,10 +45,27 @@ class outputObjects(Enum):
 
 
 class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
-    """Auto-refinement of subtomograms."""
+    """3D auto-refine
 
-    _label = 'Auto-refinement of subtomograms'
-    _devStatus = BETA
+    Once we have a reference map, one may use the 3D auto-refine procedure in
+    relion to refine the dataset to high resolution in a fully automated manner.
+    This procedure employs the so-called gold-standard way to calculate Fourier
+    Shell Correlation (FSC) from independently refined half-reconstructions in order
+    to estimate resolution, so that self-enhancing overfitting may be avoided
+    [S. Scheres J. Mol biol 2012]. Combined with a procedure to estimate the accuracy
+    of the angular assignments [S. Scheres J. Struct biol2012], it automatically
+    determines when a refinement has converged. Thereby, this procedure
+    requires very little user input, i.e. it remains objective, and has been observed to
+    yield excellent maps for many data sets. Another advantage is that one typically only
+    needs to run it once, as there are hardly any parameters to optimize.\n
+    However, as the pseudo-subtomogram files require more memory resources compared to SPA,
+    we suggest to run this procedure in several steps, from high binning factors to 1,
+    to improve processing time. Since the initial model was processed using
+    pseudo-subtomograms with binning factor 4, we will start the 3D refinement using
+    those same particles.
+    """
+
+    _label = '3D auto-refine'
     _possibleOutputs = outputObjects
     FILE_KEYS = ['data', 'optimiser', 'sampling']
     PREFIXES = ['half1_', 'half2_']
@@ -107,9 +120,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         form.addParam('isMapAbsoluteGreyScale', BooleanParam,
                       default=True,
                       label='Is initial 3D map on absolute greyscale?',
-                      help='Perform CC-calculation in the first iteration (use this if references are not on the '
-                           'absolute intensity scale). See detailed explanation below:\n\n '
-                           'Probabilities are calculated based on a Gaussian noise model,'
+                      help='Probabilities are calculated based on a Gaussian noise model,'
                            'which contains a squared difference term between the reference and the experimental '
                            'image.\n\n This has a consequence that the reference needs to be on the same absolute '
                            'intensity greyscale as the experimental images. RELION and XMIPP reconstruct maps at '
@@ -127,7 +138,15 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
                       help='It is recommended to strongly low-pass filter your initial reference map. '
                            'If it has not yet been low-pass filtered, it may be done internally using this option. '
                            'If set to 0, no low-pass filter will be applied to the initial reference(s).')
-        super()._insertSymmetryParam(form)
+
+        help3drefine = 'If the molecule is asymmetric, set Symmetry group to C1. Note their are multiple possibilities' \
+                       ' for icosahedral symmetry: \n ' \
+                       ' _* I1_: No-Crowther 222 (standard in Heymann, Chagoyen & Belnap, JSB, 151 (2005) (196-207)\n' \
+                       ' _* I2_: Crowther 222\n ' \
+                       ' _* I3_: 52-setting (as used in SPIDER?) \n' \
+                       ' _* I4_: A different 52 setting \n' \
+                       'RELION uses XMIPPs libraries for symmetry operations. Therefore, look at the XMIPP:\n'+ SYMMETRY_HELP_MSG
+        super()._insertSymmetryParam(form, help3drefine)
 
     def _defineOptimisationParamsCommon2All(self, form):
         super()._insertOptimisationSection(form)
@@ -163,8 +182,10 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
                       label='Use finer angular sampling faster?',
                       help="If set to Yes, then let auto-refinement proceed faster with finer angular samplings. "
                            "Two additional conditions will be considered:\n\n "
-                           "\t-Angular sampling will go down despite changes still happening in the angles.\n"
-                           "\t-Angular sampling will go down if the current resolution already requires that sampling\n"
+                           "\t-Angular sampling will go down despite changes still happening in the angles. (this is the"
+                           " Relion flag  --auto_ignore_angles )\n"
+                           "\t-Angular sampling will go down if the current resolution already requires that sampling "
+                           "(this is the Relion flag --auto_resol_angles)\n"
                            "\t at the edge of the particle.\n\nThis option will make the computation faster, but "
                            "hasn't been tested for many cases for potential loss in reconstruction quality upon "
                            "convergence.")
@@ -191,7 +212,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
                            "refinement or classification in C1 with symmetry relaxation by C2 might be able to improve "
                            "distinction between A and A'. Note that the reference must be more-or-less aligned to the "
                            "convention of (pseudo-)symmetry operators. For details, see Ilca et al 2019 and Abrishami "
-                           "et al 2020 cited in the About dialog.\n\n%s" % SYMMETRY_HELP_MSG)
+                           "et al 2020 cited in the About dialog.\n\n")
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

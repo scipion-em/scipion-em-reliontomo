@@ -23,7 +23,6 @@
 # *
 # **************************************************************************
 from enum import Enum
-from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, IntParam, GE, LE
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
@@ -36,7 +35,6 @@ class outputObjects(Enum):
 class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
     """Base protocol used for the getting the frame alignment and ctf-refinment"""
 
-    _devStatus = BETA
     _possibleOutputs = outputObjects
 
     # -------------------------- DEFINE param functions -----------------------
@@ -50,18 +48,22 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
         form.addParam('recVolume', PointerParam,
                       pointerClass='AverageSubTomogram',
                       allowsNull=False,
-                      label='Volume to get the halves')
+                      label='Volume to get the halves',
+                      help='Provide a volume with half maps. Note that volumes with associated'
+                           'halves in the Scipion summary as w/h.')
         form.addParam('inRefMask', PointerParam,
                       pointerClass='VolumeMask',
-                      label="Input reference mask")
+                      label="Input reference mask",
+                      help='This mask localizes the signal in the reference map. The mask should be'
+                           'soft (non-binary)')
 
     @staticmethod
     def _insertBoxSizeForEstimationParam(form):
         form.addParam('boxSize', IntParam,
-                      label='Box size for estimation (pix)',
+                      label='Box size for estimation (px)',
                       default=128,
                       allowsNull=False,
-                      validators=[GE(32), LE(512)],
+                      validators=[GE(16)],
                       help="Box size to be used for the estimation. Note that this can be larger than the box size "
                            "of the reference map. A sufficiently large box size allows more of the high-frequency "
                            "signal to be captured that has been delocalized by the CTF.")
@@ -95,6 +97,7 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
         if postProcess:
             cmd += '--fsc %s ' % postProcess
         cmd += '--b %i ' % self.boxSize.get()
+        cmd += self._genExtraParamsCmd()
         return cmd
 
 

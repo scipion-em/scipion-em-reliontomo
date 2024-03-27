@@ -23,7 +23,7 @@
 # *
 # **************************************************************************
 from enum import Enum
-from pyworkflow.protocol import FloatParam, BooleanParam
+from pyworkflow.protocol import FloatParam, BooleanParam, GE
 from pyworkflow.protocol.constants import LEVEL_ADVANCED
 from reliontomo import Plugin
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
@@ -38,7 +38,23 @@ class outputObjects(Enum):
 
 
 class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticleBase, ProtTomoBase):
-    """Make pseudo-subtomograms"""
+    """Make pseudo-subtomograms\n
+
+    Pseudo-subtomograms do not aim to accurately represent the scattering potential of the underlying particles.
+    Instead, they serve as a practical means to implement an approximation to the 2D approach within
+    the existing RELION framework. In the original RELION4 article an accurate defition is given, see: \n
+
+     https://doi.org/10.7554/eLife.83724
+    \n
+    Before processing with any of the regular relion programs (those not specifically intended for
+    tomography, e.g. relion_refine), we first need to construct the individual pseudo-subtomogram
+    particles, equivalent to the particle extraction process in the SPA workflow.\
+
+    A more technical explanation, pseudo-subtomograms are 3D-Arrays (volumes) that constructed from
+    the sums of 2D tilt-series images pre-multiplied by contrast transfer functions (CTFs),
+    along with auxiliary arrays that store the corresponding sum of squared CTFs and the frequency
+    of observation for each 3D voxel.
+    """
 
     _label = 'Make pseudo-subtomograms'
     _possibleOutputs = outputObjects
@@ -47,7 +63,7 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
     def _defineParams(self, form):
         super()._defineParams(form)
         form.addSection(label='Reconstruct pseudo-Subtomograms')
-        super()._defineCommonRecParams(form)
+        self._defineCommonRecParams(form)
         form.addParam('applyConeWeight', BooleanParam,
                       label='Apply cone weight?',
                       default=False,
@@ -61,6 +77,7 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
         form.addParam('coneAngle', FloatParam,
                       label='Cone angle (deg.)',
                       condition='applyConeWeight',
+                      validator=[GE(0)],
                       default=10,
                       help='It is the (full) opening angle of the cone to be suppressed, given in degrees. This angle '
                            'should  include both the uncertainty about the membrane orientation and its variation '
@@ -72,6 +89,7 @@ class ProtRelionMakePseudoSubtomograms(ProtRelionMakePseudoSubtomoAndRecParticle
                       help='If set to Yes, this program will write output images in float16 MRC format. This will '
                            'save a factor of two in disk space compared to the default of writing in float32. Note '
                            'that RELION and CCPEM will read float16 images, but other programs may not (yet) do so.')
+        self._defineExtraParams(form)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
