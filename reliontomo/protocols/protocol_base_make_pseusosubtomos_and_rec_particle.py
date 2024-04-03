@@ -77,6 +77,17 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
         return self.genRelionParticles(binningFactor=self.binningFactor.get(), boxSize=self.croppedBoxSize.get())
 
     # -------------------------- INFO functions -------------------------------
+    def _warnings(self):
+        warnMsg = []
+        boxSize = self.boxSize.get()
+        croppedBoxSize = self.croppedBoxSize.get()
+        if boxSize == croppedBoxSize:
+            warnMsg.append('Setting the same value to the Box size and the Cropped box size may cause errors in '
+                           'later steps of the refinement cycle.')
+        elif boxSize < croppedBoxSize:
+            warnMsg.append(f"The Box size [{boxSize} px] should be lower than the Cropped box size [{croppedBoxSize} "
+                           f"px]. Please check these parameters' help to get more detailed information.")
+        return warnMsg
 
     # --------------------------- UTILS functions -----------------------------
     def _genCommonCmd(self):
