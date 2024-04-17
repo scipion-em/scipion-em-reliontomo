@@ -24,16 +24,15 @@
 # **************************************************************************
 
 from emtable import Table
-
-from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo import Plugin
-from reliontomo.constants import TOMO_NAME_30, PARTICLES_TABLE, RELION_30_TOMO_LABELS, RELION_40_TOMO_LABELS, \
-    PSUBTOMOS_SQLITE
-from reliontomo.convert import convert40_tomo, convert30_tomo
+from reliontomo.constants import TOMO_NAME_30, PARTICLES_TABLE, RELION_30_TOMO_LABELS, RELION_40_TOMO_LABELS
+from reliontomo.convert import convert40_tomo, convert30_tomo, convert50_tomo
 
 
 def createWriterTomo(isPyseg=False, **kwargs):
-    if isPyseg or not Plugin.isRe40():
+    if Plugin.IS_GT50():
+        writer = createWriterTomo50()
+    elif isPyseg or not Plugin.isRe40():
         writer = createWriterTomo30(starHeaders=RELION_30_TOMO_LABELS, **kwargs)
     else:
         writer = createWriterTomo40(starHeaders=RELION_40_TOMO_LABELS, **kwargs)
@@ -52,6 +51,12 @@ def createWriterTomo40(**kwargs):
     return Writer(**kwargs)
 
 
+def createWriterTomo50(**kwargs):
+    """ Create a new Writer instance for Relion 5."""
+    Writer = convert50_tomo.Writer
+    return Writer(**kwargs)
+
+
 def writeSetOfCoordinates(coordSet, starFile, whitelist, **kwargs):
     return createWriterTomo40().coordinates2Star(coordSet, starFile, whitelist, **kwargs)
 
@@ -62,7 +67,7 @@ def writeSetOfSubtomograms(particlesSet, starFile, **kwargs):
     return writer.subtomograms2Star(particlesSet, starFile)
 
 
-def writeSetOfPseudoSubtomograms(particlesSet, starFile, withPriors=False,**kwargs):
+def writeSetOfPseudoSubtomograms(particlesSet, starFile, withPriors=False, **kwargs):
     return createWriterTomo40(**kwargs).pseudoSubtomograms2Star(particlesSet, starFile, withPriors=withPriors)
 
 

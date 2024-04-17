@@ -39,7 +39,6 @@ class WriterTomo(WriterBase):
     def __init__(self,  **kwargs):
         super().__init__(**kwargs)
         self.starHeaders = kwargs.get('starHeaders', None)
-        self.isRelion4 = Plugin.isRe40()
 
 
 class ReaderTomo:
