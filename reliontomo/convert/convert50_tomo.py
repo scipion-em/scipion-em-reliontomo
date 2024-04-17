@@ -42,11 +42,13 @@ from reliontomo.convert.convertBase import (checkSubtomogramFormat,
                                             WriterTomo, ReaderTomo, getTransformMatrixFromRow)
 from reliontomo.objects import RelionPSubtomogram
 from tomo.constants import BOTTOM_LEFT_CORNER, TR_RELION, SCIPION
-from tomo.objects import Coordinate3D, SubTomogram, TomoAcquisition, Tomogram, TiltSeries, CTFTomoSeries
+from tomo.objects import Coordinate3D, SubTomogram, TomoAcquisition, Tomogram, TiltSeries, CTFTomoSeries, \
+    SetOfCoordinates3D
 
 logger = logging.getLogger(__name__)
 
 # TILT_SERIES METADATA #################################################################################################
+
 RLN_MICROGRAPH_MOVIENAME = 'rlnMicrographMovieName'
 RLN_TOMO_TILT_MOVIE_FRAME_COUNT = 'rlnTomoTiltMovieFrameCount'
 RLN_TOMO_NOMINAL_STAGE_TILT_ANGLE = 'rlnTomoNominalStageTiltAngle'
@@ -108,6 +110,7 @@ tsStarFields = [
 ]
 
 # TOMOGRAMS METADATA ###################################################################################################
+
 RLN_TOMONAME = 'rlnTomoName'
 RLN_VOLTAGE = 'rlnVoltage'
 RLN_SPHERICALABERRATION = 'rlnSphericalAberration'
@@ -140,6 +143,36 @@ tomoStarFields = [
     RLN_TOMOSIZEY,
     RLN_TOMOSIZEZ,
     RLN_TOMORECONSTRUCTED_TOMOGRAM
+]
+
+# PARTICLES METADATA ###################################################################################################
+
+RLN_TOMONAME = 'rlnTomoName'
+RLN_COORDINATEX = 'rlnCoordinateX'
+RLN_COORDINATEY = 'rlnCoordinateY'
+RLN_COORDINATEZ = 'rlnCoordinateZ'
+RLN_TOMOSUBTOMOGRAMROT = 'rlnTomoSubtomogramRot'
+RLN_TOMOSUBTOMOGRAMTILT = 'rlnTomoSubtomogramTilt'
+RLN_TOMOSUBTOMOGRAMPSI = 'rlnTomoSubtomogramPsi'
+RLN_ANGLEROT = 'rlnAngleRot'
+RLN_ANGLETILT = 'rlnAngleTilt'
+RLN_ANGLEPSI = 'rlnAnglePsi'
+RLN_ANGLETILTPRIOR = 'rlnAngleTiltPrior'
+RLN_ANGLEPSIPRIOR = 'rlnAnglePsiPrior'
+
+particlesStarFiles = [
+    RLN_TOMONAME,
+    RLN_COORDINATEX,
+    RLN_COORDINATEY,
+    RLN_COORDINATEZ,
+    RLN_TOMOSUBTOMOGRAMROT,
+    RLN_TOMOSUBTOMOGRAMTILT,
+    RLN_TOMOSUBTOMOGRAMPSI,
+    RLN_ANGLEROT,
+    RLN_ANGLETILT,
+    RLN_ANGLEPSI,
+    RLN_ANGLETILTPRIOR,
+    RLN_ANGLEPSIPRIOR
 ]
 
 
@@ -339,7 +372,6 @@ class Writer(WriterTomo):
             -0.08450    16.288582     0.711630     0.000000    -57.00000    85.080380    37.591033   126.622629
             0.544639
         """
-        # TODO: for now, we assume the TS and the CTF have been previously well matched.
         # TODO: for now, we skip the exclusion stuff, leave it for the future once it works with the simplest case
         # TODO: Tilt angle and tilt axis angle are stored separately for the initial and refined values. It is logical
         #  to think that the initial ones are there for tracking from the upper part of the pipeline and that the ones
@@ -400,7 +432,7 @@ class Writer(WriterTomo):
                 syAngst,  # 27, rlnTomoYShiftAngst
                 # TODO: do we have this?
                 0.5,  # 28, rlnCtfScalefactor
-                )
+            )
         # Write the STAR file
         tsTable.write(getTsStarFile(ts.getTsId(), outPath))
 
@@ -461,7 +493,8 @@ class Writer(WriterTomo):
                     'name': tsId,
                     'pixelSize': tsSRate,
                     'minTilt': acq.getAngleMin(),
-                    'markerDiameter': 10,  # TODO: we need the fiducial diameter at this point. Add it to model, form advanced param?
+                    'markerDiameter': 10,
+                    # TODO: we need the fiducial diameter at this point. Add it to model, form advanced param?
                     'rotationAngle': acq.getTiltAxisAngle(),
                     'angleOffset': 0  # TODO: check if what it is, if it's used, and how to get it from our data.
                 }
@@ -492,46 +525,68 @@ class Writer(WriterTomo):
         starFile = join(outPath, OUT_TOMOS_STAR)
         tomoTable.write(starFile)
 
-    def coordinates2Star(self, coordSet, subtomosStar, whitelist, sRate=1, coordsScale=1):
-        """Input coordsScale is used to scale the coordinates, so they are expressed in bin 1, as expected by Relion 4"""
-        tomoTable = Table(columns=self._getCoordinatesStarFileLabels())
-        i = 0
+    @staticmethod
+    def coords2Star(coordSet: SetOfCoordinates3D,
+                    outPath: str,
+                    coordsScale: float = 1.0):
+        """
+        It writes a particles star file in relion5 format. Fields (output of the command execution
+        relion_refine --print_metadata_labels):
+
+        rlnTomoName #1 (string) : Arbitrary name for a tomogram
+        rlnCoordinateX #2 (double) : X-Position of an image in a micrograph (in pixels)
+        rlnCoordinateY #3 (double) : Y-Position of an image in a micrograph (in pixels)
+        rlnCoordinateZ #4 (double) : Z-Position of an image in a 3D micrograph, i.e. tomogram (in pixels)
+        rlnTomoSubtomogramRot #5 (double) : First Euler angle of a subtomogram (rot, in degrees)
+        rlnTomoSubtomogramTilt #6 (double) : Second Euler angle of a subtomogram (tilt, in degrees)
+        rlnTomoSubtomogramPsi #7 (double) : Third Euler angle of a subtomogram (psi, in degrees)
+        rlnAngleRot #8 (double) : First Euler angle (rot, in degrees)
+        rlnAngleTilt #9 (double) : Second Euler angle (tilt, in degrees)
+        rlnAnglePsi #10 (double) : Third Euler angle (psi, in degrees)
+        rlnAngleTiltPrior #11 (double) : Center of the prior (in degrees) on the second Euler angle (tilt)
+        rlnAnglePsiPrior #12 (double) : Center of the prior (in degrees) on the third Euler angle (psi)
+
+        Example:
+            TS_43	1798.595537	1030.038284	1208.171910	-178.979203	87.527230	-22.439980	0.000000	90.000000
+            0.000000	90.000000	0.000000
+        """
+        particlesTable = Table(columns=particlesStarFiles)
+        sRate = coordSet.getSamplingRate()
         for coord in coordSet.iterCoordinates():
             tsId = coord.getTomoId()
+            angles, _ = getTransformInfoFromCoordOrSubtomo(coord, sRate)
+            # Extracted from teliontomo 5 doc: "The Napari picker has 4 modes of picking: particles, spheres,
+            # filaments and surfaces. For the tutorial data we use spheres, because HIV-VLPs are more-or-less that
+            # shape. Besides randomly picking particles with the distance specified below, this mode of picking also
+            # provides prior angles on the particles that will mean that with a tilt angle of 90 degrees, they will
+            # be oriented with their Z-axis along the normal to the sphere surface. In what follows, this prior
+            # information will be used in refinements and classification of the subtomograms."
+            nonOrientedPicking = np.allclose(angles, 0, atol=1e-4)
+            if nonOrientedPicking:
+                rlnAngleTilt = 0
+                rlnAngleTiltPrior = 0
+            else:
+                rlnAngleTilt = 90
+                rlnAngleTiltPrior = 90
 
-            if tsId not in whitelist:
-                continue
-
-            angles, shifts = getTransformInfoFromCoordOrSubtomo(coord, coordSet.getSamplingRate())
-            # Add row to the table which will be used to generate the STAR file
-            tomoTable.addRow(
-                tsId,  # 1 _rlnTomoName
-                coord.getObjId(),  # 2 _rlnTomoParticleId
-                coord.getGroupId() if coord.getGroupId() else 1,  # 3 _rlnTomoManifoldIndex
-                # coord in pix at scale of bin1
-                coord.getX(RELION_3D_COORD_ORIGIN) * coordsScale,  # 4 _rlnCoordinateX
-                coord.getY(RELION_3D_COORD_ORIGIN) * coordsScale,  # 5 _rlnCoordinateY
-                coord.getZ(RELION_3D_COORD_ORIGIN) * coordsScale,  # 6 _rlnCoordinateZ
-                # pix * Å/pix = [shifts in Å]
-                shifts[0],  #* sRate,  # 7 _rlnOriginXAngst
-                shifts[1],  #* sRate,  # 8 _rlnOriginYAngst
-                shifts[2],  #* sRate,  # 9 _rlnOriginZAngst
-                # Angles in degrees
-                angles[0],  # 10 _rlnAngleRot
-                angles[1],  # 11 _rlnAngleTilt
-                angles[2],  # 12 _rlnAnglePsi
-                # Extended fields
-                int(getattr(coord, '_classNumber', -1)),  # 13_rlnClassNumber
-                # Alternated 1 and 2 values
-                int(getattr(coord, '_randomSubset', (i % 2) + 1)),  # 14 _rlnRandomSubset
-                coord.getX(SCIPION),  # 15 _sciXCoord
-                coord.getY(SCIPION),  # 16 _sciYCoord
-                coord.getZ(SCIPION),  # 17 _sciZCoord
-                coord.getGroupId()  # 18 _sciGroupId
+            particlesTable.addRow(
+                tsId,  # 1, rlnTomoName
+                coord.getX(RELION_3D_COORD_ORIGIN) * coordsScale,  # 2, rlnCoordinateX
+                coord.getY(RELION_3D_COORD_ORIGIN) * coordsScale,  # 3, rlnCoordinateY
+                coord.getZ(RELION_3D_COORD_ORIGIN) * coordsScale,  # 4, rlnCoordinateZ
+                angles[0],  # 5, rlnTomoSubtomogramRot
+                angles[1],  # 6, rlnTomoSubtomogramTilt
+                angles[2],  # 7, rlnTomoSubtomogramPsi
+                # TODO: Check these angular values from here, based on the comment above. But, what about
+                #  re-extractions?
+                0,  # 8, rlnAngleRot
+                rlnAngleTilt,  # 9, rlnAngleTilt
+                0,  # 10, rlnAnglePsi
+                rlnAngleTiltPrior,  # 11, rlnAngleTiltPrior
+                0,  # 12, rlnAnglePsiPrior
             )
-            i += 1
         # Write the STAR file
-        tomoTable.write(subtomosStar)
+        particlesTable.write(join(outPath, OUT_PARTICLES_STAR))
 
     def pseudoSubtomograms2Star(self, pSubtomoSet, outStar, withPriors=False):
 
