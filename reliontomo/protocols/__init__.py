@@ -28,6 +28,7 @@ from .protocol_import_subtomograms_from_star import ProtImportSubtomogramsFromSt
 from .protocol_post_process import ProtRelionPostProcess
 from .protocol_prepare_data import ProtRelionPrepareData
 from .protocol_make_pseudo_subtomos import ProtRelionMakePseudoSubtomograms
+from .protocol_re5_extract_subtomos import ProtRelion5ExtractSubtomos
 from .protocol_rec_tomogram import ProtRelionTomoReconstruct
 from .protocol_reconstruc_particle_from_ts import ProtRelionReconstructParticle
 from .protocol_de_novo_initial_model import ProtRelionDeNovoInitialModel

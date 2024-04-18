@@ -28,18 +28,20 @@ from os import mkdir
 from os.path import join, exists
 from imod.utils import generateDefocusIMODFileFromObject
 from pwem.protocols import EMProtocol
+from pyworkflow import BETA
 from pyworkflow.object import Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED, IntParam
 from pyworkflow.utils import makePath, Message
 from reliontomo import Plugin
 from reliontomo.objects import createSetOfRelionPSubtomograms, RelionSetOfPseudoSubtomograms
 from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR,
-                                  OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE)
-from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates, readSetOfPseudoSubtomograms
+                                  OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE, IN_PARTICLES_STAR)
+from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates, readSetOfPseudoSubtomograms, convert50_tomo
 from reliontomo.protocols.protocol_re5_base_extract_subtomos_and_rec_particle import \
     ProtRelion5ExtractSubtomoAndRecParticleBase
 from reliontomo.utils import generateProjections
 import tomo.objects as tomoObj
+
 
 # # Other constants
 # DEFOCUS = 'defocus'
@@ -60,6 +62,8 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     CTF-premultiplied extracted 2D image stacks (or as 3D volumes).
     """
     _label = 'Extract subtomos'
+    _devStatus = BETA
+
     # _possibleOutputs = outputObjects
 
     def __init__(self, **kwargs):
@@ -68,10 +72,12 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         # self.tomoSet = None
         # self.tsReducedSet = None  # Reduced list of tiltseries with only those in the coordinates
         # self.matchingTSIds = None  # Unique tomogram identifiers volId used in the coordinate set. In case is a subset
-        # self.coordScale = Float(1)
+        self.coordScale = Float(1)
+        self.tsDict = dict()
+        self.ctfDict = dict()
+        self.tomoDict = dict()
 
     # -------------------------- DEFINE param functions -----------------------
-
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
         form.addParam('inputCoords', PointerParam,
@@ -126,101 +132,72 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        pass
-    #     self._initialize()
-    #     self._insertFunctionStep(self.convertInputStep)
-    #     self._insertFunctionStep(self.relionImportTomograms)
-    #     self._insertFunctionStep(self.relionImportParticles)
+        self._initialize()
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.extractSubtomos)
     #     self._insertFunctionStep(self.createOutputStep)
     #
-    # # -------------------------- STEPS functions ------------------------------
-    # def _initialize(self):
-    #     defocusDir = self._getExtraPath(DEFOCUS)
-    #     if not exists(defocusDir):  # It can exist in case of Continue execution
-    #         mkdir(defocusDir)
-    #     self.coords = self.inputCoords.get()
-    #     self.tsSet = self._getTiltSeriesNonInterpolated()
-    #
-    #     # Compute matching TS id among coordinates and tilt series, both could be a subset
-    #     coordsTsIds = self.coords.getTSIds()
-    #     self.info("TsIds present in coordinates are: %s" % coordsTsIds)
-    #
-    #     tsIds = self.tsSet.getTSIds()
-    #     self.info("TsIds present in Tilt series are: %s" % tsIds)
-    #
-    #     # Intersection
-    #     self.matchingTSIds = set(coordsTsIds).intersection(tsIds)
-    #     if len(self.matchingTSIds):
-    #         self.info("Tilt series associated in both, coordinates and tilt series are %s" % self.matchingTSIds)
-    #     else:
-    #         raise Exception("There isn't any common tilt series among the coordinates and tilt series chosen.")
-    #
-    #     self.tomoSet = self.coords.getPrecedents()
-    #     self.inputCtfs = self.inputCtfTs.get()
-    #     # If coordinates are referred to a set of tomograms, they'll be rescaled
-    #     # to be expressed in bin 1, as the ts images
-    #     if self.tomoSet:
-    #         self.coordScale.set(self.tomoSet.getSamplingRate() / self.tsSet.getSamplingRate())
-    #
-    # def _getTiltSeriesNonInterpolated(self) ->tomoObj.SetOfTiltSeries:
-    #     return self.inputTS.get() # if self.inputTS.get() is not None else \
-    #         #getNonInterpolatedTsFromRelations(self.inputCoords.get(), self)
-    #
-    # def convertInputStep(self):
-    #     # Generate defocus files
-    #     for ctfTomo in self.inputCtfs:
-    #         tsId = ctfTomo.getTsId()
-    #         if tsId not in self.matchingTSIds:
-    #             continue
-    #         defocusPath = self._getExtraPath(DEFOCUS, ctfTomo.getTsId())
-    #         if not exists(defocusPath):  # It can exist in case of mode Continue execution
-    #             mkdir(defocusPath)
-    #         generateDefocusIMODFileFromObject(ctfTomo,
-    #                                           join(defocusPath, ctfTomo.getTsId() + '.' + DEFOCUS),
-    #                                           isRelion=True)
-    #     # Thickness of the tomogram and shifts
-    #     tomoSizeDict = {}
-    #     tomoShiftsDict ={}
-    #     tomoList = [tomo.clone() for tomo in self.coords.getPrecedents()]
-    #     coordScale = self.coordScale.get()
-    #     for tomo in tomoList:
-    #         tsId = tomo.getTsId()
-    #         if tsId not in self.matchingTSIds:
-    #             continue
-    #
-    #         x, y, thickness = tomo.getDim()
-    #         tomoSizeDict[tsId] = {X_SIZE: x * coordScale,
-    #                                         Y_SIZE: y * coordScale,
-    #                                         THICKNESS: thickness * coordScale}
-    #
-    #         # Based on this: https://github.com/3dem/relion/blob/ver4.0/src/jaz/tomography/programs/convert_projections.cpp#L368
-    #         # First element is X, second Z!
-    #         shiftsAngs = tomo.getShiftsFromOrigin()
-    #
-    #         # shifts are stored in Angstrom, we convert to tomo SR and then add the half and the to TS pixel size
-    #         shiftX = int(((shiftsAngs[0] / tomo.getSamplingRate()) + x/2) * self.coordScale.get())
-    #         shiftZ = int(((shiftsAngs[2] / tomo.getSamplingRate()) + thickness/2) * self.coordScale.get())
-    #         tomoShiftsDict[tsId] = (shiftX, shiftZ)
-    #
-    #         self.info("Shifts detected for %s are: %s" % (tomo.getTsId(), (shiftX, shiftZ)))
-    #
-    #     # Simulate the etomo files that serve as entry point to relion4
-    #     self._simulateETomoFiles(self.tsSet, tomoSizeDict, tomoShiftsDict, binned=1, binByFactor=self.coordScale,
-    #                              whiteList=self.matchingTSIds, swapDims=self.swapXY.get(), tltIgnoresExcluded=True)
-    #
-    #     # Write the tomograms star file
-    #     writeSetOfTomograms(self.tsSet,
-    #                         self._getStarFilename(IN_TOMOS_STAR),
-    #                         prot=self,
-    #                         ctfPlotterParentDir=self._getExtraPath(DEFOCUS),
-    #                         eTomoParentDir=self._getTmpPath(),
-    #                         whiteList=self.matchingTSIds)
-    #     # Write the particles star file
-    #     writeSetOfCoordinates(self.inputCoords.get(),
-    #                           self._getStarFilename(IN_COORDS_STAR),
-    #                           self.matchingTSIds,
-    #                           sRate=self.tsSet.getSamplingRate(),
-    #                           coordsScale=self.coordScale.get())
+    # -------------------------- STEPS functions ------------------------------
+    def _initialize(self):
+        coords = self.inputCoords.get()
+        tsSet = self.inputTS.get()
+        ctfSet = self.inputCtfTs.get()
+
+        # The ccordinates need to be re-scaled to be at the same size of the tilt-series
+        self.coordScale.set(coords.getSamplingRate() / tsSet.getSamplingRate())
+
+        # Compute matching TS id among coordinates, the tilt-series and the CTFs, they all could be a subset
+        coordsTsIds = coords.getTSIds()
+        self.info("TsIds present in coordinates are: %s" % coordsTsIds)
+        tsIds = tsSet.getTSIds()
+        self.info("TsIds present in Tilt series are: %s" % tsIds)
+        ctfTsIds = ctfSet.getTSIds()
+        presentTsIds = set(coordsTsIds) & set(tsIds) & set(ctfTsIds)
+
+        # Validate the intersection
+        if len(presentTsIds) > 0:
+            self.info("Tilt series associated in coordinates, CTFs, and tilt series are %s" % presentTsIds)
+        else:
+            raise Exception("There isn't any common tilt-series ids among the coordinates, CTFs, and tilt-series "
+                            "introduced.")
+
+        # Manage the TS, CTF tomo Series and tomograms
+        self.tsDict = {ts.getTsId(): ts.clone(ignoreAttrs=[]) for ts in tsSet if ts.getTsId() in presentTsIds}
+        self.ctfDict = {ctf.getTsId(): ctf.clone(ignoreAttrs=[]) for ctf in ctfSet if ctf.getTsId() in presentTsIds}
+        self.tomoDict = {tomo.getTsId(): tomo.clone() for tomo in coords.getPrecedents() if
+                         tomo.getTsId() in presentTsIds}
+
+    def convertInputStep(self):
+        outPath = self._getExtraPath()
+        writer = convert50_tomo.Writer()
+        # Generate the particles star file
+        writer.coords2Star(self.inputCoords.get(), self.tomoDict, outPath, self.coordScale.get())
+        # Generate each tilt-series star file
+        writer.tsSet2Star(self.tsDict, self.ctfDict, outPath)
+        # Generate the tomograms star file
+        writer.tomoSet2Star(self.tomoDict, self.tsDict, outPath)
+
+    def extractSubtomos(self):
+        Plugin.runRelionTomo(self, 'relion_tomo_subtomo_mpi', self.getExtractSubtomosCmd())
+
+    def getExtractSubtomosCmd(self):
+        cmd = [
+            f'--p {self._getExtraPath(IN_PARTICLES_STAR)}',
+            f'--t {self._getExtraPath(IN_TOMOS_STAR)}',
+            f'--o {self._getExtraPath()}',
+            f'--b {self.boxSize.get()}',
+            f'--crop {self.croppedBoxSize.get()}',
+            f'--bin {self.binningFactor.get()}',
+            f'--max_dose {self.maxDose.get()}',
+            f'--min_frames {self.minNoFrames.get()}'
+        ]
+        if self.write2dStacks.get():
+            cmd.append('--stack2d')
+        if self.outputInFloat16.get():
+            cmd.append('--float16')
+        # TODO: the native command contains a --j 10, but there's no param on its form to add a value to it...
+        return ' '.join(cmd)
+
     #
     # def relionImportTomograms(self):
     #     Plugin.runRelionTomo(self, 'relion_tomo_import_tomograms', self._genImportTomosCmd())

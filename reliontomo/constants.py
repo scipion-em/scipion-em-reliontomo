@@ -139,10 +139,10 @@ NEWST_COM = 'newst.com'
 TILT_COM = 'tilt.com'
 
 # Data files
-IN_TOMOS_STAR = 'inTomos.star'
+IN_TOMOS_STAR = 'inTomograms.star'
 OUT_TOMOS_STAR = 'tomograms.star'
 IN_COORDS_STAR = 'inCoords.star'
-IN_PARTICLES_STAR = 'inSubtomos.star'
+IN_PARTICLES_STAR = 'inParticles.star'
 OUT_PARTICLES_STAR = 'particles.star'
 TRAJECTORIES_STAR = 'trajectories.star'
 MANIFOLDS_STAR = 'manifolds.star'

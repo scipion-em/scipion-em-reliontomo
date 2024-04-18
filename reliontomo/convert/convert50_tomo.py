@@ -110,6 +110,7 @@ tsStarFields = [
 ]
 
 # TOMOGRAMS METADATA ###################################################################################################
+GLOBAL_TABLE = 'global'
 
 RLN_TOMONAME = 'rlnTomoName'
 RLN_VOLTAGE = 'rlnVoltage'
@@ -146,6 +147,7 @@ tomoStarFields = [
 ]
 
 # PARTICLES METADATA ###################################################################################################
+PARTICLES_TABLE = 'particles'
 
 RLN_TOMONAME = 'rlnTomoName'
 RLN_COORDINATEX = 'rlnCoordinateX'
@@ -212,7 +214,7 @@ Setup.DatasetName=%(name)s
 batchruntomo.MadeZFactorsA=false
 batchruntomo.UsedLocalAlignmentsA=false
 batchruntomo.a.align.AxisZShift=0.0
-batchruntomo.a.align.AngleOffset=%(AngleOffset)f
+batchruntomo.a.align.AngleOffset=%(angleOffset)f
 batchruntomo.a.SeedingDone=true
 batchruntomo.Track.A.LightBeads=0
 batchruntomo.OrigImageStackExt=mrc
@@ -382,7 +384,13 @@ class Writer(WriterTomo):
         for ti, ctfTomo in zip(ts, ctf):
             acqTi = ti.getAcquisition()
             tiltAngle = ti.getTiltAngle()
-            oddTi, evenTi = ti.getOddEven()
+            oddEven = ti.getOddEven()
+            if oddEven:
+                oddTi, evenTi = oddEven
+            else:
+                oddTi = FILE_NOT_FOUND
+                evenTi = FILE_NOT_FOUND
+
             defocusU = ctfTomo.getDefocusU()
             defocusV = ctfTomo.getDefocusV()
             trMatrix = ti.getTransform().getMatrix()
@@ -434,7 +442,8 @@ class Writer(WriterTomo):
                 0.5,  # 28, rlnCtfScalefactor
             )
         # Write the STAR file
-        tsTable.write(getTsStarFile(ts.getTsId(), outPath))
+        tsId = ts.getTsId()
+        tsTable.write(getTsStarFile(tsId, outPath), tableName=tsId)
 
     @staticmethod
     def tomoSet2Star(tomoDict: Dict[str, Tomogram],
@@ -522,11 +531,11 @@ class Writer(WriterTomo):
                     tomoFName,  # 15, rlnTomoReconstructedTomogram
                 )
         # Write the STAR file
-        starFile = join(outPath, OUT_TOMOS_STAR)
-        tomoTable.write(starFile)
+        tomoTable.write(join(outPath, IN_TOMOS_STAR), tableName=GLOBAL_TABLE)
 
     @staticmethod
     def coords2Star(coordSet: SetOfCoordinates3D,
+                    presentTomosDict: Dict[str, Tomogram],
                     outPath: str,
                     coordsScale: float = 1.0):
         """
@@ -552,41 +561,41 @@ class Writer(WriterTomo):
         """
         particlesTable = Table(columns=particlesStarFiles)
         sRate = coordSet.getSamplingRate()
-        for coord in coordSet.iterCoordinates():
-            tsId = coord.getTomoId()
-            angles, _ = getTransformInfoFromCoordOrSubtomo(coord, sRate)
-            # Extracted from teliontomo 5 doc: "The Napari picker has 4 modes of picking: particles, spheres,
-            # filaments and surfaces. For the tutorial data we use spheres, because HIV-VLPs are more-or-less that
-            # shape. Besides randomly picking particles with the distance specified below, this mode of picking also
-            # provides prior angles on the particles that will mean that with a tilt angle of 90 degrees, they will
-            # be oriented with their Z-axis along the normal to the sphere surface. In what follows, this prior
-            # information will be used in refinements and classification of the subtomograms."
-            nonOrientedPicking = np.allclose(angles, 0, atol=1e-4)
-            if nonOrientedPicking:
-                rlnAngleTilt = 0
-                rlnAngleTiltPrior = 0
-            else:
-                rlnAngleTilt = 90
-                rlnAngleTiltPrior = 90
+        for tsId, tomo in presentTomosDict.items():
+            for coord in coordSet.iterCoordinates(volume=tomo):
+                angles, _ = getTransformInfoFromCoordOrSubtomo(coord, sRate)
+                # Extracted from teliontomo 5 doc: "The Napari picker has 4 modes of picking: particles, spheres,
+                # filaments and surfaces. For the tutorial data we use spheres, because HIV-VLPs are more-or-less that
+                # shape. Besides randomly picking particles with the distance specified below, this mode of picking also
+                # provides prior angles on the particles that will mean that with a tilt angle of 90 degrees, they will
+                # be oriented with their Z-axis along the normal to the sphere surface. In what follows, this prior
+                # information will be used in refinements and classification of the subtomograms."
+                nonOrientedPicking = np.allclose(angles, 0, atol=1e-4)
+                if nonOrientedPicking:
+                    rlnAngleTilt = 0
+                    rlnAngleTiltPrior = 0
+                else:
+                    rlnAngleTilt = 90
+                    rlnAngleTiltPrior = 90
 
-            particlesTable.addRow(
-                tsId,  # 1, rlnTomoName
-                coord.getX(RELION_3D_COORD_ORIGIN) * coordsScale,  # 2, rlnCoordinateX
-                coord.getY(RELION_3D_COORD_ORIGIN) * coordsScale,  # 3, rlnCoordinateY
-                coord.getZ(RELION_3D_COORD_ORIGIN) * coordsScale,  # 4, rlnCoordinateZ
-                angles[0],  # 5, rlnTomoSubtomogramRot
-                angles[1],  # 6, rlnTomoSubtomogramTilt
-                angles[2],  # 7, rlnTomoSubtomogramPsi
-                # TODO: Check these angular values from here, based on the comment above. But, what about
-                #  re-extractions?
-                0,  # 8, rlnAngleRot
-                rlnAngleTilt,  # 9, rlnAngleTilt
-                0,  # 10, rlnAnglePsi
-                rlnAngleTiltPrior,  # 11, rlnAngleTiltPrior
-                0,  # 12, rlnAnglePsiPrior
-            )
+                particlesTable.addRow(
+                    tsId,  # 1, rlnTomoName
+                    coord.getX(RELION_3D_COORD_ORIGIN) * coordsScale,  # 2, rlnCoordinateX
+                    coord.getY(RELION_3D_COORD_ORIGIN) * coordsScale,  # 3, rlnCoordinateY
+                    coord.getZ(RELION_3D_COORD_ORIGIN) * coordsScale,  # 4, rlnCoordinateZ
+                    angles[0],  # 5, rlnTomoSubtomogramRot
+                    angles[1],  # 6, rlnTomoSubtomogramTilt
+                    angles[2],  # 7, rlnTomoSubtomogramPsi
+                    # TODO: Check these angular values from here, based on the comment above. But, what about
+                    #  re-extractions?
+                    0,  # 8, rlnAngleRot
+                    rlnAngleTilt,  # 9, rlnAngleTilt
+                    0,  # 10, rlnAnglePsi
+                    rlnAngleTiltPrior,  # 11, rlnAngleTiltPrior
+                    0,  # 12, rlnAnglePsiPrior
+                )
         # Write the STAR file
-        particlesTable.write(join(outPath, OUT_PARTICLES_STAR))
+        particlesTable.write(join(outPath, IN_PARTICLES_STAR), tableName=PARTICLES_TABLE)
 
     def pseudoSubtomograms2Star(self, pSubtomoSet, outStar, withPriors=False):
 
