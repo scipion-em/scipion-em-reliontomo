@@ -129,6 +129,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                            'save a factor of two in disk space compared to the default of writing in float32. '
                            'Note that RELION and CCPEM will read float16 images, but other programs may '
                            'not (yet) do so.')
+        form.addParallelSection(threads=1, mpi=3)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -178,7 +179,8 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         writer.tomoSet2Star(self.tomoDict, self.tsDict, outPath)
 
     def extractSubtomos(self):
-        Plugin.runRelionTomo(self, 'relion_tomo_subtomo_mpi', self.getExtractSubtomosCmd())
+        Plugin.runRelionTomo(self, 'relion_tomo_subtomo_mpi', self.getExtractSubtomosCmd(),
+                             numberOfMpi=self.numberOfMpi.get())
 
     def getExtractSubtomosCmd(self):
         cmd = [
@@ -196,6 +198,8 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         if self.outputInFloat16.get():
             cmd.append('--float16')
         # TODO: the native command contains a --j 10, but there's no param on its form to add a value to it...
+        cmd.append(f'--j {self.numberOfThreads.get()}')
+        cmd.append('--theme classic')
         return ' '.join(cmd)
 
     #
