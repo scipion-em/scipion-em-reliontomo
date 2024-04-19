@@ -32,7 +32,7 @@ from pyworkflow.utils import Message, createLink
 from reliontomo.constants import IN_PARTICLES_STAR, POSTPROCESS_DIR, OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE, \
     OUT_PARTICLES_STAR
 from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms
-from reliontomo.objects import createSetOfRelionPSubtomograms, RelionSetOfPseudoSubtomograms
+from reliontomo.objects_re5 import createSetOfRelionPSubtomograms, RelionSetOfPseudoSubtomograms
 
 
 class ProtRelion5TomoBase(EMProtocol):
