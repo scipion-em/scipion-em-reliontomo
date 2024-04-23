@@ -22,6 +22,8 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from relion import V5_0
+
 _logo = "relion_logo.jpg"
 _references = ['Scheres2012a', 'Scheres2012b', 'Kimanius2016', 'Zivanov2018']
 __version__ = '4.0.0'
@@ -32,13 +34,13 @@ try:
     import relion
 
     class Plugin(relion.Plugin):
-        _supportedVersions = [V4_0]
+        _supportedVersions = [V5_0]
         _homeVar = RELIONTOMO_HOME
         _pathVars = [RELIONTOMO_HOME]
 
         @classmethod
         def _defineVariables(cls):
-            cls._defineEmVar(RELIONTOMO_HOME, 'relion-%s' % V4_0)
+            cls._defineEmVar(RELIONTOMO_HOME, 'relion-%s' % V5_0)
             cls._defineVar(RELIONTOMO_CUDA_LIB, pwem.Config.CUDA_LIB)
 
         @staticmethod

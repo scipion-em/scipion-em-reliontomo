@@ -47,8 +47,7 @@ class EnumRe4GenFilesProps(Enum):
     _referenceFsc = FSC_REF_STAR
 
 
-class RelionPSubtomogram(SubTomogram):
-
+class Relion5PSubtomogram(SubTomogram):
     TS_ID_ATTRIBUTE = '_volName'
 
     def __init__(self, fileName=None, samplingRate=None, tsId=None, classId=None,
@@ -215,7 +214,7 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     (when we fixed the shifts conversion  problem) or alternatively read the relion starfile and generate
     a new one filtered out base on  this set ids? (warning, ids will fail if there are joins!!)
     """
-    ITEM_TYPE = RelionPSubtomogram
+    ITEM_TYPE = Relion5PSubtomogram
 
     def __init__(self, optimSetStar=None, relionBinning=None, tsSamplingRate=None, boxSize=24,
                  nReParticles=0, are2dStacks=None, **kwargs):
@@ -330,7 +329,8 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
         self._boxSize.set(val)
 
     def copyInfo(self, other):
-        self.copyAttributes(other,'_filesMaster', '_tomograms', '_particles', '_trajectories', '_manifolds', '_referenceFsc',
+        self.copyAttributes(other, '_filesMaster', '_tomograms', '_particles', '_trajectories', '_manifolds',
+                            '_referenceFsc',
                             '_relionBinning', '_tsSamplingRate', '_samplingRate', '_boxSize', '_nReParticles',
                             '_coordsPointer')
         self._acquisition.copyInfo(other._acquisition)
@@ -397,7 +397,6 @@ def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, coordsPointer, te
     newAcquisition = acquisition.clone()
     psubtomoSet.setAcquisition(newAcquisition)
     return psubtomoSet
-
 
 
 class StarFileComparer:
@@ -512,6 +511,3 @@ class StarFileComparer:
 
 def list2str(inList):
     return ' '.join([str(label) for label in inList])
-
-
-

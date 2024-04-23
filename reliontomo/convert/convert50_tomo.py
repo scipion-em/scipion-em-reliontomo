@@ -24,7 +24,7 @@
 # **************************************************************************
 import logging
 import csv
-from typing import Dict, Union
+from typing import Dict, Union, List
 
 from emtable import Table
 from pwem import ALIGN_NONE
@@ -40,7 +40,7 @@ from os.path import join, basename
 from reliontomo.convert.convertBase import (checkSubtomogramFormat,
                                             getTransformInfoFromCoordOrSubtomo,
                                             WriterTomo, ReaderTomo, getTransformMatrixFromRow)
-from reliontomo.objects import RelionPSubtomogram
+from reliontomo.objects_re5 import Relion5PSubtomogram
 from tomo.constants import BOTTOM_LEFT_CORNER, TR_RELION, SCIPION
 from tomo.objects import Coordinate3D, SubTomogram, TomoAcquisition, Tomogram, TiltSeries, CTFTomoSeries, \
     SetOfCoordinates3D
@@ -434,7 +434,8 @@ class Writer(WriterTomo):
 
             defocusU = ctfTomo.getDefocusU()
             defocusV = ctfTomo.getDefocusV()
-            trMatrix = ti.getTransform().getMatrix()
+            tr = getattr(ti, '_transform', None)
+            trMatrix = ti.getTransform().getMatrix() if tr else np.eye(3)
             sxAngst = trMatrix[0, 2] * sRate
             syAngst = trMatrix[1, 2] * sRate
             tsTable.addRow(
@@ -923,31 +924,31 @@ class Reader(ReaderTomo):
         for counter, row in enumerate(self.dataTable):
             t = Transform()
             particleFile = row.get(RLN_IMAGENAME, None)
-            psubtomo = RelionPSubtomogram(fileName=particleFile,
-                                          samplingRate=sRate,
-                                          tsId=row.get(RLN_TOMONAME),
-                                          classId=row.get(RLN_CLASSNUMBER, -1),
-                                          x=row.get(COORD_X) * sRate,
-                                          y=row.get(COORD_Y) * sRate,
-                                          z=row.get(COORD_Z) * sRate,
-                                          # TODO: calculate this --> req tilt image origin matrix
-                                          xInImg=-1,
-                                          yInImg=-1,
-                                          zInImg=-1,
-                                          rdnSubset=row.get(RANDOM_SUBSET, counter % 2),  # 1 and 2 alt. by default
-                                          re4ParticleName=row.get(RLN_TOMOPARTICLENAME),
-                                          visibleFrames=row.get(RLN_TOMOVISIBLEFRAMES, [0, 0, 0]),
-                                          opticsGroupId=row.get(OPTICS_GROUP, 1),
-                                          manifoldIndex=row.get(MANIFOLD_INDEX, 1 if counter % 2 else -1),  # 1 and -1
-                                          logLikeliCont=row.get(LOG_LIKELI_CONTRIB, -1),
-                                          maxValProbDist=row.get(MAX_VALUE_PROB_DISTRIB, -1),
-                                          noSignifSamples=row.get(NO_SIGNIFICANT_SAMPLES, -1),
-                                          rot=row.get(RLN_ANGLEROT, 0),
-                                          tilt=row.get(RLN_ANGLETILT, 90),
-                                          psi=row.get(RLN_ANGLEPSI, 0),
-                                          tiltPrior=row.get(RLN_ANGLETILTPRIOR, 90),
-                                          psiPrior=row.get(RLN_ANGLEPSIPRIOR, 0),
-                                          )
+            psubtomo = Relion5PSubtomogram(fileName=particleFile,
+                                           samplingRate=sRate,
+                                           tsId=row.get(RLN_TOMONAME),
+                                           classId=row.get(RLN_CLASSNUMBER, -1),
+                                           # Coords. in Relion they are in angstroms, while in Scipion they're in pixels
+                                           x=row.get(RLN_ORIGINXANGST, 0) / sRate,
+                                           y=row.get(RLN_ORIGINYANGST, 0) / sRate,
+                                           z=row.get(RLN_ORIGINZANGST, 0) / sRate,
+                                           xInImg=row.get(RLN_CENTEREDCOORDINATEXANGST, 0) / sRate,
+                                           yInImg=row.get(RLN_CENTEREDCOORDINATEYANGST, 0) / sRate,
+                                           zInImg=row.get(RLN_CENTEREDCOORDINATEZANGST, 0) / sRate,
+                                           rdnSubset=row.get(RANDOM_SUBSET, counter % 2),  # 1 and 2 alt. by default
+                                           re4ParticleName=row.get(RLN_TOMOPARTICLENAME),
+                                           visibleFrames=row.get(RLN_TOMOVISIBLEFRAMES, [0, 0, 0]),
+                                           opticsGroupId=row.get(OPTICS_GROUP, 1),
+                                           manifoldIndex=row.get(MANIFOLD_INDEX, 1 if counter % 2 else -1),  # 1 and -1
+                                           logLikeliCont=row.get(LOG_LIKELI_CONTRIB, -1),
+                                           maxValProbDist=row.get(MAX_VALUE_PROB_DISTRIB, -1),
+                                           noSignifSamples=row.get(NO_SIGNIFICANT_SAMPLES, -1),
+                                           rot=row.get(RLN_ANGLEROT, 0),
+                                           tilt=row.get(RLN_ANGLETILT, 90),
+                                           psi=row.get(RLN_ANGLEPSI, 0),
+                                           tiltPrior=row.get(RLN_ANGLETILTPRIOR, 90),
+                                           psiPrior=row.get(RLN_ANGLEPSIPRIOR, 0),
+                                           )
 
             # TODO: decide what to do with this
             # Keeping particle id
@@ -966,6 +967,7 @@ class Reader(ReaderTomo):
             # Set the transformation matrix
             t.setMatrix(getTransformMatrixFromRow(row, sRate=sRate))
             psubtomo.setTransform(t)
+            psubtomo.setIndex(counter)
 
             # Add current pseudosubtomogram to the output set
             outputSet.append(psubtomo)
@@ -1006,7 +1008,7 @@ class Reader(ReaderTomo):
     #             sciCoord.setX(row.get(SCIPION_COORD_X), SCIPION)
     #             sciCoord.setY(row.get(SCIPION_COORD_Y), SCIPION)
     #             sciCoord.setZ(row.get(SCIPION_COORD_Z), SCIPION)
-    #             sciCoord.setGroupId(row.get(SCIPION_COORD_GROUP_ID, 1))
+    #             sciCoord.setGroupId(row.get(SCIPION_COORD_GROUP_ID, 1))row.get(RLN_IMAGENAME, None)
     #             sciCoord.setTomoId(row.get(TOMO_NAME))
     #             psubtomo.setCoordinate3D(sciCoord)
     #
@@ -1067,3 +1069,119 @@ class Reader(ReaderTomo):
 
         # Set the set of coordinates which corresponds to the current set of subtomograms
         subtomoSet.setCoordinates3D(coordSet)
+
+
+# def genPrjMatricesDict(tsStarFilesPath: str, tsId: str) -> Dict[str, List[np.ndarray]]:
+
+
+def getProjMatrixList(tsStarFile: str, tomogram: Tomogram, ts: TiltSeries) -> List[np.ndarray]:
+    # / *From
+    # Alister
+    # Burt
+    # *
+    # *tilt_image_center = tilt_image_dimensions / 2
+    # *specimen_center = tomogram_dimensions / 2
+    # *
+    # *  # Transformations, defined in order of application
+    # *s0 = S(-specimen_center)  # put specimen center-of-rotation at the origin
+    # *r0 = Rx(euler_angles['rlnTomoXTilt'])  # rotate specimen around X-axis
+    # *r1 = Ry(euler_angles['rlnTomoYTilt'])  # rotate specimen around Y-axis
+    # *r2 = Rz(euler_angles['rlnTomoZRot'])  # rotate specimen around Z-axis
+    # *s1 = S(specimen_shifts)  # shift projected specimen in xy (camera) plane
+    # *s2 = S(tilt_image_center)  # move specimen back into tilt-image coordinate system
+    # *
+    # *  # compose matrices
+    # *transformations = s2 @ s1 @ r2 @ r1 @ r0 @ s0
+    # *
+    # * /
+    # specimen_shifts(xshift_angst / optics.pixelSize, yshift_angst / optics.pixelSize, 0.);
+    prjMatrixList = []
+    dataTable = Table()
+    dataTable.read(tsStarFile)
+    tsSRate = ts.getSamplingRate()
+    ih = ImageHandler()
+    tomoXDim, tomoYDim, tomoZDim, _ = ih.getDimensions(tomogram.getFileName())
+    tsXDim, tsYDim, _, _ = ih.getDimensions(ts.getFirstItem().getFileName())
+    for row in dataTable:
+        xRotAngle = row.get(RLN_TOMO_X_TILT, None)
+        yRotAngle = row.get(RLN_TOMO_Y_TILT, None)
+        zRotAngle = row.get(RLN_TOMO_Z_ROT, None)
+        sxAngst = row.get(RLN_TOMO_X_SHIFT_ANGST, None)
+        syAngst = row.get(RLN_TOMO_Y_SHIFT_ANGST, None)
+        # Rotate specimen around X-axis
+        r0 = gen3dRotXMatrix(xRotAngle)
+        r1 = gen3dRotYMatrix(yRotAngle)
+        r2 = gen3dRotZMatrix(zRotAngle)
+        # Translations
+        s0 = np.eye(4) #genTranslationMatrix(-tomoXDim / 2, -tomoYDim / 2, -tomoZDim / 2)
+        s1 = genTranslationMatrix(sxAngst / tsSRate, syAngst / tsSRate, 0)
+        s2 = genTranslationMatrix(tsXDim / 2, tsYDim / 2, 0)
+        # Projection matrix
+        prjMatrix = s2 @ s1 @ r2 @ r1 @ r0 @ s0
+        prjMatrixList.append(prjMatrix)
+
+    return prjMatrixList
+
+
+def gen3dRotXMatrix(angleInDeg):
+    angleInRad = np.radians(angleInDeg)
+    return np.array([[1, 0, 0, 0],
+                     [0, np.cos(angleInRad), -np.sin(angleInRad), 0],
+                     [0, np.sin(angleInRad), np.cos(angleInRad), 0],
+                     [0, 0, 0, 1]])
+
+
+def gen3dRotYMatrix(angleInDeg):
+    angleInRad = np.radians(angleInDeg)
+    return np.array([[np.cos(angleInRad), 0, np.sin(angleInRad), 0],
+                     [0, 1, 0, 0],
+                     [-np.sin(angleInRad), 0, np.cos(angleInRad), 0],
+                     [0, 0, 0, 1]])
+
+
+def gen3dRotZMatrix(angleInDeg):
+    angleInRad = np.radians(angleInDeg)
+    return np.array([[np.cos(angleInRad), -np.sin(angleInRad), 0, 0],
+                     [np.sin(angleInRad), np.cos(angleInRad), 0, 0],
+                     [0, 0, 1, 0],
+                     [0, 0, 0, 1]])
+
+
+def genTranslationMatrix(sx, sy, sz):
+    trMatrix = np.eye(4)
+    trMatrix[0, 3] = sx
+    trMatrix[1, 3] = sy
+    trMatrix[2, 3] = sz
+    return trMatrix
+
+
+class StarFileIterator:
+    def __init__(self, star_data, field_name, field_value):
+        self.star_data = star_data
+        self.field_name = field_name
+        self.field_value = field_value
+        self.index = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        while self.index < len(self.star_data):
+            if self.star_data[self.index].get(self.field_name) == self.field_value:
+                result = self.star_data[self.index]
+                self.index += 1
+                return result
+            self.index += 1
+        raise StopIteration
+
+# # Supongamos que star_data es tu lista de filas del archivo STAR
+# star_data = [
+#     # ... tus filas cargadas como diccionarios ...
+# ]
+#
+# # Crear el iterador
+# iterador = StarFileIterator(star_data, '_rlnTomoName', 'TS_03')
+#
+# # Usar el iterador para recorrer las filas deseadas
+# for fila in iterador:
+#     print(fila)
