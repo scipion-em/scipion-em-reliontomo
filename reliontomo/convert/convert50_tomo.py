@@ -436,31 +436,43 @@ class Writer(WriterTomo):
             defocusV = ctfTomo.getDefocusV()
             tr = getattr(ti, '_transform', None)
             trMatrix = ti.getTransform().getMatrix() if tr else np.eye(3)
-            sxAngst = trMatrix[0, 2] * sRate
-            syAngst = trMatrix[1, 2] * sRate
+            iTrMatrix = np.linalg.inv(trMatrix)
+            rotAngle = np.rad2deg(np.arccos(trMatrix[0, 0]))
+            sxAngst = iTrMatrix[0, 2] * sRate
+            syAngst = iTrMatrix[1, 2] * sRate
             tsTable.addRow(
-                'frames/TS_01_038_-57.0.mrc',  # 1, rlnMicrographMovieName
+                FILE_NOT_FOUND,  # 1, rlnMicrographMovieName
                 1,  # 2, rlnTomoTiltMovieFrameCount
                 tiltAngle,  # 3, rlnTomoNominalStageTiltAngle
                 tiltAxisAngle,  # 4, rlnTomoNominalTiltAxisAngle
                 acqTi.getDoseInitial(),  # 5, rlnMicrographPreExposure
                 # TODO: it has to be read from the mdoc from label TargetDefocus
-                -4,  # 6, rlnTomoNominalDefocus
+                -1.5,  # 6, rlnTomoNominalDefocus
                 # TODO: manage this
-                'MotionCorr/job002/frames/TS_01_038_-57_0_PS.mrc',  # 7, rlnCtfPowerSpectrum
+                FILE_NOT_FOUND,  # 7, rlnCtfPowerSpectrum
                 # TODO: the tilt-images are expexted to be unstacked, as there is no index field
                 oddTi,  # 8, rlnMicrographNameEven
                 evenTi,  # 9, rlnMicrographNameOdd
-                ti.getFileName(),  # 10, rlnMicrographName
+                f'{ti.getIndex()}@{ti.getFileName()}:mrcs',  # 10, rlnMicrographName
                 # TODO: check if it's used for other calculations apart from the Bayesian polishing
-                'MotionCorr/job002/frames/TS_01_038_-57_0.star',  # 11, rlnMicrographMetadata
+                FILE_NOT_FOUND,  # 11, rlnMicrographMetadata
                 # TODO: check if it's used for other calculations apart from the Bayesian polishing. If True, we would
                 #  have to add it to our data model
                 0,  # 12, rlnAccumMotionTotal
                 0,  # 13, rlnAccumMotionEarly
                 0,  # 14, rlnAccumMotionLate
                 # TODO: check if it's used for something or if it's just an internal metric
-                'CtfFind/job003/frames/TS_01_038_-57_0_PS.ctf:mrc',  # 15, rlnCtfImage
+                # src/reconstructor.cpp
+                # C++
+                # ·
+                # master
+                # 			Image<RFLOAT> Ictf;
+                # 			FileName fn_ctf;
+                # 			if (!DF.getValue(EMDL_CTF_IMAGE, fn_ctf, p))
+                # 				REPORT_ERROR("ERROR: cannot find rlnCtfImage for 3D CTF correction!");
+                # 			Ictf.read(fn_ctf);
+                # 			// If there is a redundant half, get rid of it
+                ctfTomo.getPsdFile() if ctfTomo.getPsdFile() else FILE_NOT_FOUND,  # 15, rlnCtfImage
                 defocusU,  # 16, rlnDefocusU
                 defocusV,  # 17, rlnDefocusV
                 abs(defocusU - defocusV),  # 18, rlnCtfAstigmatism
@@ -477,7 +489,7 @@ class Writer(WriterTomo):
                 # TODO: I've only seen this off tilt axis estimated in EMAN...
                 0,  # 23, rlnTomoXTilt
                 tiltAngle,  # 24, rlnTomoYTilt
-                tiltAxisAngle,  # 25, rlnTomoZRot
+                rotAngle,  # 25, rlnTomoZRot
                 sxAngst,  # 26, rlnTomoXShiftAngst
                 syAngst,  # 27, rlnTomoYShiftAngst
                 # TODO: do we have this?
@@ -547,7 +559,7 @@ class Writer(WriterTomo):
                     'markerDiameter': 10,
                     # TODO: we need the fiducial diameter at this point. Add it to model, form advanced param?
                     'rotationAngle': acq.getTiltAxisAngle(),
-                    'angleOffset': 0  # TODO: check if what it is, if it's used, and how to get it from our data.
+                    'angleOffset': -0.12  # TODO: check if what it is, if it's used, and how to get it from our data.
                 }
                 eTomoEdf = join(outPath, tsId + '.edf')
                 writeEtomoEdf(eTomoEdf, eTomoDirectiveFileDict)
@@ -562,11 +574,11 @@ class Writer(WriterTomo):
                     # TODO: add handedness to our data model
                     -1,  # 6, rlnTomoHand
                     # TODO: check if this may vary (seems not to...)
-                    1,  # 7, rlnOpticsGroupName
+                    'optics1',  # 7, rlnOpticsGroupName
                     tsSRate,  # 8, rlnTomoTiltSeriesPixelSize
                     getTsStarFile(tsId, outPath),  # 9, rlnTomoTiltSeriesStarFile
                     eTomoEdf,  # 10, rlnEtomoDirectiveFile
-                    tomo.getSamplingRate(),  # 11, rlnTomoTomogramBinning
+                    tomo.getSamplingRate() / tsSRate,  # 11, rlnTomoTomogramBinning
                     tomoX * tomoScaleFactor,  # 12, rlnTomoSizeX
                     tomoY * tomoScaleFactor,  # 13, rlnTomoSizeY
                     tomoZ * tomoScaleFactor,  # 14, rlnTomoSizeZ
@@ -1113,11 +1125,19 @@ def getProjMatrixList(tsStarFile: str, tomogram: Tomogram, ts: TiltSeries) -> Li
         r1 = gen3dRotYMatrix(yRotAngle)
         r2 = gen3dRotZMatrix(zRotAngle)
         # Translations
-        s0 = np.eye(4) #genTranslationMatrix(-tomoXDim / 2, -tomoYDim / 2, -tomoZDim / 2)
+        s0 = genTranslationMatrix(-tomoXDim / 2, -tomoYDim / 2, -tomoZDim / 2)
         s1 = genTranslationMatrix(sxAngst / tsSRate, syAngst / tsSRate, 0)
         s2 = genTranslationMatrix(tsXDim / 2, tsYDim / 2, 0)
         # Projection matrix
-        prjMatrix = s2 @ s1 @ r2 @ r1 @ r0 @ s0
+        # prjMatrix = s2 @ s1 @ r2 @ r1 @ r0 @ s0
+        prjMatrix = s2 @ s1 @ r2 @ r1 @ r0
+        logger.info(yellowStr(prjMatrix))
+        logger.info(f's2 =\n{s2}')
+        logger.info(f's1 =\n{s1}')
+        logger.info(f'r2 =\n{r2}')
+        logger.info(f'r1 =\n{r1}')
+        logger.info(f'r0 =\n{r0}')
+        logger.info(f's0 =\n{s0}')
         prjMatrixList.append(prjMatrix)
 
     return prjMatrixList
@@ -1174,14 +1194,3 @@ class StarFileIterator:
             self.index += 1
         raise StopIteration
 
-# # Supongamos que star_data es tu lista de filas del archivo STAR
-# star_data = [
-#     # ... tus filas cargadas como diccionarios ...
-# ]
-#
-# # Crear el iterador
-# iterador = StarFileIterator(star_data, '_rlnTomoName', 'TS_03')
-#
-# # Usar el iterador para recorrer las filas deseadas
-# for fila in iterador:
-#     print(fila)
