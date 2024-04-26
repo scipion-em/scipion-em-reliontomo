@@ -88,7 +88,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase, Pr
                       label="Tilt series",
                       important=True,
                       allowsNull=False)
-        form.addParam('handeness', BooleanParam,
+        form.addParam('handedness', BooleanParam,
                       label='Does focus decrease with Z distance?',
                       default=True,
                       help='It is the handedness of the tilt geometry and it is used to describe '
@@ -168,7 +168,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase, Pr
         # Generate each tilt-series star file
         writer.tsSet2Star(self.tsDict, self.ctfDict, outPath)
         # Generate the tomograms star file
-        writer.tomoSet2Star(self.tomoDict, self.tsDict, outPath)
+        writer.tomoSet2Star(self.tomoDict, self.tsDict, outPath, handedness=self._decodehandedness())
 
     def extractSubtomos(self):
         Plugin.runRelionTomo(self, 'relion_tomo_subtomo_mpi', self.getExtractSubtomosCmd(),
@@ -272,5 +272,5 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase, Pr
         cmd.append('--theme classic')
         return ' '.join(cmd)
 
-    # def _decodeHandeness(self):
-    #     return -1 if self.handeness.get() else 1
+    def _decodehandedness(self):
+        return -1 if self.handedness.get() else 1
