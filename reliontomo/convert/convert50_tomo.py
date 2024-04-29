@@ -105,7 +105,7 @@ tsStarFields = [
     RLN_TOMO_Z_ROT,
     RLN_TOMO_X_SHIFT_ANGST,
     RLN_TOMO_Y_SHIFT_ANGST,
-    # RLN_CTF_SCALEFACTOR
+    RLN_CTF_SCALEFACTOR
 ]
 
 # TOMOGRAMS METADATA ###################################################################################################
@@ -216,6 +216,9 @@ particlesStarFields = [
     RLN_CENTEREDCOORDINATEZANGST,
     RLN_CLASSNUMBER
 ]
+
+# OTHERS
+eyeMatrix3x3 = np.eye(3)
 
 
 def getTsStarFile(tsId: str, outPath: str) -> str:
@@ -433,7 +436,7 @@ class Writer(WriterTomo):
 
             defocusU = ctfTomo.getDefocusU()
             defocusV = ctfTomo.getDefocusV()
-            trMatrix = ti.getTransform().getMatrix() if ti.getTransform() is not None else np.eye(3)
+            trMatrix = ti.getTransform().getMatrix() if ti.getTransform() is not None else eyeMatrix3x3
             iTrMatrix = np.linalg.inv(trMatrix)
             rotAngle = np.rad2deg(np.arccos(trMatrix[0, 0]))
             sxAngst = iTrMatrix[0, 2] * sRate
@@ -490,8 +493,7 @@ class Writer(WriterTomo):
                 rotAngle,  # 25, rlnTomoZRot
                 sxAngst,  # 26, rlnTomoXShiftAngst
                 syAngst,  # 27, rlnTomoYShiftAngst
-                # # TODO: do we have this?
-                # 0.5,  # 28, rlnCtfScalefactor
+                np.cos(np.deg2rad(tiltAngle)),  # 28, rlnCtfScalefactor
             )
         # Write the STAR file
         tsId = ts.getTsId()
@@ -682,15 +684,22 @@ class Reader(ReaderTomo):
             coordinate3d.setX(float(x) * factor, RELION_3D_COORD_ORIGIN)
             coordinate3d.setY(float(y) * factor, RELION_3D_COORD_ORIGIN)
             coordinate3d.setZ(float(z) * factor, RELION_3D_COORD_ORIGIN)
-            coordinate3d.setMatrix(getCoordsTransformMatrixFromRow(row, sRate=sRate), convention=TR_RELION)
-            #TODO: check if the angles are 0, 0, 0 and thus the picking is not oriented --> rlnAngleTilt and
+            # Check if the angles are 0, 0, 0 and thus the picking is not oriented --> rlnAngleTilt and
             # rlnAngleTiltPrior should be 90 instead of 0
-            coordinate3d.setGroupId(row.get(MANIFOLD_INDEX, 1))
+            trMatrix = getCoordsTransformMatrixFromRow(row, sRate=sRate)
+            if np.array_equal(trMatrix[:3, :3], eyeMatrix3x3):
+                tiltAngleDefault = 0
+                tiltAnglePriorDefault = 0
+            else:
+                tiltAngleDefault = 90
+                tiltAnglePriorDefault = 90
+
+            coordinate3d.setMatrix(trMatrix, convention=TR_RELION)
             # Extended fields
             coordinate3d._rlnAngleRot = Float(row.get(RLN_ANGLEROT, 0))
-            coordinate3d._rlnAngleTilt = Float(row.get(RLN_ANGLETILT, 90))
+            coordinate3d._rlnAngleTilt = Float(row.get(RLN_ANGLETILT, tiltAngleDefault))
             coordinate3d._rlnAnglePsi = Float(row.get(RLN_ANGLETILT, 0))
-            coordinate3d._rlnAngleTiltPrior = Float(row.get(RLN_ANGLETILT, 90))
+            coordinate3d._rlnAngleTiltPrior = Float(row.get(RLN_ANGLETILT, tiltAnglePriorDefault))
             coordinate3d._rlnAnglePsiPrior = Float(row.get(RLN_ANGLETILT, 0))
 
         return coordinate3d, tomoId
