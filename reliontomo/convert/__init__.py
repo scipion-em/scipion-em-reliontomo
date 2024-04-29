@@ -86,17 +86,17 @@ def createReaderTomo(starFile, **kwargs):
 
     if Plugin.IS_GT50():
         reader = convert50_tomo.Reader(starFile, dataTable, **kwargs)
-        isReader40 = False
+        isReaderGE40 = True
     else:
         labels = dataTable.getColumnNames()
         if TOMO_NAME_30 in labels:
             reader = convert30_tomo.Reader(starFile, dataTable, **kwargs)
-            isReader40 = False
+            isReaderGE40 = False
         else:
             reader = convert40_tomo.Reader(starFile, dataTable, **kwargs)
-            isReader40 = True
+            isReaderGE40 = True
 
-    return reader, isReader40
+    return reader, isReaderGE40
 
 
 def readSetOfPseudoSubtomograms(outputSet, tomoDict=None):

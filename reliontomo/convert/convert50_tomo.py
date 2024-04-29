@@ -38,7 +38,7 @@ import numpy as np
 from os.path import join, basename
 from reliontomo.convert.convertBase import (checkSubtomogramFormat,
                                             getTransformInfoFromCoordOrSubtomo,
-                                            WriterTomo, ReaderTomo, getTransformMatrixFromRow)
+                                            WriterTomo, ReaderTomo, getTransformMatrixFromRow, genTransformMatrix)
 from reliontomo.objects_re5 import Relion5PSubtomogram
 from tomo.constants import BOTTOM_LEFT_CORNER, TR_RELION, SCIPION
 from tomo.objects import Coordinate3D, SubTomogram, TomoAcquisition, Tomogram, TiltSeries, CTFTomoSeries, \
@@ -668,6 +668,54 @@ class Reader(ReaderTomo):
         self._alignType = kwargs.get('alignType', ALIGN_NONE)
         self._pixelSize = kwargs.get('pixelSize', 1.0)
 
+    @staticmethod
+    def gen3dCoordFromStarRow(row, sRate, precedentIdDict, factor=1):
+        coordinate3d = None
+        tomoId = row.get(TOMO_NAME)
+        vol = precedentIdDict.get(tomoId, None)
+        if vol:
+            coordinate3d = Coordinate3D()
+            x = row.get(RLN_COORDINATEX, 0)
+            y = row.get(RLN_COORDINATEY, 0)
+            z = row.get(RLN_COORDINATEZ, 0)
+            coordinate3d.setVolume(vol)
+            coordinate3d.setX(float(x) * factor, RELION_3D_COORD_ORIGIN)
+            coordinate3d.setY(float(y) * factor, RELION_3D_COORD_ORIGIN)
+            coordinate3d.setZ(float(z) * factor, RELION_3D_COORD_ORIGIN)
+            coordinate3d.setMatrix(getCoordsTransformMatrixFromRow(row, sRate=sRate), convention=TR_RELION)
+            #TODO: check if the angles are 0, 0, 0 and thus the picking is not oriented --> rlnAngleTilt and
+            # rlnAngleTiltPrior should be 90 instead of 0
+            coordinate3d.setGroupId(row.get(MANIFOLD_INDEX, 1))
+            # Extended fields
+            coordinate3d._rlnAngleRot = Float(row.get(RLN_ANGLEROT, 0))
+            coordinate3d._rlnAngleTilt = Float(row.get(RLN_ANGLETILT, 90))
+            coordinate3d._rlnAnglePsi = Float(row.get(RLN_ANGLETILT, 0))
+            coordinate3d._rlnAngleTiltPrior = Float(row.get(RLN_ANGLETILT, 90))
+            coordinate3d._rlnAnglePsiPrior = Float(row.get(RLN_ANGLETILT, 0))
+
+        return coordinate3d, tomoId
+
+    def starFile2Coords3D(self, coordsSet, precedentsSet, scaleFactor):
+        precedentIdDict = {}
+        for tomo in precedentsSet:
+            precedentIdDict[tomo.getTsId()] = tomo.clone()
+
+        nonMatchingTomoIds = ''
+        for row in self.dataTable:
+            # Consider that there can be coordinates in the star file that does not belong to any of the tomograms
+            # introduced
+            coord, tomoId = self.gen3dCoordFromStarRow(row, coordsSet.getSamplingRate(),
+                                                       precedentIdDict, factor=scaleFactor)
+            if coord:
+                coordsSet.append(coord)
+            else:
+                if tomoId not in nonMatchingTomoIds:
+                    nonMatchingTomoIds += '%s ' % tomoId
+
+        if nonMatchingTomoIds:
+            logger.info(yellowStr('The star file contains coordinates that belong to tomograms not present '
+                                  'in the introduced set of tomograms: %s' % nonMatchingTomoIds))
+
     def starFile2PseudoSubtomograms(self, outputSet):
         """Reads the data_particles table of a generated particles.star file. Fields:
 
@@ -879,6 +927,16 @@ def genTranslationMatrix(sx, sy, sz):
     return trMatrix
 
 
+def getCoordsTransformMatrixFromRow(row, sRate=1):
+    shiftx = 0
+    shifty = 0
+    shiftz = 0
+    rot = row.get(RLN_TOMOSUBTOMOGRAMROT, 0)
+    tilt = row.get(RLN_TOMOSUBTOMOGRAMTILT, 0)
+    psi = row.get(RLN_TOMOSUBTOMOGRAMPSI, 0)
+    return genTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, sRate)
+
+
 class StarFileIterator:
     def __init__(self, star_data, field_name, field_value):
         self.star_data = star_data
@@ -897,4 +955,3 @@ class StarFileIterator:
                 return result
             self.index += 1
         raise StopIteration
-
