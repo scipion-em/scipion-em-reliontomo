@@ -47,6 +47,10 @@ try:
         def isRe40():
             return True if Plugin.getHome().endswith(V4_0) else False
 
+        @staticmethod
+        def isRe50(self):
+            return True if Plugin.getHome().endswith(V5_0) else False
+
         @classmethod
         def runRelionTomo(cls, protocol, program, args, cwd=None, numberOfMpi=1):
             """ Run Relion command from a given protocol. """

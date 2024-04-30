@@ -80,9 +80,9 @@ class ProtRelion5RefineBase(ProtRelion5TomoBase):
                            "the results.")
 
     @staticmethod
-    def _insertRegularisationParam(form):
+    def _insertRegularisationParam(form, defaultVal=4):
         form.addParam('regularisation', FloatParam,
-                      default=4,
+                      default=defaultVal,
                       validators=[GE(0)],
                       label='Regularisation parameter T',
                       help="Bayes law strictly determines the relative weight between the contribution of the "
@@ -104,6 +104,14 @@ class ProtRelion5RefineBase(ProtRelion5TomoBase):
                            'inbetween iterations. Sometimes, using more than one class may help in providing a ‘sink’ '
                            'for sub-optimal particles that may still exist in the data set. In this case, which is '
                            'quite homogeneous, a single class should work just fine.')
+
+    @staticmethod
+    def _insertBlushRegParam(form):
+        form.addParam('doBlushReg', BooleanParam,
+                      default=False,
+                      label='Use blush regularisation',
+                      help='If set to Yes, relion_refine will use a neural network to perform regularisation by '
+                           'denoising at every iteration, instead of the standard smoothness regularisation')
 
     @staticmethod
     def _insertMaskDiameterParam(form):
@@ -155,6 +163,16 @@ class ProtRelion5RefineBase(ProtRelion5TomoBase):
                       help="If set to Yes, the gradient-driven optimisation is run in C1 and the symmetry orientation "
                            "is searched and applied later. If set to No, the entire optimisation is run in the "
                            "symmetry point group indicated above.")
+
+    @staticmethod
+    def _insertPriorWidthParam(form):
+        form.addParam('priorWidthTiltAngle', IntParam,
+                      default=-1,
+                      label='Prior width on tilt angle (deg)',
+                      help='The width of the prior on the tilt angle: angular searches will be +/-3 times this value. '
+                           'Tilt priors will be defined when particles have been picked as filaments, on spheres or '
+                           'on manifolds. Setting this width to a negative value will lead to no prior being used on '
+                           'the tilt angle.')
 
     # COMPUTE PARAMS ---------------------------------------------------------------------------------------------------
     @staticmethod
@@ -342,8 +360,9 @@ class ProtRelion5RefineBase(ProtRelion5TomoBase):
         return cmd
 
     def _genOptimisationBaseCmd(self):
-        cmd = ''
-        cmd += '--particle_diameter %i ' % self.maskDiameter.get()
+        cmd = '--particle_diameter %i ' % self.maskDiameter.get()
+        if self.doBlushReg.get():
+            cmd += '--blush '
         return cmd
 
     def _genComputeBaseCmd(self, onlyCl3d=False):

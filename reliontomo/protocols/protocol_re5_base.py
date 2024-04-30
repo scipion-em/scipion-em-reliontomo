@@ -27,15 +27,17 @@ from emtable import Table
 
 from pwem.objects import VolumeMask, FSC
 from pwem.protocols import EMProtocol
+from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, StringParam
 from pyworkflow.utils import Message, createLink
 from reliontomo.constants import IN_PARTICLES_STAR, POSTPROCESS_DIR, OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE, \
     OUT_PARTICLES_STAR
 from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms
-from reliontomo.objects_re5 import createSetOfRelionPSubtomograms, RelionSetOfPseudoSubtomograms
+from reliontomo.objects import RelionSetOfPseudoSubtomograms
 
 
 class ProtRelion5TomoBase(EMProtocol):
+    _devStatus = BETA
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -49,13 +51,13 @@ class ProtRelion5TomoBase(EMProtocol):
                       label='Pseudo-Subtomograms',
                       help='Pseudo-subtomograms do not aim to accurately represent the scattering potential of '
                            'the underlying particles. Instead, they serve as a practical means to implement an '
-                           ' approximation to the 2D approach within the existing RELION framework. In the original'
-                           ' RELION4 article an accurate defition is given, see: \n '
-                           'https://doi.org/10.7554/eLife.83724 \n '
-                           ' A more technical explanation, pseudo-subtomograms are 3D-Arrays (volumes) that constructed '
-                           ' from the sums of 2D tilt-series images pre-multiplied by contrast transfer functions (CTFs), '
-                           ' along with auxiliary arrays that store the corresponding sum of squared CTFs and the frequency '
-                           ' of observation for each 3D voxel.')
+                           'approximation to the 2D approach within the existing RELION framework. In the original '
+                           'RELION4 article an accurate defition is given, see:\n '
+                           'https://doi.org/10.7554/eLife.83724\n '
+                           'A more technical explanation, pseudo-subtomograms are 3D-Arrays (volumes) that '
+                           'constructed from the sums of 2D tilt-series images pre-multiplied by contrast transfer '
+                           'functions (CTFs), along with auxiliary arrays that store the corresponding sum of squared '
+                           'CTFs and the frequency of observation for each 3D voxel.')
 
     @staticmethod
     def _defineExtraParams(form, addAdditionalSection=True):
@@ -116,7 +118,7 @@ class ProtRelion5TomoBase(EMProtocol):
 
         particles = join(extraPath, particles)
         if exists(particles):
-            psubtomoSet._particles.set(particles)
+            psubtomoSet.setParticles(particles)
 
         if binningFactor:
             psubtomoSet.setRelionBinning(binningFactor)

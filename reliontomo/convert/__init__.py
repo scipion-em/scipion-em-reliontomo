@@ -84,17 +84,17 @@ def createReaderTomo(starFile, **kwargs):
     except Exception:
         dataTable.read(starFile, tableName=None)
 
-    # if Plugin.IS_GT50():
-    reader = convert50_tomo.Reader(starFile, dataTable, **kwargs)
-    isReaderGE40 = True
-    # else:
-    #     labels = dataTable.getColumnNames()
-    #     if TOMO_NAME_30 in labels:
-    #         reader = convert30_tomo.Reader(starFile, dataTable, **kwargs)
-    #         isReaderGE40 = False
-    #     else:
-    #         reader = convert40_tomo.Reader(starFile, dataTable, **kwargs)
-    #         isReaderGE40 = True
+    if Plugin.IS_GT50():
+        reader = convert50_tomo.Reader(starFile, dataTable, **kwargs)
+        isReaderGE40 = True
+    else:
+        labels = dataTable.getColumnNames()
+        if TOMO_NAME_30 in labels:
+            reader = convert30_tomo.Reader(starFile, dataTable, **kwargs)
+            isReaderGE40 = False
+        else:
+            reader = convert40_tomo.Reader(starFile, dataTable, **kwargs)
+            isReaderGE40 = True
 
     return reader, isReaderGE40
 

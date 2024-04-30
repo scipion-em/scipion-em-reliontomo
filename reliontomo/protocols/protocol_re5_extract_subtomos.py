@@ -26,15 +26,13 @@ from enum import Enum
 
 import numpy as np
 from emtable import Table
-
-from pyworkflow import BETA
 from pyworkflow.object import Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED, IntParam
 from pyworkflow.utils import Message
 from reliontomo import Plugin
 from reliontomo.convert.convert50_tomo import getProjMatrixList, StarFileIterator, PARTICLES_TABLE, RLN_TOMONAME, \
     RLN_CENTEREDCOORDINATEXANGST, RLN_CENTEREDCOORDINATEYANGST, RLN_CENTEREDCOORDINATEZANGST
-from reliontomo.objects_re5 import createSetOfRelionPSubtomograms, RelionSetOfPseudoSubtomograms
+from reliontomo.objects import createSetOfRelionPSubtomograms, RelionSetOfPseudoSubtomograms
 from reliontomo.constants import (IN_TOMOS_STAR, OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE, IN_PARTICLES_STAR,
                                   OUT_PARTICLES_STAR)
 from reliontomo.convert import readSetOfPseudoSubtomograms, convert50_tomo
@@ -54,7 +52,6 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase, Pr
     CTF-premultiplied extracted 2D image stacks (or as 3D volumes).
     """
     _label = 'Extract subtomos'
-    _devStatus = BETA
 
     _possibleOutputs = outputObjects
 
@@ -181,13 +178,13 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase, Pr
         coordsPointer = self.inputCoords
         coords = coordsPointer.get()
         psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
-                                                     self._getExtraPath(OPTIMISATION_SET_STAR),
-                                                     coordsPointer,
-                                                     template=PSUBTOMOS_SQLITE,
-                                                     tsSamplingRate=tsSRate,
-                                                     relionBinning=1,  # Coords are re-sampled to fit the TS size
-                                                     boxSize=coordsPointer.get().getBoxSize(),
-                                                     are2dStacks=self.write2dStacks.get())
+                                                      self._getExtraPath(OPTIMISATION_SET_STAR),
+                                                      coordsPointer,
+                                                      template=PSUBTOMOS_SQLITE,
+                                                      tsSamplingRate=tsSRate,
+                                                      relionBinning=1,  # Coords are re-sampled to fit the TS size
+                                                      boxSize=coordsPointer.get().getBoxSize(),
+                                                      are2dStacks=self.write2dStacks.get())
         psubtomoSet.setCoordinates3D(coordsPointer)
         # Fill the set with the generated particles
         readSetOfPseudoSubtomograms(psubtomoSet)
@@ -214,10 +211,11 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase, Pr
             landmarkModelGaps.setTiltSeries(ts)
             tsProjectionsList = getProjMatrixList(self._getExtraPath(tsId + '.star'), tomo, ts)
             for particleRow in StarFileIterator(starData, RLN_TOMONAME, tsId):
-                particleCoords = np.array([self.coordScale.get() * particleRow.get(RLN_CENTEREDCOORDINATEXANGST) / tomoSRate,
-                                           self.coordScale.get() * particleRow.get(RLN_CENTEREDCOORDINATEYANGST) / tomoSRate,
-                                           self.coordScale.get() * particleRow.get(RLN_CENTEREDCOORDINATEZANGST) / tomoSRate,
-                                           1])
+                particleCoords = np.array(
+                    [self.coordScale.get() * particleRow.get(RLN_CENTEREDCOORDINATEXANGST) / tomoSRate,
+                     self.coordScale.get() * particleRow.get(RLN_CENTEREDCOORDINATEYANGST) / tomoSRate,
+                     self.coordScale.get() * particleRow.get(RLN_CENTEREDCOORDINATEZANGST) / tomoSRate,
+                     1])
                 for tiltId, tomoProjection in enumerate(tsProjectionsList):
                     proj = tomoProjection.dot(particleCoords)
                     landmarkModelGaps.addLandmark(proj[0], proj[1], tiltId, particleCounter, 0, 0)

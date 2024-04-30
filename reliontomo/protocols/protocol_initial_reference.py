@@ -78,14 +78,7 @@ class ProtRelion5InitialReference(ProtRelion5RefineBase):
                      'the symmetry convention.' + SYMMETRY_HELP_MSG
         self._insertSymmetryParam(form, helpDeNovo)
         self._insertDoInC1AndApplySymLaterParam(form)
-        form.addParam('priorWidthTiltAngle', IntParam,
-                      important=True,
-                      default=-1,
-                      label='Prior width on tilt angle (deg)',
-                      help='The width of the prior on the tilt angle: angular searches will be +/-3 times this value. '
-                           'Tilt priors will be defined when particles have been picked as filaments, on spheres or '
-                           'on manifolds. Setting this width to a negative value will lead to no prior being used on '
-                           'the tilt angle.')
+        self._insertPriorWidthParam(form)
         self._insertAngularCommonParams(form,
                                         expertLevel=LEVEL_ADVANCED,
                                         angSampling=1,

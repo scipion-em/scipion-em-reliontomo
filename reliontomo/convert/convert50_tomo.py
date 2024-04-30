@@ -23,24 +23,20 @@
 # *
 # **************************************************************************
 import logging
-import csv
 from typing import Dict, Union, List
 from emtable import Table
 from pwem import ALIGN_NONE
-from pwem.convert.headers import fixVolume
 from pwem.emlib.image import ImageHandler
 from pwem.objects import Transform
-from pyworkflow.object import Integer, Float
-from pyworkflow.utils import getParentFolder, yellowStr, createLink, makePath, prettyTime
-from relion.convert import OpticsGroups
+from pyworkflow.object import Float
+from pyworkflow.utils import yellowStr, createLink, makePath, prettyTime
 from reliontomo.constants import *
 import numpy as np
 from os.path import join, basename
-from reliontomo.convert.convertBase import (checkSubtomogramFormat,
-                                            getTransformInfoFromCoordOrSubtomo,
+from reliontomo.convert.convertBase import (getTransformInfoFromCoordOrSubtomo,
                                             WriterTomo, ReaderTomo, getTransformMatrixFromRow, genTransformMatrix)
-from reliontomo.objects_re5 import Relion5PSubtomogram
-from tomo.constants import BOTTOM_LEFT_CORNER, TR_RELION, SCIPION
+from reliontomo.objects import RelionPSubtomogram
+from tomo.constants import TR_RELION
 from tomo.objects import Coordinate3D, SubTomogram, TomoAcquisition, Tomogram, TiltSeries, CTFTomoSeries, \
     SetOfCoordinates3D
 
@@ -147,6 +143,7 @@ tomoStarFields = [
 
 # COORDINATES METADATA #################################################################################################
 PARTICLES_TABLE = 'particles'
+OPTICS_TABLE = 'optics'
 
 RLN_COORDINATEX = 'rlnCoordinateX'
 RLN_COORDINATEY = 'rlnCoordinateY'
@@ -176,6 +173,7 @@ coordsStarFiles = [
 ]
 
 # PARTICLES METADATA ###################################################################################################
+
 
 RLN_TOMOSUBTOMOGRAMROT = 'rlnTomoSubtomogramRot'
 RLN_TOMOSUBTOMOGRAMTILT = 'rlnTomoSubtomogramTilt'
@@ -752,7 +750,7 @@ class Reader(ReaderTomo):
         for counter, row in enumerate(self.dataTable):
             t = Transform()
             particleFile = row.get(RLN_IMAGENAME, None)
-            psubtomo = Relion5PSubtomogram(fileName=particleFile,
+            psubtomo = RelionPSubtomogram(fileName=particleFile,
                                            samplingRate=sRate,
                                            tsId=row.get(RLN_TOMONAME),
                                            classId=row.get(RLN_CLASSNUMBER, -1),
