@@ -24,6 +24,8 @@
 # **************************************************************************
 from os import remove
 from os.path import abspath, exists
+
+from pyworkflow.object import Boolean
 from pyworkflow.protocol import LEVEL_ADVANCED, IntParam, StringParam, BooleanParam, \
     EnumParam, PathParam, FloatParam, LEVEL_NORMAL, GE, LE
 from reliontomo.constants import ANGULAR_SAMPLING_LIST
@@ -35,6 +37,7 @@ class ProtRelion5RefineBase(ProtRelion5TomoBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.alignmentAsPriors = Boolean(False)
 
     # -------------------------- DEFINE param functions -----------------------
 

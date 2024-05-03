@@ -53,7 +53,6 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelion5TomoBase):
         form.addParam('boxSize', IntParam,
                       label='Box size (px)',
                       validator=GE(0),
-                      important=True,
                       allowsNull=False,
                       help='Box size, in pixels, of the reconstruction. Note that this is independent of the '
                            'box size used to refine the particle. This allows the user to construct a 3D map of '

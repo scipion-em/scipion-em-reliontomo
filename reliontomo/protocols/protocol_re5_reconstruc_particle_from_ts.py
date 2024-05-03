@@ -24,6 +24,8 @@
 # **************************************************************************
 import glob
 from enum import Enum
+from os.path import exists
+
 from pwem.convert.headers import fixVolume
 from pyworkflow.protocol import StringParam, FloatParam
 from reliontomo import Plugin
@@ -109,7 +111,8 @@ class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase
         # Output average
         vol = AverageSubTomogram()
         vol.setFileName(self._getExtraPath('merged.mrc'))
-        vol.setHalfMaps(halves)
+        if exists(halves[0]):
+            vol.setHalfMaps(halves)
         vol.setSamplingRate(currentSamplingRate)
         self._defineOutputs(**{outputObjects.average.name: vol})
 

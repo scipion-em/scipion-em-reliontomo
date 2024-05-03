@@ -751,30 +751,30 @@ class Reader(ReaderTomo):
             t = Transform()
             particleFile = row.get(RLN_IMAGENAME, None)
             psubtomo = RelionPSubtomogram(fileName=particleFile,
-                                           samplingRate=sRate,
-                                           tsId=row.get(RLN_TOMONAME),
-                                           classId=row.get(RLN_CLASSNUMBER, -1),
-                                           # Coords. in Relion they are in angstroms, while in Scipion they're in pixels
-                                           x=row.get(RLN_ORIGINXANGST, 0) / sRate,
-                                           y=row.get(RLN_ORIGINYANGST, 0) / sRate,
-                                           z=row.get(RLN_ORIGINZANGST, 0) / sRate,
-                                           xInImg=row.get(RLN_CENTEREDCOORDINATEXANGST, 0) / sRate,
-                                           yInImg=row.get(RLN_CENTEREDCOORDINATEYANGST, 0) / sRate,
-                                           zInImg=row.get(RLN_CENTEREDCOORDINATEZANGST, 0) / sRate,
-                                           rdnSubset=row.get(RANDOM_SUBSET, counter % 2),  # 1 and 2 alt. by default
-                                           re4ParticleName=row.get(RLN_TOMOPARTICLENAME),
-                                           visibleFrames=row.get(RLN_TOMOVISIBLEFRAMES, [0, 0, 0]),
-                                           opticsGroupId=row.get(OPTICS_GROUP, 1),
-                                           manifoldIndex=row.get(MANIFOLD_INDEX, 1 if counter % 2 else -1),  # 1 and -1
-                                           logLikeliCont=row.get(LOG_LIKELI_CONTRIB, -1),
-                                           maxValProbDist=row.get(MAX_VALUE_PROB_DISTRIB, -1),
-                                           noSignifSamples=row.get(NO_SIGNIFICANT_SAMPLES, -1),
-                                           rot=row.get(RLN_ANGLEROT, 0),
-                                           tilt=row.get(RLN_ANGLETILT, 90),
-                                           psi=row.get(RLN_ANGLEPSI, 0),
-                                           tiltPrior=row.get(RLN_ANGLETILTPRIOR, 90),
-                                           psiPrior=row.get(RLN_ANGLEPSIPRIOR, 0),
-                                           )
+                                          samplingRate=sRate,
+                                          tsId=row.get(RLN_TOMONAME),
+                                          classId=row.get(RLN_CLASSNUMBER, -1),
+                                          # Coords. in Relion they are in angstroms, while in Scipion they're in pixels
+                                          x=row.get(RLN_ORIGINXANGST, 0) / sRate,
+                                          y=row.get(RLN_ORIGINYANGST, 0) / sRate,
+                                          z=row.get(RLN_ORIGINZANGST, 0) / sRate,
+                                          xInImg=row.get(RLN_CENTEREDCOORDINATEXANGST, 0) / sRate,
+                                          yInImg=row.get(RLN_CENTEREDCOORDINATEYANGST, 0) / sRate,
+                                          zInImg=row.get(RLN_CENTEREDCOORDINATEZANGST, 0) / sRate,
+                                          rdnSubset=row.get(RANDOM_SUBSET, counter % 2),  # 1 and 2 alt. by default
+                                          re4ParticleName=row.get(RLN_TOMOPARTICLENAME),
+                                          visibleFrames=row.get(RLN_TOMOVISIBLEFRAMES, [0, 0, 0]),
+                                          opticsGroupId=row.get(OPTICS_GROUP, 1),
+                                          manifoldIndex=row.get(MANIFOLD_INDEX, 1 if counter % 2 else -1),  # 1 and -1
+                                          logLikeliCont=row.get(LOG_LIKELI_CONTRIB, -1),
+                                          maxValProbDist=row.get(MAX_VALUE_PROB_DISTRIB, -1),
+                                          noSignifSamples=row.get(NO_SIGNIFICANT_SAMPLES, -1),
+                                          rot=row.get(RLN_ANGLEROT, 0),
+                                          tilt=row.get(RLN_ANGLETILT, 90),
+                                          psi=row.get(RLN_ANGLEPSI, 0),
+                                          tiltPrior=row.get(RLN_ANGLETILTPRIOR, 90),
+                                          psiPrior=row.get(RLN_ANGLEPSIPRIOR, 0),
+                                          )
 
             # TODO: decide what to do with this
             # Keeping particle id

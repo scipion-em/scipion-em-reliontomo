@@ -118,7 +118,7 @@ class ProtRelion5RefineSubtomograms(ProtRelion5RefineBase):
     def _defineReferenceParams(self, form):
         form.addSection(label='Reference')
         form.addParam('isMapAbsoluteGreyScale', BooleanParam,
-                      default=False,
+                      default=True,
                       label='Is initial 3D map on absolute greyscale?',
                       help='Probabilities are calculated based on a Gaussian noise model,'
                            'which contains a squared difference term between the reference and the experimental '
@@ -169,6 +169,7 @@ class ProtRelion5RefineSubtomograms(ProtRelion5RefineBase):
                            "This only works when a reference mask is provided. This may yield "
                            "higher-resolution maps, especially when the mask contains only a relatively small "
                            "volume inside the box.")
+        super()._insertBlushRegParam(form)
 
     def _defineAutoSamplingParams(self, form):
         form.addSection(label='Auto-sampling')
@@ -189,13 +190,14 @@ class ProtRelion5RefineSubtomograms(ProtRelion5RefineBase):
                       label='Use finer angular sampling faster?',
                       help="If set to Yes, then let auto-refinement proceed faster with finer angular samplings. "
                            "Two additional conditions will be considered:\n\n "
-                           "\t-Angular sampling will go down despite changes still happening in the angles. (this is the"
-                           " Relion flag  --auto_ignore_angles )\n"
+                           "\t-Angular sampling will go down despite changes still happening in the angles. (this is "
+                           "the Relion flag  --auto_ignore_angles )\n"
                            "\t-Angular sampling will go down if the current resolution already requires that sampling "
                            "(this is the Relion flag --auto_resol_angles)\n"
                            "\t at the edge of the particle.\n\nThis option will make the computation faster, but "
                            "hasn't been tested for many cases for potential loss in reconstruction quality upon "
                            "convergence.")
+        super()._insertPriorWidthParam(form)
 
     def _defineComputeParams(self, form, isOnlyClassif=False):
         super()._defineComputeParams(form, isOnlyClassif=isOnlyClassif)
@@ -278,32 +280,34 @@ class ProtRelion5RefineSubtomograms(ProtRelion5RefineBase):
     def _genAutoRefineCommand(self):
         cmd = self._genBaseCommand()
         cmd += ' --auto_refine --split_random_halves --low_resol_join_halves 40 --norm --scale --flatten_solvent '
-        # I/O args
+        # I/O args #####################################################################################################
 
         ref = self.referenceVolume.get()
         refFile = ref.getFileName()
         # If halves exists, use a half as explained here:
         # https://relion.readthedocs.io/en/release-4.0/STA_tutorial/Refine3D.html#high-resolution-3d-refinement
         if ref.hasHalfMaps():
-            refFile = ref._halfMapFilenames[0]
+            refFile = ref.getHalfMaps()[0]
 
         cmd += '--ref %s ' % refFile
         if self.solventMask.get():
             cmd += '--solvent_mask %s ' % self.solventMask.get().getFileName()
         # if self.solventMask2.get():
         #     cmd += '--solvent_mask2 %s ' % self.solventMask2.get().getFileName()
-        # Reference args
+        # Reference args ###############################################################################################
         if not self.isMapAbsoluteGreyScale.get():
             cmd += '--firstiter_cc '
         if self.initialLowPassFilterA.get():
             cmd += '--ini_high %.2f ' % self.initialLowPassFilterA.get()
         cmd += '--sym %s ' % self.symmetry.get()
-        # Optimisation args
+        # Optimisation args ############################################################################################
+        if self.doResizeRef.get():
+            cmd += '--trust_ref_size '
         if self.solventCorrectFSC.get():
             cmd += '--solvent_correct_fsc '
         if self.zeroMask.get():
             cmd += '--zero_mask '
-        # Angular sampling args
+        # Angular sampling args ########################################################################################
         cmd += '--healpix_order %i ' % self.angularSamplingDeg.get()  # - self.oversampling.get())
         cmd += '--offset_range %i ' % self.offsetSearchRangePix.get()
         cmd += '--offset_step %i ' % (self.offsetSearchStepPix.get() * 2 ** self.oversampling.get())
@@ -312,6 +316,7 @@ class ProtRelion5RefineSubtomograms(ProtRelion5RefineBase):
             cmd += '--relax_sym %s ' % self.relaxSym.get()
         if self.useFinerAngularSampling.get():
             cmd += '--auto_ignore_angles --auto_resol_angles '
+        cmd += '--sigma_tilt %i ' % self.priorWidthTiltAngle.get()
         # Compute args
         cmd += '--pad %i ' % (1 if self.skipPadding.get() else 2)
 
