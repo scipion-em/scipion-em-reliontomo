@@ -47,7 +47,7 @@ class outputObjects(Enum):
     projected2DCoordinates = SetOfLandmarkModels
 
 
-class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase, ProtTomoBase):
+class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     """extracts the relevant cropped areas of the tilt series images for each individual particle and saves them as
     CTF-premultiplied extracted 2D image stacks (or as 3D volumes).
     """
@@ -57,10 +57,6 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase, Pr
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # self.tsSet = None
-        # self.tomoSet = None
-        # self.tsReducedSet = None  # Reduced list of tiltseries with only those in the coordinates
-        # self.matchingTSIds = None  # Unique tomogram identifiers volId used in the coordinate set. In case is a subset
         self.coordScale = Float(1)
         self.tsDict = dict()
         self.ctfDict = dict()
@@ -118,6 +114,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase, Pr
                            'save a factor of two in disk space compared to the default of writing in float32. '
                            'Note that RELION and CCPEM will read float16 images, but other programs may '
                            'not (yet) do so.')
+        self._defineExtraParams(form)
         form.addParallelSection(threads=1, mpi=3)
 
     # -------------------------- INSERT steps functions -----------------------
@@ -178,20 +175,22 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase, Pr
         coordsPointer = self.inputCoords
         coords = coordsPointer.get()
         psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
-                                                      self._getExtraPath(OPTIMISATION_SET_STAR),
-                                                      coordsPointer,
-                                                      template=PSUBTOMOS_SQLITE,
-                                                      tsSamplingRate=tsSRate,
-                                                      relionBinning=1,  # Coords are re-sampled to fit the TS size
-                                                      boxSize=coordsPointer.get().getBoxSize(),
-                                                      are2dStacks=self.write2dStacks.get())
+                                                     self._getExtraPath(OPTIMISATION_SET_STAR),
+                                                     coordsPointer,
+                                                     template=PSUBTOMOS_SQLITE,
+                                                     tsSamplingRate=tsSRate,
+                                                     relionBinning=self.binningFactor.get(),
+                                                     boxSize=coordsPointer.get().getBoxSize(),
+                                                     are2dStacks=self.write2dStacks.get())
         psubtomoSet.setCoordinates3D(coordsPointer)
         # Fill the set with the generated particles
         readSetOfPseudoSubtomograms(psubtomoSet)
 
         # FIDUCIALS ######################################################################################
         fiducialSize = int((coords.getBoxSize() * coords.getSamplingRate()) / (2 * 10))  # Radius in nm
-        fiducialModelGaps = self._createSetOfLandmarkModels(suffix='Gaps')
+        fiducialModelGaps = SetOfLandmarkModels.create(self.getPath(),
+                                                       template='setOfLandmarks%s.sqlite',
+                                                       suffix='Gaps')
         fiducialModelGaps.copyInfo(tsSet)
         fiducialModelGaps.setSetOfTiltSeries(tsPointer)  # Use the pointer better when scheduling
         starData = Table()
@@ -255,18 +254,14 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase, Pr
             f'--p {self._getExtraPath(IN_PARTICLES_STAR)}',
             f'--t {self._getExtraPath(IN_TOMOS_STAR)}',
             f'--o {self._getExtraPath()}',
-            f'--b {self.boxSize.get()}',
-            f'--crop {self.croppedBoxSize.get()}',
-            f'--bin {self.binningFactor.get()}',
             f'--max_dose {self.maxDose.get()}',
-            f'--min_frames {self.minNoFrames.get()}'
+            f'--min_frames {self.minNoFrames.get()}',
+            self._genCommonExtractAndRecCmd()
         ]
         if self.write2dStacks.get():
             cmd.append('--stack2d')
         if self.outputInFloat16.get():
             cmd.append('--float16')
-        # TODO: the native command contains a --j 10, but there's no param on its form to add a value to it...
-        cmd.append(f'--j {self.numberOfThreads.get()}')
         cmd.append('--theme classic')
         return ' '.join(cmd)
 

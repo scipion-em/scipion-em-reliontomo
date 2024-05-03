@@ -361,7 +361,7 @@ class ProtRelion5RefineBase(ProtRelion5TomoBase):
 
     def _genOptimisationBaseCmd(self):
         cmd = '--particle_diameter %i ' % self.maskDiameter.get()
-        if self.doBlushReg.get():
+        if getattr(self, 'doBlushReg', None):
             cmd += '--blush '
         return cmd
 

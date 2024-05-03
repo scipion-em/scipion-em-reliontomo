@@ -66,47 +66,11 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelion5TomoBase):
                       help='The resulting pseudo subtomograms are cropped to this size. A smaller box size '
                            'allows the (generally expensive) refinement using relion_refine to proceed more rapidly.')
 
-    # -------------------------- INSERT steps functions -----------------------
-    # def _insertAllSteps(self):
-    #     pass
-    #
-    # def convertInputStep(self):
-    #     self.genInStarFile()
-    #
-    # def createOutputStep(self):
-    #     return self.genRelionParticles(binningFactor=self.binningFactor.get(), boxSize=self.croppedBoxSize.get())
-    #
-    # # -------------------------- INFO functions -------------------------------
-    # def _warnings(self):
-    #     warnMsg = []
-    #     boxSize = self.boxSize.get()
-    #     croppedBoxSize = self.croppedBoxSize.get()
-    #     if boxSize == croppedBoxSize:
-    #         warnMsg.append('Setting the same value to the Box size and the Cropped box size may cause errors in '
-    #                        'later steps of the refinement cycle.')
-    #     elif boxSize < croppedBoxSize:
-    #         warnMsg.append(f"The Box size [{boxSize} px] should be lower than the Cropped box size [{croppedBoxSize} "
-    #                        f"px]. Please check these parameters' help to get more detailed information.")
-    #     return warnMsg
-    #
-    # # --------------------------- UTILS functions -----------------------------
-    # def _genCommonCmd(self):
-    #     inRelionParticles = self.getInputParticles()
-    #     cmd = ''
-    #
-    #     # Cancel this for now
-    #     self.info("Using optimization_set: %s" % inRelionParticles.filesMaster)
-    #     cmd += '--i %s ' % inRelionParticles.filesMaster
-    #
-    #     # This would be either the particles start file in the set or a new generated one from the subtomo set.
-    #     cmd += '--p %s ' % self.getOutStarFileName()
-    #
-    #     if inRelionParticles.getTrajectories():
-    #         cmd += '--mot %s ' % inRelionParticles.getTrajectories()
-    #
-    #     cmd += '--b %i ' % self.boxSize.get()
-    #     cmd += '--crop %i ' % self.croppedBoxSize.get()
-    #     cmd += '--bin %.1f ' % self.binningFactor.get()
-    #     cmd += '--j %i ' % self.numberOfThreads.get()
-    #     cmd += self._genExtraParamsCmd()
-    #     return cmd
+    # --------------------------- UTILS functions -----------------------------
+    def _genCommonExtractAndRecCmd(self):
+        cmd = [f"--b {self.boxSize.get()}",
+               f"--crop {self.croppedBoxSize.get()}",
+               f"--bin {self.binningFactor.get():.1f}",
+               f"--j {self.numberOfThreads.get()}",
+               self._genExtraParamsCmd()]
+        return ' '.join(cmd)
