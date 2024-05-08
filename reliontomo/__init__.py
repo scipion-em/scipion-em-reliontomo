@@ -48,7 +48,7 @@ try:
             return True if Plugin.getHome().endswith(V4_0) else False
 
         @staticmethod
-        def isRe50(self):
+        def isRe50():
             return True if Plugin.getHome().endswith(V5_0) else False
 
         @classmethod

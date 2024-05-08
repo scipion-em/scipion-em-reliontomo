@@ -25,12 +25,16 @@
 from enum import Enum
 from os.path import exists
 from pwem.protocols import EMProtocol
+from pyworkflow.object import Boolean
 from pyworkflow.protocol import FileParam, FloatParam, IntParam, PointerParam
 from pyworkflow.utils import Message, getParentFolder, createLink, makePath
 from reliontomo.constants import TOMO_NAME
 from reliontomo.convert import createReaderTomo
 from tomo.protocols.protocol_base import ProtTomoBase
 from tomo.objects import SetOfCoordinates3D
+
+
+IS_RE5_PICKING_ATTR = '_relion5Pciking'
 
 
 class outputObjects(Enum):
@@ -94,6 +98,7 @@ class ProtBaseRe5ImportFromStar(EMProtocol, ProtTomoBase):
         coordSet.setSamplingRate(precedentsSet.getSamplingRate())
         coordSet.setBoxSize(self.boxSize.get())
         self.reader.starFile2Coords3D(coordSet, precedentsSet, self.coordsSRate / precedentsSet.getSamplingRate())
+        setattr(coordSet, IS_RE5_PICKING_ATTR, Boolean(True))
 
         self._defineOutputs(**{outputObjects.coordinates.name: coordSet})
         self._defineSourceRelation(inTomosPointer, coordSet)

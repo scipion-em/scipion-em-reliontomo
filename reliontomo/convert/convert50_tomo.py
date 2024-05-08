@@ -38,7 +38,7 @@ from reliontomo.convert.convertBase import (getTransformInfoFromCoordOrSubtomo,
 from reliontomo.objects import RelionPSubtomogram
 from tomo.constants import TR_RELION
 from tomo.objects import Coordinate3D, SubTomogram, TomoAcquisition, Tomogram, TiltSeries, CTFTomoSeries, \
-    SetOfCoordinates3D
+    SetOfCoordinates3D, SetOfTomograms
 
 logger = logging.getLogger(__name__)
 
@@ -217,6 +217,13 @@ particlesStarFields = [
 
 # OTHERS
 eyeMatrix3x3 = np.eye(3)
+
+# RELION 5 3D COORDINATES
+R5_ROT_ATTRIB = '_rlnAngleRot'
+R5_TILT_ATTRIB = '_rlnAngleTilt'
+R5_PSI_ATTRIB = '_rlnAnglePsi'
+R5_TILT_PRIOR_ATTRIB = '_rlnAngleTiltPrior'
+R5_PSI_PRIO_ATTRIB = '_rlnAnglePsiPrior'
 
 
 def getTsStarFile(tsId: str, outPath: str) -> str:
@@ -588,9 +595,11 @@ class Writer(WriterTomo):
 
     @staticmethod
     def coords2Star(coordSet: SetOfCoordinates3D,
-                    presentTomosDict: Dict[str, Tomogram],
+                    tomoDict: Dict[str, Tomogram],
                     outPath: str,
-                    coordsScale: float = 1.0):
+                    isRe5Picking: bool = False,
+                    coordsScale: float = 1.0
+                    ):
         """
         It writes a particles star file in relion5 format. Fields (output of the command execution
         relion_refine --print_metadata_labels):
@@ -611,25 +620,40 @@ class Writer(WriterTomo):
         Example:
             TS_43	1798.595537	1030.038284	1208.171910	-178.979203	87.527230	-22.439980	0.000000	90.000000
             0.000000	90.000000	0.000000
+
+        :param coordSet: SetOfCoordinates3D
+        :param tomoDict: dictionary of type {tsId: Tomogram}
+        :param outPath: path (only path, no filename) in which the star file will be generated.
+        :param isRe5Picking: used to indicate if the coordinates were picked using the picker provided by
+        Relion5. If set to True, the coordinates won't be scaled, as they're written scaled to bin1 in the generated
+        star file (the one which is being imported).
+        :param coordsScale: used to scale the coordiantes to the tilt-series size. Ignored and set to 1 if
+        isRe5Picking = True.
         """
+
         particlesTable = Table(columns=coordsStarFiles)
         sRate = coordSet.getSamplingRate()
-        for tsId, tomo in presentTomosDict.items():
+        coordsScale = 1 if isRe5Picking else coordsScale
+        # rlnAngleTilt = 0
+        # rlnAngleTiltPrior = 0
+        for tsId, tomo in tomoDict.items():
             for coord in coordSet.iterCoordinates(volume=tomo):
                 angles, _ = getTransformInfoFromCoordOrSubtomo(coord, sRate)
-                # Extracted from teliontomo 5 doc: "The Napari picker has 4 modes of picking: particles, spheres,
-                # filaments and surfaces. For the tutorial data we use spheres, because HIV-VLPs are more-or-less that
-                # shape. Besides randomly picking particles with the distance specified below, this mode of picking also
-                # provides prior angles on the particles that will mean that with a tilt angle of 90 degrees, they will
-                # be oriented with their Z-axis along the normal to the sphere surface. In what follows, this prior
-                # information will be used in refinements and classification of the subtomograms."
-                nonOrientedPicking = np.allclose(angles, 0, atol=1e-4)
-                if nonOrientedPicking:
-                    rlnAngleTilt = 0
-                    rlnAngleTiltPrior = 0
-                else:
-                    rlnAngleTilt = 90
-                    rlnAngleTiltPrior = 90
+                # # IMPORTANT:
+                # # Extracted from reliontomo 5 doc: "The Napari picker has 4 modes of picking: particles, spheres,
+                # # filaments and surfaces. For the tutorial data we use spheres, because HIV-VLPs are more-or-less that
+                # # shape. Besides randomly picking particles with the distance specified below, this mode of picking also
+                # # provides prior angles on the particles that will mean that with a tilt angle of 90 degrees, they will
+                # # be oriented with their Z-axis along the normal to the sphere surface. In what follows, this prior
+                # # information will be used in refinements and classification of the subtomograms."
+                # if isRe5Picking:
+                #     nonOrientedPicking = np.allclose(angles, 0, atol=1e-4)
+                #     if nonOrientedPicking:
+                #         rlnAngleTilt = 0
+                #         rlnAngleTiltPrior = 0
+                #     else:
+                #         rlnAngleTilt = 90
+                #         rlnAngleTiltPrior = 90
 
                 particlesTable.addRow(
                     tsId,  # 1, rlnTomoName
@@ -639,13 +663,11 @@ class Writer(WriterTomo):
                     angles[0],  # 5, rlnTomoSubtomogramRot
                     angles[1],  # 6, rlnTomoSubtomogramTilt
                     angles[2],  # 7, rlnTomoSubtomogramPsi
-                    # TODO: Check these angular values from here, based on the comment above. But, what about
-                    #  re-extractions?
-                    0,  # 8, rlnAngleRot
-                    rlnAngleTilt,  # 9, rlnAngleTilt
-                    0,  # 10, rlnAnglePsi
-                    rlnAngleTiltPrior,  # 11, rlnAngleTiltPrior
-                    0,  # 12, rlnAnglePsiPrior
+                    getattr(coord, R5_ROT_ATTRIB, Float(0)).get(),  # 8, rlnAngleRot
+                    getattr(coord, R5_TILT_ATTRIB, Float(0)).get(),  # 9, rlnAngleTilt
+                    getattr(coord, R5_PSI_ATTRIB, Float(0)).get(),  # 10, rlnAnglePsi
+                    getattr(coord, R5_TILT_PRIOR_ATTRIB, Float(0)).get(),  # 11, rlnAngleTiltPrior
+                    getattr(coord, R5_PSI_PRIO_ATTRIB, Float(0)).get(),  # 12, rlnAnglePsiPrior
                 )
         # Write the STAR file
         particlesTable.write(join(outPath, IN_PARTICLES_STAR), tableName=PARTICLES_TABLE)
@@ -682,37 +704,36 @@ class Reader(ReaderTomo):
             coordinate3d.setX(float(x) * factor, RELION_3D_COORD_ORIGIN)
             coordinate3d.setY(float(y) * factor, RELION_3D_COORD_ORIGIN)
             coordinate3d.setZ(float(z) * factor, RELION_3D_COORD_ORIGIN)
-            # Check if the angles are 0, 0, 0 and thus the picking is not oriented --> rlnAngleTilt and
-            # rlnAngleTiltPrior should be 90 instead of 0
             trMatrix = getCoordsTransformMatrixFromRow(row, sRate=sRate)
-            if np.array_equal(trMatrix[:3, :3], eyeMatrix3x3):
-                tiltAngleDefault = 0
-                tiltAnglePriorDefault = 0
-            else:
-                tiltAngleDefault = 90
-                tiltAnglePriorDefault = 90
-
             coordinate3d.setMatrix(trMatrix, convention=TR_RELION)
             # Extended fields
-            coordinate3d._rlnAngleRot = Float(row.get(RLN_ANGLEROT, 0))
-            coordinate3d._rlnAngleTilt = Float(row.get(RLN_ANGLETILT, tiltAngleDefault))
-            coordinate3d._rlnAnglePsi = Float(row.get(RLN_ANGLETILT, 0))
-            coordinate3d._rlnAngleTiltPrior = Float(row.get(RLN_ANGLETILT, tiltAnglePriorDefault))
-            coordinate3d._rlnAnglePsiPrior = Float(row.get(RLN_ANGLETILT, 0))
+            setattr(coordinate3d, R5_ROT_ATTRIB, Float(row.get(RLN_ANGLEROT, 0)))
+            setattr(coordinate3d, R5_TILT_ATTRIB, Float(row.get(RLN_ANGLETILT, 0)))
+            setattr(coordinate3d, R5_PSI_ATTRIB, Float(row.get(RLN_ANGLEPSI, 0)))
+            setattr(coordinate3d, R5_TILT_PRIOR_ATTRIB, Float(row.get(RLN_ANGLETILTPRIOR, 0)))
+            setattr(coordinate3d, R5_PSI_PRIO_ATTRIB, Float(row.get(RLN_ANGLEPSIPRIOR, 0)))
 
         return coordinate3d, tomoId
 
-    def starFile2Coords3D(self, coordsSet, precedentsSet, scaleFactor):
-        precedentIdDict = {}
-        for tomo in precedentsSet:
-            precedentIdDict[tomo.getTsId()] = tomo.clone()
+    def starFile2Coords3D(self,
+                          coordsSet: SetOfCoordinates3D,
+                          tomogramsSet: SetOfTomograms,
+                          scaleFactor: bool = 1):
+        """ Converts the contents of a preloaded star file into Scipion SetOfCoordinates3D.
+        :param coordsSet: SetOfCoordinates3D that will be filled with the contest from the loaded star file
+        :param tomogramsSet: introduced SetOfTomograms.
+        :param scaleFactor: used to scale the coordinates to the size of the tomograms."""
+        presentTsIds = tomogramsSet.getTSIds()
+        precedentIdDict = {tomo.getTsId(): tomo.clone() for tomo in tomogramsSet if tomo.getTsId() in presentTsIds}
 
         nonMatchingTomoIds = ''
         for row in self.dataTable:
             # Consider that there can be coordinates in the star file that does not belong to any of the tomograms
             # introduced
-            coord, tomoId = self.gen3dCoordFromStarRow(row, coordsSet.getSamplingRate(),
-                                                       precedentIdDict, factor=scaleFactor)
+            coord, tomoId = self.gen3dCoordFromStarRow(row,
+                                                       coordsSet.getSamplingRate(),
+                                                       precedentIdDict,
+                                                       factor=scaleFactor)
             if coord:
                 coordsSet.append(coord)
             else:
@@ -890,13 +911,13 @@ def getProjMatrixList(tsStarFile: str, tomogram: Tomogram, ts: TiltSeries) -> Li
         # Projection matrix
         # prjMatrix = s2 @ s1 @ r2 @ r1 @ r0 @ s0
         prjMatrix = s2 @ s1 @ r2 @ r1 @ r0
-        logger.info(yellowStr(prjMatrix))
-        logger.info(f's2 =\n{s2}')
-        logger.info(f's1 =\n{s1}')
-        logger.info(f'r2 =\n{r2}')
-        logger.info(f'r1 =\n{r1}')
-        logger.info(f'r0 =\n{r0}')
-        logger.info(f's0 =\n{s0}')
+        # logger.info(yellowStr(prjMatrix))
+        # logger.info(f's2 =\n{s2}')
+        # logger.info(f's1 =\n{s1}')
+        # logger.info(f'r2 =\n{r2}')
+        # logger.info(f'r1 =\n{r1}')
+        # logger.info(f'r0 =\n{r0}')
+        # logger.info(f's0 =\n{s0}')
         prjMatrixList.append(prjMatrix)
 
     return prjMatrixList

@@ -23,10 +23,9 @@
 # *
 # **************************************************************************
 from enum import Enum
-
 import numpy as np
 from emtable import Table
-from pyworkflow.object import Float
+from pyworkflow.object import Boolean
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED, IntParam
 from pyworkflow.utils import Message
 from reliontomo import Plugin
@@ -38,8 +37,8 @@ from reliontomo.constants import (IN_TOMOS_STAR, OPTIMISATION_SET_STAR, PSUBTOMO
 from reliontomo.convert import readSetOfPseudoSubtomograms, convert50_tomo
 from reliontomo.protocols.protocol_re5_base_extract_subtomos_and_rec_particle import (
     ProtRelion5ExtractSubtomoAndRecParticleBase)
+from reliontomo.protocols.protocol_re5_base_import_from_star import IS_RE5_PICKING_ATTR
 from tomo.objects import LandmarkModel, SetOfLandmarkModels
-from tomo.protocols import ProtTomoBase
 
 
 class outputObjects(Enum):
@@ -57,10 +56,11 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.coordScale = Float(1)
+        self.coordScale = None
         self.tsDict = dict()
         self.ctfDict = dict()
         self.tomoDict = dict()
+        self.isRe5Picking = None
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -129,6 +129,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         coords = self.inputCoords.get()
         tsSet = self.inputTS.get()
         ctfSet = self.inputCtfTs.get()
+        self.isRe5Picking = Boolean(getattr(coords, IS_RE5_PICKING_ATTR, Boolean(False).get()))
 
         # The ccordinates need to be re-scaled to be at the same size of the tilt-series
         self.coordScale.set(coords.getSamplingRate() / tsSet.getSamplingRate())
@@ -157,12 +158,15 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     def convertInputStep(self):
         outPath = self._getExtraPath()
         writer = convert50_tomo.Writer()
+        coordSet = self.inputCoords.get()
         # Generate the particles star file
-        writer.coords2Star(self.inputCoords.get(), self.tomoDict, outPath, self.coordScale.get())
+        writer.coords2Star(coordSet, self.tomoDict, outPath,
+                           coordsScale=self.coordScale.get(),
+                           isRe5Picking=self.isRe5Picking)
         # Generate each tilt-series star file
         writer.tsSet2Star(self.tsDict, self.ctfDict, outPath)
         # Generate the tomograms star file
-        writer.tomoSet2Star(self.tomoDict, self.tsDict, outPath, handedness=self._decodehandedness())
+        writer.tomoSet2Star(self.tomoDict, self.tsDict, outPath, handedness=self._decodeHandedness())
 
     def extractSubtomos(self):
         Plugin.runRelionTomo(self, 'relion_tomo_subtomo_mpi', self.getExtractSubtomosCmd(),
@@ -186,7 +190,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         # Fill the set with the generated particles
         readSetOfPseudoSubtomograms(psubtomoSet)
 
-        # FIDUCIALS ######################################################################################
+        # FIDUCIALS ####################################################################################################
         fiducialSize = int((coords.getBoxSize() * coords.getSamplingRate()) / (2 * 10))  # Radius in nm
         fiducialModelGaps = SetOfLandmarkModels.create(self.getPath(),
                                                        template='setOfLandmarks%s.sqlite',
@@ -222,7 +226,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
             fiducialModelGaps.append(landmarkModelGaps)
 
-        #################################################################################################
+        ################################################################################################################
 
         # Define the outputs and the relations
         self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet,
@@ -232,23 +236,23 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         self._defineSourceRelation(tsPointer, psubtomoSet)
         self._defineSourceRelation(tsPointer, fiducialModelGaps)
 
-    #
-    # # -------------------------- INFO functions -------------------------------
-    # def _warnings(self):
-    #     warnMsg = []
-    #     if not (self.inputTS.get().hasAlignment() and not self.inputTS.get().interpolated()):
-    #         warnMsg.append('The introduced tilt series do not have an alignment transformation associated.')
-    #     return warnMsg
-    #
-    # def _summary(self):
-    #     msg = []
-    #     if self.isFinished():
-    #         if self.coordScale.get():
-    #             msg.append('Coordinates were scaled using an scale factor of *%.2f* to be expressed considering the '
-    #                        'size of the introduced tilt series' % self.coordScale.get())
-    #     return msg
-    #
-    # # --------------------------- UTILS functions -----------------------------
+    # -------------------------- INFO functions -------------------------------
+    def _warnings(self):
+        warnMsg = []
+        if not (self.inputTS.get().hasAlignment() and not self.inputTS.get().interpolated()):
+            warnMsg.append('The introduced tilt series do not have an alignment transformation associated.')
+        return warnMsg
+
+    def _summary(self):
+        msg = []
+        if self.isFinished():
+            if self.coordScale.get():
+                coordsFromRelion5 = self.isRe5Picking.get()
+                msg.append('Coordinates were scaled using an scale factor of *%.2f* to be expressed considering the '
+                           'size of the introduced tilt series' % (1 if coordsFromRelion5 else self.coordScale.get()))
+        return msg
+
+    # --------------------------- UTILS functions -----------------------------
     def getExtractSubtomosCmd(self):
         cmd = [
             f'--p {self._getExtraPath(IN_PARTICLES_STAR)}',
@@ -265,5 +269,5 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         cmd.append('--theme classic')
         return ' '.join(cmd)
 
-    def _decodehandedness(self):
+    def _decodeHandedness(self):
         return -1 if self.handedness.get() else 1

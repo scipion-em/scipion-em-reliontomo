@@ -84,7 +84,7 @@ def createReaderTomo(starFile, **kwargs):
     except Exception:
         dataTable.read(starFile, tableName=None)
 
-    if Plugin.IS_GT50():
+    if Plugin.isRe50():
         reader = convert50_tomo.Reader(starFile, dataTable, **kwargs)
         isReaderGE40 = True
     else:
