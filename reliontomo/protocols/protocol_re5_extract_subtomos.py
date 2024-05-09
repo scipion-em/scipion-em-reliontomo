@@ -38,7 +38,7 @@ from reliontomo.convert import readSetOfPseudoSubtomograms, convert50_tomo
 from reliontomo.protocols.protocol_re5_base_extract_subtomos_and_rec_particle import (
     ProtRelion5ExtractSubtomoAndRecParticleBase)
 from reliontomo.protocols.protocol_re5_base_import_from_star import IS_RE5_PICKING_ATTR
-from tomo.objects import LandmarkModel, SetOfLandmarkModels
+from tomo.objects import LandmarkModel, SetOfLandmarkModels, SetOfCoordinates3D
 
 
 class outputObjects(Enum):
@@ -66,8 +66,8 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
         form.addParam('inputCoords', PointerParam,
-                      pointerClass='SetOfCoordinates3D',
-                      label="Coordinates",
+                      pointerClass='SetOfCoordinates3D, RelionSetOfPseudoSubtomograms',
+                      label="Coordinates or Pseudo-subtomograms",
                       important=True,
                       allowsNull=False)
         form.addParam('inputCtfTs', PointerParam,
@@ -126,7 +126,8 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
-        coords = self.inputCoords.get()
+        inCoords = self.inputCoords.get()
+        coords = inCoords if type(inCoords) is SetOfCoordinates3D else inCoords.getCoordinates3D()
         tsSet = self.inputTS.get()
         ctfSet = self.inputCtfTs.get()
         self.isRe5Picking = Boolean(getattr(coords, IS_RE5_PICKING_ATTR, Boolean(False).get()))
