@@ -190,7 +190,13 @@ RLN_ORIGINZANGST = 'rlnOriginZAngst'
 RLN_CENTEREDCOORDINATEXANGST = 'rlnCenteredCoordinateXAngst'
 RLN_CENTEREDCOORDINATEYANGST = 'rlnCenteredCoordinateYAngst'
 RLN_CENTEREDCOORDINATEZANGST = 'rlnCenteredCoordinateZAngst'
+RLN_GROUPNUMBER = 'rlnGroupNumber'
 RLN_CLASSNUMBER = 'rlnClassNumber'
+RLN_NORMCORRECTION = 'rlnNormCorrection'
+RLN_RANDOMSUBSET = 'rlnRandomSubset'
+RLN_LOGLIKELYCONTRIB = 'rlnLogLikeliContribution'
+RLN_MAXVALPROBDISTIRB = 'rlnMaxValueProbDistribution'
+RLN_NSIGNIFSAMPLES = 'rlnNrOfSignificantSamples'
 
 particlesStarFields = [
     RLN_TOMONAME,
@@ -212,7 +218,13 @@ particlesStarFields = [
     RLN_CENTEREDCOORDINATEXANGST,
     RLN_CENTEREDCOORDINATEYANGST,
     RLN_CENTEREDCOORDINATEZANGST,
-    RLN_CLASSNUMBER
+    RLN_GROUPNUMBER,
+    RLN_CLASSNUMBER,
+    RLN_NORMCORRECTION,
+    RLN_RANDOMSUBSET,
+    RLN_LOGLIKELYCONTRIB,
+    RLN_MAXVALPROBDISTIRB,
+    RLN_NSIGNIFSAMPLES,
 ]
 
 # OTHERS
@@ -630,31 +642,12 @@ class Writer(WriterTomo):
         :param coordsScale: used to scale the coordiantes to the tilt-series size. Ignored and set to 1 if
         isRe5Picking = True.
         """
-
         particlesTable = Table(columns=coordsStarFiles)
         sRate = coordSet.getSamplingRate()
         coordsScale = 1 if isRe5Picking else coordsScale
-        # rlnAngleTilt = 0
-        # rlnAngleTiltPrior = 0
         for tsId, tomo in tomoDict.items():
             for coord in coordSet.iterCoordinates(volume=tomo):
                 angles, _ = getTransformInfoFromCoordOrSubtomo(coord, sRate)
-                # # IMPORTANT:
-                # # Extracted from reliontomo 5 doc: "The Napari picker has 4 modes of picking: particles, spheres,
-                # # filaments and surfaces. For the tutorial data we use spheres, because HIV-VLPs are more-or-less that
-                # # shape. Besides randomly picking particles with the distance specified below, this mode of picking also
-                # # provides prior angles on the particles that will mean that with a tilt angle of 90 degrees, they will
-                # # be oriented with their Z-axis along the normal to the sphere surface. In what follows, this prior
-                # # information will be used in refinements and classification of the subtomograms."
-                # if isRe5Picking:
-                #     nonOrientedPicking = np.allclose(angles, 0, atol=1e-4)
-                #     if nonOrientedPicking:
-                #         rlnAngleTilt = 0
-                #         rlnAngleTiltPrior = 0
-                #     else:
-                #         rlnAngleTilt = 90
-                #         rlnAngleTiltPrior = 90
-
                 particlesTable.addRow(
                     tsId,  # 1, rlnTomoName
                     coord.getX(RELION_3D_COORD_ORIGIN) * coordsScale,  # 2, rlnCoordinateX
@@ -745,7 +738,8 @@ class Reader(ReaderTomo):
                                   'in the introduced set of tomograms: %s' % nonMatchingTomoIds))
 
     def starFile2PseudoSubtomograms(self, outputSet):
-        """Reads the data_particles table of a generated particles.star file. Fields:
+        """Reads the data_particles table of a generated particles.star file. (output of the command execution
+        relion_refine --print_metadata_labels):
 
         rlnTomoName #1 (string) : Arbitrary name for a tomogram
         rlnTomoSubtomogramRot #2 (double) : First Euler angle of a subtomogram (rot, in degrees)
@@ -766,6 +760,21 @@ class Reader(ReaderTomo):
         rlnCenteredCoordinateXAngst #17 (double) : X-Position of an image in a micrograph (in Angstroms, with the center being 0,0)
         rlnCenteredCoordinateYAngst #18 (double) : Y-Position of an image in a micrograph (in Angstroms, with the center being 0,0)
         rlnCenteredCoordinateZAngst #19 (double) : Z-Position of an image in a micrograph (in Angstroms, with the center being 0,0)
+        rlnGroupNumber #20 (int)    : The number of a group of images
+        rlnClassNumber #21 (int)    : Class number for which a particle has its highest probability
+        rlnNormCorrection #22 (double) : Normalisation correction value for an image
+        rlnRandomSubset #23 (int)    : Random subset to which this particle belongs
+        rlnLogLikeliContribution #24 (double) : Contribution of a particle to the log-likelihood target function
+        rlnMaxValueProbDistribution #25 (double) : Maximum value of the (normalised) probability function for a particle
+        rlnNrOfSignificantSamples #26 (int)    : Number of orientational/class assignments (for a particle)
+        with sign.probabilities in the 1st pass of adaptive oversampling.
+
+        Example:
+             TS_01   -130.15816    85.886437   130.158156    26.433646    11.507468   167.399460     0.000000
+             0.000000            1   TS_01/1 Runs/003096_ProtRelion5ExtractSubtomos/extra/Subtomograms/TS_01/1_data.mrc
+             Runs/003096_ProtRelion5ExtractSubtomos/extra/Subtomograms/TS_01/1_weights.mrc    -49.87757    -32.09807
+             23.812184  -1390.63902  -1580.08937   660.057917            1            1     1.000000            1
+             3.950164e+06     0.409595            8
         """
         sRate = outputSet.getSamplingRate()
         for counter, row in enumerate(self.dataTable):
@@ -791,10 +800,12 @@ class Reader(ReaderTomo):
                                           maxValProbDist=row.get(MAX_VALUE_PROB_DISTRIB, -1),
                                           noSignifSamples=row.get(NO_SIGNIFICANT_SAMPLES, -1),
                                           rot=row.get(RLN_ANGLEROT, 0),
-                                          tilt=row.get(RLN_ANGLETILT, 90),
+                                          tilt=row.get(RLN_ANGLETILT, 0),
                                           psi=row.get(RLN_ANGLEPSI, 0),
-                                          tiltPrior=row.get(RLN_ANGLETILTPRIOR, 90),
+                                          tiltPrior=row.get(RLN_ANGLETILTPRIOR, 0),
                                           psiPrior=row.get(RLN_ANGLEPSIPRIOR, 0),
+                                          groupId=row.get(RLN_GROUPNUMBER, 1),
+                                          normCorrection=row.get(RLN_NORMCORRECTION, 0),
                                           )
 
             # TODO: decide what to do with this
@@ -815,6 +826,7 @@ class Reader(ReaderTomo):
             t.setMatrix(getTransformMatrixFromRow(row, sRate=sRate))
             psubtomo.setTransform(t)
             psubtomo.setIndex(counter)
+            psubtomo.setClassId(row.get(RLN_CLASSNUMBER, 1))
 
             # Add current pseudosubtomogram to the output set
             outputSet.append(psubtomo)

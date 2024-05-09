@@ -56,6 +56,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.inCoords = None
         self.coordScale = None
         self.tsDict = dict()
         self.ctfDict = dict()
@@ -151,6 +152,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                             "introduced.")
 
         # Manage the TS, CTF tomo Series and tomograms
+        self.inCoords = coords
         self.tsDict = {ts.getTsId(): ts.clone(ignoreAttrs=[]) for ts in tsSet if ts.getTsId() in presentTsIds}
         self.ctfDict = {ctf.getTsId(): ctf.clone(ignoreAttrs=[]) for ctf in ctfSet if ctf.getTsId() in presentTsIds}
         self.tomoDict = {tomo.getTsId(): tomo.clone() for tomo in coords.getPrecedents() if
@@ -159,9 +161,8 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     def convertInputStep(self):
         outPath = self._getExtraPath()
         writer = convert50_tomo.Writer()
-        coordSet = self.inputCoords.get()
         # Generate the particles star file
-        writer.coords2Star(coordSet, self.tomoDict, outPath,
+        writer.coords2Star(self.inCoords, self.tomoDict, outPath,
                            coordsScale=self.coordScale.get(),
                            isRe5Picking=self.isRe5Picking)
         # Generate each tilt-series star file
@@ -177,22 +178,20 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         tsPointer = self.inputTS
         tsSet = tsPointer.get()
         tsSRate = tsSet.getSamplingRate()
-        coordsPointer = self.inputCoords
-        coords = coordsPointer.get()
         psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
                                                      self._getExtraPath(OPTIMISATION_SET_STAR),
-                                                     coordsPointer,
+                                                     self.inCoords,
                                                      template=PSUBTOMOS_SQLITE,
                                                      tsSamplingRate=tsSRate,
                                                      relionBinning=self.binningFactor.get(),
-                                                     boxSize=coordsPointer.get().getBoxSize(),
-                                                     are2dStacks=self.write2dStacks.get())
-        psubtomoSet.setCoordinates3D(coordsPointer)
+                                                     boxSize=self.inCoords.getBoxSize(),
+                                                     are2dStacks=self.write2dStacks.get(),
+                                                     acquisition=tsSet.getAcquisition())
         # Fill the set with the generated particles
         readSetOfPseudoSubtomograms(psubtomoSet)
 
         # FIDUCIALS ####################################################################################################
-        fiducialSize = int((coords.getBoxSize() * coords.getSamplingRate()) / (2 * 10))  # Radius in nm
+        fiducialSize = int((self.inCoords.getBoxSize() * self.inCoords.getSamplingRate()) / (2 * 10))  # Radius in nm
         fiducialModelGaps = SetOfLandmarkModels.create(self.getPath(),
                                                        template='setOfLandmarks%s.sqlite',
                                                        suffix='Gaps')
@@ -232,7 +231,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         # Define the outputs and the relations
         self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet,
                                outputObjects.projected2DCoordinates.name: fiducialModelGaps})
-        self._defineSourceRelation(coordsPointer, psubtomoSet)
+        self._defineSourceRelation(self.inputCoords, psubtomoSet)
         self._defineSourceRelation(self.inputCtfTs, psubtomoSet)
         self._defineSourceRelation(tsPointer, psubtomoSet)
         self._defineSourceRelation(tsPointer, fiducialModelGaps)

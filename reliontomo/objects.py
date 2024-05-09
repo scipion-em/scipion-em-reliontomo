@@ -36,7 +36,7 @@ from reliontomo.constants import (OPT_TOMOS_STAR, OPT_PARTICLES_STAR,
                                   STAR_DIFF_SIZE, STAR_DIFF_LABELS, STAR_DIFF_VALUES,
                                   STAR_FILES_EQUAL, PSUBTOMOS_SQLITE, OPTICS_TABLE)
 from tomo.constants import SCIPION, TR_SCIPION
-from tomo.objects import SetOfSubTomograms, SubTomogram
+from tomo.objects import SetOfSubTomograms, SubTomogram, SetOfCoordinates3D
 
 
 class EnumRe4GenFilesProps(Enum):
@@ -55,7 +55,7 @@ class RelionPSubtomogram(SubTomogram):
                  rdnSubset=None, relionParticleName=None, visibleFrames=None,
                  opticsGroupId=1, manifoldIndex=None, logLikeliCont=None, maxValProbDist=None,
                  noSignifSamples=None, rot=None, tilt=None, psi=None, tiltPrior=None, psiPrior=None,
-                 **kwargs):
+                 groupId=1, normCorrection=0, **kwargs):
         super().__init__(**kwargs)
         self.setFileName(fileName)
         self.setSamplingRate(samplingRate)
@@ -70,6 +70,8 @@ class RelionPSubtomogram(SubTomogram):
         self._logLikeliContribution = Float(logLikeliCont)
         self._maxValueProbDistribution = Float(maxValProbDist)
         self._nrOfSignificantSamples = Integer(noSignifSamples)
+        self._groupId = Integer(groupId)
+        self._normCorrection = Float(normCorrection)
         # All of them in angstroms
         self._x = Float(x)
         self._y = Float(y)
@@ -143,6 +145,12 @@ class RelionPSubtomogram(SubTomogram):
     def getManifoldIndex(self):
         return self._manifoldIndex.get()
 
+    def getGroupId(self):
+        return self._groupId.get()
+
+    def getNormCorrection(self):
+        return self._normCorrection.get()
+
     def setCtfFile(self, val):
         self._ctfFile.set(val)
 
@@ -204,6 +212,12 @@ class RelionPSubtomogram(SubTomogram):
 
     def setManifoldIndex(self, val):
         self._manifoldIndex.set(val)
+
+    def setGroupId(self, val):
+        self._groupId.set(val)
+
+    def setNormCorrection(self, val):
+        self._normCorrection.set(val)
 
     # def copyInfo(self, other):
     #     self.copyAttributes(other, '_samplingRate', '_tsId', '_rdnSubset',
@@ -377,19 +391,22 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
 
 
 def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, coordsPointer, template=PSUBTOMOS_SQLITE,
-                                   tsSamplingRate=1, relionBinning=1, boxSize=24, nReParticles=0, are2dStacks=None):
+                                   tsSamplingRate=1, relionBinning=1, boxSize=24, nReParticles=0, are2dStacks=None,
+                                   acquisition=None):
     """ Creates the RelionSetOfSubtomograms from the input arguments
 
     :param protocolPath: Path of the protocol where to create the sqlite
     :param optimSetStar: optimization set star file. This file is a small collection of files(images and metadata to pass to future jobs
-    :param coordsPointer: Pointer to the set of coordinates
+    :param coordsPointer: Pointer to the set of coordinates. It can also be the SetOfCoordinates3D directly.
     :param template: template name for the sqlite file.
     :param tsSamplingRate: Sampling rate of the tilt series
     :param relionBinning: binning of the set
     :param boxSize: Box size of the set
     :param nReParticles: Number of particles in relion's particles star file
     :param are2dStacks: Boolean use to indicate if the generated particles are 2d stacks or not.
-
+    :param acquisition: TomoAcquisition. The recommended is the one from the tilt-series, as it may contain more data
+    if they were imported compared to imported tomograms. If not provided, the coordinates pointer will be used to
+    access to the precedent tomograms and clone their acquisition.
 
     """
     psubtomoSet = RelionSetOfPseudoSubtomograms.create(protocolPath, template=template)
@@ -402,8 +419,13 @@ def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, coordsPointer, te
     psubtomoSet.setCoordinates3D(coordsPointer)
     psubtomoSet.setAre2dStacks(are2dStacks)
 
-    # Clone acquisition from tomograms
-    acquisition = coordsPointer.get().getPrecedents().getAcquisition()
+    # Manage the acquisition
+    if not acquisition:
+        # Clone acquisition from tomograms
+        if type(coordsPointer) is SetOfCoordinates3D:
+            acquisition = coordsPointer.getPrecedents().getAcquisition()
+        else:
+            acquisition = coordsPointer.get().getPrecedents().getAcquisition()
     newAcquisition = acquisition.clone()
     psubtomoSet.setAcquisition(newAcquisition)
     return psubtomoSet
