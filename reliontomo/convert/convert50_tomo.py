@@ -29,16 +29,16 @@ from pwem import ALIGN_NONE
 from pwem.emlib.image import ImageHandler
 from pwem.objects import Transform
 from pyworkflow.object import Float
-from pyworkflow.utils import yellowStr, createLink, makePath, prettyTime
+from pyworkflow.utils import yellowStr, prettyTime
+from relion.convert import OpticsGroups
 from reliontomo.constants import *
 import numpy as np
-from os.path import join, basename
+from os.path import join
 from reliontomo.convert.convertBase import (getTransformInfoFromCoordOrSubtomo,
                                             WriterTomo, ReaderTomo, getTransformMatrixFromRow, genTransformMatrix)
-from reliontomo.objects import RelionPSubtomogram
-from tomo.constants import TR_RELION
-from tomo.objects import Coordinate3D, SubTomogram, TomoAcquisition, Tomogram, TiltSeries, CTFTomoSeries, \
-    SetOfCoordinates3D, SetOfTomograms
+from reliontomo.objects import RelionPSubtomogram, RelionSetOfPseudoSubtomograms
+from tomo.constants import TR_RELION, SCIPION
+from tomo.objects import Coordinate3D, Tomogram, TiltSeries, CTFTomoSeries, SetOfCoordinates3D, SetOfTomograms
 
 logger = logging.getLogger(__name__)
 
@@ -157,7 +157,7 @@ RLN_ANGLEPSI = 'rlnAnglePsi'
 RLN_ANGLETILTPRIOR = 'rlnAngleTiltPrior'
 RLN_ANGLEPSIPRIOR = 'rlnAnglePsiPrior'
 
-coordsStarFiles = [
+coordsStarFields = [
     RLN_TOMONAME,
     RLN_COORDINATEX,
     RLN_COORDINATEY,
@@ -169,11 +169,14 @@ coordsStarFiles = [
     RLN_ANGLETILT,
     RLN_ANGLEPSI,
     RLN_ANGLETILTPRIOR,
-    RLN_ANGLEPSIPRIOR
+    RLN_ANGLEPSIPRIOR,
+    SCIPION_COORD_X,
+    SCIPION_COORD_Y,
+    SCIPION_COORD_Z,
+    SCIPION_COORD_GROUP_ID
 ]
 
 # PARTICLES METADATA ###################################################################################################
-
 
 RLN_TOMOSUBTOMOGRAMROT = 'rlnTomoSubtomogramRot'
 RLN_TOMOSUBTOMOGRAMTILT = 'rlnTomoSubtomogramTilt'
@@ -183,6 +186,7 @@ RLN_ANGLEPSIPRIOR = 'rlnAnglePsiPrior'
 RLN_OPTICSGROUP = 'rlnOpticsGroup'
 RLN_TOMOPARTICLENAME = 'rlnTomoParticleName'
 RLN_TOMOVISIBLEFRAMES = 'rlnTomoVisibleFrames'
+RLN_CTFIMAGE = 'rlnCtfImage'
 RLN_IMAGENAME = 'rlnImageName'
 RLN_ORIGINXANGST = 'rlnOriginXAngst'
 RLN_ORIGINYANGST = 'rlnOriginYAngst'
@@ -198,7 +202,7 @@ RLN_LOGLIKELYCONTRIB = 'rlnLogLikeliContribution'
 RLN_MAXVALPROBDISTIRB = 'rlnMaxValueProbDistribution'
 RLN_NSIGNIFSAMPLES = 'rlnNrOfSignificantSamples'
 
-particlesStarFields = [
+particles2dStarFields = [
     RLN_TOMONAME,
     RLN_TOMOSUBTOMOGRAMROT,
     RLN_TOMOSUBTOMOGRAMTILT,
@@ -225,6 +229,35 @@ particlesStarFields = [
     RLN_LOGLIKELYCONTRIB,
     RLN_MAXVALPROBDISTIRB,
     RLN_NSIGNIFSAMPLES,
+]
+
+particles3dStarFields = [
+    RLN_TOMONAME,
+    RLN_TOMOSUBTOMOGRAMROT,
+    RLN_TOMOSUBTOMOGRAMTILT,
+    RLN_TOMOSUBTOMOGRAMPSI,
+    RLN_ANGLEROT,
+    RLN_ANGLETILT,
+    RLN_ANGLEPSI,
+    RLN_ANGLETILTPRIOR,
+    RLN_ANGLEPSIPRIOR,
+    RLN_OPTICSGROUP,
+    RLN_TOMOPARTICLENAME,
+    RLN_CTFIMAGE,
+    RLN_IMAGENAME,
+    RLN_ORIGINXANGST,
+    RLN_ORIGINYANGST,
+    RLN_ORIGINZANGST,
+    RLN_CENTEREDCOORDINATEXANGST,
+    RLN_CENTEREDCOORDINATEYANGST,
+    RLN_CENTEREDCOORDINATEZANGST,
+    # RLN_GROUPNUMBER,
+    # RLN_CLASSNUMBER,
+    # RLN_NORMCORRECTION,
+    # RLN_RANDOMSUBSET,
+    # RLN_LOGLIKELYCONTRIB,
+    # RLN_MAXVALPROBDISTIRB,
+    # RLN_NSIGNIFSAMPLES,
 ]
 
 # OTHERS
@@ -642,7 +675,7 @@ class Writer(WriterTomo):
         :param coordsScale: used to scale the coordiantes to the tilt-series size. Ignored and set to 1 if
         isRe5Picking = True.
         """
-        particlesTable = Table(columns=coordsStarFiles)
+        particlesTable = Table(columns=coordsStarFields)
         sRate = coordSet.getSamplingRate()
         coordsScale = 1 if isRe5Picking else coordsScale
         for tsId, tomo in tomoDict.items():
@@ -661,9 +694,90 @@ class Writer(WriterTomo):
                     getattr(coord, R5_PSI_ATTRIB, Float(0)).get(),  # 10, rlnAnglePsi
                     getattr(coord, R5_TILT_PRIOR_ATTRIB, Float(0)).get(),  # 11, rlnAngleTiltPrior
                     getattr(coord, R5_PSI_PRIO_ATTRIB, Float(0)).get(),  # 12, rlnAnglePsiPrior
+                    # Scipion fields
+                    coord.getX(SCIPION),  # _sciXCoord
+                    coord.getY(SCIPION),  # _sciYCoord
+                    coord.getZ(SCIPION),  # _sciZCoord
+                    coord.getGroupId()  # _sciGroupId
                 )
         # Write the STAR file
         particlesTable.write(join(outPath, IN_PARTICLES_STAR), tableName=PARTICLES_TABLE)
+
+    @staticmethod
+    def pseudoSubtomograms2Star(pSubtomoSet: RelionSetOfPseudoSubtomograms,
+                                outPath: str,
+                                are2dParticles: bool = True):
+
+        logger.info("Generating particles file from pseudosubtomogram set.")
+        particlesStarFields = particles2dStarFields if are2dParticles else particles3dStarFields
+        sRate = pSubtomoSet.getSamplingRate()
+        hasCoords = pSubtomoSet.getFirstItem().hasCoordinate3D()
+        if hasCoords:
+            sciCoordsFields = [
+                SCIPION_COORD_X,
+                SCIPION_COORD_Y,
+                SCIPION_COORD_Z,
+                SCIPION_COORD_GROUP_ID
+            ]
+            particlesStarFields.extend(sciCoordsFields)
+        tomoTable = Table(columns=particlesStarFields)
+
+        # Write the STAR file
+        optGroup = OpticsGroups.fromString(pSubtomoSet.getAcquisition().opticsGroupInfo.get())
+        with open(join(outPath, IN_PARTICLES_STAR), 'w') as f:
+            optGroup.toStar(f)
+            # Write header first
+            partsWriter = Table.Writer(f)
+            partsWriter.writeTableName(PARTICLES_TABLE)
+            partsWriter.writeHeader(tomoTable.getColumns())
+            for pSubtomo in pSubtomoSet.iterSubtomos():
+                angles, shifts = getTransformInfoFromCoordOrSubtomo(pSubtomo, sRate)
+                # Fields 12 and 13 is different depending on if the particles are 2D or 3D
+                imageName = pSubtomo.getFileName()
+                if are2dParticles:
+                    field12 = pSubtomo.getVisibleFrames()
+                    field13 = imageName
+                else:
+                    field12 = imageName
+                    field13 = pSubtomo.getCtfFile() if pSubtomo.getCtfFile() else FILE_NOT_FOUND
+
+                # Add row to the table which will be used to generate the STAR file
+                rowsValues = [
+                    pSubtomo.getTsId(),  # 1, rlnTomoName
+                    angles[0],  # 2, rlnTomoSubtomogramRot
+                    angles[1],  # 3, rlnTomoSubtomogramTilt
+                    angles[2],  # 4, rlnTomoSubtomogramPsi
+                    pSubtomo.getRot(),  # 5, rlnAngleRot
+                    pSubtomo.getTilt(),  # 6, rlnAngleTilt
+                    pSubtomo.getPsi(),   # 7, rlnAnglePsi
+                    pSubtomo.getTiltPrior(),  # 8, rlnAngleTiltPrior
+                    pSubtomo.getPsiPrior(),  # 9, rlnAnglePsiPrior
+                    pSubtomo.getOpticsGroupId(),  # 10, rlnOpticsGroup
+                    pSubtomo.getRelionParticleName(),  # 11, rlnTomoParticleName
+                    field12,  # 12, rlnTomoVisibleFrames (for 2D particles) or rlnImageName (for 3D particles)
+                    field13,  # 13, rlnImageName (for 2D particles) or rlnCtfImage (for 3D particles)
+                    # pix * Å/pix = [shifts in Å]
+                    shifts[0] * sRate,  # 14, rlnOriginXAngst
+                    shifts[1] * sRate,  # 15, rlnOriginYAngst
+                    shifts[2] * sRate,  # 16, rlnOriginZAngst,
+                    pSubtomo.getXInImg(),  # 17, rlnCenteredCoordinateXAngst
+                    pSubtomo.getYInImg(),  # 18, rlnCenteredCoordinateYAngst
+                    pSubtomo.getZInImg(),  # 19, rlnCenteredCoordinateZAngst
+                    # pSubtomo.getGroupId(),  # 20, rlnGroupNumber
+                    # pSubtomo.getClassId(),  # 21, rlnClassNumber
+                    # pSubtomo.getNormCorrection(),  # 22, rlnNormCorrection
+                    # pSubtomo.getRdnSubset(),  # 23, rlnRandomSubset
+                    # pSubtomo.getLogLikeliContribution(),  # 24, rlnLogLikeliContribution
+                    # pSubtomo.getMaxValueProbDistribution(),  # 25,  getMaxValueProbDistribution
+                    # pSubtomo.getNrOfSignificantSamples()  # 26, rlnNrOfSignificantSamples
+                ]
+                if hasCoords:
+                    rowsValues += [pSubtomo.getCoordinate3D().getX(SCIPION),  # 27, sciXCoord
+                                   pSubtomo.getCoordinate3D().getY(SCIPION),  # 28, sciYCoord
+                                   pSubtomo.getCoordinate3D().getZ(SCIPION),  # 29, sciZCoord
+                                   pSubtomo.getCoordinate3D().getGroupId(),  # 30, sciGroupId
+                                   ]
+                partsWriter.writeRowValues(rowsValues)
 
 
 class Reader(ReaderTomo):
@@ -785,15 +899,16 @@ class Reader(ReaderTomo):
                                           tsId=row.get(RLN_TOMONAME),
                                           classId=row.get(RLN_CLASSNUMBER, -1),
                                           # Coords. in Relion they are in angstroms, while in Scipion they're in pixels
-                                          x=row.get(RLN_ORIGINXANGST, 0) / sRate,
-                                          y=row.get(RLN_ORIGINYANGST, 0) / sRate,
-                                          z=row.get(RLN_ORIGINZANGST, 0) / sRate,
-                                          xInImg=row.get(RLN_CENTEREDCOORDINATEXANGST, 0) / sRate,
-                                          yInImg=row.get(RLN_CENTEREDCOORDINATEYANGST, 0) / sRate,
-                                          zInImg=row.get(RLN_CENTEREDCOORDINATEZANGST, 0) / sRate,
+                                          x=row.get(RLN_ORIGINXANGST, 0),
+                                          y=row.get(RLN_ORIGINYANGST, 0),
+                                          z=row.get(RLN_ORIGINZANGST, 0),
+                                          xInImg=row.get(RLN_CENTEREDCOORDINATEXANGST, 0),
+                                          yInImg=row.get(RLN_CENTEREDCOORDINATEYANGST, 0),
+                                          zInImg=row.get(RLN_CENTEREDCOORDINATEZANGST, 0),
                                           rdnSubset=row.get(RANDOM_SUBSET, counter % 2),  # 1 and 2 alt. by default
-                                          re4ParticleName=row.get(RLN_TOMOPARTICLENAME),
+                                          relionParticleName=row.get(RLN_TOMOPARTICLENAME),
                                           visibleFrames=row.get(RLN_TOMOVISIBLEFRAMES, [0, 0, 0]),
+                                          ctfFile=row.get(RLN_CTFIMAGE, FILE_NOT_FOUND),
                                           opticsGroupId=row.get(OPTICS_GROUP, 1),
                                           manifoldIndex=row.get(MANIFOLD_INDEX, 1 if counter % 2 else -1),  # 1 and -1
                                           logLikeliCont=row.get(LOG_LIKELI_CONTRIB, -1),
@@ -811,16 +926,16 @@ class Reader(ReaderTomo):
             # TODO: decide what to do with this
             # Keeping particle id
             # psubtomo.setObjId(row.get(TOMO_PARTICLE_ID))
-            #
-            # # Set the coordinate3D
-            # if row.get(SCIPION_COORD_X) is not None:  # Assume that the coordinates exists
-            #     sciCoord = Coordinate3D()
-            #     sciCoord.setX(row.get(SCIPION_COORD_X), SCIPION)
-            #     sciCoord.setY(row.get(SCIPION_COORD_Y), SCIPION)
-            #     sciCoord.setZ(row.get(SCIPION_COORD_Z), SCIPION)
-            #     sciCoord.setGroupId(row.get(SCIPION_COORD_GROUP_ID, 1))
-            #     sciCoord.setTomoId(row.get(TOMO_NAME))
-            #     psubtomo.setCoordinate3D(sciCoord)
+
+            # Set the coordinate3D
+            if row.get(SCIPION_COORD_X) is not None:  # Assume that the coordinates exists
+                sciCoord = Coordinate3D()
+                sciCoord.setX(row.get(SCIPION_COORD_X), SCIPION)
+                sciCoord.setY(row.get(SCIPION_COORD_Y), SCIPION)
+                sciCoord.setZ(row.get(SCIPION_COORD_Z), SCIPION)
+                sciCoord.setGroupId(row.get(SCIPION_COORD_GROUP_ID, 1))
+                sciCoord.setTomoId(row.get(TOMO_NAME))
+                psubtomo.setCoordinate3D(sciCoord)
 
             # Set the transformation matrix
             t.setMatrix(getTransformMatrixFromRow(row, sRate=sRate))
@@ -833,49 +948,6 @@ class Reader(ReaderTomo):
 
         # Keep the number of particles to compare sizes in case of subset
         outputSet.setNReParticles(self.dataTable.size())
-
-    def starFile2SubtomogramsImport(self, subtomoSet, coordSet, linkedSubtomosDir, starFilePath):
-        samplingRate = subtomoSet.getSamplingRate()
-        precedentsDict = {tomo.getTsId(): tomo for tomo in coordSet.getPrecedents()}
-        for row, coordinate3d in zip(self.dataTable, coordSet):
-            subtomo = SubTomogram()
-            transform = Transform()
-            origin = Transform()
-
-            # Files
-            tomoId = row.get(TOMO_NAME, FILE_NOT_FOUND)
-            tomoName = precedentsDict[tomoId].getFileName()
-            subtomoName = row.get(SUBTOMO_NAME, FILE_NOT_FOUND)
-            tomoFolder = join(linkedSubtomosDir, tomoId)
-            makePath(tomoFolder)
-            linkedSubtomoName = join(tomoFolder, basename(subtomoName))
-            createLink(subtomoName, linkedSubtomoName)  # Link the subtomos to the extra folder
-
-            # Subtomograms
-            tiltPrior = row.get(TILT_PRIOR, 0)
-            psiPrior = row.get(PSI_PRIOR, 0)
-            transform.setMatrix(coordinate3d.getMatrix(convention=TR_RELION))
-
-            subtomo.setVolName(tomoName)
-            subtomo.setFileName(linkedSubtomoName)
-            subtomo.setCoordinate3D(coordinate3d)
-            subtomo.setVolId(coordinate3d.getVolId())
-            subtomo.setTransform(transform)
-            subtomo.setAcquisition(TomoAcquisition())
-            subtomo.setClassId(row.get(CLASS_NUMBER, 0))
-            subtomo.setSamplingRate(samplingRate)
-            subtomo._tiltPriorAngle = Float(tiltPrior)
-            subtomo._psiPriorAngle = Float(psiPrior)
-            subtomo.setOrigin(origin)
-
-            # Add current subtomogram to the output set
-            subtomoSet.append(subtomo)
-
-        # Set the set of coordinates which corresponds to the current set of subtomograms
-        subtomoSet.setCoordinates3D(coordSet)
-
-
-# def genPrjMatricesDict(tsStarFilesPath: str, tsId: str) -> Dict[str, List[np.ndarray]]:
 
 
 def getProjMatrixList(tsStarFile: str, tomogram: Tomogram, ts: TiltSeries) -> List[np.ndarray]:

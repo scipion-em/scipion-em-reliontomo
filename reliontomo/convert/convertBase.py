@@ -25,7 +25,7 @@
 from os.path import join
 import numpy as np
 from pwem.convert import transformations
-from pwem.convert.transformations import translation_from_matrix, euler_from_matrix, euler_matrix
+from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from pwem.emlib.image import ImageHandler
 from pyworkflow.utils import getExt, removeBaseExt, replaceBaseExt, makePath
 from relion.convert.convert_base import WriterBase
@@ -74,12 +74,22 @@ def checkSubtomogramFormat(subtomo, extraPath):
 
 
 def getTransformMatrixFromRow(row, sRate=1):
-    shiftx = float(row.get(SHIFTX_ANGST, 0))
-    shifty = float(row.get(SHIFTY_ANGST, 0))
-    shiftz = float(row.get(SHIFTZ_ANGST, 0))
-    rot = row.get(ROT, 0)
-    tilt = row.get(TILT, 0)
-    psi = row.get(PSI, 0)
+    if Plugin.isRe50():
+        from reliontomo.convert.convert50_tomo import RLN_ORIGINZANGST, RLN_ORIGINYANGST, RLN_ORIGINXANGST, \
+            RLN_TOMOSUBTOMOGRAMROT, RLN_TOMOSUBTOMOGRAMTILT, RLN_TOMOSUBTOMOGRAMPSI
+        shiftx = float(row.get(RLN_ORIGINXANGST, 0))
+        shifty = float(row.get(RLN_ORIGINYANGST, 0))
+        shiftz = float(row.get(RLN_ORIGINZANGST, 0))
+        rot = row.get(RLN_TOMOSUBTOMOGRAMROT, 0)
+        tilt = row.get(RLN_TOMOSUBTOMOGRAMTILT, 0)
+        psi = row.get(RLN_TOMOSUBTOMOGRAMPSI, 0)
+    else:
+        shiftx = float(row.get(SHIFTX_ANGST, 0))
+        shifty = float(row.get(SHIFTY_ANGST, 0))
+        shiftz = float(row.get(SHIFTZ_ANGST, 0))
+        rot = row.get(ROT, 0)
+        tilt = row.get(TILT, 0)
+        psi = row.get(PSI, 0)
 
     return genTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, sRate)
 

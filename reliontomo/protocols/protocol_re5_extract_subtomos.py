@@ -27,7 +27,7 @@ import numpy as np
 from emtable import Table
 from pyworkflow.object import Boolean, Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED, IntParam
-from pyworkflow.utils import Message
+from pyworkflow.utils import Message, createLink
 from reliontomo import Plugin
 from reliontomo.convert.convert50_tomo import getProjMatrixList, StarFileIterator, PARTICLES_TABLE, RLN_TOMONAME, \
     RLN_CENTEREDCOORDINATEXANGST, RLN_CENTEREDCOORDINATEYANGST, RLN_CENTEREDCOORDINATEZANGST
@@ -162,9 +162,15 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         outPath = self._getExtraPath()
         writer = convert50_tomo.Writer()
         # Generate the particles star file
-        writer.coords2Star(self.inCoords, self.tomoDict, outPath,
-                           coordsScale=self.coordScale.get(),
-                           isRe5Picking=self.isRe5Picking)
+        coords = self.inputCoords.get()
+        if type(coords) is SetOfCoordinates3D:
+            writer.coords2Star(coords, self.tomoDict, outPath,
+                               coordsScale=self.coordScale.get(),
+                               isRe5Picking=self.isRe5Picking)
+        else:
+            # createLink(coords.getParticles(), self._getExtraPath(IN_PARTICLES_STAR))
+            writer.pseudoSubtomograms2Star(coords, outPath,
+                                           are2dParticles=coords.are2dStacks())
         # Generate each tilt-series star file
         writer.tsSet2Star(self.tsDict, self.ctfDict, outPath)
         # Generate the tomograms star file

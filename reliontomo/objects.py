@@ -113,19 +113,19 @@ class RelionPSubtomogram(SubTomogram):
         return self._zInImg.get()
 
     def getRot(self):
-        self._rot.get()
+        return self._rot.get()
 
     def getTilt(self):
-        self._tilt.get()
+        return self._tilt.get()
 
     def getPsi(self):
-        self._psi.get()
+        return self._psi.get()
 
     def getTiltPrior(self):
-        self._tiltPrior.get()
+        return self._tiltPrior.get()
 
     def getPsiPrior(self):
-        self._psiPrior.get()
+        return self._psiPrior.get()
 
     def getCoords(self):
         return self.getX(), self.getY(), self.getZ()
@@ -150,6 +150,15 @@ class RelionPSubtomogram(SubTomogram):
 
     def getNormCorrection(self):
         return self._normCorrection.get()
+
+    def getLogLikeliContribution(self):
+        return self._logLikeliContribution.get()
+
+    def getMaxValueProbDistribution(self):
+        return self._maxValueProbDistribution.get()
+
+    def getNrOfSignificantSamples(self):
+        return self._nrOfSignificantSamples.get()
 
     def setCtfFile(self, val):
         self._ctfFile.set(val)
@@ -410,7 +419,6 @@ def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, coordsPointer, te
 
     """
     psubtomoSet = RelionSetOfPseudoSubtomograms.create(protocolPath, template=template)
-    psubtomoSet.filesMaster = optimSetStar
     psubtomoSet.setTsSamplingRate(tsSamplingRate)
     psubtomoSet.setRelionBinning(relionBinning)
     psubtomoSet.setSamplingRate(psubtomoSet.getCurrentSamplingRate())
@@ -428,6 +436,9 @@ def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, coordsPointer, te
             acquisition = coordsPointer.get().getPrecedents().getAcquisition()
     newAcquisition = acquisition.clone()
     psubtomoSet.setAcquisition(newAcquisition)
+
+    # Assign the optimisation file, which will also update the acquisition with the optics table info
+    psubtomoSet.filesMaster = optimSetStar
     return psubtomoSet
 
 
