@@ -25,7 +25,7 @@
 from enum import Enum
 import numpy as np
 from emtable import Table
-from pyworkflow.object import Boolean
+from pyworkflow.object import Boolean, Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED, IntParam
 from pyworkflow.utils import Message
 from reliontomo import Plugin
@@ -132,7 +132,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         self.isRe5Picking = Boolean(getattr(coords, IS_RE5_PICKING_ATTR, Boolean(False).get()))
 
         # The ccordinates need to be re-scaled to be at the same size of the tilt-series
-        self.coordScale.set(coords.getSamplingRate() / tsSet.getSamplingRate())
+        self.coordScale = Float(coords.getSamplingRate() / tsSet.getSamplingRate())
 
         # Compute matching TS id among coordinates, the tilt-series and the CTFs, they all could be a subset
         coordsTsIds = coords.getTSIds()
