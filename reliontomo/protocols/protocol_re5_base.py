@@ -32,7 +32,7 @@ from pyworkflow.protocol import PointerParam, StringParam
 from pyworkflow.utils import Message, createLink
 from reliontomo.constants import IN_PARTICLES_STAR, POSTPROCESS_DIR, OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE, \
     OUT_PARTICLES_STAR
-from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms
+from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms, convert50_tomo
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 
 
@@ -76,18 +76,20 @@ class ProtRelion5TomoBase(EMProtocol):
     def getOutStarFileName(self):
         return self._getExtraPath(IN_PARTICLES_STAR)
 
-    def genInStarFile(self, withPriors=False):
+    def genInStarFile(self, are2dParticles=True):
         """It will check if the set size and the stored particles star file are of the same size or not. In
         the first case, a link will be made to the previous particles star file to avoid generating it and in the
         second case, a new file will be generated containing only the ones present in the input set."""
         inReParticlesSet = self.inReParticles.get()
         outStarFileName = self.getOutStarFileName()
-        if inReParticlesSet.getSize() == inReParticlesSet.getNReParticles() and not withPriors:
+        if inReParticlesSet.getSize() == inReParticlesSet.getNReParticles():
             self.info("Using existing star (%s) file instead of generating a new one." %
                       inReParticlesSet.getParticles())
             createLink(inReParticlesSet.getParticles(), outStarFileName)
         else:
-            writeSetOfPseudoSubtomograms(inReParticlesSet, outStarFileName, withPriors=withPriors)
+            outPath = self._getExtraPath()
+            writer = convert50_tomo.Writer()
+            writer.pseudoSubtomograms2Star(inReParticlesSet, outPath, are2dParticles=are2dParticles)
 
     def _genPostProcessOutputMrcFile(self, fileName):
         """File generated using the sharpening protocol (called post-process protocol) and also using the

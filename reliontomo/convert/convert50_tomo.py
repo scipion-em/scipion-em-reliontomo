@@ -251,13 +251,13 @@ particles3dStarFields = [
     RLN_CENTEREDCOORDINATEXANGST,
     RLN_CENTEREDCOORDINATEYANGST,
     RLN_CENTEREDCOORDINATEZANGST,
-    # RLN_GROUPNUMBER,
-    # RLN_CLASSNUMBER,
-    # RLN_NORMCORRECTION,
-    # RLN_RANDOMSUBSET,
-    # RLN_LOGLIKELYCONTRIB,
-    # RLN_MAXVALPROBDISTIRB,
-    # RLN_NSIGNIFSAMPLES,
+    RLN_GROUPNUMBER,
+    RLN_CLASSNUMBER,
+    RLN_NORMCORRECTION,
+    RLN_RANDOMSUBSET,
+    RLN_LOGLIKELYCONTRIB,
+    RLN_MAXVALPROBDISTIRB,
+    RLN_NSIGNIFSAMPLES,
 ]
 
 # OTHERS
@@ -763,13 +763,13 @@ class Writer(WriterTomo):
                     pSubtomo.getXInImg(),  # 17, rlnCenteredCoordinateXAngst
                     pSubtomo.getYInImg(),  # 18, rlnCenteredCoordinateYAngst
                     pSubtomo.getZInImg(),  # 19, rlnCenteredCoordinateZAngst
-                    # pSubtomo.getGroupId(),  # 20, rlnGroupNumber
-                    # pSubtomo.getClassId(),  # 21, rlnClassNumber
-                    # pSubtomo.getNormCorrection(),  # 22, rlnNormCorrection
-                    # pSubtomo.getRdnSubset(),  # 23, rlnRandomSubset
-                    # pSubtomo.getLogLikeliContribution(),  # 24, rlnLogLikeliContribution
-                    # pSubtomo.getMaxValueProbDistribution(),  # 25,  getMaxValueProbDistribution
-                    # pSubtomo.getNrOfSignificantSamples()  # 26, rlnNrOfSignificantSamples
+                    pSubtomo.getGroupId(),  # 20, rlnGroupNumber
+                    pSubtomo.getClassId(),  # 21, rlnClassNumber
+                    pSubtomo.getNormCorrection(),  # 22, rlnNormCorrection
+                    pSubtomo.getRdnSubset(),  # 23, rlnRandomSubset
+                    pSubtomo.getLogLikeliContribution(),  # 24, rlnLogLikeliContribution
+                    pSubtomo.getMaxValueProbDistribution(),  # 25,  getMaxValueProbDistribution
+                    pSubtomo.getNrOfSignificantSamples()  # 26, rlnNrOfSignificantSamples
                 ]
                 if hasCoords:
                     rowsValues += [pSubtomo.getCoordinate3D().getX(SCIPION),  # 27, sciXCoord

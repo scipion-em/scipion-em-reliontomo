@@ -66,7 +66,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
-        form.addParam('inputCoords', PointerParam,
+        form.addParam('inReParticles', PointerParam,
                       pointerClass='SetOfCoordinates3D, RelionSetOfPseudoSubtomograms',
                       label="Coordinates or Pseudo-subtomograms",
                       important=True,
@@ -127,7 +127,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
-        inCoords = self.inputCoords.get()
+        inCoords = self.inReParticles.get()
         coords = inCoords if type(inCoords) is SetOfCoordinates3D else inCoords.getCoordinates3D()
         tsSet = self.inputTS.get()
         ctfSet = self.inputCtfTs.get()
@@ -159,18 +159,19 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                          tomo.getTsId() in presentTsIds}
 
     def convertInputStep(self):
+        # Generate the particles star file
         outPath = self._getExtraPath()
         writer = convert50_tomo.Writer()
-        # Generate the particles star file
-        coords = self.inputCoords.get()
+        coords = self.inReParticles.get()
         if type(coords) is SetOfCoordinates3D:
             writer.coords2Star(coords, self.tomoDict, outPath,
                                coordsScale=self.coordScale.get(),
                                isRe5Picking=self.isRe5Picking)
         else:
+            self.genInStarFile(are2dParticles=coords.are2dStacks())
             # createLink(coords.getParticles(), self._getExtraPath(IN_PARTICLES_STAR))
-            writer.pseudoSubtomograms2Star(coords, outPath,
-                                           are2dParticles=coords.are2dStacks())
+            # writer.pseudoSubtomograms2Star(coords, outPath,
+            #                                are2dParticles=coords.are2dStacks())
         # Generate each tilt-series star file
         writer.tsSet2Star(self.tsDict, self.ctfDict, outPath)
         # Generate the tomograms star file
@@ -237,7 +238,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         # Define the outputs and the relations
         self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet,
                                outputObjects.projected2DCoordinates.name: fiducialModelGaps})
-        self._defineSourceRelation(self.inputCoords, psubtomoSet)
+        self._defineSourceRelation(self.inReParticles, psubtomoSet)
         self._defineSourceRelation(self.inputCtfTs, psubtomoSet)
         self._defineSourceRelation(tsPointer, psubtomoSet)
         self._defineSourceRelation(tsPointer, fiducialModelGaps)
