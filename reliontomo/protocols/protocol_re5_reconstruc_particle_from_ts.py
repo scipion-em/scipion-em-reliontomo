@@ -83,9 +83,6 @@ class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase
         self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
-    def convertInputStep(self):
-        self.genInStarFile()
-
     def relionReconstructParticle(self):
         cmd = self._genRecParticleCmd()
         try:

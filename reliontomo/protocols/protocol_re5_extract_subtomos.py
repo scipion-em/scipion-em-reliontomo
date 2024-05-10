@@ -169,9 +169,6 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                                isRe5Picking=self.isRe5Picking)
         else:
             self.genInStarFile(are2dParticles=coords.are2dStacks())
-            # createLink(coords.getParticles(), self._getExtraPath(IN_PARTICLES_STAR))
-            # writer.pseudoSubtomograms2Star(coords, outPath,
-            #                                are2dParticles=coords.are2dStacks())
         # Generate each tilt-series star file
         writer.tsSet2Star(self.tsDict, self.ctfDict, outPath)
         # Generate the tomograms star file

@@ -72,6 +72,9 @@ class ProtRelion5TomoBase(EMProtocol):
                            "--verb 1\n"
                            "--pad 2\n")
 
+    def convertInputStep(self):
+        self.genInStarFile(are2dParticles=self.inReParticles.get().are2dStacks())
+
     def getInputParticles(self):
         return self.inReParticles.get()
 
@@ -155,17 +158,3 @@ class ProtRelion5TomoBase(EMProtocol):
 
     def _genExtraParamsCmd(self):
         return ' ' + self.extraParams.get() if self.extraParams.get() else ''
-
-    def checkIf2dParticlesFromStar(self) -> bool:
-        """
-        In Pelion 5 file particles.star, there's a table named "general" that contains one field and one values to
-        indicate if the particles are 2D or 3D. Value 1 is used for 2D particles while value 0 is used for 3D
-        particles. Example:
-
-        data_general
-
-        _rlnTomoSubTomosAre2DStacks                       0
-        """
-        starFile = self._getExtraPath(IN_PARTICLES_STAR)
-        reader, _ = createReaderTomo(starFile, tableName=GENERAL_TABLE)
-        return bool(reader.dataTable.getColumnValues(RLN_ARE2DSTACKS)[0])

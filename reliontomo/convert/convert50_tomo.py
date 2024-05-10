@@ -474,83 +474,84 @@ class Writer(WriterTomo):
         # TODO: Tilt angle and tilt axis angle are stored separately for the initial and refined values. It is logical
         #  to think that the initial ones are there for tracking from the upper part of the pipeline and that the ones
         #  used are the refined ones.
-        sRate = ts.getSamplingRate()
-        tiltAxisAngle = ts.getAcquisition().getTiltAxisAngle()
-        tsTable = Table(columns=tsStarFields)
-        for ti, ctfTomo in zip(ts, ctf):
-            acqTi = ti.getAcquisition()
-            tiltAngle = ti.getTiltAngle()
-            oddEven = ti.getOddEven()
-            if oddEven:
-                oddTi, evenTi = oddEven
-            else:
-                oddTi = FILE_NOT_FOUND
-                evenTi = FILE_NOT_FOUND
-
-            defocusU = ctfTomo.getDefocusU()
-            defocusV = ctfTomo.getDefocusV()
-            trMatrix = ti.getTransform().getMatrix() if ti.getTransform() is not None else eyeMatrix3x3
-            iTrMatrix = np.linalg.inv(trMatrix)
-            rotAngle = np.rad2deg(np.arccos(trMatrix[0, 0]))
-            sxAngst = iTrMatrix[0, 2] * sRate
-            syAngst = iTrMatrix[1, 2] * sRate
-            tsTable.addRow(
-                FILE_NOT_FOUND,  # 1, rlnMicrographMovieName
-                1,  # 2, rlnTomoTiltMovieFrameCount
-                tiltAngle,  # 3, rlnTomoNominalStageTiltAngle
-                tiltAxisAngle,  # 4, rlnTomoNominalTiltAxisAngle
-                acqTi.getDoseInitial(),  # 5, rlnMicrographPreExposure
-                # TODO: it has to be read from the mdoc from label TargetDefocus
-                -1.5,  # 6, rlnTomoNominalDefocus
-                # TODO: manage this
-                FILE_NOT_FOUND,  # 7, rlnCtfPowerSpectrum
-                # TODO: the tilt-images are expexted to be unstacked, as there is no index field
-                oddTi,  # 8, rlnMicrographNameEven
-                evenTi,  # 9, rlnMicrographNameOdd
-                f'{ti.getIndex()}@{ti.getFileName()}:mrcs',  # 10, rlnMicrographName
-                # TODO: check if it's used for other calculations apart from the Bayesian polishing
-                FILE_NOT_FOUND,  # 11, rlnMicrographMetadata
-                # TODO: check if it's used for other calculations apart from the Bayesian polishing. If True, we would
-                #  have to add it to our data model
-                0,  # 12, rlnAccumMotionTotal
-                0,  # 13, rlnAccumMotionEarly
-                0,  # 14, rlnAccumMotionLate
-                # TODO: check if it's used for something or if it's just an internal metric
-                # src/reconstructor.cpp
-                # C++
-                # ·
-                # master
-                # 			Image<RFLOAT> Ictf;
-                # 			FileName fn_ctf;
-                # 			if (!DF.getValue(EMDL_CTF_IMAGE, fn_ctf, p))
-                # 				REPORT_ERROR("ERROR: cannot find rlnCtfImage for 3D CTF correction!");
-                # 			Ictf.read(fn_ctf);
-                # 			// If there is a redundant half, get rid of it
-                ctfTomo.getPsdFile() if ctfTomo.getPsdFile() else FILE_NOT_FOUND,  # 15, rlnCtfImage
-                defocusU,  # 16, rlnDefocusU
-                defocusV,  # 17, rlnDefocusV
-                abs(defocusU - defocusV),  # 18, rlnCtfAstigmatism
-                ctfTomo.getDefocusAngle(),  # 19, rlnDefocusAngle
-                # TODO: from Relion label definition: "not used inside relion_refine", but may be _fitQuality from
-                #  our model
-                0,  # 20, rlnCtfFigureOfMerit
-                # TODO: check if CTFFind's Estimated maximum resolution (in A) of significant CTF Thon rings is the
-                #  same in other plugins that estimate the CTF
-                ctfTomo.getResolution(),  # 21, rlnCtfMaxResolution
-                # TODO: check if this value is used and, in that case, if we have this somewhere or have to store it
-                #  in the data model
-                ctfTomo.getFitQuality() if ctfTomo.getFitQuality() is not None else 0,  # 22, rlnCtfIceRingDensity
-                # TODO: I've only seen this off tilt axis estimated in EMAN...
-                0,  # 23, rlnTomoXTilt
-                tiltAngle,  # 24, rlnTomoYTilt
-                rotAngle,  # 25, rlnTomoZRot
-                sxAngst,  # 26, rlnTomoXShiftAngst
-                syAngst,  # 27, rlnTomoYShiftAngst
-                np.cos(np.deg2rad(tiltAngle)),  # 28, rlnCtfScalefactor
-            )
-        # Write the STAR file
         tsId = ts.getTsId()
-        tsTable.write(getTsStarFile(tsId, outPath), tableName=tsId)
+        with open(getTsStarFile(tsId, outPath), 'w') as f:
+            sRate = ts.getSamplingRate()
+            tiltAxisAngle = ts.getAcquisition().getTiltAxisAngle()
+            tsTable = Table(columns=tsStarFields)
+            for ti, ctfTomo in zip(ts, ctf):
+                acqTi = ti.getAcquisition()
+                tiltAngle = ti.getTiltAngle()
+                oddEven = ti.getOddEven()
+                if oddEven:
+                    oddTi, evenTi = oddEven
+                else:
+                    oddTi = FILE_NOT_FOUND
+                    evenTi = FILE_NOT_FOUND
+
+                defocusU = ctfTomo.getDefocusU()
+                defocusV = ctfTomo.getDefocusV()
+                trMatrix = ti.getTransform().getMatrix() if ti.getTransform() is not None else eyeMatrix3x3
+                iTrMatrix = np.linalg.inv(trMatrix)
+                rotAngle = np.rad2deg(np.arccos(trMatrix[0, 0]))
+                sxAngst = iTrMatrix[0, 2] * sRate
+                syAngst = iTrMatrix[1, 2] * sRate
+                tsTable.addRow(
+                    FILE_NOT_FOUND,  # 1, rlnMicrographMovieName
+                    1,  # 2, rlnTomoTiltMovieFrameCount
+                    tiltAngle,  # 3, rlnTomoNominalStageTiltAngle
+                    tiltAxisAngle,  # 4, rlnTomoNominalTiltAxisAngle
+                    acqTi.getDoseInitial(),  # 5, rlnMicrographPreExposure
+                    # TODO: it has to be read from the mdoc from label TargetDefocus
+                    -1.5,  # 6, rlnTomoNominalDefocus
+                    # TODO: manage this
+                    FILE_NOT_FOUND,  # 7, rlnCtfPowerSpectrum
+                    # TODO: the tilt-images are expexted to be unstacked, as there is no index field
+                    oddTi,  # 8, rlnMicrographNameEven
+                    evenTi,  # 9, rlnMicrographNameOdd
+                    f'{ti.getIndex()}@{ti.getFileName()}:mrcs',  # 10, rlnMicrographName
+                    # TODO: check if it's used for other calculations apart from the Bayesian polishing
+                    FILE_NOT_FOUND,  # 11, rlnMicrographMetadata
+                    # TODO: check if it's used for other calculations apart from the Bayesian polishing. If True, we would
+                    #  have to add it to our data model
+                    0,  # 12, rlnAccumMotionTotal
+                    0,  # 13, rlnAccumMotionEarly
+                    0,  # 14, rlnAccumMotionLate
+                    # TODO: check if it's used for something or if it's just an internal metric
+                    # src/reconstructor.cpp
+                    # C++
+                    # ·
+                    # master
+                    # 			Image<RFLOAT> Ictf;
+                    # 			FileName fn_ctf;
+                    # 			if (!DF.getValue(EMDL_CTF_IMAGE, fn_ctf, p))
+                    # 				REPORT_ERROR("ERROR: cannot find rlnCtfImage for 3D CTF correction!");
+                    # 			Ictf.read(fn_ctf);
+                    # 			// If there is a redundant half, get rid of it
+                    ctfTomo.getPsdFile() if ctfTomo.getPsdFile() else FILE_NOT_FOUND,  # 15, rlnCtfImage
+                    defocusU,  # 16, rlnDefocusU
+                    defocusV,  # 17, rlnDefocusV
+                    abs(defocusU - defocusV),  # 18, rlnCtfAstigmatism
+                    ctfTomo.getDefocusAngle(),  # 19, rlnDefocusAngle
+                    # TODO: from Relion label definition: "not used inside relion_refine", but may be _fitQuality from
+                    #  our model
+                    0,  # 20, rlnCtfFigureOfMerit
+                    # TODO: check if CTFFind's Estimated maximum resolution (in A) of significant CTF Thon rings is the
+                    #  same in other plugins that estimate the CTF
+                    ctfTomo.getResolution(),  # 21, rlnCtfMaxResolution
+                    # TODO: check if this value is used and, in that case, if we have this somewhere or have to store it
+                    #  in the data model
+                    ctfTomo.getFitQuality() if ctfTomo.getFitQuality() is not None else 0,  # 22, rlnCtfIceRingDensity
+                    # TODO: I've only seen this off tilt axis estimated in EMAN...
+                    0,  # 23, rlnTomoXTilt
+                    tiltAngle,  # 24, rlnTomoYTilt
+                    rotAngle,  # 25, rlnTomoZRot
+                    sxAngst,  # 26, rlnTomoXShiftAngst
+                    syAngst,  # 27, rlnTomoYShiftAngst
+                    np.cos(np.deg2rad(tiltAngle)),  # 28, rlnCtfScalefactor
+                )
+            # Write the STAR file
+            tsTable.writeStar(f, tableName=tsId)
 
     @staticmethod
     def tomoSet2Star(tomoDict: Dict[str, Tomogram],
@@ -594,52 +595,53 @@ class Writer(WriterTomo):
         # of imported tomograms it may not have some of the data required here). Also, we'll do it tomo by tomo, as
         # there may be heterogeneity in some of the parameters. Thus, each tilt-series acquisition is more reliable
         # than the one for the whole set
-        tomoTable = Table(columns=tomoStarFields)
-        ih = ImageHandler()
-        for tsId, tomo in tomoDict.items():
-            ts = tsDict.get(tsId, None)
-            if ts:
-                tsSRate = ts.getSamplingRate()
-                unbinnedSRate = unbinnedPixSize if unbinnedPixSize else tsSRate
-                acq = ts.getAcquisition()
-                tomoFName = tomo.getFileName()
-                tomoX, tomoY, tomoZ, _ = ih.getDimensions(tomoFName)
-                tomoScaleFactor = tomo.getSamplingRate() / unbinnedSRate
+        with open(join(outPath, IN_TOMOS_STAR), 'w') as f:
+            tomoTable = Table(columns=tomoStarFields)
+            ih = ImageHandler()
+            for tsId, tomo in tomoDict.items():
+                ts = tsDict.get(tsId, None)
+                if ts:
+                    tsSRate = ts.getSamplingRate()
+                    unbinnedSRate = unbinnedPixSize if unbinnedPixSize else tsSRate
+                    acq = ts.getAcquisition()
+                    tomoFName = tomo.getFileName()
+                    tomoX, tomoY, tomoZ, _ = ih.getDimensions(tomoFName)
+                    tomoScaleFactor = tomo.getSamplingRate() / unbinnedSRate
 
-                eTomoDirectiveFileDict = {
-                    'date': prettyTime(),
-                    'name': tsId,
-                    'pixelSize': tsSRate,
-                    'minTilt': acq.getAngleMin(),
-                    'markerDiameter': 10,
-                    # TODO: we need the fiducial diameter at this point. Add it to model, form advanced param?
-                    'rotationAngle': acq.getTiltAxisAngle(),
-                    'angleOffset': -0.12  # TODO: check if what it is, if it's used, and how to get it from our data.
-                }
-                eTomoEdf = join(outPath, tsId + '.edf')
-                # writeEtomoEdf(eTomoEdf, eTomoDirectiveFileDict)
+                    eTomoDirectiveFileDict = {
+                        'date': prettyTime(),
+                        'name': tsId,
+                        'pixelSize': tsSRate,
+                        'minTilt': acq.getAngleMin(),
+                        'markerDiameter': 10,
+                        # TODO: we need the fiducial diameter at this point. Add it to model, form advanced param?
+                        'rotationAngle': acq.getTiltAxisAngle(),
+                        'angleOffset': -0.12  # TODO: check if what it is, if it's used, and how to get it from our data.
+                    }
+                    eTomoEdf = join(outPath, tsId + '.edf')
+                    # writeEtomoEdf(eTomoEdf, eTomoDirectiveFileDict)
 
-                # TODO: in our case, rlnMicrographOriginalPixelSize and rlnTomoTiltSeriesPixelSize are expected to be
-                tomoTable.addRow(
-                    tsId,  # 1, rlnTomoName
-                    acq.getVoltage(),  # 2, rlnVoltage
-                    acq.getSphericalAberration(),  # 3, rlnSphericalAberration
-                    acq.getAmplitudeContrast(),  # 4, rlnAmplitudeContrast
-                    unbinnedSRate,  # 5, rlnMicrographOriginalPixelSize
-                    handedness,  # 6, rlnTomoHand
-                    # TODO: check if this may vary (seems not to...)
-                    'optics1',  # 7, rlnOpticsGroupName
-                    tsSRate,  # 8, rlnTomoTiltSeriesPixelSize
-                    getTsStarFile(tsId, outPath),  # 9, rlnTomoTiltSeriesStarFile
-                    eTomoEdf,  # 10, rlnEtomoDirectiveFile
-                    tomo.getSamplingRate() / tsSRate,  # 11, rlnTomoTomogramBinning
-                    tomoX * tomoScaleFactor,  # 12, rlnTomoSizeX
-                    tomoY * tomoScaleFactor,  # 13, rlnTomoSizeY
-                    tomoZ * tomoScaleFactor,  # 14, rlnTomoSizeZ
-                    tomoFName,  # 15, rlnTomoReconstructedTomogram
-                )
-        # Write the STAR file
-        tomoTable.write(join(outPath, IN_TOMOS_STAR), tableName=GLOBAL_TABLE)
+                    # TODO: in our case, rlnMicrographOriginalPixelSize and rlnTomoTiltSeriesPixelSize are expected to be
+                    tomoTable.addRow(
+                        tsId,  # 1, rlnTomoName
+                        acq.getVoltage(),  # 2, rlnVoltage
+                        acq.getSphericalAberration(),  # 3, rlnSphericalAberration
+                        acq.getAmplitudeContrast(),  # 4, rlnAmplitudeContrast
+                        unbinnedSRate,  # 5, rlnMicrographOriginalPixelSize
+                        handedness,  # 6, rlnTomoHand
+                        # TODO: check if this may vary (seems not to...)
+                        'optics1',  # 7, rlnOpticsGroupName
+                        tsSRate,  # 8, rlnTomoTiltSeriesPixelSize
+                        getTsStarFile(tsId, outPath),  # 9, rlnTomoTiltSeriesStarFile
+                        eTomoEdf,  # 10, rlnEtomoDirectiveFile
+                        tomo.getSamplingRate() / tsSRate,  # 11, rlnTomoTomogramBinning
+                        tomoX * tomoScaleFactor,  # 12, rlnTomoSizeX
+                        tomoY * tomoScaleFactor,  # 13, rlnTomoSizeY
+                        tomoZ * tomoScaleFactor,  # 14, rlnTomoSizeZ
+                        tomoFName,  # 15, rlnTomoReconstructedTomogram
+                    )
+            # Write the STAR file
+            tomoTable.writeStar(f, tableName=GLOBAL_TABLE)
 
     @staticmethod
     def coords2Star(coordSet: SetOfCoordinates3D,
@@ -679,33 +681,34 @@ class Writer(WriterTomo):
         :param coordsScale: used to scale the coordiantes to the tilt-series size. Ignored and set to 1 if
         isRe5Picking = True.
         """
-        particlesTable = Table(columns=coordsStarFields)
-        sRate = coordSet.getSamplingRate()
-        coordsScale = 1 if isRe5Picking else coordsScale
-        for tsId, tomo in tomoDict.items():
-            for coord in coordSet.iterCoordinates(volume=tomo):
-                angles, _ = getTransformInfoFromCoordOrSubtomo(coord, sRate)
-                particlesTable.addRow(
-                    tsId,  # 1, rlnTomoName
-                    coord.getX(RELION_3D_COORD_ORIGIN) * coordsScale,  # 2, rlnCoordinateX
-                    coord.getY(RELION_3D_COORD_ORIGIN) * coordsScale,  # 3, rlnCoordinateY
-                    coord.getZ(RELION_3D_COORD_ORIGIN) * coordsScale,  # 4, rlnCoordinateZ
-                    angles[0],  # 5, rlnTomoSubtomogramRot
-                    angles[1],  # 6, rlnTomoSubtomogramTilt
-                    angles[2],  # 7, rlnTomoSubtomogramPsi
-                    getattr(coord, R5_ROT_ATTRIB, Float(0)).get(),  # 8, rlnAngleRot
-                    getattr(coord, R5_TILT_ATTRIB, Float(0)).get(),  # 9, rlnAngleTilt
-                    getattr(coord, R5_PSI_ATTRIB, Float(0)).get(),  # 10, rlnAnglePsi
-                    getattr(coord, R5_TILT_PRIOR_ATTRIB, Float(0)).get(),  # 11, rlnAngleTiltPrior
-                    getattr(coord, R5_PSI_PRIO_ATTRIB, Float(0)).get(),  # 12, rlnAnglePsiPrior
-                    # Scipion fields
-                    coord.getX(SCIPION),  # _sciXCoord
-                    coord.getY(SCIPION),  # _sciYCoord
-                    coord.getZ(SCIPION),  # _sciZCoord
-                    coord.getGroupId()  # _sciGroupId
-                )
-        # Write the STAR file
-        particlesTable.write(join(outPath, IN_PARTICLES_STAR), tableName=PARTICLES_TABLE)
+        with open(join(outPath, IN_PARTICLES_STAR), 'w') as f:
+            particlesTable = Table(columns=coordsStarFields)
+            sRate = coordSet.getSamplingRate()
+            coordsScale = 1 if isRe5Picking else coordsScale
+            for tsId, tomo in tomoDict.items():
+                for coord in coordSet.iterCoordinates(volume=tomo):
+                    angles, _ = getTransformInfoFromCoordOrSubtomo(coord, sRate)
+                    particlesTable.addRow(
+                        tsId,  # 1, rlnTomoName
+                        coord.getX(RELION_3D_COORD_ORIGIN) * coordsScale,  # 2, rlnCoordinateX
+                        coord.getY(RELION_3D_COORD_ORIGIN) * coordsScale,  # 3, rlnCoordinateY
+                        coord.getZ(RELION_3D_COORD_ORIGIN) * coordsScale,  # 4, rlnCoordinateZ
+                        angles[0],  # 5, rlnTomoSubtomogramRot
+                        angles[1],  # 6, rlnTomoSubtomogramTilt
+                        angles[2],  # 7, rlnTomoSubtomogramPsi
+                        getattr(coord, R5_ROT_ATTRIB, Float(0)).get(),  # 8, rlnAngleRot
+                        getattr(coord, R5_TILT_ATTRIB, Float(0)).get(),  # 9, rlnAngleTilt
+                        getattr(coord, R5_PSI_ATTRIB, Float(0)).get(),  # 10, rlnAnglePsi
+                        getattr(coord, R5_TILT_PRIOR_ATTRIB, Float(0)).get(),  # 11, rlnAngleTiltPrior
+                        getattr(coord, R5_PSI_PRIO_ATTRIB, Float(0)).get(),  # 12, rlnAnglePsiPrior
+                        # Scipion fields
+                        coord.getX(SCIPION),  # _sciXCoord
+                        coord.getY(SCIPION),  # _sciYCoord
+                        coord.getZ(SCIPION),  # _sciZCoord
+                        coord.getGroupId()  # _sciGroupId
+                    )
+            # Write the STAR file
+            particlesTable.writeStar(f, tableName=PARTICLES_TABLE)
 
     @staticmethod
     def pseudoSubtomograms2Star(pSubtomoSet: RelionSetOfPseudoSubtomograms,
@@ -755,29 +758,31 @@ class Writer(WriterTomo):
         :param are2dParticles: bool used case to choose the fields that will be present in the generated particles.star
         file, as they are not the same depending on if the particles are 2D or 3D.
         """
-
         logger.info("Generating particles file from pseudosubtomogram set.")
-        particlesStarFields = particles2dStarFields if are2dParticles else particles3dStarFields
-        sRate = pSubtomoSet.getSamplingRate()
-        hasCoords = pSubtomoSet.getFirstItem().hasCoordinate3D()
-        if hasCoords:
-            sciCoordsFields = [
-                SCIPION_COORD_X,
-                SCIPION_COORD_Y,
-                SCIPION_COORD_Z,
-                SCIPION_COORD_GROUP_ID
-            ]
-            particlesStarFields.extend(sciCoordsFields)
-        tomoTable = Table(columns=particlesStarFields)
-
         # Write the STAR file
-        optGroup = OpticsGroups.fromString(pSubtomoSet.getAcquisition().opticsGroupInfo.get())
         with open(join(outPath, IN_PARTICLES_STAR), 'w') as f:
+            sRate = pSubtomoSet.getSamplingRate()
+            # General table
+            generalTable = Table(columns=[RLN_ARE2DSTACKS])
+            generalTable.addRow(int(are2dParticles))
+            generalTable.writeStar(f, tableName=GENERAL_TABLE, singleRow=True)
+
+            # Optics table
+            optGroup = OpticsGroups.fromString(pSubtomoSet.getAcquisition().opticsGroupInfo.get())
             optGroup.toStar(f)
-            # Write header first
-            partsWriter = Table.Writer(f)
-            partsWriter.writeTableName(PARTICLES_TABLE)
-            partsWriter.writeHeader(tomoTable.getColumns())
+
+            # Particles table
+            particlesStarFields = particles2dStarFields if are2dParticles else particles3dStarFields
+            hasCoords = pSubtomoSet.getFirstItem().hasCoordinate3D()
+            if hasCoords:
+                sciCoordsFields = [
+                    SCIPION_COORD_X,
+                    SCIPION_COORD_Y,
+                    SCIPION_COORD_Z,
+                    SCIPION_COORD_GROUP_ID
+                ]
+                particlesStarFields.extend(sciCoordsFields)
+            particlesTable = Table(columns=particlesStarFields)
             for pSubtomo in pSubtomoSet.iterSubtomos():
                 angles, shifts = getTransformInfoFromCoordOrSubtomo(pSubtomo, sRate)
                 # Fields 12 and 13 is different depending on if the particles are 2D or 3D
@@ -790,14 +795,14 @@ class Writer(WriterTomo):
                     field13 = pSubtomo.getCtfFile() if pSubtomo.getCtfFile() else FILE_NOT_FOUND
 
                 # Add row to the table which will be used to generate the STAR file
-                rowsValues = [
+                particlesRow = [
                     pSubtomo.getTsId(),  # 1, rlnTomoName
                     angles[0],  # 2, rlnTomoSubtomogramRot
                     angles[1],  # 3, rlnTomoSubtomogramTilt
                     angles[2],  # 4, rlnTomoSubtomogramPsi
                     pSubtomo.getRot(),  # 5, rlnAngleRot
                     pSubtomo.getTilt(),  # 6, rlnAngleTilt
-                    pSubtomo.getPsi(),   # 7, rlnAnglePsi
+                    pSubtomo.getPsi(),  # 7, rlnAnglePsi
                     pSubtomo.getTiltPrior(),  # 8, rlnAngleTiltPrior
                     pSubtomo.getPsiPrior(),  # 9, rlnAnglePsiPrior
                     pSubtomo.getOpticsGroupId(),  # 10, rlnOpticsGroup
@@ -820,12 +825,14 @@ class Writer(WriterTomo):
                     pSubtomo.getNrOfSignificantSamples()  # 26, rlnNrOfSignificantSamples
                 ]
                 if hasCoords:
-                    rowsValues += [pSubtomo.getCoordinate3D().getX(SCIPION),  # 27, sciXCoord
-                                   pSubtomo.getCoordinate3D().getY(SCIPION),  # 28, sciYCoord
-                                   pSubtomo.getCoordinate3D().getZ(SCIPION),  # 29, sciZCoord
-                                   pSubtomo.getCoordinate3D().getGroupId(),  # 30, sciGroupId
-                                   ]
-                partsWriter.writeRowValues(rowsValues)
+                    particlesRow += [pSubtomo.getCoordinate3D().getX(SCIPION),  # 27, sciXCoord
+                                     pSubtomo.getCoordinate3D().getY(SCIPION),  # 28, sciYCoord
+                                     pSubtomo.getCoordinate3D().getZ(SCIPION),  # 29, sciZCoord
+                                     pSubtomo.getCoordinate3D().getGroupId(),  # 30, sciGroupId
+                                     ]
+                particlesTable.addRow(*particlesRow)
+                # Write the STAR file
+                particlesTable.writeStar(f, tableName=PARTICLES_TABLE)
 
 
 class Reader(ReaderTomo):

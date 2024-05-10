@@ -326,9 +326,6 @@ class ProtRelion5RefineBase(ProtRelion5TomoBase):
     def _insertAllSteps(self):
         pass
 
-    def convertInputStep(self):
-        self.genInStarFile(are2dParticles=self.inReParticles.get().are2dStacks())
-
     # -------------------------- INFO functions -------------------------------
 
     # --------------------------- UTILS functions -----------------------------

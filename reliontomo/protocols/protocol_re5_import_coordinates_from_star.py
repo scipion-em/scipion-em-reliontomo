@@ -24,6 +24,7 @@
 # **************************************************************************
 from enum import Enum
 
+from pyworkflow import BETA
 from reliontomo.constants import IN_PARTICLES_STAR
 from reliontomo.protocols.protocol_re5_base_import_from_star import ProtBaseRe5ImportFromStar
 from tomo.objects import SetOfTomograms, SetOfCoordinates3D
@@ -39,6 +40,7 @@ class ProtImportRe5Coordinates3DFromStar(ProtBaseRe5ImportFromStar):
 
     _label = 'import re5 3D coordinates'
     _possibleOutputs = outputObjects
+    _devStatus = BETA
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
