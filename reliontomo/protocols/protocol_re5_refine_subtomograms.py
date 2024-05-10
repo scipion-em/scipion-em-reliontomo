@@ -287,7 +287,7 @@ class ProtRelion5RefineSubtomograms(ProtRelion5RefineBase):
         # If halves exists, use a half as explained here:
         # https://relion.readthedocs.io/en/release-4.0/STA_tutorial/Refine3D.html#high-resolution-3d-refinement
         if ref.hasHalfMaps():
-            refFile, _ = ref.getHalfMaps()
+            refFile, _ = ref.getHalfMaps().split(',')
 
         cmd += '--ref %s ' % refFile
         if self.solventMask.get():
