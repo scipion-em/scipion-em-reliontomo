@@ -144,6 +144,9 @@ tomoStarFields = [
 # COORDINATES METADATA #################################################################################################
 PARTICLES_TABLE = 'particles'
 OPTICS_TABLE = 'optics'
+GENERAL_TABLE = 'general'
+
+RLN_ARE2DSTACKS = 'rlnTomoSubTomosAre2DStacks'
 
 RLN_COORDINATEX = 'rlnCoordinateX'
 RLN_COORDINATEY = 'rlnCoordinateY'
@@ -665,6 +668,7 @@ class Writer(WriterTomo):
         Example:
             TS_43	1798.595537	1030.038284	1208.171910	-178.979203	87.527230	-22.439980	0.000000	90.000000
             0.000000	90.000000	0.000000
+        Parameters:
 
         :param coordSet: SetOfCoordinates3D
         :param tomoDict: dictionary of type {tsId: Tomogram}
@@ -707,6 +711,50 @@ class Writer(WriterTomo):
     def pseudoSubtomograms2Star(pSubtomoSet: RelionSetOfPseudoSubtomograms,
                                 outPath: str,
                                 are2dParticles: bool = True):
+        """Reads the data_particles table of a generated particles.star file. (output of the command execution
+        relion_refine --print_metadata_labels):
+
+        rlnTomoName #1 (string) : Arbitrary name for a tomogram
+        rlnTomoSubtomogramRot #2 (double) : First Euler angle of a subtomogram (rot, in degrees)
+        rlnTomoSubtomogramTilt #3 (double) : Second Euler angle of a subtomogram (tilt, in degrees)
+        rlnTomoSubtomogramPsi #4 (double) : Third Euler angle of a subtomogram (psi, in degrees)
+        rlnAngleRot #5 (double) : First Euler angle (rot, in degrees)
+        rlnAngleTilt #6 (double) : Second Euler angle (tilt, in degrees)
+        rlnAnglePsi #7 (double) : Third Euler angle (psi, in degrees)
+        rlnAngleTiltPrior #8 (double) : Center of the prior (in degrees) on the second Euler angle (tilt)
+        rlnAnglePsiPrior #9 (double) : Center of the prior (in degrees) on the third Euler angle (psi)
+        rlnOpticsGroup #10 (int)    : Group of particles with identical optical properties
+        rlnTomoParticleName #11 (string) : Name of each individual particle
+        rlnTomoVisibleFrames #12 (vector<int>) : Frames fromt he tilt series that are included in the 2D stack of a pseudo-subtomogram
+        rlnImageName #13 (string) : Name of an image
+        rlnOriginXAngst #14 (double) : X-coordinate (in Angstrom) for the origin of rotation
+        rlnOriginYAngst #15 (double) : Y-coordinate (in Angstrom) for the origin of rotation
+        rlnOriginZAngst #16 (double) : Z-coordinate (in Angstrom) for the origin of rotation
+        rlnCenteredCoordinateXAngst #17 (double) : X-Position of an image in a micrograph (in Angstroms, with the center being 0,0)
+        rlnCenteredCoordinateYAngst #18 (double) : Y-Position of an image in a micrograph (in Angstroms, with the center being 0,0)
+        rlnCenteredCoordinateZAngst #19 (double) : Z-Position of an image in a micrograph (in Angstroms, with the center being 0,0)
+        rlnGroupNumber #20 (int)    : The number of a group of images
+        rlnClassNumber #21 (int)    : Class number for which a particle has its highest probability
+        rlnNormCorrection #22 (double) : Normalisation correction value for an image
+        rlnRandomSubset #23 (int)    : Random subset to which this particle belongs
+        rlnLogLikeliContribution #24 (double) : Contribution of a particle to the log-likelihood target function
+        rlnMaxValueProbDistribution #25 (double) : Maximum value of the (normalised) probability function for a particle
+        rlnNrOfSignificantSamples #26 (int)    : Number of orientational/class assignments (for a particle)
+        with sign.probabilities in the 1st pass of adaptive oversampling.
+
+        Example:
+             TS_01   -130.15816    85.886437   130.158156    26.433646    11.507468   167.399460     0.000000
+             0.000000            1   TS_01/1 Runs/003096_ProtRelion5ExtractSubtomos/extra/Subtomograms/TS_01/1_data.mrc
+             Runs/003096_ProtRelion5ExtractSubtomos/extra/Subtomograms/TS_01/1_weights.mrc    -49.87757    -32.09807
+             23.812184  -1390.63902  -1580.08937   660.057917            1            1     1.000000            1
+             3.950164e+06     0.409595            8
+
+        Parameters:
+        :param pSubtomoSet: RelionSetOfPseudoSubtomograms.
+        :param outPath: path in which the particles.star file will be generated.
+        :param are2dParticles: bool used case to choose the fields that will be present in the generated particles.star
+        file, as they are not the same depending on if the particles are 2D or 3D.
+        """
 
         logger.info("Generating particles file from pseudosubtomogram set.")
         particlesStarFields = particles2dStarFields if are2dParticles else particles3dStarFields
@@ -851,45 +899,7 @@ class Reader(ReaderTomo):
             logger.info(yellowStr('The star file contains coordinates that belong to tomograms not present '
                                   'in the introduced set of tomograms: %s' % nonMatchingTomoIds))
 
-    def starFile2PseudoSubtomograms(self, outputSet):
-        """Reads the data_particles table of a generated particles.star file. (output of the command execution
-        relion_refine --print_metadata_labels):
-
-        rlnTomoName #1 (string) : Arbitrary name for a tomogram
-        rlnTomoSubtomogramRot #2 (double) : First Euler angle of a subtomogram (rot, in degrees)
-        rlnTomoSubtomogramTilt #3 (double) : Second Euler angle of a subtomogram (tilt, in degrees)
-        rlnTomoSubtomogramPsi #4 (double) : Third Euler angle of a subtomogram (psi, in degrees)
-        rlnAngleRot #5 (double) : First Euler angle (rot, in degrees)
-        rlnAngleTilt #6 (double) : Second Euler angle (tilt, in degrees)
-        rlnAnglePsi #7 (double) : Third Euler angle (psi, in degrees)
-        rlnAngleTiltPrior #8 (double) : Center of the prior (in degrees) on the second Euler angle (tilt)
-        rlnAnglePsiPrior #9 (double) : Center of the prior (in degrees) on the third Euler angle (psi)
-        rlnOpticsGroup #10 (int)    : Group of particles with identical optical properties
-        rlnTomoParticleName #11 (string) : Name of each individual particle
-        rlnTomoVisibleFrames #12 (vector<int>) : Frames fromt he tilt series that are included in the 2D stack of a pseudo-subtomogram
-        rlnImageName #13 (string) : Name of an image
-        rlnOriginXAngst #14 (double) : X-coordinate (in Angstrom) for the origin of rotation
-        rlnOriginYAngst #15 (double) : Y-coordinate (in Angstrom) for the origin of rotation
-        rlnOriginZAngst #16 (double) : Z-coordinate (in Angstrom) for the origin of rotation
-        rlnCenteredCoordinateXAngst #17 (double) : X-Position of an image in a micrograph (in Angstroms, with the center being 0,0)
-        rlnCenteredCoordinateYAngst #18 (double) : Y-Position of an image in a micrograph (in Angstroms, with the center being 0,0)
-        rlnCenteredCoordinateZAngst #19 (double) : Z-Position of an image in a micrograph (in Angstroms, with the center being 0,0)
-        rlnGroupNumber #20 (int)    : The number of a group of images
-        rlnClassNumber #21 (int)    : Class number for which a particle has its highest probability
-        rlnNormCorrection #22 (double) : Normalisation correction value for an image
-        rlnRandomSubset #23 (int)    : Random subset to which this particle belongs
-        rlnLogLikeliContribution #24 (double) : Contribution of a particle to the log-likelihood target function
-        rlnMaxValueProbDistribution #25 (double) : Maximum value of the (normalised) probability function for a particle
-        rlnNrOfSignificantSamples #26 (int)    : Number of orientational/class assignments (for a particle)
-        with sign.probabilities in the 1st pass of adaptive oversampling.
-
-        Example:
-             TS_01   -130.15816    85.886437   130.158156    26.433646    11.507468   167.399460     0.000000
-             0.000000            1   TS_01/1 Runs/003096_ProtRelion5ExtractSubtomos/extra/Subtomograms/TS_01/1_data.mrc
-             Runs/003096_ProtRelion5ExtractSubtomos/extra/Subtomograms/TS_01/1_weights.mrc    -49.87757    -32.09807
-             23.812184  -1390.63902  -1580.08937   660.057917            1            1     1.000000            1
-             3.950164e+06     0.409595            8
-        """
+    def starFile2PseudoSubtomograms(self, outputSet: RelionSetOfPseudoSubtomograms):
         sRate = outputSet.getSamplingRate()
         for counter, row in enumerate(self.dataTable):
             t = Transform()

@@ -77,10 +77,10 @@ def writeSetOfTomograms(imgSet, starFile, whiteList=None, **kwargs):
     return createWriterTomo40(**kwargs).tiltSeries2Star(imgSet, starFile, whiteList=whiteList, **kwargs)
 
 
-def createReaderTomo(starFile, **kwargs):
+def createReaderTomo(starFile, tableName=PARTICLES_TABLE, **kwargs):
     dataTable = Table()
     try:
-        dataTable.read(starFile, tableName=PARTICLES_TABLE)
+        dataTable.read(starFile, tableName=tableName)
     except Exception:
         dataTable.read(starFile, tableName=None)
 

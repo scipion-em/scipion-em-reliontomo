@@ -32,7 +32,9 @@ from pyworkflow.protocol import PointerParam, StringParam
 from pyworkflow.utils import Message, createLink
 from reliontomo.constants import IN_PARTICLES_STAR, POSTPROCESS_DIR, OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE, \
     OUT_PARTICLES_STAR
-from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms, convert50_tomo
+from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms, convert50_tomo, \
+    createReaderTomo
+from reliontomo.convert.convert50_tomo import GENERAL_TABLE, RLN_ARE2DSTACKS
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 
 
@@ -79,7 +81,9 @@ class ProtRelion5TomoBase(EMProtocol):
     def genInStarFile(self, are2dParticles=True):
         """It will check if the set size and the stored particles star file are of the same size or not. In
         the first case, a link will be made to the previous particles star file to avoid generating it and in the
-        second case, a new file will be generated containing only the ones present in the input set."""
+        second case, a new file will be generated containing only the ones present in the input set. The input
+        are2dParticles will be used in the second case to choose the fields that will be present in the generated
+        particles.star file, as they are not the same depending on if the particles are 2D or 3D."""
         inReParticlesSet = self.inReParticles.get()
         outStarFileName = self.getOutStarFileName()
         if inReParticlesSet.getSize() == inReParticlesSet.getNReParticles():
@@ -87,6 +91,8 @@ class ProtRelion5TomoBase(EMProtocol):
                       inReParticlesSet.getParticles())
             createLink(inReParticlesSet.getParticles(), outStarFileName)
         else:
+            self.info("Less particles detected in the input set respecting to it associated star file. Assuming "
+                      "that a subset was made. Writing the new particles file.")
             outPath = self._getExtraPath()
             writer = convert50_tomo.Writer()
             writer.pseudoSubtomograms2Star(inReParticlesSet, outPath, are2dParticles=are2dParticles)
@@ -149,3 +155,17 @@ class ProtRelion5TomoBase(EMProtocol):
 
     def _genExtraParamsCmd(self):
         return ' ' + self.extraParams.get() if self.extraParams.get() else ''
+
+    def checkIf2dParticlesFromStar(self) -> bool:
+        """
+        In Pelion 5 file particles.star, there's a table named "general" that contains one field and one values to
+        indicate if the particles are 2D or 3D. Value 1 is used for 2D particles while value 0 is used for 3D
+        particles. Example:
+
+        data_general
+
+        _rlnTomoSubTomosAre2DStacks                       0
+        """
+        starFile = self._getExtraPath(IN_PARTICLES_STAR)
+        reader, _ = createReaderTomo(starFile, tableName=GENERAL_TABLE)
+        return bool(reader.dataTable.getColumnValues(RLN_ARE2DSTACKS)[0])
