@@ -832,7 +832,7 @@ class Writer(WriterTomo):
                                      ]
                 particlesTable.addRow(*particlesRow)
                 # Write the STAR file
-                particlesTable.writeStar(f, tableName=PARTICLES_TABLE)
+            particlesTable.writeStar(f, tableName=PARTICLES_TABLE)
 
 
 class Reader(ReaderTomo):

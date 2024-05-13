@@ -363,9 +363,8 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
 
     def copyInfo(self, other):
         self.copyAttributes(other, '_filesMaster', '_tomograms', '_particles', '_trajectories', '_manifolds',
-                            '_referenceFsc',
-                            '_relionBinning', '_tsSamplingRate', '_samplingRate', '_boxSize', '_nReParticles',
-                            '_coordsPointer')
+                            '_referenceFsc', '_relionBinning', '_tsSamplingRate', '_samplingRate', '_boxSize',
+                            '_nReParticles', '_coordsPointer', '_are2dStacks')
         self._acquisition.copyInfo(other.getAcquisition())
         # self._relionMd = relionMd if relionMd else relionTomoMetadata
 
