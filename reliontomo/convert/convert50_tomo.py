@@ -922,7 +922,7 @@ class Reader(ReaderTomo):
                                           xInImg=row.get(RLN_CENTEREDCOORDINATEXANGST, 0),
                                           yInImg=row.get(RLN_CENTEREDCOORDINATEYANGST, 0),
                                           zInImg=row.get(RLN_CENTEREDCOORDINATEZANGST, 0),
-                                          rdnSubset=row.get(RANDOM_SUBSET, counter % 2),  # 1 and 2 alt. by default
+                                          rdnSubset=row.get(RANDOM_SUBSET, counter % 2 + 1),  # 1 and 2 alt. by default
                                           relionParticleName=row.get(RLN_TOMOPARTICLENAME),
                                           visibleFrames=row.get(RLN_TOMOVISIBLEFRAMES, [0, 0, 0]),
                                           ctfFile=row.get(RLN_CTFIMAGE, FILE_NOT_FOUND),
@@ -936,8 +936,8 @@ class Reader(ReaderTomo):
                                           psi=row.get(RLN_ANGLEPSI, 0),
                                           tiltPrior=row.get(RLN_ANGLETILTPRIOR, 0),
                                           psiPrior=row.get(RLN_ANGLEPSIPRIOR, 0),
-                                          groupId=row.get(RLN_GROUPNUMBER, 1),
-                                          normCorrection=row.get(RLN_NORMCORRECTION, 0),
+                                          groupId=row.get(RLN_GROUPNUMBER, -1),
+                                          normCorrection=row.get(RLN_NORMCORRECTION, -1),
                                           )
 
             # TODO: decide what to do with this
