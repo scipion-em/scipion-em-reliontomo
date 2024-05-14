@@ -73,8 +73,8 @@ def checkSubtomogramFormat(subtomo, extraPath):
         ih.convert(subtomo.getFileName(), mrcFile)
 
 
-def getTransformMatrixFromRow(row, sRate=1):
-    if Plugin.isRe50():
+def getTransformMatrixFromRow(row, sRate=1, isRe5Star=False):
+    if isRe5Star:
         from reliontomo.convert.convert50_tomo import RLN_ORIGINZANGST, RLN_ORIGINYANGST, RLN_ORIGINXANGST, \
             RLN_TOMOSUBTOMOGRAMROT, RLN_TOMOSUBTOMOGRAMTILT, RLN_TOMOSUBTOMOGRAMPSI
         shiftx = float(row.get(RLN_ORIGINXANGST, 0))

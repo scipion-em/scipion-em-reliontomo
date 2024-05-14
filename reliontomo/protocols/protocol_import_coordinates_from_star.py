@@ -23,6 +23,9 @@
 # *
 # **************************************************************************
 from enum import Enum
+
+from pyworkflow import BETA
+from reliontomo.constants import IN_PARTICLES_STAR
 from reliontomo.protocols.protocol_base_import_from_star import ProtBaseImportFromStar
 from tomo.objects import SetOfTomograms, SetOfCoordinates3D
 
@@ -35,9 +38,10 @@ class outputObjects(Enum):
 class ProtImportCoordinates3DFromStar(ProtBaseImportFromStar):
     """Protocol to import a 3D coordinates from a relion star file as the one provided in the tutorial"""
 
-    _label = 'import 3D coordinates'
+    _label = 'import re5 3D coordinates'
     _possibleOutputs = outputObjects
+    _devStatus = BETA
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.linkedStarFileName = 'in3dCoordinates.star'
+        self.linkedStarFileName = IN_PARTICLES_STAR

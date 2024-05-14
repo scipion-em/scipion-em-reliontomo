@@ -964,7 +964,7 @@ class Reader(ReaderTomo):
                 psubtomo.setCoordinate3D(sciCoord)
 
             # Set the transformation matrix
-            t.setMatrix(getTransformMatrixFromRow(row, sRate=sRate))
+            t.setMatrix(getTransformMatrixFromRow(row, sRate=sRate, isRe5Star=True))
             psubtomo.setTransform(t)
             psubtomo.setIndex(counter)
             psubtomo.setClassId(row.get(RLN_CLASSNUMBER, 1))

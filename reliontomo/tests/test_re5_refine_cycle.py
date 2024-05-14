@@ -32,9 +32,9 @@ from pwem.protocols.protocol_import.masks import ImportMaskOutput
 from pyworkflow.tests import setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
 from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR, IN_PARTICLES_STAR, POSTPROCESS_DIR, \
-    POST_PROCESS_MRC
+    POST_PROCESS_MRC, IN_TOMOS_STAR
 from reliontomo.convert.convertBase import getTransformInfoFromCoordOrSubtomo
-from reliontomo.protocols import ProtImportCoordinates3DFromStar_Orig, ProtRelionPrepareData, \
+from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelion5ExtractSubtomos, \
     ProtRelionMakePseudoSubtomograms, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms, \
     ProtRelionReconstructParticle, ProtRelionTomoReconstruct, ProtRelionEditParticlesStar
 from reliontomo.protocols.protocol_3d_classify_subtomograms import ProtRelion3DClassifySubtomograms
@@ -52,7 +52,7 @@ from tomo.tests import RE4_STA_TUTO, DataSetRe4STATuto
 from tomo.tests.test_base_centralized_layer import TestBaseCentralizedLayer
 
 
-class TestRefineCycleBase(TestBaseCentralizedLayer):
+class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
     ds = None
     tsWithAlignment = None
     importedTs = None
@@ -60,11 +60,12 @@ class TestRefineCycleBase(TestBaseCentralizedLayer):
     importedTomos = None
     importedCoords = None
     extractedParticles = None
-    croppedBoxSizeBin4 = DataSetRe4STATuto.croppedBoxSizeBin4.value
-    boxSizeBin4 = DataSetRe4STATuto.boxSizeBin4.value
+    croppedBoxSizeBin6 = DataSetRe4STATuto.croppedBoxSizeBin4.value
+    boxSizeBin6 = DataSetRe4STATuto.boxSizeBin4.value
     tsIds = ['TS_03', 'TS_54']
     binFactor4 = 4
-    protPrepare = None
+    binFactor6 = 6
+    protExtract = None
     importedRef = None
     inReParticles = None
     symmetry = DataSetRe4STATuto.symmetry.value
@@ -152,38 +153,44 @@ class TestRefineCycleBase(TestBaseCentralizedLayer):
     @classmethod
     def _runImportCoordinatesFromStar(cls):
         print(magentaStr("\n==> Importing the coordinates with Relion:"))
-        protImportCoords = cls.newProtocol(ProtImportCoordinates3DFromStar_Orig,
+        protImportCoords = cls.newProtocol(ProtImportCoordinates3DFromStar,
                                            starFile=cls.ds.getFile(DataSetRe4STATuto.coordsStarSubset.value),
                                            inTomos=cls.importedTomos,
                                            samplingRate=DataSetRe4STATuto.unbinnedPixSize.value)
         cls.launchProtocol(protImportCoords)
-        outCoords = getattr(protImportCoords, ProtImportCoordinates3DFromStar_Orig._possibleOutputs.coordinates.name, None)
+        outCoords = getattr(protImportCoords, ProtImportCoordinates3DFromStar._possibleOutputs.coordinates.name, None)
         return outCoords
 
     @classmethod
-    def _runPrepareData4RelionTomo(cls):
-        print(magentaStr("\n==> Preparing data for relion 4 tomo:"))
-        protPrepare = cls.newProtocol(ProtRelionPrepareData,
+    def _runExtractSubtomos(cls, binningFactor, boxSize, croppedBoxSize, gen2dParticles=False):
+        partTypeMsg = '2D' if gen2dParticles else '3D'
+        print(magentaStr(f"\n==> Extracting the particles from the tilt-series:\n"
+                         f"\t- Particles type selected: {partTypeMsg}"))
+        protExtract = cls.newProtocol(ProtRelion5ExtractSubtomos,
                                       inputCtfTs=cls.importedCtfs,
-                                      inputCoords=cls.importedCoords,
+                                      inReParticles=cls.importedCoords,
                                       inputTS=cls.tsWithAlignment,
-                                      flipYZ=True,
-                                      flipZ=True)
-        return cls.launchProtocol(protPrepare)
+                                      binningFactor=binningFactor,
+                                      boxSize=boxSize,
+                                      croppedBoxSize=croppedBoxSize,
+                                      write2dStacks=gen2dParticles,
+                                      numberOfMpi=2,  # There are 2 tomograms in the current dataset
+                                      numberOfThreads=3)
+        return cls.launchProtocol(protExtract)
 
-    @classmethod
-    def _makePSubtomograms(cls):
-        print(magentaStr("\n==> Making the psudosubtomograms:"))
-        inRelionParticles = getattr(cls.protPrepare, ProtRelionPrepareData._possibleOutputs.relionParticles.name, None)
-        protMakePsubtomos = cls.newProtocol(ProtRelionMakePseudoSubtomograms,
-                                            inReParticles=inRelionParticles,
-                                            boxSize=cls.boxSizeBin4,
-                                            croppedBoxSize=cls.croppedBoxSizeBin4,
-                                            binningFactor=cls.binFactor4,
-                                            outputInFloat16=False,
-                                            numberOfThreads=5,
-                                            numberOfMpi=3)
-        return cls.launchProtocol(protMakePsubtomos)
+    # @classmethod
+    # def _makePSubtomograms(cls):
+    #     print(magentaStr("\n==> Making the psudosubtomograms:"))
+    #     inRelionParticles = getattr(cls.protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.relionParticles.name, None)
+    #     protMakePsubtomos = cls.newProtocol(ProtRelionMakePseudoSubtomograms,
+    #                                         inReParticles=inRelionParticles,
+    #                                         boxSize=cls.boxSizeBin6,
+    #                                         croppedBoxSize=cls.croppedBoxSizeBin6,
+    #                                         binningFactor=cls.binFactor4,
+    #                                         outputInFloat16=False,
+    #                                         numberOfThreads=5,
+    #                                         numberOfMpi=3)
+    #     return cls.launchProtocol(protMakePsubtomos)
 
     @classmethod
     def _runImportReference(cls):
@@ -222,33 +229,40 @@ class TestRefineCycleBase(TestBaseCentralizedLayer):
             self.assertTrue(pSubtomo.getTsId() in self.tsIds)
 
 
-class TestRelionTomoPrepareData(TestRefineCycleBase):
+class TestRelion5TomoExtractSubtomos(TestRelion5RefineCycleBase):
 
-    def testPrepareData(self):
-        protPrepare = self._runPrepareData4RelionTomo()
+    def testExtractSubtomos3d(self):
+        protExtract = self._runExtractSubtomos(self.binFactor6, self.boxSizeBin6, self.croppedBoxSizeBin6)
+        outParticles = getattr(protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.relionParticles.name, None)
         # Check RelionTomoMetadata: both particles and tomograms files are generated
-        self._checkRe4Metadata(getattr(protPrepare, ProtRelionPrepareData._possibleOutputs.relionParticles.name, None),
-                               tomogramsFile=protPrepare._getExtraPath(OUT_TOMOS_STAR),
-                               particlesFile=protPrepare._getExtraPath(OUT_PARTICLES_STAR),
+        self._checkRe4Metadata(outParticles,
+                               tomogramsFile=protExtract._getExtraPath(IN_TOMOS_STAR),
+                               particlesFile=protExtract._getExtraPath(OUT_PARTICLES_STAR),
                                trajectoriesFile=None,
                                manifoldsFile=None,
                                referenceFscFile=None,
-                               relionBinning=1
+                               relionBinning=self.binFactor6
                                )
         # Check that the projected coordinates have been generated
         self.assertIsNotNone(
-            getattr(protPrepare, ProtRelionPrepareData._possibleOutputs.projected2DCoordinates.name, None),
+            getattr(protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.projected2DCoordinates.name, None),
             msg='The projected coordinates were not generated.')
 
+        self._checkPseudosubtomograms(self.importedCoords, outParticles,
+                                      expectedSetSize=DataSetRe4STATuto.nCoordsTotal.value,
+                                      expectedSRate=DataSetRe4STATuto.unbinnedPixSize.value * self.binFactor6,
+                                      expectedBoxSize=self.croppedBoxSizeBin6,
+                                      orientedParticles=True)  # The imported coordinates are oriented
 
-class TestRelionTomoRecTomograms(TestRefineCycleBase):
+
+class TestRelionTomoRecTomograms(TestRelion5RefineCycleBase):
     binFactor = 8
     expectedTomoDims = [464, 464, 140]
 
     @classmethod
     def _runPreviousProtocols(cls):
         super()._runPreviousProtocols()
-        cls.protPrepare = cls._runPrepareData4RelionTomo()
+        cls.protExtract = cls._runExtractSubtomos()
 
     def testRecSingleTomoFromPrep(self):
         expectedSize = 1
@@ -275,7 +289,7 @@ class TestRelionTomoRecTomograms(TestRefineCycleBase):
     @classmethod
     def _recFromPrepare(cls, recMode, tomoId=None):
         protRelionRec = cls.newProtocol(ProtRelionTomoReconstruct,
-                                        protPrepare=cls.protPrepare,
+                                        protExtract=cls.protExtract,
                                         recTomoMode=recMode,
                                         tomoId=tomoId,
                                         binFactor=cls.binFactor)
@@ -289,7 +303,7 @@ class TestRelionTomoRecTomograms(TestRefineCycleBase):
                             expectedDimensions=self.expectedTomoDims)
 
 
-class TestRelionTomoRecParticleFromTs(TestRefineCycleBase):
+class TestRelionTomoRecParticleFromTs(TestRelion5RefineCycleBase):
     binFactor2 = 2
     croppedBoxSizeBin2 = DataSetRe4STATuto.croppedBoxSizeBin2.value
     boxSizeBin2 = DataSetRe4STATuto.boxSizeBin2.value
@@ -297,7 +311,7 @@ class TestRelionTomoRecParticleFromTs(TestRefineCycleBase):
     @classmethod
     def _runPreviousProtocols(cls):
         super()._runPreviousProtocols()
-        cls.protPrepare = cls._runPrepareData4RelionTomo()
+        cls.protExtract = cls._runExtractSubtomos()
 
     def testRecParticleFromTS(self):
         protRecPartFromTS = self._recParticleFromTS()
@@ -312,7 +326,7 @@ class TestRelionTomoRecParticleFromTs(TestRefineCycleBase):
 
     @classmethod
     def _genRecPartFromTsDict(cls, solventMask=None):
-        inReParticles = getattr(cls.protPrepare, ProtRelionPrepareData._possibleOutputs.relionParticles.name, None)
+        inReParticles = getattr(cls.protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.relionParticles.name, None)
         paramsDict = {'inReParticles': inReParticles,
                       'boxSize': cls.boxSizeBin2,
                       'croppedBoxSize': cls.croppedBoxSizeBin2,
@@ -348,7 +362,7 @@ class TestRelionTomoRecParticleFromTs(TestRefineCycleBase):
         recVol = getattr(protRecPartFromTS, ProtRelionReconstructParticle._possibleOutputs.average.name, None)
         # Check the metadata
         self._checkRe4Metadata(reParticles,
-                               tomogramsFile=self.protPrepare._getExtraPath(OUT_TOMOS_STAR),
+                               tomogramsFile=self.protExtract._getExtraPath(OUT_TOMOS_STAR),
                                particlesFile=protRecPartFromTS._getExtraPath(IN_PARTICLES_STAR),
                                trajectoriesFile=None,
                                manifoldsFile=None,
@@ -361,37 +375,37 @@ class TestRelionTomoRecParticleFromTs(TestRefineCycleBase):
                           hasHalves=True)
 
 
-class TestRelionTomoMakePseudoSubtomos(TestRefineCycleBase):
+# class TestRelionTomoMakePseudoSubtomos(TestRelion5RefineCycleBase):
+#
+#     @classmethod
+#     def _runPreviousProtocols(cls):
+#         super()._runPreviousProtocols()
+#         cls.protExtract = cls._runExtractSubtomos()
+#
+#     def testMakePSubtomos(self):
+#         protMakePSubtomos = self._makePSubtomograms()
+#         relionParticles = getattr(protMakePSubtomos,
+#                                   ProtRelionMakePseudoSubtomograms._possibleOutputs.relionParticles.name, None)
+#         # Check RelionTomoMetadata: only the particles file is generated
+#         self._checkRe4Metadata(relionParticles,
+#                                tomogramsFile=self.protExtract._getExtraPath(OUT_TOMOS_STAR),
+#                                particlesFile=protMakePSubtomos._getExtraPath(OUT_PARTICLES_STAR),
+#                                trajectoriesFile=None,
+#                                manifoldsFile=None,
+#                                referenceFscFile=None,
+#                                relionBinning=self.binFactor4
+#                                )
+#         # Check the set of pseudosubtomograms
+#         inCoords = self.protExtract.inputCoords.get()
+#         self._checkPseudosubtomograms(inCoords, relionParticles,
+#                                       expectedSetSize=DataSetRe4STATuto.nCoordsTotal.value,
+#                                       expectedSRate=DataSetRe4STATuto.unbinnedPixSize.value * self.binFactor4,
+#                                       expectedBoxSize=self.croppedBoxSizeBin6,
+#                                       orientedParticles=True)  # The imported coordinates were picked using pyseg, so
+#         # they are oriented
 
-    @classmethod
-    def _runPreviousProtocols(cls):
-        super()._runPreviousProtocols()
-        cls.protPrepare = cls._runPrepareData4RelionTomo()
 
-    def testMakePSubtomos(self):
-        protMakePSubtomos = self._makePSubtomograms()
-        relionParticles = getattr(protMakePSubtomos,
-                                  ProtRelionMakePseudoSubtomograms._possibleOutputs.relionParticles.name, None)
-        # Check RelionTomoMetadata: only the particles file is generated
-        self._checkRe4Metadata(relionParticles,
-                               tomogramsFile=self.protPrepare._getExtraPath(OUT_TOMOS_STAR),
-                               particlesFile=protMakePSubtomos._getExtraPath(OUT_PARTICLES_STAR),
-                               trajectoriesFile=None,
-                               manifoldsFile=None,
-                               referenceFscFile=None,
-                               relionBinning=self.binFactor4
-                               )
-        # Check the set of pseudosubtomograms
-        inCoords = self.protPrepare.inputCoords.get()
-        self._checkPseudosubtomograms(inCoords, relionParticles,
-                                      expectedSetSize=DataSetRe4STATuto.nCoordsTotal.value,
-                                      expectedSRate=DataSetRe4STATuto.unbinnedPixSize.value * self.binFactor4,
-                                      expectedBoxSize=self.croppedBoxSizeBin4,
-                                      orientedParticles=True)  # The imported coordinates were picked using pyseg, so
-        # they are oriented
-
-
-class TestRelionTomoEditStar(TestRefineCycleBase):
+class TestRelionTomoEditStar(TestRelion5RefineCycleBase):
     editStarOperationDict = genEnumParamDict(OPERATION_LABELS)
     editStarLabelsDict = genEnumParamDict(LABELS_TO_OPERATE_WITH)
     editTestsTol = 0.01
@@ -400,10 +414,8 @@ class TestRelionTomoEditStar(TestRefineCycleBase):
     def _runPreviousProtocols(cls):
         super()._runPreviousProtocols()
         cls.importedRef = cls._runImportReference()
-        cls.protPrepare = cls._runPrepareData4RelionTomo()
-        protMakePSubtomos = cls._makePSubtomograms()
-        cls.inReParticles = getattr(protMakePSubtomos,
-                                    ProtRelionMakePseudoSubtomograms._possibleOutputs.relionParticles.name, None)
+        cls.protExtract = cls._runExtractSubtomos()
+        cls.inReParticles = getattr(cls.protExtract, cls.protExtract._possibleOutputs.relionParticles.name, None)
 
     def testEditStar_shiftCenter(self):
         # Values edited: shiftX = 4, shiftY = 2, shiftZ = 3
@@ -534,21 +546,19 @@ class TestRelionTomoEditStar(TestRefineCycleBase):
         return angles[:]
 
 
-class TestRelionTomoGenInitialModel(TestRefineCycleBase):
+class TestRelionTomoGenInitialModel(TestRelion5RefineCycleBase):
 
     @classmethod
     def _runPreviousProtocols(cls):
         super()._runPreviousProtocols()
-        cls.protPrepare = cls._runPrepareData4RelionTomo()
-        protMakePSubtomos = cls._makePSubtomograms()
-        cls.inReParticles = getattr(protMakePSubtomos,
-                                    ProtRelionMakePseudoSubtomograms._possibleOutputs.relionParticles.name, None)
+        cls.protExtract = cls._runExtractSubtomos()
+        cls.inReParticles = getattr(cls.protExtract, cls.protExtract._possibleOutputs.relionParticles.name, None)
 
     def testInitialModel(self):
         recVol = self._genInitialModel()
         self.checkAverage(recVol,
                           expectedSRate=DataSetRe4STATuto.unbinnedPixSize.value * self.binFactor4,
-                          expectedBoxSize=self.croppedBoxSizeBin4,
+                          expectedBoxSize=self.croppedBoxSizeBin6,
                           hasHalves=False)
 
     @classmethod
@@ -569,17 +579,15 @@ class TestRelionTomoGenInitialModel(TestRefineCycleBase):
         return getattr(protInitialModel, ProtRelionDeNovoInitialModel._possibleOutputs.average.name, None)
 
 
-class TestRelionTomo3dClassify(TestRefineCycleBase):
+class TestRelionTomo3dClassify(TestRelion5RefineCycleBase):
     nClasses = 2
 
     @classmethod
     def _runPreviousProtocols(cls):
         super()._runPreviousProtocols()
         cls.importedRef = cls._runImportReference()
-        cls.protPrepare = cls._runPrepareData4RelionTomo()
-        protMakePSubtomos = cls._makePSubtomograms()
-        cls.inReParticles = getattr(protMakePSubtomos,
-                                    ProtRelionMakePseudoSubtomograms._possibleOutputs.relionParticles.name, None)
+        cls.protExtract = cls._runExtractSubtomos()
+        cls.inReParticles = getattr(cls.protExtract, cls.protExtract._possibleOutputs.relionParticles.name, None)
 
     def testCl3d(self):
         protCl3d = self._run3dClassify()
@@ -625,7 +633,7 @@ class TestRelionTomo3dClassify(TestRefineCycleBase):
         outClasses = getattr(protCl3d, ProtRelion3DClassifySubtomograms._possibleOutputs.classes.name, None)
         # Check RelionTomoMetadata: only the particles file is generated
         self._checkRe4Metadata(relionParticles,
-                               tomogramsFile=self.protPrepare._getExtraPath(OUT_TOMOS_STAR),
+                               tomogramsFile=self.protExtract._getExtraPath(OUT_TOMOS_STAR),
                                particlesFile=protCl3d._getExtraPath(OUT_PARTICLES_STAR),
                                trajectoriesFile=None,
                                manifoldsFile=None,
@@ -635,9 +643,9 @@ class TestRelionTomo3dClassify(TestRefineCycleBase):
         # Check the set of pseudosubtomograms
         expectedSetSize = DataSetRe4STATuto.nCoordsTotal.value
         expectedSRate = DataSetRe4STATuto.unbinnedPixSize.value * self.binFactor4
-        expectedBoxSize = self.croppedBoxSizeBin4
+        expectedBoxSize = self.croppedBoxSizeBin6
         if onlyClassify:
-            inCoords = self.protPrepare.inputCoords.get()
+            inCoords = self.protExtract.inputCoords.get()
             self._checkPseudosubtomograms(inCoords, relionParticles,
                                           expectedSetSize=expectedSetSize,
                                           expectedSRate=expectedSRate,
@@ -656,13 +664,13 @@ class TestRelionTomo3dClassify(TestRefineCycleBase):
                           expectedSRate=expectedSRate)
 
 
-class TestRelionTomoRefine(TestRefineCycleBase):
+class TestRelionTomoRefine(TestRelion5RefineCycleBase):
 
     @classmethod
     def _runPreviousProtocols(cls):
         super()._runPreviousProtocols()
         cls.importedRef = cls._runImportReference()
-        cls.protPrepare = cls._runPrepareData4RelionTomo()
+        cls.protExtract = cls._runExtractSubtomos()
         protMakePSubtomos = cls._makePSubtomograms()
         cls.inReParticles = getattr(protMakePSubtomos,
                                     ProtRelionMakePseudoSubtomograms._possibleOutputs.relionParticles.name, None)
@@ -673,7 +681,7 @@ class TestRelionTomoRefine(TestRefineCycleBase):
                                   None)
         # Check RelionTomoMetadata: only the particles file is generated
         self._checkRe4Metadata(relionParticles,
-                               tomogramsFile=self.protPrepare._getExtraPath(OUT_TOMOS_STAR),
+                               tomogramsFile=self.protExtract._getExtraPath(OUT_TOMOS_STAR),
                                particlesFile=protAutoRefine._getExtraPath('_data.star'),
                                trajectoriesFile=None,
                                manifoldsFile=None,
@@ -683,7 +691,7 @@ class TestRelionTomoRefine(TestRefineCycleBase):
         # Check the set of pseudosubtomograms
         expectedSetSize = DataSetRe4STATuto.nCoordsTotal.value
         expectedSRate = DataSetRe4STATuto.unbinnedPixSize.value * self.binFactor4
-        expectedBoxSize = self.croppedBoxSizeBin4
+        expectedBoxSize = self.croppedBoxSizeBin6
 
         self.checkRefinedSubtomograms(self.inReParticles, relionParticles,
                                       expectedSetSize=expectedSetSize,

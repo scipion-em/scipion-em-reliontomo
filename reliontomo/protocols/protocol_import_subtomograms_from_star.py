@@ -25,9 +25,8 @@
 from enum import Enum
 from os import mkdir
 from os.path import exists
-
 from pyworkflow.utils import getParentFolder
-from reliontomo.constants import SUBTOMO_NAME, FILE_NOT_FOUND, PARTICLES_TABLE
+from reliontomo.constants import SUBTOMO_NAME, FILE_NOT_FOUND
 from reliontomo.convert import createReaderTomo
 from reliontomo.protocols.protocol_base_import_from_star import ProtBaseImportFromStar
 from reliontomo.utils import getAbsPath
