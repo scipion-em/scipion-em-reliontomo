@@ -130,9 +130,10 @@ class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
-        validateMsg = []
-        if self.numberOfMpi.get() == 1:
-            validateMsg.append('The number of MPI must be greater than 1')
+        validateMsg = super()._validate()
+        if not validateMsg:
+            if self.numberOfMpi.get() == 1:
+                validateMsg.append('The number of MPI must be greater than 1')
         return validateMsg
 
     # --------------------------- UTILS functions -----------------------------

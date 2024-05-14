@@ -30,11 +30,10 @@ from pwem.protocols import EMProtocol
 from pyworkflow import BETA
 from pyworkflow.protocol import PointerParam, StringParam
 from pyworkflow.utils import Message, createLink
+from reliontomo import Plugin
 from reliontomo.constants import IN_PARTICLES_STAR, POSTPROCESS_DIR, OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE, \
     OUT_PARTICLES_STAR
-from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms, convert50_tomo, \
-    createReaderTomo
-from reliontomo.convert.convert50_tomo import GENERAL_TABLE, RLN_ARE2DSTACKS
+from reliontomo.convert import readSetOfPseudoSubtomograms, convert50_tomo
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 
 
@@ -44,6 +43,7 @@ class ProtRelion5TomoBase(EMProtocol):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    # -------------------------- DEFINE param functions -----------------------
     @staticmethod
     def _defineCommonInputParams(form):
         form.addSection(label=Message.LABEL_INPUT)
@@ -72,9 +72,11 @@ class ProtRelion5TomoBase(EMProtocol):
                            "--verb 1\n"
                            "--pad 2\n")
 
+    # -------------------------- STEPS functions ------------------------------
     def convertInputStep(self):
         self.genInStarFile(are2dParticles=self.inReParticles.get().are2dStacks())
 
+    # --------------------------- UTILS functions -----------------------------
     def getInputParticles(self):
         return self.inReParticles.get()
 
@@ -158,3 +160,22 @@ class ProtRelion5TomoBase(EMProtocol):
 
     def _genExtraParamsCmd(self):
         return ' ' + self.extraParams.get() if self.extraParams.get() else ''
+
+    # -------------------------- INFO functions -------------------------------
+    def _validate(self):
+        errorMsg = []
+        inParticles = self.inReParticles.get()
+        if type(inParticles) is RelionSetOfPseudoSubtomograms:
+            areRe5Particles = inParticles.areRe5Particles()
+            isPluginRe5 = Plugin.isRe50()
+            if isPluginRe5 and not areRe5Particles:
+                errorMsg.append('The introduced particles were not generated with Relion 5, while the plugin is '
+                                'currently configured to work with Relion 5. Please consider:'
+                                '\n - Calling the protocol "Extract subtomos" to convert the particles into Relion 5 '
+                                'format OR'
+                                '\n - Configuring the plugin to work with Relion 4.')
+            if not isPluginRe5 and areRe5Particles():
+                errorMsg.append('The introduced particles were generated with Relion 5, while the plugin is currently '
+                                'configured to work with Relion 4. Please consider configuring the plugin to work with '
+                                'Relion 5.')
+        return errorMsg

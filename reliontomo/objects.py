@@ -29,6 +29,7 @@ from emtable import Table
 
 from pyworkflow.object import String, Integer, Float, Boolean
 from relion.convert import OpticsGroups
+from reliontomo import Plugin
 from reliontomo.constants import (OPT_TOMOS_STAR, OPT_PARTICLES_STAR,
                                   OPT_TRAJECTORIES_STAR, OPT_MANIFOLDS_STAR,
                                   OPT_FSC_STAR, OUT_TOMOS_STAR, OUT_PARTICLES_STAR,
@@ -247,7 +248,7 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     ITEM_TYPE = RelionPSubtomogram
 
     def __init__(self, optimSetStar=None, relionBinning=None, tsSamplingRate=None, boxSize=24,
-                 nReParticles=0, are2dStacks=None, **kwargs):
+                 nReParticles=0, are2dStacks=None, areRe5Particles=None, **kwargs):
         super().__init__(**kwargs)
         self._filesMaster = String()  # Optimisation set file path
         self._boxSize = Integer(boxSize)
@@ -258,19 +259,12 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
         self._referenceFsc = String()  # FSC file
         self._relionBinning = Float(relionBinning)  # Binning of this set
         self._tsSamplingRate = Float(tsSamplingRate)  # Sampling rate of the tilt series
-        self._nReParticles = Integer(nReParticles)  # number of relion particles in the particles star file
-        self._are2dStacks = Boolean(are2dStacks)
+        self._nReParticles = Integer(nReParticles)  # Number of relion particles in the particles star file
+        self._are2dStacks = Boolean(are2dStacks)  # Fag to identify if the particles are 2D or 3D
+        self._areRe5Particles = Boolean(areRe5Particles)
 
         if optimSetStar:
             self.filesMaster = optimSetStar
-
-    # def __str__(self):
-    #     strRep = ''
-    #     if self.getNumParticles():
-    #         strRep += '%i items, ' % self.getNumParticles()
-    #     if self.getRelionBinning():
-    #         strRep += 'binning %.1f' % self.getRelionBinning()
-    #     return self.getClassName() + ' %s' % ('(%s)' % strRep if strRep else '')
 
     @property
     def filesMaster(self):
@@ -343,8 +337,14 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     def are2dStacks(self):
         return self._are2dStacks.get()
 
+    def areRe5Particles(self):
+        return self._areRe5Particles.get()
+
     def setAre2dStacks(self, val):
         return self._are2dStacks.set(val)
+
+    def setAreRe5Particles(self, val):
+        self._areRe5Particles.set(val)
 
     def setNReParticles(self, val):
         self._nReParticles.set(val)
@@ -364,38 +364,12 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     def copyInfo(self, other):
         self.copyAttributes(other, '_filesMaster', '_tomograms', '_particles', '_trajectories', '_manifolds',
                             '_referenceFsc', '_relionBinning', '_tsSamplingRate', '_samplingRate', '_boxSize',
-                            '_nReParticles', '_coordsPointer', '_are2dStacks')
+                            '_nReParticles', '_coordsPointer', '_are2dStacks', '_areRe5Particles')
         self._acquisition.copyInfo(other.getAcquisition())
         # self._relionMd = relionMd if relionMd else relionTomoMetadata
 
     def _samplingRateStr(self):
         return "%0.2f Å/px" % self.getCurrentSamplingRate()
-
-    # def iterPSubtomos(self, ts=None, orderBy='id'):
-    #     if ts is None:
-    #         tsId = None
-    #     elif isinstance(ts, str):
-    #         tsId = ts
-    #     elif isinstance(ts, TiltSeries):
-    #         tsId = ts.getTsId()
-    #     else:
-    #         raise Exception('Invalid input tilt series of type %s' % type(ts))
-    #
-    #     # Iterate over all psubtomos if tomoId is None,
-    #     # otherwise use tomoId to filter the where selection
-    #     psubtomoWhere = '1' if tsId is None else '_tomoId=%s' % tsId
-    #     for psubtomo in self.iterItems(where=psubtomoWhere, orderBy=orderBy):
-    #         yield psubtomo
-    #
-    # def getRelionMd(self):
-    #     return self._relionMd
-    #
-    # def setRelionMd(self, reMd):
-    #     self._relionMd = reMd
-    #
-    # def copyInfo(self, other):
-    #     self.copyAttributes(other, '_samplingRate', '_relionMd')
-    #     self._acquisition.copyInfo(other._acquisition)
 
 
 def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, coordsPointer, template=PSUBTOMOS_SQLITE,
@@ -411,7 +385,7 @@ def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, coordsPointer, te
     :param relionBinning: binning of the set
     :param boxSize: Box size of the set
     :param nReParticles: Number of particles in relion's particles star file
-    :param are2dStacks: Boolean use to indicate if the generated particles are 2d stacks or not.
+    :param are2dStacks: Boolean used to indicate if the generated particles are 2d stacks or not.
     :param acquisition: TomoAcquisition. The recommended is the one from the tilt-series, as it may contain more data
     if they were imported compared to imported tomograms. If not provided, the coordinates pointer will be used to
     access to the precedent tomograms and clone their acquisition.
@@ -425,6 +399,7 @@ def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, coordsPointer, te
     psubtomoSet.setNReParticles(nReParticles)
     psubtomoSet.setCoordinates3D(coordsPointer)
     psubtomoSet.setAre2dStacks(are2dStacks)
+    psubtomoSet.setAreRe5Particles(True if Plugin.isRe50() else False)
 
     # Manage the acquisition
     if not acquisition:
