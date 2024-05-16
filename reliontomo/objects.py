@@ -65,7 +65,7 @@ class RelionPSubtomogram(SubTomogram):
         self._ctfFile = String(ctfFile)
         self._rdnSubset = Integer(rdnSubset)
         self._relionParticleName = String(relionParticleName)
-        self._visibleFrames = visibleFrames
+        self._visibleFrames = String(visibleFrames)
         self._opticsGroupId = Integer(opticsGroupId)
         self._manifoldIndex = Integer(manifoldIndex)
         self._logLikeliContribution = Float(logLikeliCont)
