@@ -933,7 +933,7 @@ class Reader(ReaderTomo):
                                           zInImg=row.get(RLN_CENTEREDCOORDINATEZANGST, 0),
                                           rdnSubset=row.get(RANDOM_SUBSET, counter % 2 + 1),  # 1 and 2 alt. by default
                                           relionParticleName=row.get(RLN_TOMOPARTICLENAME),
-                                          visibleFrames=str(row.get(RLN_TOMOVISIBLEFRAMES, [0, 0, 0])),
+                                          visibleFrames=str(row.get(RLN_TOMOVISIBLEFRAMES, 0)),
                                           ctfFile=row.get(RLN_CTFIMAGE, FILE_NOT_FOUND),
                                           opticsGroupId=row.get(OPTICS_GROUP, 1),
                                           manifoldIndex=row.get(MANIFOLD_INDEX, 1 if counter % 2 else -1),  # 1 and -1

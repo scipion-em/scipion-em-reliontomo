@@ -168,10 +168,9 @@ class ProtRelion5EditParticlesStar(ProtRelion5TomoBase):
         Plugin.runRelionTomo(self, 'relion_star_handler', self._getOperateCommand())
 
     def createOutputStep(self):
-        inParticles = self.inReParticles.get()
         psubtomoSet = self.genRelionParticles()
         self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet})
-        self._defineSourceRelation(inParticles, psubtomoSet)
+        self._defineSourceRelation(self.inReParticles, psubtomoSet)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
