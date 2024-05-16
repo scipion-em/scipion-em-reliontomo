@@ -52,7 +52,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.linkedStarFileName = IN_PARTICLES_STAR
-        self.linkedTomosDirName = 'tomograms'
+        self.linkedTomosDirName = 'Tomograms'
         self.reader = None
         self.coordsSRate = None
         self.starFilePath = None

@@ -23,7 +23,6 @@
 # *
 # **************************************************************************
 from enum import Enum
-from reliontomo.constants import IN_PARTICLES_STAR
 from reliontomo.protocols.protocol_base_import_from_star import ProtBaseImportFromStar
 from tomo.objects import SetOfTomograms, SetOfCoordinates3D
 
@@ -41,4 +40,3 @@ class ProtImportCoordinates3DFromStar(ProtBaseImportFromStar):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.linkedStarFileName = IN_PARTICLES_STAR

@@ -32,6 +32,7 @@ from pwem.protocols import ProtImportMask, ProtImportVolumes
 from pwem.protocols.protocol_import.masks import ImportMaskOutput
 from pyworkflow.tests import setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
+from reliontomo import Plugin
 from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR, IN_PARTICLES_STAR, POSTPROCESS_DIR, \
     POST_PROCESS_MRC, IN_TOMOS_STAR, FILE_NOT_FOUND
 from reliontomo.convert.convertBase import getTransformInfoFromCoordOrSubtomo
@@ -202,7 +203,8 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
         self.assertEqual(relionBinning, pSubtomoSet.getRelionBinning())
 
     def _checkPseudosubtomograms(self, inCoords, outSubtomos, expectedSetSize=-1, expectedSRate=-1, expectedBoxSize=-1,
-                                 convention=TR_SCIPION, orientedParticles=False, are2dStacks=None, nTiltImages=None):
+                                 convention=TR_SCIPION, orientedParticles=False, are2dStacks=None, nTiltImages=None,
+                                 expectedRelionBinning=None, tsSamplingRate=None, expectedNParticles=None):
         # This way the box size check will be skipped in checkExtractedSubtomos and the corresponding box size will
         # be checked below here
         expBoxSize = None if are2dStacks else expectedBoxSize
@@ -215,7 +217,14 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
                                     orientedParticles=orientedParticles)
 
         # Check some remaining specific relionParticle attributes
+        self.assertEqual(outSubtomos.getRelionBinning(), expectedRelionBinning)
+        self.assertEqual(outSubtomos.getTsSamplingRate(), tsSamplingRate)
+        self.assertEqual(outSubtomos.getCurrentSamplingRate(), tsSamplingRate * expectedRelionBinning)
+        self.assertEqual(outSubtomos.getNReParticles(), expectedNParticles)
+        self.assertEqual(outSubtomos.areRe5Particles(), True if Plugin.isRe50() else False)
+
         if are2dStacks:
+            self.assertTrue(outSubtomos.are2dStacks())
             ih = ImageHandler()
             for pSubtomo in outSubtomos:
                 x, y, z, _ = ih.getDimensions(pSubtomo.getFileName())
@@ -226,6 +235,7 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
                 self.assertEqual(pSubtomo.getCtfFile(), FILE_NOT_FOUND)  # Only generated for 3d particles
                 self.assertTrue(pSubtomo.getTsId() in self.tsIds)
         else:
+            self.assertFalse(outSubtomos.are2dStacks())
             for pSubtomo in outSubtomos:
                 self.assertEqual(len(pSubtomo.getVisibleFrames()), 1)
                 self.assertTrue(exists(pSubtomo.getCtfFile()))
@@ -251,13 +261,18 @@ class TestRelion5TomoExtractSubtomos(TestRelion5RefineCycleBase):
             getattr(protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.projected2DCoordinates.name, None),
             msg='The projected coordinates were not generated.')
         # Check the pseudo-subtomograms
+        unbinnedPixSize = DataSetRe4STATuto.unbinnedPixSize.value
+        nParticles = DataSetRe4STATuto.nCoordsTotal.value
         self._checkPseudosubtomograms(self.importedCoords, outParticles,
-                                      expectedSetSize=DataSetRe4STATuto.nCoordsTotal.value,
-                                      expectedSRate=DataSetRe4STATuto.unbinnedPixSize.value * self.binFactor6,
+                                      expectedSetSize=nParticles,
+                                      expectedSRate=unbinnedPixSize * self.binFactor6,
                                       expectedBoxSize=self.croppedBoxSizeBin6,
                                       orientedParticles=True,  # The imported coordinates are oriented
                                       are2dStacks=are2dParticles,
-                                      nTiltImages=nTiltImages)
+                                      nTiltImages=nTiltImages,
+                                      expectedRelionBinning=self.binFactor6,
+                                      tsSamplingRate=unbinnedPixSize,
+                                      expectedNParticles=nParticles)
 
     def testExtractSubtomos3d(self):
         self._runTestExtractSubtomos()
