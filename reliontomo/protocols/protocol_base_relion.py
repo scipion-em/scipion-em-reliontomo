@@ -81,8 +81,8 @@ class ProtRelionTomoBase(EMProtocol):
         inReParticlesSet = self.inReParticles.get()
         outStarFileName = self.getOutStarFileName()
         if inReParticlesSet.getSize() == inReParticlesSet.getNReParticles() and not withPriors:
-             self.info("Using existing star (%s) file instead of generating a new one." % inReParticlesSet.getParticles())
-             createLink(inReParticlesSet.getParticles(), outStarFileName)
+             self.info("Using existing star (%s) file instead of generating a new one." % inReParticlesSet.getParticlesStar())
+             createLink(inReParticlesSet.getParticlesStar(), outStarFileName)
         else:
             writeSetOfPseudoSubtomograms(inReParticlesSet, outStarFileName, withPriors=withPriors)
 
@@ -95,7 +95,11 @@ class ProtRelionTomoBase(EMProtocol):
 
         return postProccesMrc
 
-    def genRelionParticles(self, optimisationFileName=OPTIMISATION_SET_STAR, particles=OUT_PARTICLES_STAR, binningFactor=None, boxSize=24):
+    def genRelionParticles(self,
+                           optimisationFileName=OPTIMISATION_SET_STAR,
+                           particles=OUT_PARTICLES_STAR,
+                           binningFactor=None,
+                           boxSize=24):
         """Generate a RelionSetOfPseudoSubtomograms object containing the files involved for the next protocol,
         considering that some protocols don't generate the optimisation_set.star file. In that case, the input Object
         which represents it will be copied and, after that, this method will be used to update the corresponding
@@ -115,7 +119,6 @@ class ProtRelionTomoBase(EMProtocol):
         particles = join(extraPath, particles)
         if exists(particles):
             psubtomoSet._particles.set(particles)
-
 
         if binningFactor:
             psubtomoSet.setRelionBinning(binningFactor)

@@ -93,8 +93,8 @@ class ProtRelion5TomoBase(EMProtocol):
         outStarFileName = self.getOutStarFileName()
         if inReParticlesSet.getSize() == inReParticlesSet.getNReParticles():
             self.info("Using existing star (%s) file instead of generating a new one." %
-                      inReParticlesSet.getParticles())
-            createLink(inReParticlesSet.getParticles(), outStarFileName)
+                      inReParticlesSet.getParticlesStar())
+            createLink(inReParticlesSet.getParticlesStar(), outStarFileName)
         else:
             self.info("Less particles detected in the input set respecting to it associated star file. Assuming "
                       "that a subset was made. Writing the new particles file.")

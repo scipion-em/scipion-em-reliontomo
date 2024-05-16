@@ -307,10 +307,10 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     def getTomogramsStar(self):
         return self._tomograms.get()
 
-    def getParticles(self):
+    def getParticlesStar(self):
         return self._particles.get()
 
-    def getTrajectories(self):
+    def getTrajectoriesStar(self):
         return self._trajectories.get()
 
     def getManifolds(self):

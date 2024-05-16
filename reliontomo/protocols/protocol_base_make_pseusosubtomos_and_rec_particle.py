@@ -101,8 +101,8 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
         # This would be either the particles start file in the set or a new generated one from the subtomo set.
         cmd += '--p %s ' % self.getOutStarFileName()
 
-        if inRelionParticles.getTrajectories():
-            cmd += '--mot %s ' % inRelionParticles.getTrajectories()
+        if inRelionParticles.getTrajectoriesStar():
+            cmd += '--mot %s ' % inRelionParticles.getTrajectoriesStar()
 
         cmd += '--b %i ' % self.boxSize.get()
         cmd += '--crop %i ' % self.croppedBoxSize.get()

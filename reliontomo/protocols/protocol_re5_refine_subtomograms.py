@@ -30,7 +30,7 @@ from pwem.objects import SetOfFSCs
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo import Plugin
 from os.path import getmtime
-from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, StringParam, BooleanParam, EnumParam
+from pyworkflow.protocol import PointerParam, FloatParam, StringParam, BooleanParam, EnumParam
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, \
     REFINE_FSC_REF_STAR, REFINE_STAR_FSC_TABLE, REFINE_STAR_FSC_COLUMNS
 from reliontomo.protocols.protocol_re5_base_refine import ProtRelion5RefineBase
@@ -240,7 +240,10 @@ class ProtRelion5RefineSubtomograms(ProtRelion5RefineBase):
 
     def autoRefineStep(self):
         nMpi = self.numberOfMpi.get()
-        Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genAutoRefineCommand(), numberOfMpi=nMpi)
+        Plugin.runRelionTomo(self,
+                             getProgram('relion_refine', nMpi),
+                             self._genAutoRefineCommand(),
+                             numberOfMpi=nMpi)
 
     def createOutputStep(self):
         inParticles = self.inReParticles.get()

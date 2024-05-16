@@ -338,7 +338,7 @@ class ProtRelion5RefineBase(ProtRelion5TomoBase):
         cmd += self._genAddiotionalBaseCmd()  # Additional args
         return cmd
 
-    def _genIOBaseCmd(self, useOptimizationSet=True):
+    def _genIOBaseCmd(self, useOptimizationSet=False):
         inRelionParticles = self.getInputParticles()
         if useOptimizationSet:
             # Use optimization set file
@@ -347,6 +347,9 @@ class ProtRelion5RefineBase(ProtRelion5TomoBase):
         else:
             cmd = '--i %s ' % self.getOutStarFileName()
             cmd += '--tomograms %s ' % inRelionParticles.getTomogramsStar()
+            trajectoriesFile = inRelionParticles.getTrajectoriesStar()
+            if trajectoriesFile:
+                cmd += '--trajectories %s ' % trajectoriesFile
         cmd += '--o %s ' % (self._getExtraPath() + '/')  # If not, Relion will concatenate it directly as a prefix
         cmd += '--j %i ' % self.numberOfThreads
         return cmd

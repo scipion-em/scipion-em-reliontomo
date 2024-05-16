@@ -94,11 +94,16 @@ class ProtRelion5InitialReference(ProtRelion5RefineBase):
 
     # -------------------------- STEPS functions ------------------------------
     def generateDeNovo3DModel(self):
-        Plugin.runRelionTomo(self, getProgram('relion_refine', self.numberOfMpi.get()), self._genInitModelCommand(),
-                             numberOfMpi=self.numberOfMpi.get())
+        nMpi = self.numberOfMpi.get()
+        Plugin.runRelionTomo(self,
+                             getProgram('relion_refine', nMpi),
+                             self._genInitModelCommand(),
+                             numberOfMpi=nMpi)
 
     def alignSymmetry(self):
-        Plugin.runRelionTomo(self, 'relion_align_symmetry', self._genApplySymCmd())
+        Plugin.runRelionTomo(self,
+                             'relion_align_symmetry',
+                             self._genApplySymCmd())
 
     def createOutputStep(self):
         inRelionParticles = self.inReParticles.get()

@@ -38,6 +38,7 @@ from reliontomo.convert import readSetOfPseudoSubtomograms, convert50_tomo
 from reliontomo.protocols.protocol_re5_base_extract_subtomos_and_rec_particle import (
     ProtRelion5ExtractSubtomoAndRecParticleBase)
 from reliontomo.protocols.protocol_base_import_from_star import IS_RE5_PICKING_ATTR
+from reliontomo.utils import getProgram
 from tomo.objects import LandmarkModel, SetOfLandmarkModels, SetOfCoordinates3D
 
 
@@ -120,18 +121,6 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        # JORGE
-        import os
-        fname = "/home/jjimenez/test_JJ.txt"
-        if os.path.exists(fname):
-            os.remove(fname)
-        fjj = open(fname, "a+")
-        fjj.write('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
-        fjj.close()
-        print('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
-        import time
-        time.sleep(10)
-        # JORGE_END
         self._initialize()
         self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self.extractSubtomos)
@@ -187,8 +176,11 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         writer.tomoSet2Star(self.tomoDict, self.tsDict, outPath, handedness=self._decodeHandedness())
 
     def extractSubtomos(self):
-        Plugin.runRelionTomo(self, 'relion_tomo_subtomo_mpi', self.getExtractSubtomosCmd(),
-                             numberOfMpi=self.numberOfMpi.get())
+        nMpi = self.numberOfMpi.get()
+        Plugin.runRelionTomo(self,
+                             getProgram('relion_tomo_subtomo', nMpi=nMpi),
+                             self.getExtractSubtomosCmd(),
+                             numberOfMpi=nMpi)
 
     def createOutputStep(self):
         tsPointer = self.inputTS
