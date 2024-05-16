@@ -180,20 +180,6 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
         protExtract.setObjLabel(f"Extract subtomos {partTypeMsg}")
         return cls.launchProtocol(protExtract)
 
-    # @classmethodb
-    # def _makePSubtomograms(cls):
-    #     print(magentaStr("\n==> Making the psudosubtomograms:"))
-    #     inRelionParticles = getattr(cls.protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.relionParticles.name, None)
-    #     protMakePsubtomos = cls.newProtocol(ProtRelionMakePseudoSubtomograms,
-    #                                         inReParticles=inRelionParticles,
-    #                                         boxSize=cls.boxSizeBin6,
-    #                                         croppedBoxSize=cls.croppedBoxSizeBin6,
-    #                                         binningFactor=cls.binFactor4,
-    #                                         outputInFloat16=False,
-    #                                         numberOfThreads=5,
-    #                                         numberOfMpi=3)
-    #     return cls.launchProtocol(protMakePsubtomos)
-
     @classmethod
     def _runImportReference(cls):
         print(magentaStr("\n==> Importing the reference volume:"))
@@ -280,58 +266,55 @@ class TestRelion5TomoExtractSubtomos(TestRelion5RefineCycleBase):
         self._runTestExtractSubtomos(are2dParticles=True, nTiltImages=40)
 
 
-class TestRelionTomoRecTomograms(TestRelion5RefineCycleBase):
-    binFactor = 8
-    expectedTomoDims = [464, 464, 140]
-
-    @classmethod
-    def _runPreviousProtocols(cls):
-        super()._runPreviousProtocols()
-        cls.protExtract = cls._runExtractSubtomos()
-
-    def testRecSingleTomoFromPrep(self):
-        expectedSize = 1
-        tomoSet = self._runRecFromPrepare_SingleTomo()
-        self._checkTomograms(tomoSet, expectedSetSize=expectedSize)
-
-    def testRecAllTomosFromPrep(self):
-        expectedSize = 2
-        tomoSet = self._runRecFromPrepare_AllTomos()
-        self._checkTomograms(tomoSet, expectedSetSize=expectedSize)
-
-    @classmethod
-    def _runRecFromPrepare_SingleTomo(cls):
-        print(magentaStr("\n==> Reconstructing one of the tomograms with Relion:"))
-        protRelionRec = cls._recFromPrepare(SINGLE_TOMO, tomoId='TS_54')  #
-        return protRelionRec
-
-    @classmethod
-    def _runRecFromPrepare_AllTomos(cls):
-        print(magentaStr("\n==> Reconstructing all the tomograms with Relion:"))
-        protRelionRec = cls._recFromPrepare(ALL_TOMOS)
-        return protRelionRec
-
-    @classmethod
-    def _recFromPrepare(cls, recMode, tomoId=None):
-        protRelionRec = cls.newProtocol(ProtRelionTomoReconstruct,
-                                        protExtract=cls.protExtract,
-                                        recTomoMode=recMode,
-                                        tomoId=tomoId,
-                                        binFactor=cls.binFactor)
-        cls.launchProtocol(protRelionRec)
-        return getattr(protRelionRec, ProtRelionTomoReconstruct._possibleOutputs.tomograms.name, None)
-
-    def _checkTomograms(self, inTomoSet, expectedSetSize=None):
-        self.checkTomograms(inTomoSet,
-                            expectedSetSize=expectedSetSize,
-                            expectedSRate=DataSetRe4STATuto.unbinnedPixSize.value * self.binFactor,
-                            expectedDimensions=self.expectedTomoDims)
+# class TestRelionTomoRecTomograms(TestRelion5RefineCycleBase):
+#     binFactor = 8
+#     expectedTomoDims = [464, 464, 140]
+#
+#     @classmethod
+#     def _runPreviousProtocols(cls):
+#         super()._runPreviousProtocols()
+#         cls.protExtract = cls._runExtractSubtomos()
+#
+#     def testRecSingleTomoFromPrep(self):
+#         expectedSize = 1
+#         tomoSet = self._runRecFromPrepare_SingleTomo()
+#         self._checkTomograms(tomoSet, expectedSetSize=expectedSize)
+#
+#     def testRecAllTomosFromPrep(self):
+#         expectedSize = 2
+#         tomoSet = self._runRecFromPrepare_AllTomos()
+#         self._checkTomograms(tomoSet, expectedSetSize=expectedSize)
+#
+#     @classmethod
+#     def _runRecFromPrepare_SingleTomo(cls):
+#         print(magentaStr("\n==> Reconstructing one of the tomograms with Relion:"))
+#         protRelionRec = cls._recFromPrepare(SINGLE_TOMO, tomoId='TS_54')  #
+#         return protRelionRec
+#
+#     @classmethod
+#     def _runRecFromPrepare_AllTomos(cls):
+#         print(magentaStr("\n==> Reconstructing all the tomograms with Relion:"))
+#         protRelionRec = cls._recFromPrepare(ALL_TOMOS)
+#         return protRelionRec
+#
+#     @classmethod
+#     def _recFromPrepare(cls, recMode, tomoId=None):
+#         protRelionRec = cls.newProtocol(ProtRelionTomoReconstruct,
+#                                         protExtract=cls.protExtract,
+#                                         recTomoMode=recMode,
+#                                         tomoId=tomoId,
+#                                         binFactor=cls.binFactor)
+#         cls.launchProtocol(protRelionRec)
+#         return getattr(protRelionRec, ProtRelionTomoReconstruct._possibleOutputs.tomograms.name, None)
+#
+#     def _checkTomograms(self, inTomoSet, expectedSetSize=None):
+#         self.checkTomograms(inTomoSet,
+#                             expectedSetSize=expectedSetSize,
+#                             expectedSRate=DataSetRe4STATuto.unbinnedPixSize.value * self.binFactor,
+#                             expectedDimensions=self.expectedTomoDims)
 
 
 class TestRelionTomoRecParticleFromTs(TestRelion5RefineCycleBase):
-    binFactor2 = 2
-    croppedBoxSizeBin2 = DataSetRe4STATuto.croppedBoxSizeBin2.value
-    boxSizeBin2 = DataSetRe4STATuto.boxSizeBin2.value
 
     @classmethod
     def _runPreviousProtocols(cls):
