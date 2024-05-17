@@ -26,12 +26,14 @@ from enum import Enum
 from os import mkdir
 from os.path import exists
 from pyworkflow.utils import getParentFolder
-from reliontomo.constants import SUBTOMO_NAME, FILE_NOT_FOUND
+from reliontomo.constants import SUBTOMO_NAME, FILE_NOT_FOUND, PSUBTOMOS_SQLITE
 from reliontomo.convert import createReaderTomo
+from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_import_from_star import ProtBaseImportFromStar
 from reliontomo.utils import getAbsPath
 from tomo.objects import SetOfSubTomograms, SetOfCoordinates3D
 
+SUBTOMOGRAMS_DIR = 'Subtomograms'
 
 class outputObjects(Enum):
     coordinates = SetOfCoordinates3D
@@ -46,31 +48,36 @@ class ProtImportSubtomogramsFromStar(ProtBaseImportFromStar):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.linkedStarFileName = 'inSubtomograms.star'
-        self.linkedSubtomosDirName = 'subtomograms'
 
     # --------------------------- STEPS functions -----------------------------
 
     def _initialize(self):
         super()._initialize()
         # Generate the firectoy in which the linked subtomograms pointed from the star file will be stored
-        mkdir(self._getExtraPath(self.linkedSubtomosDirName))
+        mkdir(self._getExtraPath(SUBTOMOGRAMS_DIR))
 
     def _importStep(self):
         precedentsSet = self.inTomos.get()
         # Generate the corresponding precedents and 3d coordinates
         super()._importStep()
         # Generate the set of subtomograms
-        # outputCoordsSet = getattr(self, outputObjects.coordinates.name)
-        subtomoSet = SetOfSubTomograms.create(self._getPath(), template='setOfSubTomograms%s.sqlite')
-        subtomoSet.setSamplingRate(precedentsSet.getSamplingRate())
-        subtomoSet.setAcquisition(precedentsSet.getAcquisition())
-        self.reader.starFile2SubtomogramsImport(subtomoSet,
-                                                getattr(self, outputObjects.coordinates.name),
-                                                self._getExtraPath(self.linkedSubtomosDirName),
-                                                getParentFolder(self.starFile.get()))
+        acq = precedentsSet.getAcquisition()
+        sRate = precedentsSet.getSamplingRate()
+        if self.readerVersion < 5:
+            subtomoSet = SetOfSubTomograms.create(self._getPath(), template='setOfSubTomograms%s.sqlite')
+            subtomoSet.setSamplingRate(sRate)
+            subtomoSet.setAcquisition(acq)
+            self.reader.starFile2SubtomogramsImport(subtomoSet,
+                                                    getattr(self, outputObjects.coordinates.name),
+                                                    self._getExtraPath(SUBTOMOGRAMS_DIR),
+                                                    getParentFolder(self.starFile.get()))
+        else:
+            subtomoSet = RelionSetOfPseudoSubtomograms.create(self.getPath(), template=PSUBTOMOS_SQLITE)
+            subtomoSet.setSamplingRate(sRate)
+            subtomoSet.setAcquisition(acq)
+            self.reader.starFile2PseudoSubtomograms(subtomoSet)
         self._defineOutputs(**{outputObjects.subtomograms.name: subtomoSet})
-        self._defineSourceRelation(self.inTomos.get(), subtomoSet)
+        self._defineSourceRelation(self.inTomos, subtomoSet)
 
     # --------------------------- INFO functions -----------------------------
     def _validate(self):

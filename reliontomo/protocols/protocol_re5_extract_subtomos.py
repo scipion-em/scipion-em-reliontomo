@@ -58,7 +58,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.inCoords = None
-        self.coordScale = None
+        self.coordsScaleFactor = None
         self.tsDict = dict()
         self.ctfDict = dict()
         self.tomoDict = dict()
@@ -128,14 +128,14 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
-        inCoords = self.inReParticles.get()
-        coords = inCoords if type(inCoords) is SetOfCoordinates3D else inCoords.getCoordinates3D()
+        inParticles = self.inReParticles.get()
+        coords = inParticles if type(inParticles) is SetOfCoordinates3D else inParticles.getCoordinates3D()
         tsSet = self.inputTS.get()
         ctfSet = self.inputCtfTs.get()
         self.isRe5Picking = Boolean(getattr(coords, IS_RE5_PICKING_ATTR, Boolean(False).get()))
 
-        # The ccordinates need to be re-scaled to be at the same size of the tilt-series
-        self.coordScale = Float(coords.getSamplingRate() / tsSet.getSamplingRate())
+        # The coordinates need to be re-scaled to be at the same size of the tilt-series
+        self.coordsScaleFactor = Float(coords.getSamplingRate() / tsSet.getSamplingRate())
 
         # Compute matching TS id among coordinates, the tilt-series and the CTFs, they all could be a subset
         coordsTsIds = coords.getTSIds()
@@ -164,9 +164,9 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         outPath = self._getExtraPath()
         writer = convert50_tomo.Writer()
         coords = self.inReParticles.get()
-        if type(coords) is SetOfCoordinates3D:
+        if self._isInputSetOf3dCoords():
             writer.coords2Star(coords, self.tomoDict, outPath,
-                               coordsScale=self.coordScale.get(),
+                               coordsScale=self.coordsScaleFactor.get(),
                                isRe5Picking=self.isRe5Picking)
         else:
             self.genInStarFile(are2dParticles=coords.are2dStacks())
@@ -223,9 +223,9 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
             tsProjectionsList = getProjMatrixList(self._getExtraPath(tsId + '.star'), tomo, ts)
             for particleRow in StarFileIterator(starData, RLN_TOMONAME, tsId):
                 particleCoords = np.array(
-                    [self.coordScale.get() * particleRow.get(RLN_CENTEREDCOORDINATEXANGST) / tomoSRate,
-                     self.coordScale.get() * particleRow.get(RLN_CENTEREDCOORDINATEYANGST) / tomoSRate,
-                     self.coordScale.get() * particleRow.get(RLN_CENTEREDCOORDINATEZANGST) / tomoSRate,
+                    [self.coordsScaleFactor.get() * particleRow.get(RLN_CENTEREDCOORDINATEXANGST) / tomoSRate,
+                     self.coordsScaleFactor.get() * particleRow.get(RLN_CENTEREDCOORDINATEYANGST) / tomoSRate,
+                     self.coordsScaleFactor.get() * particleRow.get(RLN_CENTEREDCOORDINATEZANGST) / tomoSRate,
                      1])
                 for tiltId, tomoProjection in enumerate(tsProjectionsList):
                     proj = tomoProjection.dot(particleCoords)
@@ -254,10 +254,17 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     def _summary(self):
         msg = []
         if self.isFinished():
-            if self.coordScale.get():
+            if self._isInputSetOf3dCoords():
+                inputStr = '*coordinates*'
                 coordsFromRelion5 = self.isRe5Picking.get()
-                msg.append('Coordinates were scaled using an scale factor of *%.2f* to be expressed considering the '
-                           'size of the introduced tilt series' % (1 if coordsFromRelion5 else self.coordScale.get()))
+                scaleFactor = 1 if coordsFromRelion5 else self.coordsScaleFactor.get()
+            else:
+                inputStr = '*particles*'
+                scaleFactor = (self.inReParticles.get().getRelionBinning() / self.binningFactor.get())
+
+            msg.append('The %s or particles introduced were scaled using an scale factor of *%.2f* to be '
+                       'expressed considering the size of the introduced tilt series' % (inputStr, scaleFactor))
+
         return msg
 
     # --------------------------- UTILS functions -----------------------------
@@ -279,3 +286,6 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
     def _decodeHandedness(self):
         return -1 if self.handedness.get() else 1
+
+    def _isInputSetOf3dCoords(self):
+        return True if type(self.inReParticles.get()) is SetOfCoordinates3D else False
