@@ -48,6 +48,7 @@ class ProtImportSubtomogramsFromStar(ProtBaseImportFromStar):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.isCoordsFile = False
 
     # --------------------------- STEPS functions -----------------------------
 

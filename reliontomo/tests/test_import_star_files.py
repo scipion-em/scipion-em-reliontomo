@@ -23,13 +23,17 @@
 # *
 # **************************************************************************
 from imod.protocols import ProtImodTomoNormalization
+from imod.protocols.protocol_base import OUTPUT_TOMOGRAMS_NAME
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
 from reliontomo.protocols import ProtImportSubtomogramsFromStar, ProtImportCoordinates3DFromStar
+from reliontomo.protocols.protocol_base_import_from_star import importCoordsOutputs, IS_RE5_PICKING_ATTR
 from reliontomo.protocols.protocol_import_subtomograms_from_star import outputObjects as importSubtomosOutputs
 from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.protocols import ProtImportTomograms
-from tomo.tests import EMD_10439, DataSetEmd10439
+from tomo.protocols.protocol_import_tomograms import OUTPUT_NAME
+from tomo.tests import EMD_10439, DataSetEmd10439, RE5_STA, DataSetRe5STA, DataSetRe4STATuto, RE4_STA_TUTO
+from tomo.tests.test_base_centralized_layer import TestBaseCentralizedLayer
 
 
 class TestImportFromStarFile(BaseTest):
@@ -157,3 +161,92 @@ class TestImportFromStarFile(BaseTest):
         self._runImportSubtomogramsFromStarFile(self.dataset.getFile(DataSetEmd10439.subtomogramsStarFile.name),
                                                 self.inTomoSetBin2,
                                                 binning=2)
+
+
+class TestRelion5ImportFromStarFile(TestBaseCentralizedLayer):
+    bin4 = 4
+    boxSizeBin4 = DataSetRe4STATuto.boxSizeBin4.value
+
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+        cls.dsRe4 = DataSet.getDataSet(RE4_STA_TUTO)
+        cls.dsRe5 = DataSet.getDataSet(RE5_STA)
+        cls.tomogramsImported = cls._importTomograms()
+
+    @classmethod
+    def _importTomograms(cls):
+        print(magentaStr("\n==> Importing data - tomograms:"))
+        protImportTomogram = cls.newProtocol(ProtImportTomograms,
+                                             filesPath=cls.dsRe4.getFile(DataSetRe4STATuto.tomosPath.name),
+                                             filesPattern=DataSetRe4STATuto.tomosPattern.value,
+                                             samplingRate=DataSetRe4STATuto.sRateBin4.value)
+
+        cls.launchProtocol(protImportTomogram)
+        outputTomos = getattr(protImportTomogram, OUTPUT_NAME, None)
+        cls.assertIsNotNone(outputTomos, 'No tomograms were generated.')
+        return outputTomos
+
+    @classmethod
+    def _binTomograms(cls):
+        print(magentaStr("\n==> Binning the tomograms:"))
+        protNormTomogram = cls.newProtocol(ProtImodTomoNormalization,
+                                           inputSetOfTomograms=cls.tomogramsImported,
+                                           binning=2)
+        cls.launchProtocol(protNormTomogram)
+        outputTomos = getattr(protNormTomogram, OUTPUT_TOMOGRAMS_NAME, None)
+        cls.assertIsNotNone(outputTomos, 'No tomograms were generated.')
+        return outputTomos
+
+    @classmethod
+    def _runImportCoords3dFromStar(cls, starFile, samplingRate=None, inTomos=None, boxSize=None):
+        protImportCoords3dFromStar = cls.newProtocol(ProtImportCoordinates3DFromStar,
+                                                     starFile=starFile,
+                                                     inTomos=inTomos,
+                                                     samplingRate=samplingRate,
+                                                     boxSize=boxSize)
+
+        cls.launchProtocol(protImportCoords3dFromStar)
+        outCoords = getattr(protImportCoords3dFromStar, importCoordsOutputs.coordinates.name)
+        cls.assertIsNotNone(outCoords, 'No coordinates were generated.')
+        return outCoords
+
+    def _runTest(self, tomograms=None, sRate=None, boxSize=None, isRelion5Picking=None):
+        starFile = self.dsRe4.getFile(DataSetRe4STATuto.coordsStarSubset.name)
+        importedCoords = self._runImportCoords3dFromStar(starFile,
+                                                         inTomos=tomograms,
+                                                         samplingRate=sRate,
+                                                         boxSize=boxSize)
+        # Check the results
+        self.checkCoordinates(importedCoords,
+                              expectedSetSize=DataSetRe4STATuto.nCoordsTotal.value,
+                              expectedBoxSize=boxSize,
+                              expectedSRate=tomograms.getSamplingRate(),  # The coords are scaled to the
+                              # size of the tomograms introduced
+                              orientedParticles=True)  # Oriented picking
+        self.assertEqual(getattr(importedCoords, IS_RE5_PICKING_ATTR, -1), isRelion5Picking)
+
+    def testImportCoords_01(self):
+        print(magentaStr("\n==> Importing coordinates 3D from a star file."
+                         "\n\t- The coordinates sampling rate is read from protocol form."))
+        tomograms = self.tomogramsImported
+        sRate = DataSetRe4STATuto.unbinnedPixSize.value  # Coords provided by teh tutorial of Relion 4 are at bin 1
+        boxSize = self.boxSizeBin4
+        self._runTest(tomograms=tomograms, sRate=sRate, boxSize=boxSize, isRelion5Picking=False)
+
+    def testImportCoords_02(self):
+        print(magentaStr("\n==> Importing coordinates 3D from a star file."
+                         "\n\t- The coordinates sampling rate sampling rate is not provided, so the one from the "
+                         "tomograms is assumed."))
+        tomograms = self.tomogramsImported
+        boxSize = self.boxSizeBin4
+        self._runTest(tomograms=tomograms, boxSize=boxSize, isRelion5Picking=False)
+
+    def testImportCoords_03(self):
+        print(magentaStr("\n==> Importing coordinates 3D from a star file."
+                         "\n\t- The tomograms introduced are binned a factor of 2."))
+        tomograms = self._binTomograms()
+        sRate = DataSetRe4STATuto.unbinnedPixSize.value  # Coords provided by teh tutorial of Relion 4 are at bin 1
+        boxSize = self.boxSizeBin4 / 2
+        self._runTest(tomograms=tomograms, sRate=sRate, boxSize=boxSize, isRelion5Picking=False)
+

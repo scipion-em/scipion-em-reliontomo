@@ -41,7 +41,7 @@ logger = logging.getLogger(__file__)
 IS_RE5_PICKING_ATTR = '_relion5Picking'
 
 
-class outputObjects(Enum):
+class importCoordsOutputs(Enum):
     coordinates = SetOfCoordinates3D
 
 
@@ -57,6 +57,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         self.readerVersion = None
         self.coordsSRate = None
         self.starFilePath = None
+        self.isCoordsFile = None  # To be defined by the child classes
 
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
@@ -94,7 +95,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         newStarName = self._getExtraPath(self.linkedStarFileName)
         createLink(self.starFile.get(), newStarName)
         # Read the star file
-        self.reader, self.readerVersion = createReaderTomo(starFile=newStarName)
+        self.reader, self.readerVersion = createReaderTomo(starFile=newStarName, isCoordsStar=self.isCoordsFile)
         # Generate the directory in which the linked tomograms pointed from the star file will be stored
         makePath(self._getExtraPath(self.linkedTomosDirName))
         # Get the coordinates sampling rate
@@ -110,7 +111,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         self.reader.starFile2Coords3D(coordSet, precedentsSet, self.coordsSRate / precedentsSet.getSamplingRate())
         setattr(coordSet, IS_RE5_PICKING_ATTR, Boolean(self.checkIf2dParticlesFromStar()))
 
-        self._defineOutputs(**{outputObjects.coordinates.name: coordSet})
+        self._defineOutputs(**{importCoordsOutputs.coordinates.name: coordSet})
         self._defineSourceRelation(inTomosPointer, coordSet)
 
     # --------------------------- INFO functions ------------------------------
@@ -118,8 +119,9 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
     def _validate(self):
         errors = []
         # Check if the files referred in the star file exists
-        if not exists(self.starFile.get()):
-            errors.append('It was not possible to locate the introduced file. Please check the path.')
+        starFile = self.starFile.get()
+        if not exists(starFile):
+            errors.append('It was not possible to locate the introduced file. Please check the path.\n%s' % starFile)
             return errors
         # Check the compatibility between the introduced file and the version of Relion used by the plugin
         isRe5Star = self.checkIf2dParticlesFromStar()
