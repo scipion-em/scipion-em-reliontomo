@@ -27,19 +27,17 @@
 from enum import Enum
 from pwem.objects import VolumeMask, FSC
 from pyworkflow.protocol import PointerParam, BooleanParam, FloatParam, GE, LE, IntParam, FileParam
-from pyworkflow.utils import makePath
+from pyworkflow.utils import makePath, Message
 from reliontomo import Plugin
 from reliontomo.constants import POST_PROCESS_MRC, POSTPROCESS_DIR, \
     POSTPROCESS_STAR_FSC_TABLE, \
     POSTPROCESS_STAR_FSC_COLUMNS, FSC_REF_STAR
-from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
 NO_MTF_FILE = 0
 
 
 class outputObjects(Enum):
-    relionParticles = RelionSetOfPseudoSubtomograms
     postProcessVolume = VolumeMask
     outputFSC = FSC
 
@@ -57,15 +55,15 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
     _label = 'Post-processing'
     _possibleOutputs = outputObjects
 
-    def __init__(self, **kargs):
-        super().__init__(**kargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        super()._defineCommonInputParams(form)
+        form.addSection(label=Message.LABEL_INPUT)
         form.addParam('inVolume', PointerParam,
                       pointerClass='AverageSubTomogram',
-                      label='One unfiltered half map ',
+                      label='Volume to sharpen',
                       important=True,
                       help='It will provide the two unfiltered half-reconstructions that were output upon convergence '
                            'of a 3D auto-refine run.')
@@ -77,8 +75,7 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
                            'Often, the softer the mask the higher resolution estimates you will get. A soft '
                            'edge of 5-10 pixels is often a good edge width.')
         form.addParam('calPixSize', FloatParam,
-                      default=3,
-                      validators=[GE(0.3)],
+                      default=-1,
                       label='Calibrated pixel size (Å/px)',
                       help='Provide the final, calibrated pixel size in Angstroms. This value may be different from '
                            'the pixel-size used thus far, e.g. when you have recalibrated the pixel size using the fit '
@@ -160,25 +157,22 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
         Plugin.runRelionTomo(self, 'relion_postprocess', self.genPostProcessCmd())
 
     def createOutputStep(self):
-        inParticles = self.inReParticles.get()
-        pSubtomoSet = self.genRelionParticles()
         postProccesMrc = self._genPostProcessOutputMrcFile(POST_PROCESS_MRC)
 
         # Output FSC
-
         fn = self._getExtraPath(FSC_REF_STAR)
-        setOfFSC = self.genFSCs(fn, POSTPROCESS_STAR_FSC_TABLE,
-                                POSTPROCESS_STAR_FSC_COLUMNS)
+        setOfFSC = self.genFSCs(fn, POSTPROCESS_STAR_FSC_TABLE, POSTPROCESS_STAR_FSC_COLUMNS)
 
         self._defineOutputs(**{outputObjects.postProcessVolume.name: postProccesMrc,
-                               outputObjects.relionParticles.name: pSubtomoSet,
                                outputObjects.outputFSC.name: setOfFSC})
-        self._defineSourceRelation(inParticles, postProccesMrc)
-        self._defineSourceRelation(inParticles, pSubtomoSet)
+        self._defineSourceRelation(self.inVolume, postProccesMrc)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
-        pass
+        errorMsg = []
+        if not self.inVolume.get().getHalfMaps():
+            errorMsg.append('The introduced volume needs to get the corresponding half maps.')
+        return errorMsg
 
     # --------------------------- UTILS functions -----------------------------
     def genPostProcessCmd(self):
