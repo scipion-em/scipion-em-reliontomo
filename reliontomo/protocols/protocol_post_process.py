@@ -60,7 +60,7 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        form.addSection(label=Message.LABEL_INPUT)
+        super()._defineCommonInputParams(form)
         form.addParam('inVolume', PointerParam,
                       pointerClass='AverageSubTomogram',
                       label='Volume to sharpen',
@@ -157,15 +157,24 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
         Plugin.runRelionTomo(self, 'relion_postprocess', self.genPostProcessCmd())
 
     def createOutputStep(self):
+        inParticles = self.inReParticles
+        inVolume = self.inVolume
+        pSubtomoSet = self.genRelionParticles()
         postProccesMrc = self._genPostProcessOutputMrcFile(POST_PROCESS_MRC)
 
         # Output FSC
+
         fn = self._getExtraPath(FSC_REF_STAR)
-        setOfFSC = self.genFSCs(fn, POSTPROCESS_STAR_FSC_TABLE, POSTPROCESS_STAR_FSC_COLUMNS)
+        setOfFSC = self.genFSCs(fn, POSTPROCESS_STAR_FSC_TABLE,
+                                POSTPROCESS_STAR_FSC_COLUMNS)
 
         self._defineOutputs(**{outputObjects.postProcessVolume.name: postProccesMrc,
+                               outputObjects.relionParticles.name: pSubtomoSet,
                                outputObjects.outputFSC.name: setOfFSC})
-        self._defineSourceRelation(self.inVolume, postProccesMrc)
+        self._defineSourceRelation(inParticles, postProccesMrc)
+        self._defineSourceRelation(inParticles, pSubtomoSet)
+        self._defineSourceRelation(inVolume, postProccesMrc)
+        self._defineSourceRelation(inParticles, pSubtomoSet)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
