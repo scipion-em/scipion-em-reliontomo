@@ -91,7 +91,12 @@ class ProtRelionTomoBase(EMProtocol):
         rec particle from TS protocol in case the optional input 'solvent mask' is introduced."""
         postProccesMrc = VolumeMask()
         postProccesMrc.setFileName(self._getExtraPath(POSTPROCESS_DIR, fileName))
-        postProccesMrc.setSamplingRate(self.inReParticles.get().getCurrentSamplingRate())
+        sRate = -1
+        if getattr(self, 'inReParticles', None):
+            sRate = self.inReParticles.get().getCurrentSamplingRate()
+        elif getattr(self, 'inVolume', None):
+            sRate = self.inVolume.get().getCurrentSamplingRate()
+        postProccesMrc.setSamplingRate(sRate)
 
         return postProccesMrc
 
