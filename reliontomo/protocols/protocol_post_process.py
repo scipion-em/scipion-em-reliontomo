@@ -162,6 +162,7 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
         inParticles = self.inReParticles
         inVolume = self.inVolume
         pSubtomoSet = self.genRelionParticles()
+        pSubtomoSet.updateGenFiles(self._getExtraPath())
         postProccesMrc = self._genPostProcessOutputMrcFile(POST_PROCESS_MRC)
 
         # Output FSC
