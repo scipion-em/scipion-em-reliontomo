@@ -95,7 +95,7 @@ class ProtRelionTomoBase(EMProtocol):
         if getattr(self, 'inReParticles', None):
             sRate = self.inReParticles.get().getCurrentSamplingRate()
         elif getattr(self, 'inVolume', None):
-            sRate = self.inVolume.get().getCurrentSamplingRate()
+            sRate = self.inVolume.get().getSamplingRate()
         postProccesMrc.setSamplingRate(sRate)
 
         return postProccesMrc
