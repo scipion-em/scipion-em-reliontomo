@@ -37,8 +37,6 @@ from tomo.objects import AverageSubTomogram
 
 class outputObjects(Enum):
     average = AverageSubTomogram
-    # postProcessVolume = VolumeMask
-    # relionParticles = RelionSetOfPseudoSubtomograms
 
 
 class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase):
@@ -60,11 +58,6 @@ class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase
                       label='Symmetry group',
                       default='C1',
                       help=SYMMETRY_HELP_MSG)
-        # form.addParam('solventMask', PointerParam,
-        #               pointerClass='VolumeMask',
-        #               label='FSC solvent mask (opt.)',
-        #               allowsNull=True,
-        #               help='Provide a soft mask to automatically estimate the postprocess FSC.')
         form.addParam('snrWiener', FloatParam,
                       label='Apply a Wiener filter with this SNR',
                       default=0,
@@ -78,8 +71,6 @@ class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase
     def _insertAllSteps(self):
         self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self.relionReconstructParticle)
-        # if self.solventMask.get():
-        #     self._insertFunctionStep(self.relionTomoMaskReference)
         self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
@@ -92,10 +83,6 @@ class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase
             # The --mem argument should also be set using around 80-90% to keep a safety margin
             Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_particle_mpi', cmd + '--mem 50 ',
                                  numberOfMpi=self.numberOfMpi.get())
-
-    # def relionTomoMaskReference(self):
-    #     Plugin.runRelionTomo(self, 'relion_tomo_make_reference', self._genTomoMaskRefCmd(),
-    #                          numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
         inParticles = self.inReParticles.get()
@@ -112,21 +99,7 @@ class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase
             vol.setHalfMaps(halves)
         vol.setSamplingRate(currentSamplingRate)
         self._defineOutputs(**{outputObjects.average.name: vol})
-
-        # # Output solvent mask
-        # if self.solvenself._getExtraPath(IN_TOMOS_STAR)}tMask.get():
-        #     postProccesMrc = self._genPostProcessOutputMrcFile(POST_PROCESS_MRC)
-        #     postProccesMrc.setHalfMaps(halves)
-        #     postProccesMrc.setSamplingRate(currentSamplingRate)
-        #     self._defineOutputs(**{outputObjects.postProcessVolume.name: postProccesMrc})
-        #     self._defineSourceRelation(inParticles, postProccesMrc)
-
         self._defineSourceRelation(inParticles, vol)
-
-        # # Create the output set with the new optimization set
-        # outParticles = self.genRelionParticles(boxSize=self.boxSize.get(),
-        #                                        binningFactor=self.binningFactor.get())
-        # self._defineOutputs(**{outputObjects.average.name: outParticles})
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -161,13 +134,3 @@ class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase
             cmd.append(f'--SNR {self.snrWiener.get():.2f}')
         return ' '.join(cmd)
 
-    # def _genTomoMaskRefCmd(self):
-    #     inParticles = self.inReParticles.get()
-    #     cmd = ''
-    #     cmd += '--t %s ' % inParticles.getTomogramsStar()
-    #     cmd += '--p %s ' % self.getOutStarFileName()
-    #     cmd += '--rec %s ' % self._getExtraPath()
-    #     cmd += '--o %s ' % self._getExtraPath()
-    #     # cmd += '--mask %s ' % self.solventMask.get().getFileName()
-    #     cmd += '--angpix %.2f ' % (inParticles.getTsSamplingRate() * self.binningFactor.get())
-    #     return cmd

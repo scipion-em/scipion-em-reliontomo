@@ -25,15 +25,18 @@
 from imod.protocols import ProtImodTomoNormalization
 from imod.protocols.protocol_base import OUTPUT_TOMOGRAMS_NAME
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
-from pyworkflow.utils import magentaStr
-from reliontomo.protocols import ProtImportSubtomogramsFromStar, ProtImportCoordinates3DFromStar
+from pyworkflow.utils import magentaStr, yellowStr
+from reliontomo import Plugin
+from reliontomo.protocols import ProtImportCoordinates3DFromStar
 from reliontomo.protocols.protocol_base_import_from_star import importCoordsOutputs, IS_RE5_PICKING_ATTR
 from reliontomo.protocols.protocol_import_subtomograms_from_star import outputObjects as importSubtomosOutputs
 from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.protocols import ProtImportTomograms
 from tomo.protocols.protocol_import_tomograms import OUTPUT_NAME
-from tomo.tests import EMD_10439, DataSetEmd10439, RE5_STA, DataSetRe5STA, DataSetRe4STATuto, RE4_STA_TUTO
+from tomo.tests import EMD_10439, DataSetEmd10439, RE5_STA, DataSetRe4STATuto, RE4_STA_TUTO
 from tomo.tests.test_base_centralized_layer import TestBaseCentralizedLayer
+
+IS_RE_40 = Plugin.isRe40()
 
 
 class TestImportFromStarFile(BaseTest):
@@ -133,6 +136,7 @@ class TestImportFromStarFile(BaseTest):
             self.assertEqual(binFactor * coords3[i].getZ(BOTTOM_LEFT_CORNER), self.coords1[i].getZ(BOTTOM_LEFT_CORNER))
 
     def _runImportSubtomogramsFromStarFile(self, starFile, inTomoSet, binning=1):
+        from reliontomo.protocols import ProtImportSubtomogramsFromStar
         protImportSubtomogramsFromStar = self.newProtocol(ProtImportSubtomogramsFromStar,
                                                           starFile=starFile,
                                                           inTomos=inTomoSet,
@@ -151,16 +155,22 @@ class TestImportFromStarFile(BaseTest):
         self.assertEqual(subtomoSet.getDim(), (self.boxSize, self.boxSize, self.boxSize))
 
     def testImportSubtomogramsFromStarFile_01(self):
-        print(magentaStr("\n==> Importing subtomograms from a star file:"))
-        self._runImportSubtomogramsFromStarFile(self.dataset.getFile(DataSetEmd10439.subtomogramsStarFile.name),
-                                                self.inTomoSet)
+        if IS_RE_40:
+            print(magentaStr("\n==> Importing subtomograms from a star file:"))
+            self._runImportSubtomogramsFromStarFile(self.dataset.getFile(DataSetEmd10439.subtomogramsStarFile.name),
+                                                    self.inTomoSet)
+        else:
+            print(yellowStr('Relion 5 detected. Test for protocol "Import subtomograms from star file" skipped.'))
 
     def testImportSubtomogramsFromStarFile_02(self):
-        print(magentaStr("\n==> Importing subtomograms from a star file with a sampling rate different than the "
-                         "tomograms sampling rate:"))
-        self._runImportSubtomogramsFromStarFile(self.dataset.getFile(DataSetEmd10439.subtomogramsStarFile.name),
-                                                self.inTomoSetBin2,
-                                                binning=2)
+        if IS_RE_40:
+            print(magentaStr("\n==> Importing subtomograms from a star file with a sampling rate different than the "
+                             "tomograms sampling rate:"))
+            self._runImportSubtomogramsFromStarFile(self.dataset.getFile(DataSetEmd10439.subtomogramsStarFile.name),
+                                                    self.inTomoSetBin2,
+                                                    binning=2)
+        else:
+            print(yellowStr('Relion 5 detected. Test for protocol "Import subtomograms from star file" skipped.'))
 
 
 class TestRelion5ImportFromStarFile(TestBaseCentralizedLayer):
