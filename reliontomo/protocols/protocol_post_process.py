@@ -27,17 +27,19 @@
 from enum import Enum
 from pwem.objects import VolumeMask, FSC
 from pyworkflow.protocol import PointerParam, BooleanParam, FloatParam, GE, LE, IntParam, FileParam
-from pyworkflow.utils import makePath, Message
+from pyworkflow.utils import makePath
 from reliontomo import Plugin
 from reliontomo.constants import POST_PROCESS_MRC, POSTPROCESS_DIR, \
     POSTPROCESS_STAR_FSC_TABLE, \
     POSTPROCESS_STAR_FSC_COLUMNS, FSC_REF_STAR
+from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
 NO_MTF_FILE = 0
 
 
 class outputObjects(Enum):
+    relionParticles = RelionSetOfPseudoSubtomograms
     postProcessVolume = VolumeMask
     outputFSC = FSC
 
