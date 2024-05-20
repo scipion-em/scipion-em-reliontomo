@@ -45,7 +45,7 @@ from pyworkflow.gui import (ListTreeProviderString, dialog, configureWeigths,
 from pyworkflow.object import String
 from relion.wizards import RelionWizMtfSelector
 from reliontomo.protocols import (ProtRelionTomoReconstruct,
-                                  ProtRelionEditParticlesStar)
+                                  ProtRelionEditParticlesStar, ProtRelion5EditParticlesStar)
 from reliontomo.protocols.protocol_post_process import ProtRelionPostProcess
 from tomo.objects import SetOfTomograms
 from tomo.utils import getObjFromRelation
@@ -268,7 +268,8 @@ class RelionWizEditParticleDisplayWindows(Dialog):
 
 
 class RelionWizEditParticleDisplay(EmWizard):
-    _targets = [(ProtRelionEditParticlesStar, ['shiftX', 'shiftY', 'shiftZ'])]
+    _targets = [(ProtRelionEditParticlesStar, ['shiftX', 'shiftY', 'shiftZ']),
+                (ProtRelion5EditParticlesStar, ['shiftX', 'shiftY', 'shiftZ'])]
 
     def readMRC(self, file):
         """Read an image using the imageHandler """
