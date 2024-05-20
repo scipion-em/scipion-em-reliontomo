@@ -40,12 +40,12 @@ from matplotlib.figure import Figure
 
 from pwem.wizards import EmWizard
 from pyworkflow.gui import (ListTreeProviderString, dialog, configureWeigths,
-                            Dialog, RESULT_CLOSE, RESULT_YES, MessageDialog,
+                            Dialog, RESULT_CLOSE, RESULT_YES,
                             showError)
 from pyworkflow.object import String
 from relion.wizards import RelionWizMtfSelector
 from reliontomo.protocols import (ProtRelionTomoReconstruct,
-                                  ProtRelionEditParticlesStar, ProtRelion5EditParticlesStar)
+                                  ProtRelionEditParticlesStar)
 from reliontomo.protocols.protocol_post_process import ProtRelionPostProcess
 from tomo.objects import SetOfTomograms
 from tomo.utils import getObjFromRelation
@@ -268,8 +268,7 @@ class RelionWizEditParticleDisplayWindows(Dialog):
 
 
 class RelionWizEditParticleDisplay(EmWizard):
-    _targets = [(ProtRelionEditParticlesStar, ['shiftX', 'shiftY', 'shiftZ']),
-                (ProtRelion5EditParticlesStar, ['shiftX', 'shiftY', 'shiftZ'])]
+    _targets = [(ProtRelionEditParticlesStar, ['shiftX', 'shiftY', 'shiftZ'])]
 
     def readMRC(self, file):
         """Read an image using the imageHandler """
