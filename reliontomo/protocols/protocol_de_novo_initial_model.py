@@ -31,6 +31,8 @@ from reliontomo import Plugin
 from pyworkflow.protocol import LEVEL_ADVANCED
 from reliontomo.utils import getProgram
 
+IS_RELION_50 = Plugin.isRe50()
+
 
 class outputObjects(Enum):
     average = AverageSubTomogram()
@@ -57,34 +59,34 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
     # -------------------------- DEFINE param functions -----------------------
 
     def _defineParams(self, form):
-        super()._defineIOParams(form)
-        ProtRelionRefineBase._insertMaskDiameterParam(form)
-        super()._defineCTFParams(form)
+        self._defineIOParams(form)
+        self._defineCTFParams(form)
         self._defineOptimisationParams(form)
-        super()._defineComputeParams(form)
-        super()._insertGpuParams(form)
-        super()._defineAdditionalParams(form)
+        self._defineComputeParams(form)
+        self._insertGpuParams(form)
+        self._defineAdditionalParams(form)
         form.addParallelSection(threads=1, mpi=1)
 
-    @staticmethod
-    def _defineOptimisationParams(form):
-        ProtRelionRefineBase._insertOptimisationSection(form)
-        ProtRelionRefineBase._insertVdamMiniBatchesParam(form)
-        ProtRelionRefineBase._insertRegularisationParam(form)
-        ProtRelionRefineBase._insertNumOfClassesParam(form)
-
-        ProtRelionRefineBase._insertFlattenSolventParam(form)
+    def _defineOptimisationParams(self, form):
+        self._insertOptimisationSection(form)
+        self._insertVdamMiniBatchesParam(form)
+        self._insertRegularisationParam(form)
+        self._insertNumOfClassesParam(form)
+        self._insertMaskDiameterParam(form)
+        self._insertFlattenSolventParam(form)
         helpDeNovo = 'The initial model is always generated in C1 and then aligned to and symmetrized ' \
                      'with the specified point group. If the automatic alignment fails, please manually  ' \
                      'rotate run_itNNN_class001.mrc (NNN is the number of iterations) so that it conforms ' \
                      'the symmetry convention.' + SYMMETRY_HELP_MSG
-        ProtRelionRefineBase._insertSymmetryParam(form, helpDeNovo)
-        ProtRelionRefineBase._insertDoInC1AndApplySymLaterParam(form)
-        ProtRelionRefineBase._insertAngularCommonParams(form,
-                                                        expertLevel=LEVEL_ADVANCED,
-                                                        angSampling=1,
-                                                        offsetRange=6,
-                                                        offsetStep=2)
+        self._insertSymmetryParam(form, helpDeNovo)
+        self._insertDoInC1AndApplySymLaterParam(form)
+        if IS_RELION_50:
+            self._insertPriorWidthParam(form)
+        self._insertAngularCommonParams(form,
+                                        expertLevel=LEVEL_ADVANCED,
+                                        angSampling=1,
+                                        offsetRange=6,
+                                        offsetStep=2)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -95,14 +97,19 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
 
     # -------------------------- STEPS functions ------------------------------
     def generateDeNovo3DModel(self):
-        Plugin.runRelionTomo(self, getProgram('relion_refine', self.numberOfMpi.get()), self._genInitModelCommand(),
-                             numberOfMpi=self.numberOfMpi.get())
+        nMpi = self.numberOfMpi.get()
+        Plugin.runRelionTomo(self,
+                             getProgram('relion_refine', nMpi),
+                             self._genInitModelCommand(),
+                             numberOfMpi=nMpi)
 
     def alignSymmetry(self):
-        Plugin.runRelionTomo(self, 'relion_align_symmetry', self._genApplySymCmd())
+        Plugin.runRelionTomo(self,
+                             'relion_align_symmetry',
+                             self._genApplySymCmd())
 
     def createOutputStep(self):
-        inRelionParticles = self.inReParticles.get()
+        inRelionParticles = self.getInputParticles()
         vol = AverageSubTomogram()
         iniModel = self._getExtraPath(INITIAL_MODEL)
         fixVolume(iniModel)  # Fix header to make it interpreted as volume instead of a stack by xmipp
@@ -133,7 +140,8 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         cmd += '--healpix_order %i ' % self.angularSamplingDeg.get()
         cmd += '--offset_step %i ' % self.offsetSearchStepPix.get()
         cmd += '--offset_range %d ' % self.offsetSearchRangePix.get()
-
+        if IS_RELION_50:
+            cmd += '--sigma_tilt %i ' % self.priorWidthTiltAngle.get()
         return cmd
 
     def _genApplySymCmd(self):

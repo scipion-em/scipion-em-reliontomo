@@ -246,6 +246,7 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     a new one filtered out base on  this set ids? (warning, ids will fail if there are joins!!)
     """
     ITEM_TYPE = RelionPSubtomogram
+    ARE_2D_PARTICLES = '_areRe5Particles'
 
     def __init__(self, optimSetStar=None, relionBinning=None, tsSamplingRate=None, boxSize=24,
                  nReParticles=0, are2dStacks=None, areRe5Particles=None, **kwargs):

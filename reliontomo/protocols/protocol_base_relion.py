@@ -29,10 +29,13 @@ from pwem.objects import VolumeMask, FSC
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol import PointerParam, StringParam
 from pyworkflow.utils import Message, createLink
+from reliontomo import Plugin
 from reliontomo.constants import IN_PARTICLES_STAR, POSTPROCESS_DIR, OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE, \
     OUT_PARTICLES_STAR
-from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms
-from reliontomo.objects import createSetOfRelionPSubtomograms, RelionSetOfPseudoSubtomograms
+from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms, convert50_tomo
+from reliontomo.objects import RelionSetOfPseudoSubtomograms
+
+IS_RELION_50 = Plugin.isRe50()
 
 
 class ProtRelionTomoBase(EMProtocol):
@@ -49,13 +52,13 @@ class ProtRelionTomoBase(EMProtocol):
                       label='Pseudo-Subtomograms',
                       help='Pseudo-subtomograms do not aim to accurately represent the scattering potential of '
                            'the underlying particles. Instead, they serve as a practical means to implement an '
-                           ' approximation to the 2D approach within the existing RELION framework. In the original'
-                           ' RELION4 article an accurate defition is given, see: \n '
-                           'https://doi.org/10.7554/eLife.83724 \n '
-                           ' A more technical explanation, pseudo-subtomograms are 3D-Arrays (volumes) that constructed '
-                           ' from the sums of 2D tilt-series images pre-multiplied by contrast transfer functions (CTFs), '
-                           ' along with auxiliary arrays that store the corresponding sum of squared CTFs and the frequency '
-                           ' of observation for each 3D voxel.')
+                           'approximation to the 2D approach within the existing RELION framework. In the original '
+                           'RELION4 article an accurate defition is given, see:\n '
+                           'https://doi.org/10.7554/eLife.83724\n '
+                           'A more technical explanation, pseudo-subtomograms are 3D-Arrays (volumes) that '
+                           'constructed from the sums of 2D tilt-series images pre-multiplied by contrast transfer '
+                           'functions (CTFs), along with auxiliary arrays that store the corresponding sum of squared '
+                           'CTFs and the frequency of observation for each 3D voxel.')
 
     @staticmethod
     def _defineExtraParams(form, addAdditionalSection=True):
@@ -68,23 +71,39 @@ class ProtRelionTomoBase(EMProtocol):
                            "--verb 1\n"
                            "--pad 2\n")
 
+    # --------------------------- UTILS functions -----------------------------
     def getInputParticles(self):
         return self.inReParticles.get()
 
     def getOutStarFileName(self):
         return self._getExtraPath(IN_PARTICLES_STAR)
 
-    def genInStarFile(self, withPriors=False):
+    def genInStarFile(self, withPriors=False, are2dParticles=False):
         """It will check if the set size and the stored particles star file are of the same size or not. In
         the first case, a link will be made to the previous particles star file to avoid generating it and in the
-        second case, a new file will be generated containing only the ones present in the input set."""
-        inReParticlesSet = self.inReParticles.get()
+        second case, a new file will be generated containing only the ones present in the input set.
+        :param withPriors: Applies only if using Relion 4. Consider the prior angles.
+        :param are2dParticles: Applies only if using Relion 5. Used to choose the fields that will be present in
+        the generated particles.star file, as they are not the same depending on if the particles are 2D or 3D.
+        """
+        inReParticlesSet = self.getInputParticles()
         outStarFileName = self.getOutStarFileName()
+        if IS_RELION_50:
+            withPriors = False
         if inReParticlesSet.getSize() == inReParticlesSet.getNReParticles() and not withPriors:
-             self.info("Using existing star (%s) file instead of generating a new one." % inReParticlesSet.getParticlesStar())
-             createLink(inReParticlesSet.getParticlesStar(), outStarFileName)
+            if inReParticlesSet.getSize() == inReParticlesSet.getNReParticles():
+                self.info("Using existing star (%s) file instead of generating a new one." %
+                          inReParticlesSet.getParticlesStar())
+                createLink(inReParticlesSet.getParticlesStar(), outStarFileName)
         else:
-            writeSetOfPseudoSubtomograms(inReParticlesSet, outStarFileName, withPriors=withPriors)
+            self.info("Less particles detected in the input set respecting to it associated star file. Assuming "
+                      "that a subset was made. Writing the new particles file.")
+            if IS_RELION_50:
+                outPath = self._getExtraPath()
+                writer = convert50_tomo.Writer()
+                writer.pseudoSubtomograms2Star(inReParticlesSet, outPath, are2dParticles=are2dParticles)
+            else:
+                writeSetOfPseudoSubtomograms(inReParticlesSet, outStarFileName, withPriors=withPriors)
 
     def _genPostProcessOutputMrcFile(self, fileName):
         """File generated using the sharpening protocol (called post-process protocol) and also using the
@@ -111,7 +130,7 @@ class ProtRelionTomoBase(EMProtocol):
         attribute."""
 
         # Create the set
-        inParticlesSet = self.inReParticles.get()
+        inParticlesSet = self.getInputParticles()
         psubtomoSet = RelionSetOfPseudoSubtomograms.create(self.getPath(), template=PSUBTOMOS_SQLITE)
         psubtomoSet.copyInfo(inParticlesSet)
 
@@ -123,7 +142,7 @@ class ProtRelionTomoBase(EMProtocol):
 
         particles = join(extraPath, particles)
         if exists(particles):
-            psubtomoSet._particles.set(particles)
+            psubtomoSet.setParticles(particles)
 
         if binningFactor:
             psubtomoSet.setRelionBinning(binningFactor)
@@ -153,3 +172,20 @@ class ProtRelionTomoBase(EMProtocol):
     def _genExtraParamsCmd(self):
         return ' ' + self.extraParams.get() if self.extraParams.get() else ''
 
+    # -------------------------- INFO functions -------------------------------
+    def _validate(self):
+        errorMsg = []
+        inParticles = self.getInputParticles()
+        if type(inParticles) is RelionSetOfPseudoSubtomograms:
+            areRe5Particles = inParticles.areRe5Particles()
+            if IS_RELION_50 and not areRe5Particles:
+                errorMsg.append('The introduced particles were not generated with Relion 5, while the plugin is '
+                                'currently configured to work with Relion 5. Please consider:'
+                                '\n - Calling the protocol "Extract subtomos" to convert the particles into Relion 5 '
+                                'format OR'
+                                '\n - Configuring the plugin to work with Relion 4.')
+            if not IS_RELION_50 and areRe5Particles():
+                errorMsg.append('The introduced particles were generated with Relion 5, while the plugin is currently '
+                                'configured to work with Relion 4. Please consider configuring the plugin to work with '
+                                'Relion 5.')
+        return errorMsg

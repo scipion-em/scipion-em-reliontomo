@@ -33,7 +33,7 @@ from pyworkflow.utils import magentaStr
 from reliontomo import Plugin
 from reliontomo.constants import OUT_PARTICLES_STAR, IN_TOMOS_STAR, FILE_NOT_FOUND
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelion5ExtractSubtomos, \
-    ProtRelion5ReconstructParticle
+    ProtRelion5ReconstructParticle, ProtRelionDeNovoInitialModel
 from reliontomo.tests import DataSetRe4Tomo
 from tomo.constants import TR_SCIPION
 from tomo.protocols import ProtImportTs, ProtImportTsCTF, ProtImportTomograms
@@ -166,7 +166,7 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
                                       croppedBoxSize=croppedBoxSize,
                                       write2dStacks=gen2dParticles,
                                       numberOfMpi=2,  # There are 2 tomograms in the current dataset
-                                      numberOfThreads=3)
+                                      numberOfThreads=4)
         protExtract.setObjLabel(f"Extract subtomos {partTypeMsg}")
         return cls.launchProtocol(protExtract)
 
@@ -273,12 +273,12 @@ class TestRelion5TomoExtractSubtomos(TestRelion5RefineCycleBase):
 class TestRelionTomoRecParticleFromTs(TestRelion5RefineCycleBase):
 
     def testRecParticleFromTS_01(self):
-        self._runTest(are2dStacks=True)
+        self._runTest(are2dStacks=True, hasHalves=False)  # Halves are generated after having run a refinement
 
     def testRecParticleFromTS_02(self):
-        self._runTest(are2dStacks=False)
+        self._runTest(are2dStacks=False, hasHalves=False)
 
-    def _runTest(self, are2dStacks=True):
+    def _runTest(self, are2dStacks=True, hasHalves=None):
         binningFactor = self.binFactor6
         bozSize = self.boxSizeBin6
         croppedBoxSize = self.croppedBoxSizeBin6
@@ -290,7 +290,10 @@ class TestRelionTomoRecParticleFromTs(TestRelion5RefineCycleBase):
                                                     croppedBoxSize=croppedBoxSize,
                                                     are2dStacks=are2dStacks)
         # Check the results
-        self._checkResults(protRecPartFromTS)
+        self._checkResults(protRecPartFromTS,
+                           binningFactor=binningFactor,
+                           expectedBoxSize=croppedBoxSize,
+                           hasHalves=hasHalves)
 
     @classmethod
     def _recParticleFromTS(cls, extractedParticles, binningFactor=None, boxSize=None, croppedBoxSize=None,
@@ -305,18 +308,19 @@ class TestRelionTomoRecParticleFromTs(TestRelion5RefineCycleBase):
                                             boxSize=boxSize,
                                             croppedBoxSize=croppedBoxSize,
                                             symmetry='C6',  # HIV symmetry
-                                            )
+                                            numberOfMpi=2,  # 2 TS in the dataset used
+                                            numberOfThreads=4)
         protRecPartFromTS.setObjLabel(f'Rec particle from TS, {partTypeStr} stacks')
         cls.launchProtocol(protRecPartFromTS)
         return protRecPartFromTS
 
-    def _checkResults(self, protRecPartFromTS):
+    def _checkResults(self, protRecPartFromTS, binningFactor=None, expectedBoxSize=None, hasHalves=None):
         # Check the reconstructed volume
         recVol = getattr(protRecPartFromTS, ProtRelion5ReconstructParticle._possibleOutputs.average.name, None)
         self.checkAverage(recVol,
-                          expectedSRate=DataSetRe4STATuto.unbinnedPixSize.value * self.binFactor6,
-                          expectedBoxSize=self.croppedBoxSizeBin6,
-                          hasHalves=True)
+                          expectedSRate=DataSetRe4STATuto.unbinnedPixSize.value * binningFactor,
+                          expectedBoxSize=expectedBoxSize,
+                          hasHalves=hasHalves)
 
 
 # class TestRelionTomoEditStar(TestRelion5RefineCycleBase):
@@ -460,38 +464,38 @@ class TestRelionTomoRecParticleFromTs(TestRelion5RefineCycleBase):
 #         return angles[:]
 
 
-# class TestRelionTomoGenInitialModel(TestRelion5RefineCycleBase):
-#
-#     @classmethod
-#     def _runPreviousProtocols(cls):
-#         super()._runPreviousProtocols()
-#         cls.protExtract = cls._runExtractSubtomos()
-#         cls.inReParticles = getattr(cls.protExtract, cls.protExtract._possibleOutputs.relionParticles.name, None)
-#
-#     def testInitialModel(self):
-#         recVol = self._genInitialModel()
-#         self.checkAverage(recVol,
-#                           expectedSRate=DataSetRe4STATuto.unbinnedPixSize.value * self.binFactor4,
-#                           expectedBoxSize=self.croppedBoxSizeBin6,
-#                           hasHalves=False)
-#
-#     @classmethod
-#     def _genInitialModel(cls):
-#         print(magentaStr("\n==> Generating the a de novo 3D initial model:"))
-#         protInitialModel = cls.newProtocol(ProtRelionDeNovoInitialModel,
-#                                            inReParticles=cls.inReParticles,
-#                                            nVdamMiniBatches=10,
-#                                            maskDiameter=230,
-#                                            symmetry=cls.symmetry,
-#                                            doInC1AndApplySymLater=False,
-#                                            pooledSubtomos=3,
-#                                            doGpu=True,
-#                                            gpusToUse='0',
-#                                            numberOfMpi=1,
-#                                            numberOfThreads=3)
-#         cls.launchProtocol(protInitialModel)
-#         return getattr(protInitialModel, ProtRelionDeNovoInitialModel._possibleOutputs.average.name, None)
-#
+class TestRelionTomoGenInitialModel(TestRelion5RefineCycleBase):
+
+    def testInitialModel(self):
+        recVol = self._genInitialModel()
+        self.checkAverage(recVol,
+                          expectedSRate=DataSetRe4STATuto.unbinnedPixSize.value * self.binFactor6,
+                          expectedBoxSize=self.croppedBoxSizeBin6,
+                          hasHalves=False)
+
+    @classmethod
+    def _genInitialModel(cls, are2dStacks=True, hasHalves=None):
+        print(magentaStr("\n==> Generating the a de novo 3D initial model:"))
+        binningFactor = cls.binFactor6
+        bozSize = cls.boxSizeBin6
+        croppedBoxSize = cls.croppedBoxSizeBin6
+        protExtract = cls._runExtractSubtomos(binningFactor, bozSize, croppedBoxSize, gen2dParticles=are2dStacks)
+        extractedPars = getattr(protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.relionParticles.name, None)
+        protInitialModel = cls.newProtocol(ProtRelionDeNovoInitialModel,
+                                           inReParticles=extractedPars,
+                                           nVdamMiniBatches=20,
+                                           maskDiameter=500,
+                                           symmetry=cls.symmetry,
+                                           priorWidthTiltAngle=10,
+                                           doInC1AndApplySymLater=False,
+                                           pooledSubtomos=3,
+                                           doGpu=True,
+                                           gpusToUse='0',
+                                           numberOfMpi=1,
+                                           numberOfThreads=6)
+        cls.launchProtocol(protInitialModel)
+        return getattr(protInitialModel, ProtRelionDeNovoInitialModel._possibleOutputs.average.name, None)
+
 
 # class TestRelionTomo3dClassify(TestRelion5RefineCycleBase):
 #     nClasses = 2

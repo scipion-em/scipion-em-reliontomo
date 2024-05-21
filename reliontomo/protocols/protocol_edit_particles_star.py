@@ -31,7 +31,7 @@ from reliontomo import Plugin
 from reliontomo.constants import OUT_PARTICLES_STAR, COORD_X, COORD_Y, COORD_Z, SHIFTX_ANGST, SHIFTY_ANGST, \
     SHIFTZ_ANGST, ROT, TILT, PSI
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
-from reliontomo.protocols.protocol_re5_base import ProtRelion5TomoBase
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 from reliontomo.utils import genEnumParamDict
 
 # Operation labels and values
@@ -52,7 +52,7 @@ class outputObjects(Enum):
     relionParticles = RelionSetOfPseudoSubtomograms
 
 
-class ProtRelionEditParticlesStar(ProtRelion5TomoBase):
+class ProtRelionEditParticlesStar(ProtRelionTomoBase):
     """Operate on the particles star file"""
 
     _label = 'Apply operation to Relion particles'
@@ -168,7 +168,8 @@ class ProtRelionEditParticlesStar(ProtRelion5TomoBase):
         self._insertFunctionStep(self.createOutputStep)
 
     def convertInputStep(self):
-        self.genInStarFile()
+        are2dParticles = getattr(self.inReParticles.get(), RelionSetOfPseudoSubtomograms.ARE_2D_PARTICLES, False)
+        self.genInStarFile(are2dParticles=are2dParticles)
 
     def operateStep(self):
         Plugin.runRelionTomo(self, 'relion_star_handler', self._getOperateCommand())

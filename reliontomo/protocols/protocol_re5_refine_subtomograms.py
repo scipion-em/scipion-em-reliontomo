@@ -33,7 +33,7 @@ from os.path import getmtime
 from pyworkflow.protocol import PointerParam, FloatParam, StringParam, BooleanParam, EnumParam
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG, \
     REFINE_FSC_REF_STAR, REFINE_STAR_FSC_TABLE, REFINE_STAR_FSC_COLUMNS
-from reliontomo.protocols.protocol_re5_base_refine import ProtRelion5RefineBase
+from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo.utils import getProgram
 from tomo.objects import AverageSubTomogram
 
@@ -44,7 +44,7 @@ class outputObjects(Enum):
     outputFSC = SetOfFSCs
 
 
-class ProtRelion5RefineSubtomograms(ProtRelion5RefineBase):
+class ProtRelion5RefineSubtomograms(ProtRelionRefineBase):
     """3D auto-refine
 
     Once we have a reference map, one may use the 3D auto-refine procedure in

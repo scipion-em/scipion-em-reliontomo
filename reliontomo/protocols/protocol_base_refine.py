@@ -24,10 +24,15 @@
 # **************************************************************************
 from os import remove
 from os.path import abspath, exists
+
+from pyworkflow.object import Boolean
 from pyworkflow.protocol import LEVEL_ADVANCED, IntParam, StringParam, BooleanParam, \
     EnumParam, PathParam, FloatParam, LEVEL_NORMAL, GE, LE
+from reliontomo import Plugin
 from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
+
+IS_RELION_50 = Plugin.isRe50()
 
 
 class ProtRelionRefineBase(ProtRelionTomoBase):
@@ -35,15 +40,13 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.alignmentAsPriors = Boolean(False)
 
     # -------------------------- DEFINE param functions -----------------------
 
-    def _defineParams(self, form):
-        pass
-
     # I/O PARAMS -------------------------------------------------------------------------------------------------------
     def _defineIOParams(self, form):
-        super()._defineCommonInputParams(form)
+        self._defineCommonInputParams(form)
 
     # CTF PARAMS -------------------------------------------------------------------------------------------------------
     @staticmethod
@@ -97,12 +100,20 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                       default=1,
                       validators=[GE(1)],
                       label='Number of classes',
-                      help='The number of classes (K) for a multi-reference ab initio SGD refinement. These classes will '
-                           ' be made in an unsupervised manner, starting from a single reference in the initial iterations '
-                           ' of the SGD, and the references will become increasingly dissimilar during the inbetween iterations.'
-                           ' Sometimes, using more than one class may help in providing a ‘sink’ for sub-optimal particles '
-                           ' that may still exist in the data set. In this case, which is quite homogeneous, a single '
-                           ' class should work just fine.')
+                      help='The number of classes (K) for a multi-reference ab initio SGD refinement. These classes '
+                           'will be made in an unsupervised manner, starting from a single reference in the initial '
+                           'iterations of the SGD, and the references will become increasingly dissimilar during the '
+                           'inbetween iterations. Sometimes, using more than one class may help in providing a ‘sink’ '
+                           'for sub-optimal particles that may still exist in the data set. In this case, which is '
+                           'quite homogeneous, a single class should work just fine.')
+
+    @staticmethod
+    def _insertBlushRegParam(form):
+        form.addParam('doBlushReg', BooleanParam,
+                      default=False,
+                      label='Use blush regularisation',
+                      help='If set to Yes, relion_refine will use a neural network to perform regularisation by '
+                           'denoising at every iteration, instead of the standard smoothness regularisation')
 
     @staticmethod
     def _insertMaskDiameterParam(form):
@@ -140,11 +151,11 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                            "reference to be non-negative.")
 
     @staticmethod
-    def _insertSymmetryParam(form, help):
+    def _insertSymmetryParam(form, helpMsg):
         form.addParam('symmetry', StringParam,
                       label='Symmetry group',
                       default='C1',
-                      help=help)
+                      help=helpMsg)
 
     @staticmethod
     def _insertDoInC1AndApplySymLaterParam(form):
@@ -154,6 +165,16 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                       help="If set to Yes, the gradient-driven optimisation is run in C1 and the symmetry orientation "
                            "is searched and applied later. If set to No, the entire optimisation is run in the "
                            "symmetry point group indicated above.")
+
+    @staticmethod
+    def _insertPriorWidthParam(form):
+        form.addParam('priorWidthTiltAngle', IntParam,
+                      default=-1,
+                      label='Prior width on tilt angle (deg)',
+                      help='The width of the prior on the tilt angle: angular searches will be +/-3 times this value. '
+                           'Tilt priors will be defined when particles have been picked as filaments, on spheres or '
+                           'on manifolds. Setting this width to a negative value will lead to no prior being used on '
+                           'the tilt angle.')
 
     # COMPUTE PARAMS ---------------------------------------------------------------------------------------------------
     def _defineComputeParams(self, form, isOnlyClassif=False):
@@ -193,17 +214,21 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                            ' it will take ( N * box_size * box_size * 4 / (1024 * 1024 * 1024) ) Giga-bytes to'
                            ' read N particles into RAM. For 100 thousand 200x200 images, that becomes 15Gb, or 60 Gb'
                            ' for the same number of 400x400 particles. Remember that running a single MPI follower '
-                           'on each node that runs as many threads as available cores will have access to all available RAM.\n'
+                           'on each node that runs as many threads as available cores will have access to all '
+                           'available RAM.\n'
                            'If parallel disc I/O is set to No, then only the leader reads all particles into RAM and '
-                           'sends those particles through the network to the MPI followers during the refinement iterations.')
+                           'sends those particles through the network to the MPI followers during the refinement '
+                           'iterations.')
         form.addParam('scratchDir', PathParam,
                       label='Copy particles to scratch directory',
                       help='If a directory is provided here, then the job will create a sub-directory in it called'
                            ' relion_volatile. If that relion_volatile directory already exists, it will be wiped. '
-                           'Then, the program will copy all input particles into a large stack inside the relion_volatile '
+                           'Then, the program will copy all input particles into a large stack inside the '
+                           'relion_volatile '
                            'subdirectory. Provided this directory is on a fast local drive (e.g. an SSD drive), '
                            'processing in all the iterations will be faster. If the job finishes correctly, '
-                           'the relion_volatile directory will be wiped. If the job crashes, you may want to remove it yourself.')
+                           'the relion_volatile directory will be wiped. If the job crashes, you may want to remove it '
+                           'yourself.')
         form.addParam('combineItersDisc', BooleanParam,
                       default=False,
                       label='Combine iterations through disc?',
@@ -215,7 +240,6 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                            'progress-bar in the expectation step reaching its end (the mouse gets to the cheese) '
                            'and the start of the ensuing maximisation step. It will depend on your system setup'
                            ' which is most efficient.')
-
 
     # ADDITIONAL PARAMS ------------------------------------------------------------------------------------------------
     @staticmethod
@@ -284,7 +308,6 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                            'Therefore, if adaptive=1, the translations will first be evaluated'
                            'on a 2x coarser grid.')
 
-
     @staticmethod
     def _insertGpuParams(form):
         form.addParam('doGpu', BooleanParam,
@@ -299,11 +322,12 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                            'separated by ":", threads by ",". For example: "0,0:1,1:0,0:1,1"')
 
     # -------------------------- INSERT steps functions -----------------------
-    def _insertAllSteps(self):
-        pass
 
     def convertInputStep(self):
-        self.genInStarFile(withPriors=self.alignmentAsPriors)
+        if IS_RELION_50:
+            self.genInStarFile(are2dParticles=self.getInputParticles().are2dStacks())
+        else:
+            self.genInStarFile(withPriors=self.alignmentAsPriors)
 
     # -------------------------- INFO functions -------------------------------
 
@@ -317,19 +341,18 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         cmd += self._genAddiotionalBaseCmd()  # Additional args
         return cmd
 
-    def _genIOBaseCmd(self, useOptimizationSet=True):
-
+    def _genIOBaseCmd(self, useOptimizationSet=False):
         inRelionParticles = self.getInputParticles()
-
-        cmd = ''
-
         if useOptimizationSet:
             # Use optimization set file
             self.info("Using optimization_set: %s" % inRelionParticles.filesMaster)
-            cmd += '--ios %s ' % inRelionParticles.filesMaster
-
-
-        cmd += '--i %s ' % self.getOutStarFileName()
+            cmd = '--ios %s ' % inRelionParticles.filesMaster
+        else:
+            cmd = '--i %s ' % self.getOutStarFileName()
+            cmd += '--tomograms %s ' % inRelionParticles.getTomogramsStar()
+            trajectoriesFile = inRelionParticles.getTrajectoriesStar()
+            if trajectoriesFile:
+                cmd += '--trajectories %s ' % trajectoriesFile
         cmd += '--o %s ' % (self._getExtraPath() + '/')  # If not, Relion will concatenate it directly as a prefix
         cmd += '--j %i ' % self.numberOfThreads
         return cmd
@@ -343,8 +366,9 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         return cmd
 
     def _genOptimisationBaseCmd(self):
-        cmd = ''
-        cmd += '--particle_diameter %i ' % self.maskDiameter.get()
+        cmd = '--particle_diameter %i ' % self.maskDiameter.get()
+        if getattr(self, 'doBlushReg', None):
+            cmd += '--blush '
         return cmd
 
     def _genComputeBaseCmd(self, onlyCl3d=False):

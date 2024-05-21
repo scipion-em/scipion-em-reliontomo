@@ -23,10 +23,10 @@
 # *
 # **************************************************************************
 from pyworkflow.protocol import IntParam, FloatParam, GE
-from reliontomo.protocols.protocol_re5_base import ProtRelion5TomoBase
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
 
-class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelion5TomoBase):
+class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
     """Reconstruct particle and make pseudo-subtomograms base class"""
 
     _label = None
@@ -64,6 +64,10 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelion5TomoBase):
                       allowsNull=True,
                       help='The resulting pseudo subtomograms are cropped to this size. A smaller box size '
                            'allows the (generally expensive) refinement using relion_refine to proceed more rapidly.')
+
+    # -------------------------- STEPS functions ------------------------------
+    def convertInputStep(self):
+        self.genInStarFile(are2dParticles=self.getInputParticles().are2dStacks())
 
     # --------------------------- UTILS functions -----------------------------
     def _genCommonExtractAndRecCmd(self):
