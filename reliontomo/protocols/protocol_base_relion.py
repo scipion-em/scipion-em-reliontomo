@@ -34,6 +34,7 @@ from reliontomo.constants import IN_PARTICLES_STAR, POSTPROCESS_DIR, OPTIMISATIO
     OUT_PARTICLES_STAR
 from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms, convert50_tomo
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
+from tomo.objects import SetOfCoordinates3D
 
 IS_RELION_50 = Plugin.isRe50()
 
@@ -172,11 +173,14 @@ class ProtRelionTomoBase(EMProtocol):
     def _genExtraParamsCmd(self):
         return ' ' + self.extraParams.get() if self.extraParams.get() else ''
 
+    def isInputSetOf3dCoords(self):
+        return True if type(self.getInputParticles()) is SetOfCoordinates3D else False
+
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
         errorMsg = []
         inParticles = self.getInputParticles()
-        if type(inParticles) is RelionSetOfPseudoSubtomograms:
+        if not self.isInputSetOf3dCoords():
             areRe5Particles = inParticles.areRe5Particles()
             if IS_RELION_50 and not areRe5Particles:
                 errorMsg.append('The introduced particles were not generated with Relion 5, while the plugin is '

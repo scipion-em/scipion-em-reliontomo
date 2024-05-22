@@ -27,13 +27,13 @@ import numpy as np
 from emtable import Table
 from pyworkflow.object import Boolean, Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED, IntParam
-from pyworkflow.utils import Message
+from pyworkflow.utils import Message, createLink
 from reliontomo import Plugin
 from reliontomo.convert.convert50_tomo import getProjMatrixList, StarFileIterator, PARTICLES_TABLE, RLN_TOMONAME, \
     RLN_CENTEREDCOORDINATEXANGST, RLN_CENTEREDCOORDINATEYANGST, RLN_CENTEREDCOORDINATEZANGST
 from reliontomo.objects import createSetOfRelionPSubtomograms, RelionSetOfPseudoSubtomograms
 from reliontomo.constants import (OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE,
-                                  OUT_PARTICLES_STAR)
+                                  OUT_PARTICLES_STAR, IN_TOMOS_STAR)
 from reliontomo.convert import readSetOfPseudoSubtomograms, convert50_tomo
 from reliontomo.protocols.protocol_re5_base_extract_subtomos_and_rec_particle import (
     ProtRelion5ExtractSubtomoAndRecParticleBase)
@@ -129,7 +129,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
         inParticles = self.inReParticles.get()
-        coords = inParticles if type(inParticles) is SetOfCoordinates3D else inParticles.getCoordinates3D()
+        coords = inParticles if self.isInputSetOf3dCoords() else inParticles.getCoordinates3D()
         tsSet = self.inputTS.get()
         ctfSet = self.inputCtfTs.get()
         self.isRe5Picking = Boolean(getattr(coords, IS_RE5_PICKING_ATTR, Boolean(False).get()))
@@ -160,20 +160,27 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                          tomo.getTsId() in presentTsIds}
 
     def convertInputStep(self):
-        # Generate the particles star file
-        outPath = self._getExtraPath()
-        writer = convert50_tomo.Writer()
-        coords = self.inReParticles.get()
-        if self._isInputSetOf3dCoords():
+        # Generate required star files
+        coords = self.getInputParticles()
+        if self.isInputSetOf3dCoords():
+            outPath = self._getExtraPath()
+            writer = convert50_tomo.Writer()
+            # Particles.star
             writer.coords2Star(coords, self.tomoDict, outPath,
                                coordsScale=self.coordsScaleFactor.get(),
                                isRe5Picking=self.isRe5Picking)
+            # Tomograms.star
+            writer.tomoSet2Star(self.tomoDict, self.tsDict, outPath, handedness=self._decodeHandedness())
+            # Each tilt-series star file
+            writer.tsSet2Star(self.tsDict, self.ctfDict, outPath)
         else:
+            # Re-extraction: particles.star
             self.genInStarFile(are2dParticles=coords.are2dStacks())
-        # Generate each tilt-series star file
-        writer.tsSet2Star(self.tsDict, self.ctfDict, outPath)
-        # Generate the tomograms star file
-        writer.tomoSet2Star(self.tomoDict, self.tsDict, outPath, handedness=self._decodeHandedness())
+            # In case of re-extraction, the tomograms file will exist and be stored as an attribute of the set, having
+            # been updated if a new one is generated, like in the protocol bayesian polishing
+            createLink(coords.getTomogramsStar(), self._getExtraPath(IN_TOMOS_STAR))
+            # In case of re-extraction, the tilt-series star files will exist and their corresponding path will be
+            # provided by the file tomograms.star
 
     def extractSubtomos(self):
         nMpi = self.numberOfMpi.get()
@@ -254,7 +261,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     def _summary(self):
         msg = []
         if self.isFinished():
-            if self._isInputSetOf3dCoords():
+            if self.isInputSetOf3dCoords():
                 inputStr = '*coordinates*'
                 coordsFromRelion5 = self.isRe5Picking.get()
                 scaleFactor = 1 if coordsFromRelion5 else self.coordsScaleFactor.get()
@@ -284,5 +291,3 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     def _decodeHandedness(self):
         return -1 if self.handedness.get() else 1
 
-    def _isInputSetOf3dCoords(self):
-        return True if type(self.inReParticles.get()) is SetOfCoordinates3D else False

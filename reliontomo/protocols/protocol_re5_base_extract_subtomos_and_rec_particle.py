@@ -26,6 +26,7 @@ from pyworkflow.protocol import IntParam, FloatParam, GE
 from reliontomo.constants import IN_PARTICLES_STAR, IN_TOMOS_STAR
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
+from tomo.objects import SetOfCoordinates3D
 
 
 class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
@@ -81,7 +82,7 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
                f"--j {self.numberOfThreads.get()}",
                self._genExtraParamsCmd()]
         inParticles = self.getInputParticles()
-        if type(inParticles) is RelionSetOfPseudoSubtomograms:
+        if not self.isInputSetOf3dCoords():
             trajectoriesFile = inParticles.getTrajectoriesStar()
             if trajectoriesFile:
                 cmd.append(f'--mot {trajectoriesFile}')
