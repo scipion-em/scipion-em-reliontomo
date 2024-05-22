@@ -29,7 +29,8 @@ from pyworkflow.protocol import BooleanParam, FloatParam, EnumParam, \
     PointerParam, IntParam, GE
 from reliontomo import Plugin
 from reliontomo.constants import OUT_PARTICLES_STAR, COORD_X, COORD_Y, COORD_Z, SHIFTX_ANGST, SHIFTY_ANGST, \
-    SHIFTZ_ANGST, ROT, TILT, PSI
+    SHIFTZ_ANGST, ROT, TILT, PSI, RLN_TOMOSUBTOMOGRAMROT, RLN_TOMOSUBTOMOGRAMTILT, RLN_TOMOSUBTOMOGRAMPSI, \
+    RLN_CENTEREDCOORDINATEXANGST, RLN_CENTEREDCOORDINATEZANGST, RLN_CENTEREDCOORDINATEYANGST
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 from reliontomo.utils import genEnumParamDict
@@ -46,6 +47,8 @@ COORDINATES = 'coordinates'
 SHIFTS = 'shifts'
 ANGLES = 'angles'
 LABELS_TO_OPERATE_WITH = [COORDINATES, SHIFTS, ANGLES]
+
+IS_RELION_50 = Plugin.isRe50()
 
 
 class outputObjects(Enum):
@@ -95,7 +98,7 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
                        default=0,
                        help='Z-coordinate in the reference to center particles on (in pix)')
         # Section 'Remove duplicates' was added in Relion 5
-        if Plugin.isRe50():
+        if IS_RELION_50:
             form.addSection('Remove duplicates')
             form.addParam('doRemoveDuplicates', BooleanParam,
                           default=False,
@@ -110,56 +113,59 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
                           condition='doRemoveDuplicates',
                           validators=[GE(0)],
                           help='Particles within this distance are removed leaving only one.')
-        form.addSection(label='Operate')
-        form.addParam('chosenOperation', EnumParam,
-                      choices=list(self.operationDict.keys()),
-                      default=self.operationDict[NO_OPERATION],
-                      label='Choose operation')
-        form.addParam('opValue', FloatParam,
-                      condition='chosenOperation != %i' % self.operationDict[NO_OPERATION],
-                      default=1,
-                      label='Value to operate the selected labels')
-        group = form.addGroup('Operation', condition='chosenOperation > 0')
-        group.addParam('operateWith', EnumParam,
-                       choices=list(self.labelsDict.keys()),
-                       default=self.labelsDict[COORDINATES],
-                       label='Operate with')
-        group.addParam('label1x', BooleanParam,
-                       label='X (pix.)',
-                       condition='operateWith == %s' % self.labelsDict[COORDINATES],
-                       default=False)
-        group.addParam('label2y', BooleanParam,
-                       label='Y (pix.)',
-                       condition='operateWith == %s' % self.labelsDict[COORDINATES],
-                       default=False)
-        group.addParam('label3z', BooleanParam,
-                       label='Z (pix.)',
-                       condition='operateWith == %s' % self.labelsDict[COORDINATES],
-                       default=False)
-        group.addParam('label1sx', BooleanParam,
-                       label='Shift X (pix.)',
-                       condition='operateWith == %s' % self.labelsDict[SHIFTS],
-                       default=False)
-        group.addParam('label2sy', BooleanParam,
-                       label='Shift Y (pix.)',
-                       condition='operateWith == %s' % self.labelsDict[SHIFTS],
-                       default=False)
-        group.addParam('label3sz', BooleanParam,
-                       label='Shift Z (pix.)',
-                       condition='operateWith == %s' % self.labelsDict[SHIFTS],
-                       default=False)
-        group.addParam('label1rot', BooleanParam,
-                       label='Rot (deg.)',
-                       condition='operateWith == %s' % self.labelsDict[ANGLES],
-                       default=False)
-        group.addParam('label2tilt', BooleanParam,
-                       label='Tilt (deg.)',
-                       condition='operateWith == %s' % self.labelsDict[ANGLES],
-                       default=False)
-        group.addParam('label3psi', BooleanParam,
-                       label='Psi (deg.)',
-                       condition='operateWith == %s' % self.labelsDict[ANGLES],
-                       default=False)
+        else:
+            # This section is rarely used and makes nonsense in Relion 5 as there is not a explicit field for the
+            # coordinates
+            form.addSection(label='Operate')
+            form.addParam('chosenOperation', EnumParam,
+                          choices=list(self.operationDict.keys()),
+                          default=self.operationDict[NO_OPERATION],
+                          label='Choose operation')
+            form.addParam('opValue', FloatParam,
+                          condition='chosenOperation != %i' % self.operationDict[NO_OPERATION],
+                          default=1,
+                          label='Value to operate the selected labels')
+            group = form.addGroup('Operation', condition='chosenOperation > 0')
+            group.addParam('operateWith', EnumParam,
+                           choices=list(self.labelsDict.keys()),
+                           default=self.labelsDict[COORDINATES],
+                           label='Operate with')
+            group.addParam('label1x', BooleanParam,
+                           label='X (pix.)',
+                           condition='operateWith == %s' % self.labelsDict[COORDINATES],
+                           default=False)
+            group.addParam('label2y', BooleanParam,
+                           label='Y (pix.)',
+                           condition='operateWith == %s' % self.labelsDict[COORDINATES],
+                           default=False)
+            group.addParam('label3z', BooleanParam,
+                           label='Z (pix.)',
+                           condition='operateWith == %s' % self.labelsDict[COORDINATES],
+                           default=False)
+            group.addParam('label1sx', BooleanParam,
+                           label='Shift X (pix.)',
+                           condition='operateWith == %s' % self.labelsDict[SHIFTS],
+                           default=False)
+            group.addParam('label2sy', BooleanParam,
+                           label='Shift Y (pix.)',
+                           condition='operateWith == %s' % self.labelsDict[SHIFTS],
+                           default=False)
+            group.addParam('label3sz', BooleanParam,
+                           label='Shift Z (pix.)',
+                           condition='operateWith == %s' % self.labelsDict[SHIFTS],
+                           default=False)
+            group.addParam('label1rot', BooleanParam,
+                           label='Rot (deg.)',
+                           condition='operateWith == %s' % self.labelsDict[ANGLES],
+                           default=False)
+            group.addParam('label2tilt', BooleanParam,
+                           label='Tilt (deg.)',
+                           condition='operateWith == %s' % self.labelsDict[ANGLES],
+                           default=False)
+            group.addParam('label3psi', BooleanParam,
+                           label='Psi (deg.)',
+                           condition='operateWith == %s' % self.labelsDict[ANGLES],
+                           default=False)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -182,13 +188,12 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
         valMsg = []
-        if Plugin.isRe50():
-            if (not self.doRecenter.get() and not self.doRemoveDuplicates.get()
-                    and self.chosenOperation.get() == self.operationDict[NO_OPERATION]):
-                valMsg.append('No re-centering, duplicate removal or operation was chosen.')
+        if IS_RELION_50:
+            if not self.doRecenter.get() and not self.doRemoveDuplicates.get():
+                valMsg.append('No re-centering nor duplicate removal operation was chosen.')
         else:
             if not self.doRecenter.get() and self.chosenOperation.get() == self.operationDict[NO_OPERATION]:
-                valMsg.append('No recentering or operation was chosen.')
+                valMsg.append('No re-centering or operation was chosen.')
         return valMsg
 
     # --------------------------- UTILS functions -----------------------------
@@ -206,22 +211,24 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
             if self.shiftZ.get() != 0:
                 cmd += '--center_Z %.2f ' % self.shiftZ.get()
         # Section 'Remove duplicates' was added in Relion 5
-        if Plugin.isRe50():
+        if IS_RELION_50:
             if self.doRemoveDuplicates.get():
                 cmd += '--remove_duplicates %i ' % self.minDistPartRemoval.get()
-        # Operate particles
-        if self.chosenOperation.get() != self.operationDict[NO_OPERATION]:
-            opValue = self.opValue.get()
-            chosenOp = self.chosenOperation.get()
-            # Chosen operation
-            if chosenOp == self.operationDict[OP_ADDITION]:
-                cmd += '--add_to %.2f ' % opValue
-            elif chosenOp == self.operationDict[OP_MULTIPLICATION]:
-                cmd += '--multiply_by %.2f ' % opValue
-            else:
-                cmd += '--set_to %.2f ' % opValue
-            # Chosen values
-            cmd += self._genOperateCmd()
+        else:
+            # Operate particles - removed by Jorge in the protocol version for Relion 5 as it is rarely used and may
+            # be problematic as some of the fields involved are now defined in a different way, such as the coordinates
+            if self.chosenOperation.get() != self.operationDict[NO_OPERATION]:
+                opValue = self.opValue.get()
+                chosenOp = self.chosenOperation.get()
+                # Chosen operation
+                if chosenOp == self.operationDict[OP_ADDITION]:
+                    cmd += '--add_to %.2f ' % opValue
+                elif chosenOp == self.operationDict[OP_MULTIPLICATION]:
+                    cmd += '--multiply_by %.2f ' % opValue
+                else:
+                    cmd += '--set_to %.2f ' % opValue
+                # Chosen values
+                cmd += self._genOperateCmd()
         return cmd
 
     def _genOperateCmd(self):
@@ -257,4 +264,3 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
 
     def getMask3D(self):
         return self.refMask.get()
-

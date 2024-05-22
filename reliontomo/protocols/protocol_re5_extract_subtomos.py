@@ -27,7 +27,7 @@ import numpy as np
 from emtable import Table
 from pyworkflow.object import Boolean, Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED, IntParam
-from pyworkflow.utils import Message, createLink
+from pyworkflow.utils import Message
 from reliontomo import Plugin
 from reliontomo.convert.convert50_tomo import getProjMatrixList, StarFileIterator, PARTICLES_TABLE, RLN_TOMONAME, \
     RLN_CENTEREDCOORDINATEXANGST, RLN_CENTEREDCOORDINATEYANGST, RLN_CENTEREDCOORDINATEZANGST
@@ -39,7 +39,7 @@ from reliontomo.protocols.protocol_re5_base_extract_subtomos_and_rec_particle im
     ProtRelion5ExtractSubtomoAndRecParticleBase)
 from reliontomo.protocols.protocol_base_import_from_star import IS_RE5_PICKING_ATTR
 from reliontomo.utils import getProgram
-from tomo.objects import LandmarkModel, SetOfLandmarkModels, SetOfCoordinates3D
+from tomo.objects import LandmarkModel, SetOfLandmarkModels
 
 
 class outputObjects(Enum):
@@ -63,7 +63,6 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         self.ctfDict = dict()
         self.tomoDict = dict()
         self.isRe5Picking = None
-        self.isInSetOf3dCoords = None
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -129,8 +128,8 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
+        super()._initialize()
         inParticles = self.getInputParticles()
-        self.isInSetOf3dCoords = self.isInputSetOf3dCoords()
         coords = inParticles if self.isInSetOf3dCoords else inParticles.getCoordinates3D()
         tsSet = self.inputTS.get()
         ctfSet = self.inputCtfTs.get()
@@ -176,16 +175,8 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
             # Each tilt-series star file
             writer.tsSet2Star(self.tsDict, self.ctfDict, outPath)
         else:
-            # Re-extraction: particles.star
-            self.genInStarFile(are2dParticles=coords.are2dStacks())
-            # NOTE:
-            # Tomograms.star:
-            # In case of re-extraction, the tomograms file will exist and be stored as an attribute of
-            # the set, having been updated if a new one is generated, like in the protocol bayesian polishing
-            #
-            # Tilt-series star files:
-            # In case of re-extraction, the tilt-series star files will exist and their corresponding path will be
-            # provided by the file tomograms.star
+            # Re-extraction
+            super().convertInputStep()
 
     def extractSubtomos(self):
         nMpi = self.numberOfMpi.get()
@@ -306,7 +297,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         """
         tsStarDict = dict()
         tomoDataTable = Table()
-        tomoDataTable.read(self.getInputParticles().getTomogramsStar(), tableName=GLOBAL_TABLE)
+        tomoDataTable.read(self._getExtraPath(IN_TOMOS_STAR), tableName=GLOBAL_TABLE)
         for row in tomoDataTable:
             tsId = row.get(RLN_TOMONAME)
             tsFile = row.get(RLN_TOMOTILT_SERIES_STAR_FILE)

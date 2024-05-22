@@ -29,7 +29,7 @@ from os.path import exists
 from pwem.convert.headers import fixVolume
 from pyworkflow.protocol import StringParam, FloatParam
 from reliontomo import Plugin
-from reliontomo.constants import SYMMETRY_HELP_MSG, IN_PARTICLES_STAR
+from reliontomo.constants import SYMMETRY_HELP_MSG
 from reliontomo.protocols.protocol_re5_base_extract_subtomos_and_rec_particle import \
     ProtRelion5ExtractSubtomoAndRecParticleBase
 from tomo.objects import AverageSubTomogram
@@ -69,6 +69,7 @@ class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
+        super()._initialize()
         self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self.relionReconstructParticle)
         self._insertFunctionStep(self.createOutputStep)

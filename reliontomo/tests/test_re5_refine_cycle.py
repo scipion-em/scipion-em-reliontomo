@@ -23,8 +23,11 @@
 # *
 # **************************************************************************
 from os.path import exists
+from typing import Type
+
 from imod.protocols import ProtImodImportTransformationMatrix
 from imod.protocols.protocol_base import OUTPUT_TILTSERIES_NAME
+from pwem.convert.transformations import translation_from_matrix
 from pwem.emlib.image import ImageHandler
 from pwem.protocols import ProtImportMask, ProtImportVolumes
 from pwem.protocols.protocol_import.masks import ImportMaskOutput
@@ -32,10 +35,15 @@ from pyworkflow.tests import setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
 from reliontomo import Plugin
 from reliontomo.constants import OUT_PARTICLES_STAR, IN_TOMOS_STAR, FILE_NOT_FOUND
+from reliontomo.convert.convertBase import getTransformInfoFromCoordOrSubtomo
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelion5ExtractSubtomos, \
     ProtRelion5ReconstructParticle, ProtRelionDeNovoInitialModel
+from reliontomo.protocols.protocol_edit_particles_star import OPERATION_LABELS, LABELS_TO_OPERATE_WITH, \
+    ProtRelionEditParticlesStar, OP_ADDITION, ANGLES, OP_MULTIPLICATION, COORDINATES, OP_SET_TO
 from reliontomo.tests import DataSetRe4Tomo
+from reliontomo.utils import genEnumParamDict
 from tomo.constants import TR_SCIPION
+from tomo.objects import SetOfCoordinates3D
 from tomo.protocols import ProtImportTs, ProtImportTsCTF, ProtImportTomograms
 from tomo.protocols.protocol_import_ctf import ImportChoice
 from tomo.protocols.protocol_import_tomograms import OUTPUT_NAME
@@ -53,9 +61,12 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
     extractedParticles = None
     croppedBoxSizeBin6 = DataSetRe4STATuto.croppedBoxSizeBin4.value
     boxSizeBin6 = DataSetRe4STATuto.boxSizeBin4.value
+    croppedBoxSizeBin2 = DataSetRe4STATuto.croppedBoxSizeBin2.value
+    boxSizeBin2 = DataSetRe4STATuto.boxSizeBin2.value
     tsIds = ['TS_03', 'TS_54']
     binFactor4 = 4
     binFactor6 = 6
+    binFactor2 = 2
     protExtract = None
     importedRef = None
     inReParticles = None
@@ -153,13 +164,15 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
         return outCoords
 
     @classmethod
-    def _runExtractSubtomos(cls, binningFactor, boxSize, croppedBoxSize, gen2dParticles=False):
+    def _runExtractSubtomos(cls, inParticles=None, binningFactor=None, boxSize=None, croppedBoxSize=None,
+                            gen2dParticles=False):
+        extractMsg = 'Extract' if type(inParticles) is SetOfCoordinates3D else 'Re-extract'
         partTypeMsg = '2D' if gen2dParticles else '3D'
-        print(magentaStr(f"\n==> Extracting the particles from the tilt-series:\n"
+        print(magentaStr(f"\n==> {extractMsg}ing the particles from the tilt-series:\n"
                          f"\t- Particles type selected: {partTypeMsg}"))
         protExtract = cls.newProtocol(ProtRelion5ExtractSubtomos,
                                       inputCtfTs=cls.importedCtfs,
-                                      inReParticles=cls.importedCoords,
+                                      inReParticles=inParticles,
                                       inputTS=cls.tsWithAlignment,
                                       binningFactor=binningFactor,
                                       boxSize=boxSize,
@@ -167,7 +180,7 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
                                       write2dStacks=gen2dParticles,
                                       numberOfMpi=2,  # There are 2 tomograms in the current dataset
                                       numberOfThreads=4)
-        protExtract.setObjLabel(f"Extract subtomos {partTypeMsg}")
+        protExtract.setObjLabel(f"{extractMsg} subtomos {partTypeMsg}")
         return cls.launchProtocol(protExtract)
 
     @classmethod
@@ -233,8 +246,12 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
 
 class TestRelion5TomoExtractSubtomos(TestRelion5RefineCycleBase):
 
-    def _runTestExtractSubtomos(self, are2dParticles=False, nTiltImages=None):
-        protExtract = self._runExtractSubtomos(self.binFactor6, self.boxSizeBin6, self.croppedBoxSizeBin6,
+    def _runTestExtractSubtomos(self, inParticles=None, binningFactor=None, boxSize=None, croppedBoxSize=None,
+                                are2dParticles=False, nTiltImages=None):
+        protExtract = self._runExtractSubtomos(inParticles=inParticles,
+                                               binningFactor=binningFactor,
+                                               boxSize=boxSize,
+                                               croppedBoxSize=croppedBoxSize,
                                                gen2dParticles=are2dParticles)
         outParticles = getattr(protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.relionParticles.name, None)
         # Check RelionTomoMetadata: both particles and tomograms files are generated
@@ -244,7 +261,7 @@ class TestRelion5TomoExtractSubtomos(TestRelion5RefineCycleBase):
                                trajectoriesFile=None,
                                manifoldsFile=None,
                                referenceFscFile=None,
-                               relionBinning=self.binFactor6)
+                               relionBinning=binningFactor)
         # Check that the projected coordinates have been generated
         self.assertIsNotNone(
             getattr(protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.projected2DCoordinates.name, None),
@@ -254,20 +271,37 @@ class TestRelion5TomoExtractSubtomos(TestRelion5RefineCycleBase):
         nParticles = DataSetRe4STATuto.nCoordsTotal.value
         self._checkPseudosubtomograms(self.importedCoords, outParticles,
                                       expectedSetSize=nParticles,
-                                      expectedSRate=unbinnedPixSize * self.binFactor6,
-                                      expectedBoxSize=self.croppedBoxSizeBin6,
+                                      expectedSRate=unbinnedPixSize * binningFactor,
+                                      expectedBoxSize=croppedBoxSize,
                                       orientedParticles=True,  # The imported coordinates are oriented
                                       are2dStacks=are2dParticles,
                                       nTiltImages=nTiltImages,
-                                      expectedRelionBinning=self.binFactor6,
+                                      expectedRelionBinning=binningFactor,
                                       tsSamplingRate=unbinnedPixSize,
                                       expectedNParticles=nParticles)
+        return outParticles
 
     def testExtractSubtomos3d(self):
-        self._runTestExtractSubtomos()
+        self._runTestExtractSubtomos(inParticles=self.importedCoords,
+                                     binningFactor=self.binFactor6,
+                                     boxSize=self.boxSizeBin6,
+                                     croppedBoxSize=self.croppedBoxSizeBin6,
+                                     are2dParticles=False)
 
     def testExtractSubtomos2d(self):
-        self._runTestExtractSubtomos(are2dParticles=True, nTiltImages=40)
+        extractedParticles = self._runTestExtractSubtomos(inParticles=self.importedCoords,
+                                                          binningFactor=self.binFactor6,
+                                                          boxSize=self.boxSizeBin6,
+                                                          croppedBoxSize=self.croppedBoxSizeBin6,
+                                                          are2dParticles=True,
+                                                          nTiltImages=40)
+        # Run a re-extraction
+        self._runTestExtractSubtomos(inParticles=extractedParticles,
+                                     binningFactor=self.binFactor2,
+                                     boxSize=self.boxSizeBin2,
+                                     croppedBoxSize=self.croppedBoxSizeBin2,
+                                     are2dParticles=True,
+                                     nTiltImages=40)
 
 
 class TestRelionTomoRecParticleFromTs(TestRelion5RefineCycleBase):
@@ -282,7 +316,11 @@ class TestRelionTomoRecParticleFromTs(TestRelion5RefineCycleBase):
         binningFactor = self.binFactor6
         bozSize = self.boxSizeBin6
         croppedBoxSize = self.croppedBoxSizeBin6
-        protExtract = self._runExtractSubtomos(binningFactor, bozSize, croppedBoxSize, gen2dParticles=are2dStacks)
+        protExtract = self._runExtractSubtomos(inParticles=self.importedCoords,
+                                               binningFactor=binningFactor,
+                                               boxSize=bozSize,
+                                               croppedBoxSize=croppedBoxSize,
+                                               gen2dParticles=are2dStacks)
         extractedPars = getattr(protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.relionParticles.name, None)
         protRecPartFromTS = self._recParticleFromTS(extractedPars,
                                                     binningFactor=binningFactor,
@@ -332,68 +370,24 @@ class TestRelionTomoRecParticleFromTs(TestRelion5RefineCycleBase):
 #     def _runPreviousProtocols(cls):
 #         super()._runPreviousProtocols()
 #         cls.importedRef = cls._runImportReference()
-#         cls.protExtract = cls._runExtractSubtomos()
+#         cls.protExtract = cls._runExtractSubtomos(inParticles=cls.importedCoords,
+#                                                   binningFactor=cls.binFactor6,
+#                                                   boxSize=cls.boxSizeBin6,
+#                                                   croppedBoxSize=cls.croppedBoxSizeBin6,
+#                                                   gen2dParticles=True)
 #         cls.inReParticles = getattr(cls.protExtract, cls.protExtract._possibleOutputs.relionParticles.name, None)
 #
 #     def testEditStar_shiftCenter(self):
 #         # Values edited: shiftX = 4, shiftY = 2, shiftZ = 3
 #         protEdit = self._editStar_shiftCenter()
-#         inPSubtomos = protEdit.inReParticles.get()
-#         outPSubtomos = getattr(protEdit, editStarOutputs.relionParticles.name, None)
+#         inPSubtomos = protEdit.getInputParticles()
+#         outPSubtomos = getattr(protEdit, protEdit._possibleOutputs.relionParticles.name, None)
 #         for inPSubtomo, outPSubtomo in zip(inPSubtomos, outPSubtomos):
 #             isx, isy, isz = self._getShiftsFromPSubtomogram(inPSubtomo)
 #             osx, osy, osz = self._getShiftsFromPSubtomogram(outPSubtomo)
 #             self.assertTrue(abs((isx - 4) - osx) < self.editTestsTol)
 #             self.assertTrue(abs((isy - 2) - osy) < self.editTestsTol)
 #             self.assertTrue(abs((isz - 3) - osz) < self.editTestsTol)
-#
-#     def testEditStar_addToAngles(self):
-#         # Values edited: 5 degrees were added to the rot angle
-#         addedValue = 5
-#         protEdit = self._editStar_addToAngles()
-#         inPSubtomos = protEdit.inReParticles.get()
-#         outPSubtomos = getattr(protEdit, editStarOutputs.relionParticles.name, None)
-#
-#         for inPSubtomo, outPSubtomo in zip(inPSubtomos, outPSubtomos):
-#             irot, itilt, ipsi = self._getAnglesFromPSubtomogram(inPSubtomo)
-#             orot, otilt, opsi = self._getAnglesFromPSubtomogram(outPSubtomo)
-#             newRot = irot + addedValue
-#             # Angle must be expressed in a range of [-180, 180]
-#             if newRot > 180:
-#                 expectedRot = -180 + (newRot - 180)
-#             elif newRot < -180:
-#                 expectedRot = 180 + (newRot + 180)
-#             else:
-#                 expectedRot = newRot
-#             self.assertTrue(abs(orot - expectedRot) < self.editTestsTol)
-#             self.assertTrue(abs(itilt - otilt) < self.editTestsTol)
-#             self.assertTrue(abs(ipsi - opsi) < self.editTestsTol)
-#
-#     def testEditStar_multiplyCoordinates(self):
-#         # Values edited: multiply by 2 the X and Z coordinates
-#         val = 2
-#         protEdit = self._editStar_multiplyCoordinates()
-#         inPSubtomos = protEdit.inReParticles.get()
-#         outPSubtomos = getattr(protEdit, editStarOutputs.relionParticles.name, None)
-#         for inPSubtomo, outPSubtomo in zip(inPSubtomos, outPSubtomos):
-#             ix, iy, iz = inPSubtomo.getCoords()
-#             ox, oy, oz = outPSubtomo.getCoords()
-#             self.assertTrue(abs(ix * val - ox) < self.editTestsTol)
-#             self.assertTrue(abs(iy - oy) < self.editTestsTol)
-#             self.assertTrue(abs(iz * val - oz) < self.editTestsTol)
-#
-#     def testEditStar_setCoordinatesToValue(self):
-#         # Values edited: set the Y and Z coordinates to 123
-#         val = 123
-#         protEdit = self._editStar_setCoordinatesToValue()
-#         inPSubtomos = protEdit.inReParticles.get()
-#         outPSubtomos = getattr(protEdit, editStarOutputs.relionParticles.name, None)
-#         for inPSubtomo, outPSubtomo in zip(inPSubtomos, outPSubtomos):
-#             ix, iy, iz = inPSubtomo.getCoords()
-#             ox, oy, oz = outPSubtomo.getCoords()
-#             self.assertTrue(abs(ix - ox) < self.editTestsTol)
-#             self.assertTrue(abs(oy - val) < self.editTestsTol)
-#             self.assertTrue(abs(oz - val) < self.editTestsTol)
 #
 #     @classmethod
 #     def _editStar_shiftCenter(cls) -> Type[ProtRelionEditParticlesStar]:
@@ -405,50 +399,6 @@ class TestRelionTomoRecParticleFromTs(TestRelion5RefineCycleBase):
 #                                        shiftY=2,
 #                                        shiftZ=3)
 #         protEditStar.setObjLabel('Particles re-center')
-#         cls.launchProtocol(protEditStar)
-#         return protEditStar
-#
-#     @classmethod
-#     def _editStar_addToAngles(cls) -> Type[ProtRelionEditParticlesStar]:
-#         print(magentaStr("\n==> Perform angle re-assignment:"))
-#         protEditStar = cls.newProtocol(ProtRelionEditParticlesStar,
-#                                        inReParticles=cls.inReParticles,
-#                                        doRecenter=False,
-#                                        chosenOperation=cls.editStarOperationDict[OP_ADDITION],
-#                                        opValue=5,
-#                                        operateWith=cls.editStarLabelsDict[ANGLES],
-#                                        label1rot=True)
-#         protEditStar.setObjLabel('Edit angles')
-#         cls.launchProtocol(protEditStar)
-#         return protEditStar
-#
-#     @classmethod
-#     def _editStar_multiplyCoordinates(cls) -> Type[ProtRelionEditParticlesStar]:
-#         print(magentaStr("\n==> Perform coordinates multiply by a scalar:"))
-#         protEditStar = cls.newProtocol(ProtRelionEditParticlesStar,
-#                                        inReParticles=cls.inReParticles,
-#                                        doRecenter=False,
-#                                        chosenOperation=cls.editStarOperationDict[OP_MULTIPLICATION],
-#                                        opValue=2,
-#                                        operateWith=cls.editStarLabelsDict[COORDINATES],
-#                                        label1x=True,
-#                                        label3z=True)
-#         protEditStar.setObjLabel('Multiply coords')
-#         cls.launchProtocol(protEditStar)
-#         return protEditStar
-#
-#     @classmethod
-#     def _editStar_setCoordinatesToValue(cls) -> Type[ProtRelionEditParticlesStar]:
-#         print(magentaStr("\n==> Perform coordinates setting to a introduced valuer:"))
-#         protEditStar = cls.newProtocol(ProtRelionEditParticlesStar,
-#                                        inReParticles=cls.inReParticles,
-#                                        doRecenter=False,
-#                                        chosenOperation=cls.editStarOperationDict[OP_SET_TO],
-#                                        opValue=123,
-#                                        operateWith=cls.editStarLabelsDict[COORDINATES],
-#                                        label2y=True,
-#                                        label3z=True)
-#         protEditStar.setObjLabel('Set coords to value')
 #         cls.launchProtocol(protEditStar)
 #         return protEditStar
 #
@@ -475,12 +425,15 @@ class TestRelionTomoGenInitialModel(TestRelion5RefineCycleBase):
 
     @classmethod
     def _genInitialModel(cls, are2dStacks=True):
-        print(magentaStr("\n==> Generating the a de novo 3D initial model:"))
-        binningFactor = cls.binFactor6
-        bozSize = cls.boxSizeBin6
-        croppedBoxSize = cls.croppedBoxSizeBin6
-        protExtract = cls._runExtractSubtomos(binningFactor, bozSize, croppedBoxSize, gen2dParticles=are2dStacks)
+        protExtract = cls._runExtractSubtomos(
+            inParticles=cls.importedCoords,
+            binningFactor=cls.binFactor6,
+            boxSize=cls.boxSizeBin6,
+            croppedBoxSize=cls.croppedBoxSizeBin6,
+            gen2dParticles=are2dStacks)
         extractedPars = getattr(protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.relionParticles.name, None)
+
+        print(magentaStr("\n==> Generating the a de novo 3D initial model:"))
         protInitialModel = cls.newProtocol(ProtRelionDeNovoInitialModel,
                                            inReParticles=extractedPars,
                                            nVdamMiniBatches=20,
@@ -495,7 +448,6 @@ class TestRelionTomoGenInitialModel(TestRelion5RefineCycleBase):
                                            numberOfThreads=6)
         cls.launchProtocol(protInitialModel)
         return getattr(protInitialModel, ProtRelionDeNovoInitialModel._possibleOutputs.average.name, None)
-
 
 # class TestRelionTomo3dClassify(TestRelion5RefineCycleBase):
 #     nClasses = 2

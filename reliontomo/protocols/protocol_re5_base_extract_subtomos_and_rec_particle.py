@@ -23,10 +23,9 @@
 # *
 # **************************************************************************
 from pyworkflow.protocol import IntParam, FloatParam, GE
+from pyworkflow.utils import createLink
 from reliontomo.constants import IN_PARTICLES_STAR, IN_TOMOS_STAR
-from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
-from tomo.objects import SetOfCoordinates3D
 
 
 class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
@@ -36,6 +35,7 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.isInSetOf3dCoords = None
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -69,15 +69,24 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
                            'allows the (generally expensive) refinement using relion_refine to proceed more rapidly.')
 
     # -------------------------- STEPS functions ------------------------------
+    def _initialize(self):
+        self.isInSetOf3dCoords = self.isInputSetOf3dCoords()
+
     def convertInputStep(self):
-        self.genInStarFile(are2dParticles=self.getInputParticles().are2dStacks())
+        inParticles = self.getInputParticles()
+        # Generate the file particles.star
+        self.genInStarFile(are2dParticles=inParticles.are2dStacks())
+        # Link the file tomograms.star
+        # The tomograms file will exist and be stored as an attribute of the set, having been updated if a new one is
+        # generated, like in the protocol bayesian polishing
+        createLink(inParticles.getTomogramsStar(), self._getExtraPath(IN_TOMOS_STAR))
+        # Tilt-series star files:
+        # The tilt-series star files will exist and their corresponding path will be provided by the file tomograms.star
 
     # --------------------------- UTILS functions -----------------------------
     def _genCommonExtractAndRecCmd(self):
-        tomogramsStar = self._getExtraPath(IN_TOMOS_STAR) if self.isInputSetOf3dCoords() else (
-            self.getInputParticles().getTomogramsStar())
         cmd = [f'--p {self._getExtraPath(IN_PARTICLES_STAR)}',
-               f'--t {tomogramsStar}',
+               f'--t {self._getExtraPath(IN_TOMOS_STAR)}',
                f'--o {self._getExtraPath()}',
                f"--b {self.boxSize.get()}",
                f"--crop {self.croppedBoxSize.get()}",
