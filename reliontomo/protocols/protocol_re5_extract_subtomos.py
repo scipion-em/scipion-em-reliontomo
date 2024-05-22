@@ -306,7 +306,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         """
         tsStarDict = dict()
         tomoDataTable = Table()
-        tomoDataTable.read(self._getExtraPath(IN_TOMOS_STAR), tableName=GLOBAL_TABLE)
+        tomoDataTable.read(self.getInputParticles().getTomogramsStar(), tableName=GLOBAL_TABLE)
         for row in tomoDataTable:
             tsId = row.get(RLN_TOMONAME)
             tsFile = row.get(RLN_TOMOTILT_SERIES_STAR_FILE)
