@@ -302,8 +302,9 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         :return : a dictionary of structure {tsId: tsStarFile}.
         """
         tsStarDict = dict()
-        reader = convert50_tomo.Reader(self._getExtraPath(IN_TOMOS_STAR), GLOBAL_TABLE)
-        for row in reader.dataTable:
+        tomoDataTable = Table()
+        tomoDataTable.read(self._getExtraPath(IN_TOMOS_STAR), tableName=GLOBAL_TABLE)
+        for row in tomoDataTable:
             tsId = row.get(RLN_TOMONAME)
             tsFile = row.get(RLN_TOMOTILT_SERIES_STAR_FILE)
             tsStarDict[tsId] = tsFile
