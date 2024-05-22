@@ -178,9 +178,12 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         else:
             # Re-extraction: particles.star
             self.genInStarFile(are2dParticles=coords.are2dStacks())
-            # In case of re-extraction, the tomograms file will exist and be stored as an attribute of the set, having
-            # been updated if a new one is generated, like in the protocol bayesian polishing
-            createLink(coords.getTomogramsStar(), self._getExtraPath(IN_TOMOS_STAR))
+            # NOTE:
+            # Tomograms.star:
+            # In case of re-extraction, the tomograms file will exist and be stored as an attribute of
+            # the set, having been updated if a new one is generated, like in the protocol bayesian polishing
+            #
+            # Tilt-series star files:
             # In case of re-extraction, the tilt-series star files will exist and their corresponding path will be
             # provided by the file tomograms.star
 

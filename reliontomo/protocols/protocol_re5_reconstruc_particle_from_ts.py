@@ -112,9 +112,6 @@ class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase
     # --------------------------- UTILS functions -----------------------------
     def _genRecParticleCmd(self):
         cmd = [
-            f'--p {self._getExtraPath(IN_PARTICLES_STAR)}',
-            f'--t {self.inReParticles.get().getTomogramsStar()}',
-            f'--o {self._getExtraPath()}',
             self._genCommonExtractAndRecCmd(),
             f'--sym {self.symmetry.get()}',
             # Note:

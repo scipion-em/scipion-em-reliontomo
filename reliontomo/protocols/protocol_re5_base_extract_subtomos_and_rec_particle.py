@@ -74,9 +74,12 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
 
     # --------------------------- UTILS functions -----------------------------
     def _genCommonExtractAndRecCmd(self):
+        tomogramsStar = self._getExtraPath(IN_TOMOS_STAR) if self.isInputSetOf3dCoords() else (
+            self.getInputParticles().getTomogramsStar())
         cmd = [f'--p {self._getExtraPath(IN_PARTICLES_STAR)}',
-               f'--t {self._getExtraPath(IN_TOMOS_STAR)}',
-               f'--o {self._getExtraPath()}', f"--b {self.boxSize.get()}",
+               f'--t {tomogramsStar}',
+               f'--o {self._getExtraPath()}',
+               f"--b {self.boxSize.get()}",
                f"--crop {self.croppedBoxSize.get()}",
                f"--bin {self.binningFactor.get():.1f}",
                f"--j {self.numberOfThreads.get()}",
