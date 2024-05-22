@@ -33,7 +33,7 @@ from reliontomo.convert.convert50_tomo import getProjMatrixList, StarFileIterato
     RLN_CENTEREDCOORDINATEXANGST, RLN_CENTEREDCOORDINATEYANGST, RLN_CENTEREDCOORDINATEZANGST
 from reliontomo.objects import createSetOfRelionPSubtomograms, RelionSetOfPseudoSubtomograms
 from reliontomo.constants import (OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE,
-                                  OUT_PARTICLES_STAR, IN_TOMOS_STAR)
+                                  OUT_PARTICLES_STAR, IN_TOMOS_STAR, GLOBAL_TABLE, RLN_TOMOTILT_SERIES_STAR_FILE)
 from reliontomo.convert import readSetOfPseudoSubtomograms, convert50_tomo
 from reliontomo.protocols.protocol_re5_base_extract_subtomos_and_rec_particle import (
     ProtRelion5ExtractSubtomoAndRecParticleBase)
@@ -63,6 +63,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         self.ctfDict = dict()
         self.tomoDict = dict()
         self.isRe5Picking = None
+        self.isInSetOf3dCoords = None
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -128,8 +129,9 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
-        inParticles = self.inReParticles.get()
-        coords = inParticles if self.isInputSetOf3dCoords() else inParticles.getCoordinates3D()
+        inParticles = self.getInputParticles()
+        self.isInSetOf3dCoords = self.isInputSetOf3dCoords()
+        coords = inParticles if self.isInSetOf3dCoords else inParticles.getCoordinates3D()
         tsSet = self.inputTS.get()
         ctfSet = self.inputCtfTs.get()
         self.isRe5Picking = Boolean(getattr(coords, IS_RE5_PICKING_ATTR, Boolean(False).get()))
@@ -162,7 +164,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     def convertInputStep(self):
         # Generate required star files
         coords = self.getInputParticles()
-        if self.isInputSetOf3dCoords():
+        if self.isInSetOf3dCoords:
             outPath = self._getExtraPath()
             writer = convert50_tomo.Writer()
             # Particles.star
@@ -214,6 +216,8 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         fiducialModelGaps.setSetOfTiltSeries(tsPointer)  # Use the pointer better when scheduling
         starData = Table()
         starData.read(self._getExtraPath(OUT_PARTICLES_STAR), tableName=PARTICLES_TABLE)
+        if not self.isInSetOf3dCoords:
+            tsStarFileDict = self.getTsStarFilesFromoTomgramsStar()
         particleCounter = 1
 
         for tsId, ts in self.tsDict.items():
@@ -227,7 +231,8 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                                               size=fiducialSize,
                                               applyTSTransformation=False)
             landmarkModelGaps.setTiltSeries(ts)
-            tsProjectionsList = getProjMatrixList(self._getExtraPath(tsId + '.star'), tomo, ts)
+            tsStarFile = self._getExtraPath(tsId + '.star') if self.isInSetOf3dCoords else tsStarFileDict[tsId]
+            tsProjectionsList = getProjMatrixList(tsStarFile, tomo, ts)
             for particleRow in StarFileIterator(starData, RLN_TOMONAME, tsId):
                 particleCoords = np.array(
                     [self.coordsScaleFactor.get() * particleRow.get(RLN_CENTEREDCOORDINATEXANGST) / tomoSRate,
@@ -261,7 +266,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     def _summary(self):
         msg = []
         if self.isFinished():
-            if self.isInputSetOf3dCoords():
+            if self.isInSetOf3dCoords:
                 inputStr = '*coordinates*'
                 coordsFromRelion5 = self.isRe5Picking.get()
                 scaleFactor = 1 if coordsFromRelion5 else self.coordsScaleFactor.get()
@@ -291,3 +296,15 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     def _decodeHandedness(self):
         return -1 if self.handedness.get() else 1
 
+    def getTsStarFilesFromoTomgramsStar(self):
+        """In re-extraction case, the tilt-series must be read from the tomograms.star file, as they may have been
+        updated re-generated in some cases, such as in the CTF refinement or in the bayesian polishing.
+        :return : a dictionary of structure {tsId: tsStarFile}.
+        """
+        tsStarDict = dict()
+        reader = convert50_tomo.Reader(self._getExtraPath(IN_TOMOS_STAR), GLOBAL_TABLE)
+        for row in reader.dataTable:
+            tsId = row.get(RLN_TOMONAME)
+            tsFile = row.get(RLN_TOMOTILT_SERIES_STAR_FILE)
+            tsStarDict[tsId] = tsFile
+        return tsStarDict
