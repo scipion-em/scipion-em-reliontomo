@@ -474,7 +474,7 @@ class TestRelionTomoGenInitialModel(TestRelion5RefineCycleBase):
                           hasHalves=False)
 
     @classmethod
-    def _genInitialModel(cls, are2dStacks=True, hasHalves=None):
+    def _genInitialModel(cls, are2dStacks=True):
         print(magentaStr("\n==> Generating the a de novo 3D initial model:"))
         binningFactor = cls.binFactor6
         bozSize = cls.boxSizeBin6

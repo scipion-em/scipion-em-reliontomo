@@ -23,6 +23,8 @@
 # *
 # **************************************************************************
 from pyworkflow.protocol import IntParam, FloatParam, GE
+from reliontomo.constants import IN_PARTICLES_STAR, IN_TOMOS_STAR
+from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
 
@@ -71,9 +73,16 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
 
     # --------------------------- UTILS functions -----------------------------
     def _genCommonExtractAndRecCmd(self):
-        cmd = [f"--b {self.boxSize.get()}",
+        cmd = [f'--p {self._getExtraPath(IN_PARTICLES_STAR)}',
+               f'--t {self._getExtraPath(IN_TOMOS_STAR)}',
+               f'--o {self._getExtraPath()}', f"--b {self.boxSize.get()}",
                f"--crop {self.croppedBoxSize.get()}",
                f"--bin {self.binningFactor.get():.1f}",
                f"--j {self.numberOfThreads.get()}",
                self._genExtraParamsCmd()]
+        inParticles = self.getInputParticles()
+        if type(inParticles) is RelionSetOfPseudoSubtomograms:
+            trajectoriesFile = inParticles.getTrajectoriesStar()
+            if trajectoriesFile:
+                cmd.append(f'--mot {trajectoriesFile}')
         return ' '.join(cmd)

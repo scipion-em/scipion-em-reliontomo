@@ -27,12 +27,12 @@ import numpy as np
 from emtable import Table
 from pyworkflow.object import Boolean, Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED, IntParam
-from pyworkflow.utils import Message, createLink
+from pyworkflow.utils import Message
 from reliontomo import Plugin
 from reliontomo.convert.convert50_tomo import getProjMatrixList, StarFileIterator, PARTICLES_TABLE, RLN_TOMONAME, \
     RLN_CENTEREDCOORDINATEXANGST, RLN_CENTEREDCOORDINATEYANGST, RLN_CENTEREDCOORDINATEZANGST
 from reliontomo.objects import createSetOfRelionPSubtomograms, RelionSetOfPseudoSubtomograms
-from reliontomo.constants import (IN_TOMOS_STAR, OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE, IN_PARTICLES_STAR,
+from reliontomo.constants import (OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE,
                                   OUT_PARTICLES_STAR)
 from reliontomo.convert import readSetOfPseudoSubtomograms, convert50_tomo
 from reliontomo.protocols.protocol_re5_base_extract_subtomos_and_rec_particle import (
@@ -270,12 +270,9 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     # --------------------------- UTILS functions -----------------------------
     def getExtractSubtomosCmd(self):
         cmd = [
-            f'--p {self._getExtraPath(IN_PARTICLES_STAR)}',
-            f'--t {self._getExtraPath(IN_TOMOS_STAR)}',
-            f'--o {self._getExtraPath()}',
+            self._genCommonExtractAndRecCmd(),
             f'--max_dose {self.maxDose.get()}',
-            f'--min_frames {self.minNoFrames.get()}',
-            self._genCommonExtractAndRecCmd()
+            f'--min_frames {self.minNoFrames.get()}'
         ]
         if self.write2dStacks.get():
             cmd.append('--stack2d')
