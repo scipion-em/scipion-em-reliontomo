@@ -334,6 +334,9 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
             # Input
             if self.solventMask2.get():
                 cmd += '--solvent_mask2 %s ' % self.solventMask2.get().getFileName()
+                # Compute
+                if not self.skipGridding.get():
+                    cmd += '--dont_skip_gridding '
 
         return cmd
 

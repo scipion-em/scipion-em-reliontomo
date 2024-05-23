@@ -195,12 +195,13 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                            "batches of 3x8=24 particles will be read together.\n\nThis may improve performance on "
                            "systems where disk access, and particularly metadata handling of disk access, is a "
                            "problem. It has a modest cost of increased RAM usage.")
-        form.addParam('skipGridding', BooleanParam,
-                      default=True,
-                      label='Skip griding?',
-                      help='Skip gridding in the Maximization step in the Expectation-Maximization algorithm. '
-                           'If this option is set to Yes, more memory will be consumed during the protocol execution, '
-                           'but it will be faster.')
+        if not IS_RELION_50:
+            form.addParam('skipGridding', BooleanParam,
+                          default=True,
+                          label='Skip griding?',
+                          help='Skip gridding in the Maximization step in the Expectation-Maximization algorithm. '
+                               'If this option is set to Yes, more memory will be consumed during the protocol '
+                               'execution, but it will be faster.')
         form.addParam('allParticlesRam', BooleanParam,
                       default=False,
                       label='Pre-read all particles into RAM?',
@@ -371,8 +372,6 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         cmd += '--pool %i ' % self.pooledSubtomos.get()
         if self.allParticlesRam.get():
             cmd += '--preread_images '
-        if not self.skipGridding.get():
-            cmd += '--dont_skip_gridding '
         if not self.combineItersDisc.get():
             cmd += '--dont_combine_weights_via_disc '
         if self.scratchDir.get():
