@@ -328,7 +328,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
     # -------------------------- INFO functions -------------------------------
 
     # --------------------------- UTILS functions -----------------------------
-    def _genBaseCommand(self, useOptimizationSet=True ):
+    def _genBaseCommand(self, useOptimizationSet=False):
         cmd = ''
         cmd += self._genIOBaseCmd(useOptimizationSet=useOptimizationSet)  # I/O args
         cmd += self._genCTFBaseCmd()  # CTF args
