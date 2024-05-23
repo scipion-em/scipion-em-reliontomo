@@ -585,9 +585,9 @@ class Writer(WriterTomo):
                     field12,  # 12, rlnTomoVisibleFrames (for 2D particles) or rlnImageName (for 3D particles)
                     field13,  # 13, rlnImageName (for 2D particles) or rlnCtfImage (for 3D particles)
                     # pix * Å/pix = [shifts in Å]
-                    shifts[0] * sRate,  # 14, rlnOriginXAngst
-                    shifts[1] * sRate,  # 15, rlnOriginYAngst
-                    shifts[2] * sRate,  # 16, rlnOriginZAngst,
+                    shifts[0],  # 14, rlnOriginXAngst
+                    shifts[1],  # 15, rlnOriginYAngst
+                    shifts[2],  # 16, rlnOriginZAngst,
                     pSubtomo.getXInImg(),  # 17, rlnCenteredCoordinateXAngst
                     pSubtomo.getYInImg(),  # 18, rlnCenteredCoordinateYAngst
                     pSubtomo.getZInImg(),  # 19, rlnCenteredCoordinateZAngst
