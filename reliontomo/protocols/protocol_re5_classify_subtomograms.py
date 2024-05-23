@@ -25,9 +25,7 @@
 from enum import Enum
 from os import remove, listdir
 from os.path import abspath, exists, isfile, join
-
 from emtable import Table
-
 from pyworkflow.protocol import Form
 from pyworkflow.object import Float
 from pyworkflow.utils import moveFile, createLink
@@ -36,7 +34,7 @@ from reliontomo.convert.convert50_tomo import OPTICS_TABLE, PARTICLES_TABLE
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo import Plugin
 from pyworkflow.protocol import FloatParam, BooleanParam, GE, LE, IntParam, StringParam
-from reliontomo.protocols.protocol_re5_refine_subtomograms import ProtRelion5RefineSubtomograms
+from reliontomo.protocols import ProtRelionRefineSubtomograms
 from reliontomo.utils import getProgram
 from tomo.objects import SetOfClassesSubTomograms, SetOfSubTomograms
 
@@ -46,7 +44,7 @@ class outputObjects(Enum):
     classes = SetOfClassesSubTomograms
 
 
-class ProtRelion5ClassifySubtomograms(ProtRelion5RefineSubtomograms):
+class ProtRelion5ClassifySubtomograms(ProtRelionRefineSubtomograms):
     """3D Classification of subtomograms."""
 
     _label = '3D classification re5'

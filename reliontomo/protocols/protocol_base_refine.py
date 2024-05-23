@@ -24,15 +24,11 @@
 # **************************************************************************
 from os import remove
 from os.path import abspath, exists
-
 from pyworkflow.object import Boolean
 from pyworkflow.protocol import LEVEL_ADVANCED, IntParam, StringParam, BooleanParam, \
     EnumParam, PathParam, FloatParam, LEVEL_NORMAL, GE, LE
-from reliontomo import Plugin
-from reliontomo.constants import ANGULAR_SAMPLING_LIST, SYMMETRY_HELP_MSG
-from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
-
-IS_RELION_50 = Plugin.isRe50()
+from reliontomo.constants import ANGULAR_SAMPLING_LIST
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase, IS_RELION_50
 
 
 class ProtRelionRefineBase(ProtRelionTomoBase):
@@ -366,10 +362,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         return cmd
 
     def _genOptimisationBaseCmd(self):
-        cmd = '--particle_diameter %i ' % self.maskDiameter.get()
-        if getattr(self, 'doBlushReg', None):
-            cmd += '--blush '
-        return cmd
+        return '--particle_diameter %i ' % self.maskDiameter.get()
 
     def _genComputeBaseCmd(self, onlyCl3d=False):
         cmd = ''

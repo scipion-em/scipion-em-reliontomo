@@ -32,7 +32,7 @@ from reliontomo.constants import OUT_PARTICLES_STAR, COORD_X, COORD_Y, COORD_Z, 
     SHIFTZ_ANGST, ROT, TILT, PSI, RLN_TOMOSUBTOMOGRAMROT, RLN_TOMOSUBTOMOGRAMTILT, RLN_TOMOSUBTOMOGRAMPSI, \
     RLN_CENTEREDCOORDINATEXANGST, RLN_CENTEREDCOORDINATEZANGST, RLN_CENTEREDCOORDINATEYANGST
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
-from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase, IS_RELION_50
 from reliontomo.utils import genEnumParamDict
 
 # Operation labels and values
@@ -47,8 +47,6 @@ COORDINATES = 'coordinates'
 SHIFTS = 'shifts'
 ANGLES = 'angles'
 LABELS_TO_OPERATE_WITH = [COORDINATES, SHIFTS, ANGLES]
-
-IS_RELION_50 = Plugin.isRe50()
 
 
 class outputObjects(Enum):

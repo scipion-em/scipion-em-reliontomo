@@ -26,12 +26,11 @@ from enum import Enum
 from pwem.convert.headers import fixVolume
 from reliontomo.constants import INITIAL_MODEL, SYMMETRY_HELP_MSG
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
+from reliontomo.protocols.protocol_base_relion import IS_RELION_50
 from tomo.objects import AverageSubTomogram
 from reliontomo import Plugin
 from pyworkflow.protocol import LEVEL_ADVANCED
 from reliontomo.utils import getProgram
-
-IS_RELION_50 = Plugin.isRe50()
 
 
 class outputObjects(Enum):

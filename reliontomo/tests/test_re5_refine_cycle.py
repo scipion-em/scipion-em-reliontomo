@@ -24,10 +24,8 @@
 # **************************************************************************
 from os.path import exists
 from typing import Type
-
 from imod.protocols import ProtImodImportTransformationMatrix
 from imod.protocols.protocol_base import OUTPUT_TILTSERIES_NAME
-from pwem.convert.transformations import translation_from_matrix
 from pwem.emlib.image import ImageHandler
 from pwem.protocols import ProtImportMask, ProtImportVolumes
 from pwem.protocols.protocol_import.masks import ImportMaskOutput
@@ -39,7 +37,7 @@ from reliontomo.convert.convertBase import getTransformInfoFromCoordOrSubtomo
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelion5ExtractSubtomos, \
     ProtRelion5ReconstructParticle, ProtRelionDeNovoInitialModel
 from reliontomo.protocols.protocol_edit_particles_star import OPERATION_LABELS, LABELS_TO_OPERATE_WITH, \
-    ProtRelionEditParticlesStar, OP_ADDITION, ANGLES, OP_MULTIPLICATION, COORDINATES, OP_SET_TO
+    ProtRelionEditParticlesStar
 from reliontomo.tests import DataSetRe4Tomo
 from reliontomo.utils import genEnumParamDict
 from tomo.constants import TR_SCIPION
@@ -378,17 +376,53 @@ class TestRelionTomoEditStar(TestRelion5RefineCycleBase):
         cls.inReParticles = getattr(cls.protExtract, cls.protExtract._possibleOutputs.relionParticles.name, None)
 
     def testEditStar_shiftCenter(self):
-        # Values edited: shiftX = 4, shiftY = 2, shiftZ = 3
-        protEdit = self._editStar_shiftCenter()
-        inPSubtomos = protEdit.getInputParticles()
-        outPSubtomos = getattr(protEdit, protEdit._possibleOutputs.relionParticles.name, None)
+        print(magentaStr("\n==> Performing re-centering of particles:"))
+        shiftX_pix = 4
+        shiftY_pix = 2
+        shiftZ_pix = 3
+        protEditStar = self.newProtocol(ProtRelionEditParticlesStar,
+                                        inReParticles=self.inReParticles,
+                                        doRecenter=True,
+                                        shiftX=shiftX_pix,
+                                        shiftY=shiftY_pix,
+                                        shiftZ=shiftZ_pix)
+        protEditStar.setObjLabel('Particles re-center')
+        self.launchProtocol(protEditStar)
+        # Check the results
+        inPSubtomos = protEditStar.getInputParticles()
+        outPSubtomos = getattr(protEditStar, protEditStar._possibleOutputs.relionParticles.name, None)
         sRate = self.unbinnedSRate * self.binFactor6
         for inPSubtomo, outPSubtomo in zip(inPSubtomos, outPSubtomos):
             isx, isy, isz = self._getShiftsFromPSubtomogram(inPSubtomo)
             osx, osy, osz = self._getShiftsFromPSubtomogram(outPSubtomo)
-            self.assertTrue(abs((isx - 4 * sRate) - osx) < self.editTestsTol)
-            self.assertTrue(abs((isy - 2 * sRate) - osy) < self.editTestsTol)
-            self.assertTrue(abs((isz - 3 * sRate) - osz) < self.editTestsTol)
+            self.assertTrue(abs((isx - shiftX_pix * sRate) - osx) < self.editTestsTol)
+            self.assertTrue(abs((isy - shiftY_pix * sRate) - osy) < self.editTestsTol)
+            self.assertTrue(abs((isz - shiftZ_pix * sRate) - osz) < self.editTestsTol)
+
+    def testEditStar_removeDuplicates(self):
+        print(magentaStr("\n==> Performing particle removal:"))
+        protEditStar = self.newProtocol(ProtRelionEditParticlesStar,
+                                        inReParticles=self.inReParticles,
+                                        doRemoveDuplicates=True,
+                                        minDistPartRemoval=70  # In angstroms
+                                        )
+        protEditStar.setObjLabel('Particle removal')
+        self.launchProtocol(protEditStar)
+        # Check the results
+        expectedSetSize = 176
+        outParticles = getattr(protEditStar, protEditStar._possibleOutputs.relionParticles.name, None)
+        binningFactor = self.binFactor6
+        unbinnedPixSize = self.unbinnedSRate
+        self._checkPseudosubtomograms(self.importedCoords, outParticles,
+                                      expectedSetSize=expectedSetSize,
+                                      expectedSRate=unbinnedPixSize * binningFactor,
+                                      expectedBoxSize=self.croppedBoxSizeBin6,
+                                      orientedParticles=True,  # The imported coordinates are oriented
+                                      are2dStacks=True,
+                                      nTiltImages=outParticles.are2dStacks(),
+                                      expectedRelionBinning=binningFactor,
+                                      tsSamplingRate=unbinnedPixSize,
+                                      expectedNParticles=expectedSetSize)
 
     @classmethod
     def _editStar_shiftCenter(cls) -> Type[ProtRelionEditParticlesStar]:
@@ -407,11 +441,6 @@ class TestRelionTomoEditStar(TestRelion5RefineCycleBase):
     def _getShiftsFromPSubtomogram(cls, pSubtomo):
         _, shifts = getTransformInfoFromCoordOrSubtomo(pSubtomo, pSubtomo.getSamplingRate())
         return shifts[0], shifts[1], shifts[2]
-
-    # @classmethod
-    # def _getAnglesFromPSubtomogram(cls, pSubtomo):
-    #     angles, _ = getTransformInfoFromCoordOrSubtomo(pSubtomo, pSubtomo.getSamplingRate())
-    #     return angles[:]
 
 
 class TestRelionTomoGenInitialModel(TestRelion5RefineCycleBase):
@@ -449,15 +478,20 @@ class TestRelionTomoGenInitialModel(TestRelion5RefineCycleBase):
         cls.launchProtocol(protInitialModel)
         return getattr(protInitialModel, ProtRelionDeNovoInitialModel._possibleOutputs.average.name, None)
 
-# class TestRelionTomo3dClassify(TestRelion5RefineCycleBase):
-#     nClasses = 2
-#
-#     @classmethod
-#     def _runPreviousProtocols(cls):
-#         super()._runPreviousProtocols()
-#         cls.importedRef = cls._runImportReference()
-#         cls.protExtract = cls._runExtractSubtomos()
-#         cls.inReParticles = getattr(cls.protExtract, cls.protExtract._possibleOutputs.relionParticles.name, None)
+
+class TestRelionTomo3dClassify(TestRelion5RefineCycleBase):
+    nClasses = 2
+
+    @classmethod
+    def _runPreviousProtocols(cls):
+        super()._runPreviousProtocols()
+        cls.importedRef = cls._runImportReference()
+        protExtract = cls._runExtractSubtomos(inParticles=cls.importedCoords,
+                                              binningFactor=cls.binFactor6,
+                                              boxSize=cls.boxSizeBin6,
+                                              croppedBoxSize=cls.croppedBoxSizeBin6,
+                                              gen2dParticles=True)
+        cls.extractedPars = getattr(protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.relionParticles.name, None)
 #
 #     def testCl3d(self):
 #         protCl3d = self._run3dClassify()
@@ -467,35 +501,35 @@ class TestRelionTomoGenInitialModel(TestRelion5RefineCycleBase):
 #         protCl3d = self._run3dClassify(doAlingment=True)
 #         self._checkCl3dResults(protCl3d, onlyClassify=False)
 #
-#     @classmethod
-#     def _run3dClassify(cls, doAlingment=False):
-#         paramsDict = {'inReParticles': cls.inReParticles,
-#                       'referenceVolume': cls.importedRef,
-#                       'numberOfClasses': cls.nClasses,
-#                       'initialLowPassFilterA': 30,
-#                       'symmetry': cls.symmetry,
-#                       'maskDiameter': 230,
-#                       'pooledSubtomos': 6,
-#                       'numberOfMpi': 1,
-#                       'numberOfThreads': 3}
-#
-#         if doAlingment:
-#             paramsDict['doImageAlignment'] = True
-#             paramsDict['nIterations'] = 1  # Prevent error "No orientation was found as better than any other"
-#             # because of the test dataset
-#             paramsDict['doGpu'] = True
-#             paramsDict['gpusToUse'] = '0'
-#             label = 'cl3d with alignment'
-#             print(magentaStr("\n==> Classifying and aligning the psudosubtomograms:"))
-#         else:
-#             paramsDict['nIterations'] = 3
-#             label = 'cl3d'
-#             print(magentaStr("\n==> Classifying the psudosubtomograms:"))
-#
-#         protCl3d = cls.newProtocol(ProtRelion3DClassifySubtomograms, **paramsDict)
-#         protCl3d.setObjLabel(label)
-#         cls.launchProtocol(protCl3d)
-#         return protCl3d
+    # @classmethod
+    # def _run3dClassify(cls, doAlingment=False):
+    #     paramsDict = {'inReParticles': cls.inReParticles,
+    #                   'referenceVolume': cls.importedRef,
+    #                   'numberOfClasses': cls.nClasses,
+    #                   'initialLowPassFilterA': 30,
+    #                   'symmetry': cls.symmetry,
+    #                   'maskDiameter': 230,
+    #                   'pooledSubtomos': 6,
+    #                   'numberOfMpi': 1,
+    #                   'numberOfThreads': 3}
+    #
+    #     if doAlingment:
+    #         paramsDict['doImageAlignment'] = True
+    #         paramsDict['nIterations'] = 1  # Prevent error "No orientation was found as better than any other"
+    #         # because of the test dataset
+    #         paramsDict['doGpu'] = True
+    #         paramsDict['gpusToUse'] = '0'
+    #         label = 'cl3d with alignment'
+    #         print(magentaStr("\n==> Classifying and aligning the psudosubtomograms:"))
+    #     else:
+    #         paramsDict['nIterations'] = 3
+    #         label = 'cl3d'
+    #         print(magentaStr("\n==> Classifying the psudosubtomograms:"))
+    #
+    #     protCl3d = cls.newProtocol(ProtRelion3DClassifySubtomograms, **paramsDict)
+    #     protCl3d.setObjLabel(label)
+    #     cls.launchProtocol(protCl3d)
+    #     return protCl3d
 #
 #     def _checkCl3dResults(self, protCl3d, onlyClassify=True):
 #         relionParticles = getattr(protCl3d, ProtRelion3DClassifySubtomograms._possibleOutputs.relionParticles.name,
