@@ -260,7 +260,9 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     def _summary(self):
         msg = []
         if self.isFinished():
-            if self.isInSetOf3dCoords:
+            partTypeMsg = '2D' if self.write2dStacks.get() else '3D'
+            msg.append(f'*Extracted particles: {partTypeMsg}*')
+            if self.isInputSetOf3dCoords():
                 inputStr = '*coordinates*'
                 coordsFromRelion5 = self.isRe5Picking.get()
                 scaleFactor = 1 if coordsFromRelion5 else self.coordsScaleFactor.get()

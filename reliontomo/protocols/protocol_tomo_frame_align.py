@@ -26,6 +26,7 @@ from enum import Enum
 from pyworkflow.protocol import IntParam, BooleanParam, GE, LE, FloatParam, EnumParam
 from reliontomo import Plugin
 from reliontomo.protocols.protocol_base_per_part_per_tilt import ProtRelionPerParticlePerTiltBase
+from reliontomo.protocols.protocol_base_relion import IS_RELION_50
 from reliontomo.utils import getProgram
 
 
@@ -41,8 +42,7 @@ class deformationModels(Enum):
 
 
 class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase):
-    """Tomo frame align\n
-     Relion has also implemented the analogous to Bayesian polishing in 2D for tomography.
+    """Relion has also implemented the analogous to Bayesian polishing in 2D for tomography.
      This procedure refines the projections that map 3D space onto the images of the
      tilt series. Optionally, the beam-induced motion trajectories of the particles
      and deformations can also be estimated.\n
@@ -56,7 +56,7 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase):
      of 3D positions and projections.
     """
 
-    _label = 'Frame alignment'
+    _label = 'Bayesian polishing' if IS_RELION_50 else 'Frame alignment'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
