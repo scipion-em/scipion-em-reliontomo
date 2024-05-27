@@ -34,7 +34,7 @@ from reliontomo.constants import OUT_PARTICLES_STAR, IN_TOMOS_STAR, FILE_NOT_FOU
 from reliontomo.convert.convertBase import getTransformInfoFromCoordOrSubtomo
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelion5ExtractSubtomos, \
     ProtRelion5ReconstructParticle, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms, \
-    ProtRelion3DClassifySubtomograms
+    ProtRelion3DClassifySubtomograms, ProtRelionPostProcess
 from reliontomo.protocols.protocol_edit_particles_star import OPERATION_LABELS, LABELS_TO_OPERATE_WITH, \
     ProtRelionEditParticlesStar
 from reliontomo.tests import DataSetRe4Tomo
@@ -187,11 +187,11 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
         return cls.launchProtocol(protExtract)
 
     @classmethod
-    def _runImportReference(cls):
+    def _runImportReference(cls, filePath=None, samplingRate=None):
         print(magentaStr("\n==> Importing the reference volume:"))
         protImportRef = cls.newProtocol(ProtImportVolumes,
-                                        filesPath=cls.ds.getFile(DataSetRe4STATuto.recParticleBin6.name),
-                                        samplingRate=cls.unbinnedSRate * cls.binFactor6)
+                                        filesPath=filePath,
+                                        samplingRate=samplingRate)
         cls.launchProtocol(protImportRef)
         return getattr(protImportRef, ProtImportVolumes._possibleOutputs.outputVolume.name, None)
 
@@ -491,7 +491,8 @@ class TestRelionTomo5Classify3d(TestRelion5RefineCycleBase):
     @classmethod
     def _runPreviousProtocols(cls):
         super()._runPreviousProtocols()
-        cls.importedRef = cls._runImportReference()
+        cls.importedRef = cls._runImportReference(filePath=cls.ds.getFile(DataSetRe4STATuto.recParticleBin6.name),
+                                                  samplingRate=cls.unbinnedSRate * cls.binFactor6)
         cls.protExtract = cls._runExtractSubtomos(inParticles=cls.importedCoords,
                                                   binningFactor=cls.binFactor6,
                                                   boxSize=cls.boxSizeBin6,
@@ -585,7 +586,8 @@ class TestRelion5TomoRefine(TestRelion5RefineCycleBase):
     @classmethod
     def _runPreviousProtocols(cls):
         super()._runPreviousProtocols()
-        cls.importedRef = cls._runImportReference()
+        cls.importedRef = cls._runImportReference(filePath=cls.ds.getFile(DataSetRe4STATuto.recParticleBin6.name),
+                                                  samplingRate=cls.unbinnedSRate * cls.binFactor6)
         cls.protExtract = cls._runExtractSubtomos(inParticles=cls.importedCoords,
                                                   binningFactor=cls.binFactor6,
                                                   boxSize=cls.boxSizeBin6,
@@ -649,3 +651,28 @@ class TestRelion5TomoRefine(TestRelion5RefineCycleBase):
                                          numberOfThreads=3)
         cls.launchProtocol(protAutoRefine)
         return protAutoRefine
+
+
+class TestRelion5PostProcess(TestRelion5RefineCycleBase):
+    boxSizeBin4 = DataSetRe4STATuto.boxSizeBin4.value
+    croppedBoxSizeBin4 = DataSetRe4STATuto.croppedBoxSizeBin4.value
+
+    @classmethod
+    def _runPreviousProtocols(cls):
+        super()._runPreviousProtocols()
+        cls.importedRef = cls._runImportReference(filePath=cls.ds.getFile(DataSetRe4STATuto.initModelRelion.name),
+                                                  samplingRate=cls.unbinnedSRate * cls.binFactor4)
+        cls.importedFscMask = cls._runImportReference(filePath=cls.ds.getFile(DataSetRe4STATuto.maskFscBin4.name),
+                                                      samplingRate=cls.unbinnedSRate * cls.binFactor4)
+        cls.protExtract = cls._runExtractSubtomos(inParticles=cls.importedCoords,
+                                                  binningFactor=cls.binFactor4,
+                                                  boxSize=cls.boxSizeBin4,
+                                                  croppedBoxSize=cls.croppedBoxSizeBin4,
+                                                  gen2dParticles=True)
+        cls.extractedParts = getattr(cls.protExtract, cls.protExtract._possibleOutputs.relionParticles.name, None)
+
+    @classmethod
+    def runPostProcess(cls):
+        protPostProcess = cls.newProtocol(ProtRelionPostProcess,
+                                          inParticles=cls.extractedParts,
+                                          solventMask=cls.importedFscMask)
