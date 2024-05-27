@@ -33,7 +33,7 @@ from reliontomo.constants import POST_PROCESS_MRC, POSTPROCESS_DIR, \
     POSTPROCESS_STAR_FSC_TABLE, \
     POSTPROCESS_STAR_FSC_COLUMNS, FSC_REF_STAR
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
-from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase, IS_RELION_50
 
 NO_MTF_FILE = 0
 
@@ -64,7 +64,7 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
     def _defineParams(self, form):
         super()._defineCommonInputParams(form)
         form.addParam('inVolume', PointerParam,
-                      pointerClass='AverageSubTomogram',
+                      pointerClass='Volume',
                       label='Volume to sharpen',
                       important=True,
                       help='It will provide the two unfiltered half-reconstructions that were output upon convergence '
@@ -152,8 +152,13 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         makePath(self._getExtraPath(POSTPROCESS_DIR))
+        self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self.relionPostProcessStep)
         self._insertFunctionStep(self.createOutputStep)
+
+    def convertInputStep(self):
+        if IS_RELION_50:
+            self.genInStarFile(are2dParticles=self.getInputParticles().are2dStacks())
 
     def relionPostProcessStep(self):
         Plugin.runRelionTomo(self, 'relion_postprocess', self.genPostProcessCmd())

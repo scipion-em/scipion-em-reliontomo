@@ -30,7 +30,7 @@ from pwem.protocols import ProtImportMask, ProtImportVolumes
 from pwem.protocols.protocol_import.masks import ImportMaskOutput
 from pyworkflow.tests import setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
-from reliontomo.constants import OUT_PARTICLES_STAR, IN_TOMOS_STAR, FILE_NOT_FOUND
+from reliontomo.constants import OUT_PARTICLES_STAR, IN_TOMOS_STAR, FILE_NOT_FOUND, FSC_REF_STAR, IN_PARTICLES_STAR
 from reliontomo.convert.convertBase import getTransformInfoFromCoordOrSubtomo
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelion5ExtractSubtomos, \
     ProtRelion5ReconstructParticle, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms, \
@@ -660,19 +660,51 @@ class TestRelion5PostProcess(TestRelion5RefineCycleBase):
     @classmethod
     def _runPreviousProtocols(cls):
         super()._runPreviousProtocols()
-        cls.importedRef = cls._runImportReference(filePath=cls.ds.getFile(DataSetRe4STATuto.initModelRelion.name),
-                                                  samplingRate=cls.unbinnedSRate * cls.binFactor4)
-        cls.importedFscMask = cls._runImportReference(filePath=cls.ds.getFile(DataSetRe4STATuto.maskFscBin4.name),
-                                                      samplingRate=cls.unbinnedSRate * cls.binFactor4)
+        cls.importedFscMask = cls._runImportReference(filePath=cls.ds.getFile(DataSetRe4STATuto.maskFscBin2.name),
+                                                      samplingRate=cls.unbinnedSRate * cls.binFactor2)
         cls.protExtract = cls._runExtractSubtomos(inParticles=cls.importedCoords,
-                                                  binningFactor=cls.binFactor4,
-                                                  boxSize=cls.boxSizeBin4,
-                                                  croppedBoxSize=cls.croppedBoxSizeBin4,
+                                                  binningFactor=cls.binFactor2,
+                                                  boxSize=cls.boxSizeBin2,
+                                                  croppedBoxSize=cls.croppedBoxSizeBin2,
                                                   gen2dParticles=True)
         cls.extractedParts = getattr(cls.protExtract, cls.protExtract._possibleOutputs.relionParticles.name, None)
 
-    @classmethod
-    def runPostProcess(cls):
-        protPostProcess = cls.newProtocol(ProtRelionPostProcess,
-                                          inParticles=cls.extractedParts,
-                                          solventMask=cls.importedFscMask)
+    def test_runPostProcess(self):
+        sRateBin2 = self.unbinnedSRate * self.binFactor2
+        print(magentaStr("\n==> Importing the reference volume with halves:"))
+        protImportRef = self.newProtocol(ProtImportVolumes,
+                                         filesPath=self.ds.getFile(DataSetRe4STATuto.recParticleBin2.name),
+                                         samplingRate=sRateBin2,
+                                         setHalfMaps=True,
+                                         half1map=self.ds.getFile(DataSetRe4STATuto.recParticleHalf1Bin2.name),
+                                         half2map=self.ds.getFile(DataSetRe4STATuto.recParticleHalf2Bin2.name))
+        self.launchProtocol(protImportRef)
+        refWithHalves = getattr(protImportRef, ProtImportVolumes._possibleOutputs.outputVolume.name, None)
+        print(magentaStr("\n==> Post-processing:"))
+        protPostProcess = self.newProtocol(ProtRelionPostProcess,
+                                           inReParticles=self.extractedParts,
+                                           inVolume=refWithHalves,
+                                           solventMask=self.importedFscMask)
+        self.launchProtocol(protPostProcess)
+
+        # Check the output volume
+        avg = getattr(protPostProcess, protPostProcess._possibleOutputs.postProcessVolume.name, None)
+        self.checkAverage(avg,
+                          expectedSRate=sRateBin2,
+                          expectedBoxSize=self.croppedBoxSizeBin2,
+                          hasHalves=False)
+
+        # The particles are the same that were introduced, excepting that the set metadata will have been updated with
+        # the referenceFscFile
+        fscStarFile = protPostProcess._getExtraPath(FSC_REF_STAR)
+        relionParticles = getattr(protPostProcess, protPostProcess._possibleOutputs.relionParticles.name, None)
+        self.assertTrue(exists(fscStarFile))
+        self._checkRe4Metadata(relionParticles,
+                               noParticles=self.nParticles,
+                               tomogramsFile=self.protExtract._getExtraPath(IN_TOMOS_STAR),
+                               particlesFile=protPostProcess._getExtraPath(IN_PARTICLES_STAR),
+                               trajectoriesFile=None,
+                               referenceFscFile=fscStarFile,
+                               relionBinning=self.binFactor2,
+                               are2dStacks=True,
+                               tsSamplingRate=self.unbinnedSRate)
