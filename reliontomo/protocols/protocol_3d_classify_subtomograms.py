@@ -31,12 +31,13 @@ from emtable import Table
 from pyworkflow.protocol import Form
 from pyworkflow.object import Float
 from pyworkflow.utils import moveFile, createLink
-from reliontomo.constants import OUT_PARTICLES_STAR, TOMO_PARTICLE_ID
+from reliontomo.constants import OUT_PARTICLES_STAR, TOMO_PARTICLE_ID, OPTICS_TABLE, PARTICLES_TABLE
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols import ProtRelionRefineSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo import Plugin
 from pyworkflow.protocol import FloatParam, BooleanParam, GE, LE, IntParam, StringParam
+from reliontomo.protocols.protocol_base_relion import IS_RELION_50
 from reliontomo.utils import getProgram
 from tomo.objects import SetOfClassesSubTomograms, SetOfSubTomograms
 
@@ -61,21 +62,20 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
-        super()._defineInputParams(form)
-        super()._defineReferenceParams(form)
-        super()._defineCTFParams(form)
+        self._defineInputParams(form)
+        self._defineReferenceParams(form)
+        self._defineCTFParams(form)
         self._defineOptimisationParams(form)
         self._defineSamplingParams(form)
-        super()._defineComputeParams(form)
+        self._defineComputeParams(form)
         self._insertGpuParams(form)
-        super()._defineAdditionalParams(form)
+        self._defineAdditionalParams(form)
         form.addParallelSection(threads=1, mpi=1)
 
-    @staticmethod
-    def _defineOptimisationParams(form):
-        ProtRelionRefineSubtomograms._insertOptimisationSection(form)
-        ProtRelionRefineSubtomograms._insertNumOfClassesParam(form)
-        ProtRelionRefineSubtomograms._insertRegularisationParam(form)
+    def _defineOptimisationParams(self, form):
+        self._insertOptimisationSection(form)
+        self._insertNumOfClassesParam(form)
+        self._insertRegularisationParam(form, isCl3d=True)
         form.addParam('nIterations', IntParam,
                       label='Number of iterations',
                       default=25,
@@ -90,8 +90,8 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                            'particles (K being the number of classes); the next 5 with K*4500 particles, the next '
                            '5 with 30% of the data set; and the final ones with all data. This was inspired by a '
                            'cisTEM implementation by Niko Grigorieff et al.')
-        ProtRelionRefineSubtomograms._insertMaskDiameterParam(form)
-        ProtRelionRefineSubtomograms._insertZeroMaskParam(form)
+        self._insertMaskDiameterParam(form)
+        self._insertZeroMaskParam(form)
         form.addParam('limitResolutionEStepTo', FloatParam,
                       label='Limit resolution E-step to (Å)',
                       default=-1,
@@ -102,9 +102,10 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                            'In particular for very difficult data sets, e.g. of very small or featureless particles, '
                            'this has been shown to give much better class averages. \n\nIn such cases, values in the '
                            'range of 7-12 Angstroms have proven useful.')
+        if IS_RELION_50:
+            self._insertBlushRegParam(form)
 
-    @staticmethod
-    def _defineSamplingParams(form: Form):
+    def _defineSamplingParams(self, form: Form):
         form.addSection(label='Sampling')
         form.addParam('doImageAlignment', BooleanParam,
                       label='Perform image alignment?',
@@ -113,7 +114,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                            'classification will be performed. This allows the use of very focused masks. It requires '
                            'that the optimal orientations of all particles are already stored in the input STAR file.')
 
-        ProtRelionRefineBase._insertAngularCommonParams(form, condition='doImageAlignment')
+        self._insertAngularCommonParams(form, condition='doImageAlignment')
 
         form.addParam('doLocalAngleSearch', BooleanParam,
                       label='Perform local angular searches?',
@@ -133,7 +134,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                            "option) will be applied, so that orientations closer to the optimal orientation in the "
                            "previous iteration will get higher weights than those further away.")
 
-        ProtRelionRefineSubtomograms._insertRelaxSymmetry(form, condition='doImageAlignment and doLocalAngleSearch')
+        self._insertRelaxSymmetry(form, condition='doImageAlignment and doLocalAngleSearch')
         form.addParam('allowCoarser', BooleanParam,
                       label='Allow coarser sampling?',
                       default=False,
@@ -141,20 +142,8 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                       help="If set to Yes, the program will use coarser angular and translational samplings if the "
                            "estimated accuracies of the assignments are still low in the earlier iterations. This may "
                            "speed up the calculations.")
-
-    @staticmethod
-    def _insertGpuParams(form):
-        form.addParam('doGpu', BooleanParam,
-                      default=False,
-                      condition='doImageAlignment',
-                      label='Use GPU acceleration?',
-                      help='If set to Yes, it will use available gpu resources for some calculations.')
-        form.addParam('gpusToUse', StringParam,
-                      condition='doImageAlignment and doGpu',
-                      default='0',
-                      label='GPUs to use:',
-                      help='It can be used to provide a list of which GPUs (e. g. "0:1:2:3") to use. MPI-processes are '
-                           'separated by ":", threads by ",". For example: "0,0:1,1:0,0:1,1"')
+        if IS_RELION_50:
+            self._insertPriorWidthParam(form)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -181,27 +170,18 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         classes3D.setImages(relionParticles)
         self._fillClassesFromIter(classes3D, self.nIterations.get())
 
-        # averages = SetOfAverageSubTomograms.create(self._getPath(),
-        #                                            template='avgPSubtomograms%s.sqlite',
-        #                                            suffix='')
-        # averages.setSamplingRate(relionParticles.getCurrentSamplingRate())
-        # for class3D in classes3D:
-        #     vol = class3D.getRepresentative()
-        #     vol.setObjId(class3D.getObjId())
-        #     averages.append(vol)
-
+        # Register the outputs
         outputDict = {outputObjects.relionParticles.name: relionParticles,
                       outputObjects.classes.name: classes3D}
         self._defineOutputs(**outputDict)
         self._defineSourceRelation(inParticles, relionParticles)
         self._defineSourceRelation(inParticles, classes3D)
 
+        # Remove undesired files if requested
         if self.keepOnlyLastIterFiles.get():
             self._cleanUndesiredFiles()
 
     # -------------------------- INFO functions -------------------------------
-    def _validate(self):
-        pass
 
     # --------------------------- UTILS functions -----------------------------
     def _genCl3dCommand(self):
@@ -212,7 +192,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         cmd += '--ref %s ' % self.referenceVolume.get().getFileName()
         if self.solventMask.get():
             cmd += '--solvent_mask %s ' % self.solventMask.get().getFileName()
-        if self.solventMask2.get():
+        if not IS_RELION_50 and self.solventMask2.get():
             cmd += '--solvent_mask2 %s ' % self.solventMask2.get().getFileName()
 
         # Reference args
@@ -238,6 +218,8 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
             cmd += '--zero_mask '
         if self.limitResolutionEStepTo.get() > 0:
             cmd += '--strict_highres_exp %d ' % self.limitResolutionEStepTo.get()
+        if IS_RELION_50 and self.doBlushReg.get():
+            cmd += '--blush '
 
         # Sampling args
         if self.doImageAlignment.get():
@@ -251,6 +233,8 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
                     cmd += '--relax_sym %s ' % self.relaxSym.get()
             if self.allowCoarser.get():
                 cmd += '--allow_coarser_sampling '
+            if IS_RELION_50:
+                cmd += '--sigma_tilt %i ' % self.priorWidthTiltAngle.get()
         else:
             cmd += '--skip_align '
 
@@ -285,16 +269,17 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         self._classesInfo = {}  # store classes info, indexed by class id
         modelStar = self._getIterGenFileName('model', iteration)
         with open(modelStar) as fid:
-            self.modelTable.readStar(fid, 'model_general')
-            self.classesTable.readStar(fid, 'model_classes')
+            self.modelTable.readStar(fid, tableName='model_general')
+            self.classesTable.readStar(fid, tableName='model_classes')
         dataStar = self._getIterGenFileName('data', iteration)
         with open(dataStar) as fid:
-            self.opticsTable.readStar(fid, 'optics')
-            self.particlesTable.readStar(fid, 'particles')
-            self.particlesTable.sort(TOMO_PARTICLE_ID)
+            self.opticsTable.readStar(fid, tableName=OPTICS_TABLE)
+            self.particlesTable.readStar(fid, tableName=PARTICLES_TABLE)
+            if not IS_RELION_50:
+                self.particlesTable.sort(TOMO_PARTICLE_ID)
 
         # Model table has only one row, while classes table has the same number of rows as classes found
-        self.nClasses = int(self.modelTable._rows[0].rlnNrClasses)
+        self.nClasses = int(self.modelTable._rows[0].rlnNrClasses)  # self.numberOfClasses.get()
         # Adapt data to the format expected by classifyItems and its callbacks
         for i, row in zip(range(self.nClasses), self.classesTable.__iter__()):
             self._classesInfo[i + 1] = (i + 1, row)
@@ -315,7 +300,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
             # Representative stuff
             representative = item.getRepresentative()
             representative.setLocation(fn)
-            representative.setSamplingRate(self.inReParticles.get().getCurrentSamplingRate())
+            representative.setSamplingRate(self.getInputParticles().getCurrentSamplingRate())
             # relion mrc are technically stacks. Fix this
             representative.fixMRCVolume()
 

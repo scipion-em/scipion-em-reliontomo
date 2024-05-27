@@ -25,6 +25,7 @@
 from .. import Plugin
 
 from .protocol_refine_subtomograms import ProtRelionRefineSubtomograms
+from .protocol_3d_classify_subtomograms import ProtRelion3DClassifySubtomograms
 from .protocol_de_novo_initial_model import ProtRelionDeNovoInitialModel
 from .protocol_import_coordinates_from_star import ProtImportCoordinates3DFromStar
 from .protocol_edit_particles_star import ProtRelionEditParticlesStar
@@ -38,11 +39,8 @@ if Plugin.isRe40():
     from .protocol_make_pseudo_subtomos import ProtRelionMakePseudoSubtomograms
     from .protocol_rec_tomogram import ProtRelionTomoReconstruct
     from .protocol_reconstruc_particle_from_ts import ProtRelionReconstructParticle
-    from .protocol_3d_classify_subtomograms import ProtRelion3DClassifySubtomograms
     from .protocol_rec_particle_from_subtomograms import ProtRelionSubTomoReconstructAvg
-    from .protocol_matching_coordinates import RelionTomoCoordinatesMatcher
 else:
-    from .protocol_re5_classify_subtomograms import ProtRelion5ClassifySubtomograms
     from .protocol_re5_extract_subtomos import ProtRelion5ExtractSubtomos
     from .protocol_re5_reconstruc_particle_from_ts import ProtRelion5ReconstructParticle
 

@@ -78,9 +78,9 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                            "the results.")
 
     @staticmethod
-    def _insertRegularisationParam(form):
+    def _insertRegularisationParam(form, isCl3d=False):
         form.addParam('regularisation', FloatParam,
-                      default=4,
+                      default=1 if isCl3d else 4,
                       validators=[GE(0)],
                       label='Regularisation parameter T',
                       help="Bayes law strictly determines the relative weight between the contribution of the "
