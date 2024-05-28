@@ -140,6 +140,7 @@ TILT_COM = 'tilt.com'
 
 # Data files
 IN_TOMOS_STAR = 'inTomograms.star'
+IN_TS_STAR = 'inTiltSeries.star'
 OUT_TOMOS_STAR = 'tomograms.star'
 IN_COORDS_STAR = 'inCoords.star'
 IN_PARTICLES_STAR = 'inParticles.star'
@@ -308,6 +309,28 @@ tomoStarFields = [
     RLN_TOMOSIZEZ,
     RLN_TOMORECONSTRUCTED_TOMOGRAM
 ]
+# TILT-SERIES MOVIES METADATA ##########################################################################################
+# Set file
+tsMStarFields = [
+    RLN_TOMONAME,
+    RLN_TOMOTILT_SERIES_STAR_FILE,
+    RLN_VOLTAGE,
+    RLN_SPHERICALABERRATION,
+    RLN_AMPLITUDECONTRAST,
+    RLN_MICROGRAPHORIGINALPIXELSIZE,
+    RLN_TOMOHAND,
+    RLN_OPTICSGROUPNAME
+]
+# Each TSM file
+tsMTsStarFields = [
+    RLN_MICROGRAPH_MOVIENAME,
+    RLN_TOMO_TILT_MOVIE_FRAME_COUNT,
+    RLN_TOMO_NOMINAL_STAGE_TILT_ANGLE,
+    RLN_TOMO_NOMINAL_TILT_AXIS_ANGLE,
+    RLN_MICROGRAPH_PRE_EXPOSURE,
+    RLN_TOMO_NOMINAL_DEFOCUS,
+]
+
 # COORDINATES METADATA #################################################################################################
 GENERAL_TABLE = 'general'
 

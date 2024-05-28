@@ -38,7 +38,8 @@ from reliontomo.convert.convertBase import (getTransformInfoFromCoordOrSubtomo,
                                             WriterTomo, ReaderTomo, getTransformMatrixFromRow, genTransformMatrix)
 from reliontomo.objects import RelionPSubtomogram, RelionSetOfPseudoSubtomograms
 from tomo.constants import TR_RELION, SCIPION
-from tomo.objects import Coordinate3D, Tomogram, TiltSeries, CTFTomoSeries, SetOfCoordinates3D, SetOfTomograms
+from tomo.objects import Coordinate3D, Tomogram, TiltSeries, CTFTomoSeries, SetOfCoordinates3D, SetOfTomograms, \
+    TiltSeriesM, SetOfTiltSeriesM
 
 logger = logging.getLogger(__name__)
 eyeMatrix3x3 = np.eye(3)
@@ -179,6 +180,81 @@ class Writer(WriterTomo):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+    @staticmethod
+    def tsMSet2Star(tsMSet: SetOfTiltSeriesM,
+                    tsDict: Dict[str, TiltSeriesM],
+                    outPath: str,
+                    unbinnedPixSize: Union[float, None] = None,
+                    handedness: int = -1) -> None:
+        """
+        It generates a tilt_series star file for the set and on tilt-series star file for each tilt-series contained in
+        the given tsDict following the star file format expected by Relion's motion correction
+        :param tsMSet: SetOfTiltSeriesM.
+        :param tsDict: dictionary of type {tsId: TiltSeriesM}.
+        :param outPath: path (only path, no filename) in which the star file will be generated.
+        :param unbinnedPixSize: original pixel size. If not provided, it will be considered the same as the tilt-series
+        :param handedness: handedness of the tomograms (i.e. slope of defocus over the image-space z coordinate)
+
+        Fields of the main tilt-series movies file:
+        rlnTomoName #1 (string) : Arbitrary name for a tomogram
+        rlnTomoTiltSeriesStarFile #2 (string) : Tilt series starfile
+        rlnVoltage #3 (double) : Voltage of the microscope (in kV)
+        rlnSphericalAberration #4 (double) : Spherical aberration (in millimeters)
+        rlnAmplitudeContrast #5 (double) : Amplitude contrast (as a fraction, i.e. 10% = 0.1)
+        rlnMicrographOriginalPixelSize #6 (double) : Pixel size of original movie before binning in Angstrom/pixel.
+        rlnTomoHand #7 (double) : Handedness of a tomogram (i.e. slope of defocus over the image-space z coordinate)
+        rlnOpticsGroupName #8 (string) : The name of a group of particles with identical optical properties
+
+        Fields of each tilt-series movies star file:
+        rlnMicrographMovieName #1 (string) : Name of a micrograph movie stack
+        rlnTomoTiltMovieFrameCount #2 (int)    : Number of frames in the tilt series movies
+        rlnTomoNominalStageTiltAngle #3 (double) : Nominal value for the stage tilt angle
+        rlnTomoNominalTiltAxisAngle #4 (double) : Nominal value for the angle of the tilt axis
+        rlnMicrographPreExposure #5 (double) : Pre-exposure dose in electrons per square Angstrom
+        rlnTomoNominalDefocus #6 (double) : Nominal value for the defocus in the tilt series image
+        """
+        # Write the tilt_series.star
+        with open(join(outPath, IN_TS_STAR), 'w') as f:
+            acq = tsMSet.getAcquisition()
+            nAngles = tsMSet.getAnglesCount()
+            Writer._writeScipionCommentLine(f)  # Initial comment
+            tsMMainTable = Table(columns=tsMStarFields)
+            tsSRate = tsMSet.getSamplingRate()
+            unbinnedPixSize = unbinnedPixSize if unbinnedPixSize else tsSRate
+
+            # Write each tilt-series star file
+            for tsId in sorted(tsDict.keys()):
+                tsM = tsDict[tsId]
+                tsStar = getTsStarFile(tsId, outPath)
+                acqTsM = tsM.getAcquisition()
+                with open(tsStar, 'w') as ft:
+                    tsMTable = Table(columns=tsMTsStarFields)
+                    Writer._writeScipionCommentLine(ft)  # Initial comment
+                    for tiM in tsM:
+                        tsMTable.addRow(
+                            tiM.getFileName(),  # rlnMicrographMovieName #1
+                            nAngles,  # rlnTomoTiltMovieFrameCount #2
+                            tiM.getTiltAngle(),  # rlnTomoNominalStageTiltAngle #3
+                            acqTsM.getTiltAxisAngle(),  # rlnTomoNominalTiltAxisAngle #4
+                            tiM.getAcquisition().getDoseInitial(),  # rlnMicrographPreExposure #5
+                            0  # rlnTomoNominalDefocus #6 TODO: it has to be read from the mdoc from label TargetDefocus
+                        )
+                    # Write the STAR file
+                    tsMTable.writeStar(ft, tableName=tsId)
+
+                tsMMainTable.addRow(
+                    tsId,  # rlnTomoName #1
+                    tsStar,  # rlnTomoTiltSeriesStarFile #2
+                    acq.getVoltage(),  # rlnVoltage #3
+                    acq.getSphericalAberration(),  # rlnSphericalAberration #4
+                    acq.getAmplitudeContrast(),  # rlnAmplitudeContrast #5
+                    unbinnedPixSize,  # rlnMicrographOriginalPixelSize #6
+                    handedness,  # rlnTomoHand #7
+                    'optics1'  # rlnOpticsGroupName #8 TODO: check if this may vary (seems not to...)
+                )
+            # Write the STAR file
+            tsMMainTable.writeStar(f, tableName=GLOBAL_TABLE)
 
     def tsSet2Star(self,
                    tsDict: Dict[str, TiltSeries],
@@ -380,16 +456,17 @@ class Writer(WriterTomo):
                     tomoX, tomoY, tomoZ, _ = ih.getDimensions(tomoFName)
                     tomoScaleFactor = tomo.getSamplingRate() / unbinnedSRate
 
-                    eTomoDirectiveFileDict = {
-                        'date': prettyTime(),
-                        'name': tsId,
-                        'pixelSize': tsSRate,
-                        'minTilt': acq.getAngleMin(),
-                        'markerDiameter': 10,
-                        # TODO: we need the fiducial diameter at this point. Add it to model, form advanced param?
-                        'rotationAngle': acq.getTiltAxisAngle(),
-                        'angleOffset': -0.12  # TODO: check if what it is, if it's used, and how to get it from our data.
-                    }
+                    # eTomoDirectiveFileDict = {
+                    #     'date': prettyTime(),
+                    #     'name': tsId,
+                    #     'pixelSize': tsSRate,
+                    #     'minTilt': acq.getAngleMin(),
+                    #     'markerDiameter': 10,
+                    #     # TODO: we need the fiducial diameter at this point. Add it to model, form advanced param?
+                    #     'rotationAngle': acq.getTiltAxisAngle(),
+                    #     'angleOffset': -0.12
+                    #     # TODO: check if what it is, if it's used, and how to get it from our data.
+                    # }
                     eTomoEdf = join(outPath, tsId + '.edf')
                     # writeEtomoEdf(eTomoEdf, eTomoDirectiveFileDict)
 

@@ -43,4 +43,5 @@ if Plugin.isRe40():
 else:
     from .protocol_re5_extract_subtomos import ProtRelion5ExtractSubtomos
     from .protocol_re5_reconstruc_particle_from_ts import ProtRelion5ReconstructParticle
+    from .protocol_motion_corr import ProtRelionTomoMotionCorr
 

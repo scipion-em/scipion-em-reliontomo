@@ -52,7 +52,6 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     CTF-premultiplied extracted 2D image stacks (or as 3D volumes).
     """
     _label = 'Extract subtomos'
-
     _possibleOutputs = outputObjects
 
     def __init__(self, **kwargs):
