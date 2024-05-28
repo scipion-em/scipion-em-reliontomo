@@ -25,6 +25,7 @@
 from pyworkflow.protocol import IntParam, BooleanParam, GE, LE, FloatParam, EnumParam
 from reliontomo import Plugin
 from reliontomo.protocols.protocol_base_per_part_per_tilt import ProtRelionPerParticlePerTiltBase
+from reliontomo.protocols.protocol_base_relion import IS_RELION_50
 from reliontomo.utils import getProgram
 
 oddAberrationOrders = [3, 5, 7]
@@ -111,33 +112,34 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase):
                       default=False,
                       help="If set to Yes, then the beam luminance will be estimated separately for each tilt series. "
                            "This is not recommended.")
-        form.addSection(label='Aberrations')
-        form.addParam('refineOddAbe', BooleanParam,
-                      label="Refine odd aberrations?",
-                      default=True,
-                      help="If set to Yes, then odd higher-order aberrations will be estimated. These are"
-                           "the asymmetrical aberrations")
-        form.addParam('maxAbeOddOrder', EnumParam,
-                      display=EnumParam.DISPLAY_HLIST,
-                      label='Max order of odd aberrations',
-                      condition='refineOddAbe',
-                      choices=oddAberrationOrders,
-                      default=0,
-                      help='The third order aberration will be comma and trefoil. Higer aberrations as pentafoil '
-                           'are barely considered')
-        form.addParam('refineEvenAbe', BooleanParam,
-                      label="Refine even aberrations?",
-                      default=True,
-                      help="If set to Yes, then even higher-order aberrations will be estimated. These are"
-                           "the symmetrical aberrations")
-        form.addParam('maxAbeEvenOrder', EnumParam,
-                      display=EnumParam.DISPLAY_HLIST,
-                      label='Max order of even aberrations',
-                      condition='refineEvenAbe',
-                      choices=evenAberrationOrders,
-                      default=0,
-                      help='The forth order aberrations are spherical aberration, quadrafoil and secondary astigmatism,'
-                           'higher aberrations are barely considered')
+        if not IS_RELION_50:
+            form.addSection(label='Aberrations')
+            form.addParam('refineOddAbe', BooleanParam,
+                          label="Refine odd aberrations?",
+                          default=True,
+                          help="If set to Yes, then odd higher-order aberrations will be estimated. These are"
+                               "the asymmetrical aberrations")
+            form.addParam('maxAbeOddOrder', EnumParam,
+                          display=EnumParam.DISPLAY_HLIST,
+                          label='Max order of odd aberrations',
+                          condition='refineOddAbe',
+                          choices=oddAberrationOrders,
+                          default=0,
+                          help='The third order aberration will be comma and trefoil. Higer aberrations as pentafoil '
+                               'are barely considered')
+            form.addParam('refineEvenAbe', BooleanParam,
+                          label="Refine even aberrations?",
+                          default=True,
+                          help="If set to Yes, then even higher-order aberrations will be estimated. These are"
+                               "the symmetrical aberrations")
+            form.addParam('maxAbeEvenOrder', EnumParam,
+                          display=EnumParam.DISPLAY_HLIST,
+                          label='Max order of even aberrations',
+                          condition='refineEvenAbe',
+                          choices=evenAberrationOrders,
+                          default=0,
+                          help='The forth order aberrations are spherical aberration, quadrafoil and secondary astigmatism,'
+                               'higher aberrations are barely considered')
 
         self._defineExtraParams(form)
         form.addParallelSection(threads=4, mpi=1)
@@ -175,10 +177,10 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase):
                 cmd += '--per_frame_scale '
             if self.refineScalePerTomo.get():
                 cmd += '--per_tomo_scale '
-
-        if self.refineEvenAbe.get():
-            cmd += '--do_even_aberrations --ne %i ' % evenAberrationOrders[self.maxAbeEvenOrder.get()]
-        if self.refineOddAbe.get():
-            cmd += '--do_odd_aberrations --no %i ' % oddAberrationOrders[self.maxAbeOddOrder.get()]
+        if not IS_RELION_50:
+            if self.refineEvenAbe.get():
+                cmd += '--do_even_aberrations --ne %i ' % evenAberrationOrders[self.maxAbeEvenOrder.get()]
+            if self.refineOddAbe.get():
+                cmd += '--do_odd_aberrations --no %i ' % oddAberrationOrders[self.maxAbeOddOrder.get()]
 
         return cmd

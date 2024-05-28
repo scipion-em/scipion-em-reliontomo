@@ -113,37 +113,38 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase):
                        help='If set to Yes, then it is assumed that the correlation of the velocities of two particles '
                             'decays as a Gaussian over their distance, instead of as an exponential. This will produce '
                             'spatially smoother motion and result in a shorter program runtime.')
-        form.addParam('estimate2dDeformations', BooleanParam,
-                      label='Estimate 2D deformations?',
-                      condition='fitPerParticleMotion',
-                      default=False,
-                      help='If set to Yes, then the subtomogram version of Bayesian polishing will be used to fit '
-                           'per-particle (3D) motion tracks, besides the rigid part of the motion in the tilt series.')
-        group = form.addGroup('2D deformation estimation', condition='estimate2dDeformations')
-        group.addParam('nHorizSamplingPts', IntParam,
-                       label='Horizontal sampling points',
-                       default=3,
-                       validators=[GE(0), LE(10)],
-                       help='Number of horizontal sampling points for the deformation grid.')
-        group.addParam('nVertSamplingPts', IntParam,
-                       label='Vertical sampling points',
-                       default=3,
-                       validators=[GE(0), LE(10)],
-                       help='Number of vertical sampling points for the deformation grid.')
-        group.addParam('deformationModel', EnumParam,
-                       choices=[choice.name for choice in deformationModels],
-                       label='Alignment model',
-                       default=deformationModels.spline.value,
-                       help='Type of model to use (linear, spline or Fourier).')
-        group.addParam('deformationRegularisation', FloatParam,
-                       label='Deformation regularisation scale',
-                       default=0,
-                       validators=[GE(0), LE(1)],
-                       help='This is the strength of the deformation regularizer')
-        group.addParam('refineDefPerFrame', BooleanParam,
-                       label='Refine deformations per frame?',
-                       default=False,
-                       help='If set to Yes, it models deformations per tilt frame instead of per tilt series.')
+        if not IS_RELION_50:
+            form.addParam('estimate2dDeformations', BooleanParam,
+                          label='Estimate 2D deformations?',
+                          condition='fitPerParticleMotion',
+                          default=False,
+                          help='If set to Yes, then the subtomogram version of Bayesian polishing will be used to fit '
+                               'per-particle (3D) motion tracks, besides the rigid part of the motion in the tilt series.')
+            group = form.addGroup('2D deformation estimation', condition='estimate2dDeformations')
+            group.addParam('nHorizSamplingPts', IntParam,
+                           label='Horizontal sampling points',
+                           default=3,
+                           validators=[GE(0), LE(10)],
+                           help='Number of horizontal sampling points for the deformation grid.')
+            group.addParam('nVertSamplingPts', IntParam,
+                           label='Vertical sampling points',
+                           default=3,
+                           validators=[GE(0), LE(10)],
+                           help='Number of vertical sampling points for the deformation grid.')
+            group.addParam('deformationModel', EnumParam,
+                           choices=[choice.name for choice in deformationModels],
+                           label='Alignment model',
+                           default=deformationModels.spline.value,
+                           help='Type of model to use (linear, spline or Fourier).')
+            group.addParam('deformationRegularisation', FloatParam,
+                           label='Deformation regularisation scale',
+                           default=0,
+                           validators=[GE(0), LE(1)],
+                           help='This is the strength of the deformation regularizer')
+            group.addParam('refineDefPerFrame', BooleanParam,
+                           label='Refine deformations per frame?',
+                           default=False,
+                           help='If set to Yes, it models deformations per tilt frame instead of per tilt series.')
         self._defineExtraParams(form)
         form.addParallelSection(threads=4, mpi=1)
 
@@ -179,13 +180,14 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase):
             cmd += '--s_div %i ' % self.sigmaDiv.get()
             if self.doGaussianDecay.get():
                 cmd += '--sq_exp_ker '
-            if self.estimate2dDeformations.get():
-                cmd += '--deformation '
-                cmd += '--def_w %i ' % self.nHorizSamplingPts.get()
-                cmd += '--def_h %i ' % self.nVertSamplingPts.get()
-                cmd += '--def_model %i ' % self.deformationModel.get()
-                cmd += '--def_reg %.2f ' % self.deformationRegularisation.get()
-                if self.refineDefPerFrame.get():
-                    cmd += '--per_frame_deformation '
+            if not IS_RELION_50:
+                if self.estimate2dDeformations.get():
+                    cmd += '--deformation '
+                    cmd += '--def_w %i ' % self.nHorizSamplingPts.get()
+                    cmd += '--def_h %i ' % self.nVertSamplingPts.get()
+                    cmd += '--def_model %i ' % self.deformationModel.get()
+                    cmd += '--def_reg %.2f ' % self.deformationRegularisation.get()
+                    if self.refineDefPerFrame.get():
+                        cmd += '--per_frame_deformation '
 
         return cmd
