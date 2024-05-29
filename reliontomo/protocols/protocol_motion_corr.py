@@ -23,17 +23,19 @@
 # *
 # **************************************************************************
 from enum import Enum
-from os.path import join
-
+import mrcfile
+import numpy as np
+from emtable import Table
 from pyworkflow.protocol import PointerParam, IntParam, GE, BooleanParam, LEVEL_ADVANCED, FloatParam, EnumParam, \
     FileParam
 from pyworkflow.utils import Message, makePath
 from reliontomo import Plugin
-from reliontomo.constants import IN_TS_STAR
-from reliontomo.convert import convert50_tomo
+from reliontomo.constants import (IN_TS_STAR, FRAMES_DIR, MOTIONCORR_DIR,
+                                  RLN_TOMO_NOMINAL_STAGE_TILT_ANGLE, RLN_MICROGRAPH_NAME)
+from reliontomo.convert import convert50_tomo, readTsStarFile
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 from reliontomo.utils import getProgram
-from tomo.objects import SetOfTiltSeries
+from tomo.objects import SetOfTiltSeries, TiltSeries
 
 # Gain rotation values
 NO_ROTATION = 0
@@ -58,7 +60,6 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.tsDict = None
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -182,32 +183,45 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._initialize()
         self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self.correctMotionStep)
-        # self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
-    def _initialize(self):
-        inTsMSet = self.inputTiltSeriesM.get()
-        presentTsIds = inTsMSet.getTSIds()
-        self.tsDict = {tsM.getTsId(): tsM.clone(ignoreAttrs=[]) for tsM in inTsMSet if tsM.getTsId() in presentTsIds}
-
     def convertInputStep(self):
-        inFilesPath = self.getInFilesPath()
-        makePath(inFilesPath)
+        framesPath = self._getExtraPath(FRAMES_DIR)
+        makePath(framesPath)
         writer = convert50_tomo.Writer()
-        writer.tsMSet2Star(self.inputTiltSeriesM.get(), self.tsDict, inFilesPath)
+        writer.tsMSet2Star(self.inputTiltSeriesM.get(), self._getExtraPath())
 
     def correctMotionStep(self):
         nMpi = self.numberOfMpi.get()
         Plugin.runRelionTomo(self,
                              getProgram('relion_run_motioncorr', nMpi=nMpi),
                              self.getMotionCorrSubtomosCmd(),
+                             cwd=self._getExtraPath(),
                              numberOfMpi=nMpi)
 
     def createOutputStep(self):
-        pass
+        inTsMSet = self.inputTiltSeriesM.get()
+        outSRate = inTsMSet.getSamplingRate() * self.binningFactor.get()
+        # Create the output set
+        outTsSet = SetOfTiltSeries.create(self._getPath(), template='tiltseries')
+        outTsSet.copyInfo(inTsMSet)
+        outTsSet.setSamplingRate(outSRate)
+        # Fill it with the generated tilt-series
+        for tsM in inTsMSet:
+            tsId = tsM.getTsId()
+            newTs = TiltSeries(tsId=tsId)
+            outTsSet.append(newTs)
+            newTs.copyInfo(tsM)
+            newTs.setSamplingRate(outSRate)
+            self.mountStack(newTs)
+            readTsStarFile(tsM, newTs, self.getOutTsStarFileName(tsId), self.getOutStackName(tsId), self._getExtraPath())
+            outTsSet.update(newTs)
+        # Define the outputs and the relations
+        self._defineOutputs(**{outputObjects.tiltSeries.name: outTsSet})
+        self._defineSourceRelation(self.inputTiltSeriesM, outTsSet)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -217,14 +231,11 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
         return errorMsg
 
     # --------------------------- UTILS functions -----------------------------
-    def getInFilesPath(self):
-        return self._getExtraPath('inFiles')
-
     def getMotionCorrSubtomosCmd(self):
         gainFile = self.inputTiltSeriesM.get().getGain()
         cmd = '--use_own --j 1 '
-        cmd += f'--i {join(self.getInFilesPath(), IN_TS_STAR)} '
-        cmd += f'--o {self._getExtraPath()} '
+        cmd += f'--i {IN_TS_STAR} '
+        cmd += f'--o {MOTIONCORR_DIR}/ '
         if self.outputInFloat16.get():
             cmd += '--float16 '
         if self.saveEvenOdd.get():
@@ -248,3 +259,37 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
         cmd += self._genExtraParamsCmd()
         return cmd
 
+    def getOutTsStarFileName(self, tsId):
+        return self._getExtraPath(MOTIONCORR_DIR, tsId + '.star')
+
+    def getOutStackName(self, tsId):
+        return self._getExtraPath(MOTIONCORR_DIR, FRAMES_DIR, tsId + '.mrcs')
+
+    def mountStack(self, ts):
+        tsId = ts.getTsId()
+        sRate = ts.getSamplingRate()
+        dataTable = Table()
+        dataTable.read(self.getOutTsStarFileName(tsId), tableName=tsId)
+        dataTable.sort(RLN_TOMO_NOMINAL_STAGE_TILT_ANGLE)  # Sort by tilt angle
+        alignedImgs = [self._getExtraPath(row.get(RLN_MICROGRAPH_NAME)) for row in dataTable]
+
+        # Read the first image to get the dimensions
+        with mrcfile.mmap(alignedImgs[0], mode='r+') as mrc:
+            img = mrc.data
+            nx, ny = img.shape
+
+        # Create an empty array in which the stack of images will be stored
+        shape = (len(alignedImgs), nx, ny)
+        stackArray = np.empty(shape, dtype=img.dtype)
+
+        # Fill it with the images sorted by angle
+        for i, img in enumerate(alignedImgs):
+            with mrcfile.mmap(img) as mrc:
+                stackArray[i] = mrc.data
+
+        # Save the stack in a new mrcs file
+        with mrcfile.new_mmap(self.getOutStackName(tsId), shape, overwrite=True) as mrc:
+            mrc.set_data(stackArray)
+            mrc.update_header_from_data()
+            mrc.update_header_stats()
+            mrc.voxel_size = sRate

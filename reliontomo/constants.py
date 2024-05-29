@@ -152,6 +152,8 @@ REFINE_FSC_REF_STAR = '_model.star'
 REFINE_STAR_FSC_TABLE = 'model_class_1'
 REFINE_STAR_FSC_COLUMNS = ['rlnGoldStandardFsc']
 
+FRAMES_DIR = 'frames'
+MOTIONCORR_DIR = 'motioncorr'
 POSTPROCESS_DIR = 'PostProcess'
 FSC_REF_STAR = join(POSTPROCESS_DIR, 'postprocess.star')
 POSTPROCESS_STAR_FSC_TABLE = 'fsc'
@@ -275,6 +277,16 @@ tsStarFields = [
     RLN_TOMO_Y_SHIFT_ANGST,
     RLN_CTF_SCALEFACTOR
 ]
+
+# TiltImage extended fields for Relion
+RELION_MIC_MOVIE_NAME = '_rlnMicrographMovieName'
+RELION_MOT_CORR_IMG_NAME = '_rlnMicrographName'
+RELION_NOMINAL_DEFOCUS = '_rlnTomoNominalDefocus'
+RELION_MIC_METADATA = '_rlnMicrographMetadata'
+RELION_ACCUM_DOSE_TOTAL = '_rlnAccumMotionTotal'
+RELION_ACCUM_DOSE_EARLY = '_rlnAccumMotionEarly'
+RELION_ACCUM_DOSE_LATER = '_rlnAccumMotionLate'
+
 # TOMOGRAMS METADATA ###################################################################################################
 RLN_TOMONAME = 'rlnTomoName'
 RLN_VOLTAGE = 'rlnVoltage'

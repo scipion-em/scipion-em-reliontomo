@@ -28,18 +28,18 @@ from emtable import Table
 from pwem import ALIGN_NONE
 from pwem.emlib.image import ImageHandler
 from pwem.objects import Transform
-from pyworkflow.object import Float
-from pyworkflow.utils import yellowStr, prettyTime
+from pyworkflow.object import Float, String
+from pyworkflow.utils import yellowStr, prettyTime, createLink
 from relion.convert import OpticsGroups
 from reliontomo.constants import *
 import numpy as np
-from os.path import join
+from os.path import join, basename
 from reliontomo.convert.convertBase import (getTransformInfoFromCoordOrSubtomo,
                                             WriterTomo, ReaderTomo, getTransformMatrixFromRow, genTransformMatrix)
 from reliontomo.objects import RelionPSubtomogram, RelionSetOfPseudoSubtomograms
 from tomo.constants import TR_RELION, SCIPION
 from tomo.objects import Coordinate3D, Tomogram, TiltSeries, CTFTomoSeries, SetOfCoordinates3D, SetOfTomograms, \
-    TiltSeriesM, SetOfTiltSeriesM
+    TiltSeriesM, SetOfTiltSeriesM, TiltImage
 
 logger = logging.getLogger(__name__)
 eyeMatrix3x3 = np.eye(3)
@@ -183,15 +183,13 @@ class Writer(WriterTomo):
 
     @staticmethod
     def tsMSet2Star(tsMSet: SetOfTiltSeriesM,
-                    tsDict: Dict[str, TiltSeriesM],
                     outPath: str,
                     unbinnedPixSize: Union[float, None] = None,
                     handedness: int = -1) -> None:
         """
-        It generates a tilt_series star file for the set and on tilt-series star file for each tilt-series contained in
-        the given tsDict following the star file format expected by Relion's motion correction
+        It generates a tilt_series star file for the set and on tilt-series star file for each tilt-series movies
+        contained in the given tsMSet following the star file format expected by Relion's motion correction. Inputs:
         :param tsMSet: SetOfTiltSeriesM.
-        :param tsDict: dictionary of type {tsId: TiltSeriesM}.
         :param outPath: path (only path, no filename) in which the star file will be generated.
         :param unbinnedPixSize: original pixel size. If not provided, it will be considered the same as the tilt-series
         :param handedness: handedness of the tomograms (i.e. slope of defocus over the image-space z coordinate)
@@ -214,6 +212,8 @@ class Writer(WriterTomo):
         rlnMicrographPreExposure #5 (double) : Pre-exposure dose in electrons per square Angstrom
         rlnTomoNominalDefocus #6 (double) : Nominal value for the defocus in the tilt series image
         """
+        presentTsIds = tsMSet.getTSIds()
+        tsDict = {tsM.getTsId(): tsM.clone(ignoreAttrs=[]) for tsM in tsMSet if tsM.getTsId() in presentTsIds}
         # Write the tilt_series.star
         with open(join(outPath, IN_TS_STAR), 'w') as f:
             acq = tsMSet.getAcquisition()
@@ -232,8 +232,11 @@ class Writer(WriterTomo):
                     tsMTable = Table(columns=tsMTsStarFields)
                     Writer._writeScipionCommentLine(ft)  # Initial comment
                     for tiM in tsM:
+                        angularStackFile = tiM.getFileName()
+                        linkedAngularStackFile = join(outPath, FRAMES_DIR, basename(angularStackFile))
+                        createLink(angularStackFile, linkedAngularStackFile)
                         tsMTable.addRow(
-                            tiM.getFileName(),  # rlnMicrographMovieName #1
+                            join(FRAMES_DIR, basename(angularStackFile)),  # rlnMicrographMovieName #1
                             nAngles,  # rlnTomoTiltMovieFrameCount #2
                             tiM.getTiltAngle(),  # rlnTomoNominalStageTiltAngle #3
                             acqTsM.getTiltAxisAngle(),  # rlnTomoNominalTiltAxisAngle #4
@@ -245,7 +248,7 @@ class Writer(WriterTomo):
 
                 tsMMainTable.addRow(
                     tsId,  # rlnTomoName #1
-                    tsStar,  # rlnTomoTiltSeriesStarFile #2
+                    basename(tsStar),  # rlnTomoTiltSeriesStarFile #2
                     acq.getVoltage(),  # rlnVoltage #3
                     acq.getSphericalAberration(),  # rlnSphericalAberration #4
                     acq.getAmplitudeContrast(),  # rlnAmplitudeContrast #5
@@ -707,6 +710,31 @@ class Reader(ReaderTomo):
         self._angles = np.zeros(3)
         self._alignType = kwargs.get('alignType', ALIGN_NONE)
         self._pixelSize = kwargs.get('pixelSize', 1.0)
+
+    def starFile2Ts(self, inTs, outTs, outStackName, extraPath):
+        outSRate = outTs.getSamplingRate()
+        self.dataTable.sort(RLN_TOMO_NOMINAL_STAGE_TILT_ANGLE)  # Sort by tilt angle
+        counter = 1
+        for inTi, row in zip(inTs.iterItems(orderBy=[TiltImage.TILT_ANGLE_FIELD]), self.dataTable):
+            ti = TiltImage()
+            ti.copyInfo(inTi, copyId=False, copyTM=False)
+            ti.setFileName(outStackName)
+            ti.setIndex(counter)
+            oddFame = row.get(RLN_MICROGRAPH_NAME_ODD, None)
+            if oddFame:
+                eveFname = row.get(RLN_MICROGRAPH_NAME_EVEN)
+                ti.setOddEven([oddFame, eveFname])
+            ti.setSamplingRate(outSRate)
+            # Relion's specific attributes
+            setattr(ti, RELION_MIC_MOVIE_NAME, String(join(extraPath, row.get(RLN_MICROGRAPH_MOVIENAME, ''))))
+            setattr(ti, RELION_MOT_CORR_IMG_NAME, String(join(extraPath, row.get(RLN_MICROGRAPH_NAME, ''))))
+            setattr(ti, RELION_NOMINAL_DEFOCUS, Float(row.get(RLN_TOMO_NOMINAL_DEFOCUS, 0)))
+            setattr(ti, RELION_MIC_METADATA, String(join(extraPath, row.get(RLN_MICROGRAPH_METADATA, ''))))
+            setattr(ti, RELION_ACCUM_DOSE_TOTAL, Float(row.get(RLN_ACCUM_MOTION_TOTAL, 0)))
+            setattr(ti, RELION_ACCUM_DOSE_EARLY, Float(row.get(RLN_ACCUM_MOTION_EARLY, 0)))
+            setattr(ti, RELION_ACCUM_DOSE_LATER, Float(row.get(RLN_ACCUM_MOTION_LATE, 0)))
+            outTs.append(ti)
+            counter += 1
 
     @staticmethod
     def gen3dCoordFromStarRow(row, sRate, precedentIdDict, factor=1):

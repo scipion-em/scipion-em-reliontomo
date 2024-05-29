@@ -119,3 +119,10 @@ def readSetOfPseudoSubtomograms(outputSet, tomoDict=None):
     # Subtomograms are represented in Relion 4 as Pseudosubtomograms
     reader, _ = createReaderTomo(outputSet.getParticlesStar())
     return reader.starFile2PseudoSubtomograms(outputSet)
+
+
+def readTsStarFile(inTs, outTs, starFile, outStackName, extraPath):
+    dataTable = Table()
+    dataTable.read(starFile, tableName=outTs.getTsId())
+    reader = convert50_tomo.Reader(starFile, dataTable)
+    return reader.starFile2Ts(inTs, outTs, outStackName, extraPath)
