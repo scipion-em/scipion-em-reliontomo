@@ -22,7 +22,10 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+import logging
 from enum import Enum
+from os import rename
+
 import mrcfile
 import numpy as np
 from emtable import Table
@@ -31,11 +34,14 @@ from pyworkflow.protocol import PointerParam, IntParam, GE, BooleanParam, LEVEL_
 from pyworkflow.utils import Message, makePath
 from reliontomo import Plugin
 from reliontomo.constants import (IN_TS_STAR, FRAMES_DIR, MOTIONCORR_DIR,
-                                  RLN_TOMO_NOMINAL_STAGE_TILT_ANGLE, RLN_MICROGRAPH_NAME)
+                                  RLN_TOMO_NOMINAL_STAGE_TILT_ANGLE, RLN_MICROGRAPH_NAME, RLN_MICROGRAPH_NAME_EVEN,
+                                  RLN_MICROGRAPH_NAME_ODD)
 from reliontomo.convert import convert50_tomo, readTsStarFile
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 from reliontomo.utils import getProgram
 from tomo.objects import SetOfTiltSeries, TiltSeries
+
+logger = logging.getLogger(__name__)
 
 # Gain rotation values
 NO_ROTATION = 0
@@ -48,9 +54,15 @@ NO_FLIP = 0
 FLIP_UPSIDE_DOWN = 1
 FLIP_LEFT_RIGHT = 2
 
+# Suffixes
+EVEN = 'even'
+ODD = 'odd'
+
 
 class outputObjects(Enum):
-    tiltSeries = SetOfTiltSeries
+    tiltSeries = SetOfTiltSeries()
+    tiltSeriesEven = SetOfTiltSeries()
+    tiltSeriesOdd = SetOfTiltSeries()
 
 
 class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
@@ -203,25 +215,46 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
                              numberOfMpi=nMpi)
 
     def createOutputStep(self):
+        # Create the output set
         inTsMSet = self.inputTiltSeriesM.get()
         outSRate = inTsMSet.getSamplingRate() * self.binningFactor.get()
-        # Create the output set
-        outTsSet = SetOfTiltSeries.create(self._getPath(), template='tiltseries')
+        outTsSet = self._genOutTsSet(inTsMSet, outSRate)
+        outputsDict = {outputObjects.tiltSeries.name: outTsSet}
+        if self.saveEvenOdd.get():
+            outTsSetEven = self._genOutTsSet(inTsMSet, outSRate, suffix=EVEN)
+            outTsSetOdd = self._genOutTsSet(inTsMSet, outSRate, suffix=ODD)
+            outputsDict[outputObjects.tiltSeriesEven.name] = outTsSetEven
+            outputsDict[outputObjects.tiltSeriesOdd.name] = outTsSetOdd
+        # Define the outputs and the relations
+        self._defineOutputs(**outputsDict)
+        self._defineSourceRelation(self.inputTiltSeriesM, outTsSet)
+        if self.saveEvenOdd.get():
+            self._defineSourceRelation(self.inputTiltSeriesM, outTsSetEven)
+            self._defineSourceRelation(self.inputTiltSeriesM, outTsSetOdd)
+
+    def _genOutTsSet(self, inTsMSet, outSRate, suffix=''):
+        outTsSet = SetOfTiltSeries.create(self._getPath(), template='tiltseries', suffix=suffix)
         outTsSet.copyInfo(inTsMSet)
         outTsSet.setSamplingRate(outSRate)
+        isEvenOdd = True if suffix else False
         # Fill it with the generated tilt-series
         for tsM in inTsMSet:
             tsId = tsM.getTsId()
+            outTsStarName = self.getOutTsStarFileName(tsId)
+            # Rename each TS output star files as they preserve the same base name as the input files, which are
+            # preceded by an in_ suffix to avoid confusion. Only for the complete TS
+            if not suffix:
+                rename(self.getOutTsStarFileName(tsId, preffix='in'), outTsStarName)
             newTs = TiltSeries(tsId=tsId)
             outTsSet.append(newTs)
             newTs.copyInfo(tsM)
             newTs.setSamplingRate(outSRate)
-            self.mountStack(newTs)
-            readTsStarFile(tsM, newTs, self.getOutTsStarFileName(tsId), self.getOutStackName(tsId), self._getExtraPath())
+            if not suffix:
+                self.mountStack(newTs)  # It mounts also the even/odd if requested
+            readTsStarFile(tsM, newTs, outTsStarName, self.getOutStackName(tsId, suffix=suffix),
+                           self._getExtraPath(), isEvenOdd=isEvenOdd)
             outTsSet.update(newTs)
-        # Define the outputs and the relations
-        self._defineOutputs(**{outputObjects.tiltSeries.name: outTsSet})
-        self._defineSourceRelation(self.inputTiltSeriesM, outTsSet)
+        return outTsSet
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -259,11 +292,13 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
         cmd += self._genExtraParamsCmd()
         return cmd
 
-    def getOutTsStarFileName(self, tsId):
-        return self._getExtraPath(MOTIONCORR_DIR, tsId + '.star')
+    def getOutTsStarFileName(self, tsId, preffix=''):
+        bName = f'{preffix}_{tsId}' if preffix else tsId
+        return self._getExtraPath(MOTIONCORR_DIR, bName + '.star')
 
-    def getOutStackName(self, tsId):
-        return self._getExtraPath(MOTIONCORR_DIR, FRAMES_DIR, tsId + '.mrcs')
+    def getOutStackName(self, tsId, suffix=''):
+        bName = f'{tsId}_{suffix}' if suffix else tsId
+        return self._getExtraPath(MOTIONCORR_DIR, bName + '.mrcs')
 
     def mountStack(self, ts):
         tsId = ts.getTsId()
@@ -271,7 +306,16 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
         dataTable = Table()
         dataTable.read(self.getOutTsStarFileName(tsId), tableName=tsId)
         dataTable.sort(RLN_TOMO_NOMINAL_STAGE_TILT_ANGLE)  # Sort by tilt angle
-        alignedImgs = [self._getExtraPath(row.get(RLN_MICROGRAPH_NAME)) for row in dataTable]
+        self._mountCurrentStack(tsId, sRate, dataTable)
+        # Mount the even/odd stacks if requested
+        if self.saveEvenOdd.get():
+            self._mountCurrentStack(tsId, sRate, dataTable, imgField=RLN_MICROGRAPH_NAME_EVEN, suffix=EVEN)
+            self._mountCurrentStack(tsId, sRate, dataTable, imgField=RLN_MICROGRAPH_NAME_ODD, suffix=ODD)
+
+    def _mountCurrentStack(self, tsId, sRate, dataTable, imgField=RLN_MICROGRAPH_NAME, suffix=''):
+        outStackFile = self.getOutStackName(tsId, suffix=suffix)
+        logger.info(f'Mounting the stack file {outStackFile}')
+        alignedImgs = [self._getExtraPath(row.get(imgField)) for row in dataTable]
 
         # Read the first image to get the dimensions
         with mrcfile.mmap(alignedImgs[0], mode='r+') as mrc:
@@ -285,10 +329,11 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
         # Fill it with the images sorted by angle
         for i, img in enumerate(alignedImgs):
             with mrcfile.mmap(img) as mrc:
+                logger.info(f'Inserting image - index [{i}], {img}')
                 stackArray[i] = mrc.data
 
         # Save the stack in a new mrcs file
-        with mrcfile.new_mmap(self.getOutStackName(tsId), shape, overwrite=True) as mrc:
+        with mrcfile.new_mmap(outStackFile, shape, overwrite=True) as mrc:
             mrc.set_data(stackArray)
             mrc.update_header_from_data()
             mrc.update_header_stats()

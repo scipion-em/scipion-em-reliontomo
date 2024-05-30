@@ -121,8 +121,8 @@ def readSetOfPseudoSubtomograms(outputSet, tomoDict=None):
     return reader.starFile2PseudoSubtomograms(outputSet)
 
 
-def readTsStarFile(inTs, outTs, starFile, outStackName, extraPath):
+def readTsStarFile(inTs, outTs, starFile, outStackName, extraPath, isEvenOdd=False):
     dataTable = Table()
     dataTable.read(starFile, tableName=outTs.getTsId())
     reader = convert50_tomo.Reader(starFile, dataTable)
-    return reader.starFile2Ts(inTs, outTs, outStackName, extraPath)
+    return reader.starFile2Ts(inTs, outTs, outStackName, extraPath, isEvenOdd=isEvenOdd)
