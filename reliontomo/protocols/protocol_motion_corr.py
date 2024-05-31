@@ -66,8 +66,8 @@ class outputObjects(Enum):
 
 
 class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
-    """Motion correction"""
-    _label = 'Motion correction'
+    """Motion correction of tilt-series movies"""
+    _label = 'Motion correction of tilt-series movies'
     _possibleOutputs = outputObjects
 
     def __init__(self, **kwargs):
@@ -159,25 +159,18 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
         form.addParam('defectFile', FileParam,
                       allowsNull=True,
                       label='Defects file',
-                      help='Location of a UCSF MotionCor2-style '
-                           'defect text file or a defect map that '
-                           'describe the defect pixels on the detector. '
-                           'Each line of a defect text file should contain '
-                           'four numbers specifying x, y, width and height '
-                           'of a defect region. A defect map is an image '
-                           '(MRC or TIFF), where 0 means good and 1 means '
-                           'bad pixels. The coordinate system is the same '
-                           'as the input movie before application of '
-                           'binning, rotation and/or flipping.\n\n'
-                           '_Note that the format of the defect text is '
-                           'DIFFERENT from the defect text produced '
-                           'by SerialEM!_\n One can convert a SerialEM-style '
-                           'defect file into a defect map using IMOD '
+                      help='Location of a UCSF MotionCor2-style defect text file or a defect map that describe the '
+                           'defect pixels on the detector. Each line of a defect text file should contain four numbers '
+                           'specifying x, y, width and height of a defect region. A defect map is an image (MRC or '
+                           'TIFF), where 0 means good and 1 means bad pixels. The coordinate system is the same as the '
+                           'input movie before application of binning, rotation and/or flipping.\n\n'
+                           '_Note that the format of the defect text is DIFFERENT from the defect text produced by '
+                           'SerialEM!_\n One can convert a SerialEM-style defect file into a defect map using IMOD '
                            'utilities e.g.:\n'
                            '*clip defect -D defect.txt -f tif movie.tif defect_map.tif*\n'
                            'See explanations in the SerialEM manual.\n'
-                           'Leave empty if you do not have any defects, '
-                           'or do not want to correct for defects on your detector.')
+                           'Leave empty if you do not have any defects, or do not want to correct for defects on your '
+                           'detector.')
 
         form.addSection(label='EER')
         form.addParam('eerFractionation', IntParam,
