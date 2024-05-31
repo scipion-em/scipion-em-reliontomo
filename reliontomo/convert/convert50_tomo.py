@@ -727,7 +727,7 @@ class Reader(ReaderTomo):
                 oddFame = row.get(RLN_MICROGRAPH_NAME_ODD, None)
                 if oddFame:
                     eveFname = row.get(RLN_MICROGRAPH_NAME_EVEN)
-                    ti.setOddEven([oddFame, eveFname])
+                    ti.setOddEven([join(extraPath, oddFame), join(extraPath, eveFname)])
             ti.setSamplingRate(outSRate)
             # Relion's specific attributes
             setattr(ti, RELION_MIC_MOVIE_NAME, String(join(extraPath, row.get(RLN_MICROGRAPH_MOVIENAME, ''))))

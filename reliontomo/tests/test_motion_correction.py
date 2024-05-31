@@ -51,18 +51,6 @@ class TestRelion5MotionCorr(TestBaseCentralizedLayer):
 
     @classmethod
     def setUpClass(cls):
-        # JORGE
-        import os
-        fname = "/home/jjimenez/test_JJ.txt"
-        if os.path.exists(fname):
-            os.remove(fname)
-        fjj = open(fname, "a+")
-        fjj.write('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
-        fjj.close()
-        print('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
-        import time
-        time.sleep(10)
-        # JORGE_END
         setupTestProject(cls)
         cls.ds = DataSet.getDataSet('tomo-em')
         cls.testAcqObj = TomoAcquisition(
@@ -132,6 +120,7 @@ class TestRelion5MotionCorr(TestBaseCentralizedLayer):
 
     def _checkTiltSeries(self, tsSet, binningFactor, expectedDims, hasEvenOdd):
         self.checkTiltSeries(tsSet,
+                             imported=True,  # There's no transformation matrix. Use this flag to skip that check
                              expectedSetSize=self.nTiltSeries,
                              expectedSRate=self.unbinnedSRate * binningFactor,
                              expectedDimensions=expectedDims,
@@ -139,14 +128,20 @@ class TestRelion5MotionCorr(TestBaseCentralizedLayer):
                              hasOddEven=hasEvenOdd,
                              anglesCountSet=self.nTiltImgsPerTs)
 
+    def runTest(self, saveEvenOdd=False, binningFactor=1, patchX=1, patchY=1):
+        protMotionCorr = self._runMotionCorr(saveEvenOdd=saveEvenOdd,
+                                             binningFactor=binningFactor,
+                                             patchX=patchX,
+                                             patchY=patchY)
+        self._checkResults(protMotionCorr,
+                           saveEvenOdd=saveEvenOdd,
+                           binningFactor=binningFactor)
+
     def testMotionCorr_01(self):
-        saveEvenOdd = False
-        binningFactor = 1
-        protMotionCorr = self._runMotionCorr(saveEvenOdd=saveEvenOdd, binningFactor=binningFactor)
-        self._checkResults(protMotionCorr, saveEvenOdd=saveEvenOdd, binningFactor=binningFactor)
+        self.runTest()
 
     def testMotionCorr_02(self):
-        saveEvenOdd = True
-        binningFactor = 2
-        protMotionCorr = self._runMotionCorr(saveEvenOdd=saveEvenOdd, binningFactor=binningFactor)
-        self._checkResults(protMotionCorr, saveEvenOdd=saveEvenOdd, binningFactor=binningFactor)
+        self.runTest(patchX=2, patchY=2)
+
+    def testMotionCorr_03(self):
+        self.runTest(saveEvenOdd=True, binningFactor=2)

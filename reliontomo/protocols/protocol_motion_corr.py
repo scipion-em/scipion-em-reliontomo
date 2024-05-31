@@ -291,7 +291,7 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
 
     def getOutStackName(self, tsId, suffix=''):
         bName = f'{tsId}_{suffix}' if suffix else tsId
-        return self._getExtraPath(MOTIONCORR_DIR, bName + '.mrcs')
+        return self._getExtraPath(MOTIONCORR_DIR, bName + '.mrc')
 
     def mountStack(self, ts):
         tsId = ts.getTsId()
@@ -325,7 +325,7 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
                 logger.info(f'Inserting image - index [{i}], {img}')
                 stackArray[i] = mrc.data
 
-        # Save the stack in a new mrcs file
+        # Save the stack in a new mrc file
         with mrcfile.new_mmap(outStackFile, shape, overwrite=True) as mrc:
             mrc.set_data(stackArray)
             mrc.update_header_from_data()
