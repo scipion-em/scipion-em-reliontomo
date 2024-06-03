@@ -29,8 +29,7 @@ from pyworkflow.protocol import BooleanParam, FloatParam, EnumParam, \
     PointerParam, IntParam, GE
 from reliontomo import Plugin
 from reliontomo.constants import OUT_PARTICLES_STAR, COORD_X, COORD_Y, COORD_Z, SHIFTX_ANGST, SHIFTY_ANGST, \
-    SHIFTZ_ANGST, ROT, TILT, PSI, RLN_TOMOSUBTOMOGRAMROT, RLN_TOMOSUBTOMOGRAMTILT, RLN_TOMOSUBTOMOGRAMPSI, \
-    RLN_CENTEREDCOORDINATEXANGST, RLN_CENTEREDCOORDINATEZANGST, RLN_CENTEREDCOORDINATEYANGST
+    SHIFTZ_ANGST, ROT, TILT, PSI
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase, IS_RELION_50
 from reliontomo.utils import genEnumParamDict

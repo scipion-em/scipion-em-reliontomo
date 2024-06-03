@@ -31,6 +31,7 @@ import matplotlib as plt
 
 from pwem.emlib.image import ImageHandler
 from pyworkflow.utils import Icon
+from reliontomo.protocols.protocol_re5_rec_tomogram import ProtRelion5TomoReconstruct
 
 plt.use('TkAgg')
 import numpy as np
@@ -57,7 +58,8 @@ RelionWizMtfSelector._targets.append((ProtRelionPostProcess, ['mtf']))
 
 class RelionTomoIdsWizard(EmWizard):
     tomoIdParamName = 'tomoId'
-    _targets = [(ProtRelionTomoReconstruct, [tomoIdParamName])]
+    _targets = [(ProtRelionTomoReconstruct, [tomoIdParamName]),
+                (ProtRelion5TomoReconstruct, [tomoIdParamName])]
 
     def show(self, form, *args):
         relionTomoRecProt = form.protocol

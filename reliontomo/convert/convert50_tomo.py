@@ -28,7 +28,7 @@ from emtable import Table
 from pwem import ALIGN_NONE
 from pwem.emlib.image import ImageHandler
 from pwem.objects import Transform
-from pyworkflow.object import Float, String
+from pyworkflow.object import Float, String, Integer
 from pyworkflow.utils import yellowStr, prettyTime, createLink
 from relion.convert import OpticsGroups
 from reliontomo.constants import *
@@ -39,7 +39,7 @@ from reliontomo.convert.convertBase import (getTransformInfoFromCoordOrSubtomo,
 from reliontomo.objects import RelionPSubtomogram, RelionSetOfPseudoSubtomograms
 from tomo.constants import TR_RELION, SCIPION
 from tomo.objects import Coordinate3D, Tomogram, TiltSeries, CTFTomoSeries, SetOfCoordinates3D, SetOfTomograms, \
-    TiltSeriesM, SetOfTiltSeriesM, TiltImage
+    TiltSeriesM, SetOfTiltSeriesM, TiltImage, SetOfTiltSeries
 
 logger = logging.getLogger(__name__)
 eyeMatrix3x3 = np.eye(3)
@@ -190,6 +190,7 @@ class Writer(WriterTomo):
                     unbinnedPixSize: Union[float, None] = None,
                     handedness: int = -1) -> None:
         """
+        FOR THE MOTION CORRECTION:
         It generates a tilt_series star file for the set and on tilt-series star file for each tilt-series movies
         contained in the given tsMSet following the star file format expected by Relion's motion correction. Inputs:
         :param tsMSet: SetOfTiltSeriesM.
@@ -267,6 +268,7 @@ class Writer(WriterTomo):
                    ctfDict: Dict[str, CTFTomoSeries],
                    outPath: str) -> None:
         """
+        FOR THE EXTRACTION OF SUBTOMOGRAMS:
         It generates a tilt-series star file for each tilt-series contained in the given tsDict that matches via tsId
         with a CTFTomoSeries from ctfDict.
         :param tsDict: dictionary of type {tsId: TiltSeries}
@@ -281,6 +283,7 @@ class Writer(WriterTomo):
     @staticmethod
     def ts2Star(ts, ctf, outPath):
         """
+        FOR THE EXTRACTION OF SUBTOMOGRAMS:
         It writes a tilt-series star file in relion5 format. Fields (output of the command execution
         relion_refine --print_metadata_labels):
 
@@ -360,8 +363,8 @@ class Writer(WriterTomo):
                     # TODO: manage this
                     FILE_NOT_FOUND,  # 7, rlnCtfPowerSpectrum
                     # TODO: the tilt-images are expexted to be unstacked, as there is no index field
-                    oddTi,  # 8, rlnMicrographNameEven
-                    evenTi,  # 9, rlnMicrographNameOdd
+                    evenTi,  # 8, rlnMicrographNameEven
+                    oddTi,  # 9, rlnMicrographNameOdd
                     f'{ti.getIndex()}@{ti.getFileName()}:mrcs',  # 10, rlnMicrographName
                     # TODO: check if it's used for other calculations apart from the Bayesian polishing
                     FILE_NOT_FOUND,  # 11, rlnMicrographMetadata
@@ -407,13 +410,152 @@ class Writer(WriterTomo):
             tsTable.writeStar(f, tableName=tsId)
 
     @staticmethod
+    def alignedTsSet2Star(tsSet: SetOfTiltSeries,
+                          outPath: str,
+                          handedness: int = -1,
+                          unbinnedPixSize: Union[float, None] = None,
+                          outFileName: str = IN_TS_STAR) -> None:
+        """
+        FOR TOMOGRAM RECONSTRUCTION:
+        It writes an aligned tilt-series star file in relion5 format.
+        Fields (output of the command execution relion_refine --print_metadata_labels):
+
+        rlnTomoName #1 (string) : Arbitrary name for a tomogram
+        rlnVoltage #2 (double) : Voltage of the microscope (in kV)
+        rlnSphericalAberration #3 (double) : Spherical aberration (in millimeters)
+        rlnAmplitudeContrast #4 (double) : Amplitude contrast (as a fraction, i.e. 10% = 0.1)
+        rlnMicrographOriginalPixelSize #5 (double) : Pixel size of original movie before binning in Angstrom/pixel.
+        rlnTomoHand #6 (double) : Handedness of a tomogram (i.e. slope of defocus over the image-space z coordinate)
+        rlnOpticsGroupName #7 (string) : The name of a group of particles with identical optical properties
+        rlnTomoTiltSeriesPixelSize #8 (double) : Pixel size of the original tilt series
+        rlnTomoTiltSeriesStarFile #9 (string) : Tilt series starfile
+        rlnEtomoDirectiveFile #10 (string) : Location of the etomo directive file (.edf) from tilt series alignment
+
+        Example:
+            TS_01	300.000000	2.700000	0.100000	0.675000	-1.000000	optics1	1.350000
+            AlignTiltSeries/job021/tilt_series/TS_01.star	AlignTiltSeries/job021/external/TS_01/TS_01.edf
+
+        :param tsSet: SetOfTiltSeries
+        :param outPath: path (only path, no filename) in which the star file will be generated.
+        :param handedness: handedness of the tomograms (i.e. slope of defocus over the image-space z coordinate)
+        :param unbinnedPixSize: original pixel size. If not provided, it will be considered the same as the tilt-series
+        :param outFileName: name of the output file. Dedault is inTomograms.star
+        """
+        with open(join(outPath, outFileName), 'w') as f:
+            Writer._writeScipionCommentLine(f)  # Initial comment
+            tomoTable = Table(columns=alignedTsSetStarFields4TomoRec)
+            for ts in tsSet:
+                tsId = ts.getTsId()
+                tsSRate = ts.getSamplingRate()
+                unbinnedSRate = unbinnedPixSize if unbinnedPixSize else tsSRate
+                acq = ts.getAcquisition()
+
+                # eTomoDirectiveFileDict = {
+                #     'date': prettyTime(),
+                #     'name': tsId,
+                #     'pixelSize': tsSRate,
+                #     'minTilt': acq.getAngleMin(),
+                #     'markerDiameter': 10,
+                #     # TODO: we need the fiducial diameter at this point. Add it to model, form advanced param?
+                #     'rotationAngle': acq.getTiltAxisAngle(),
+                #     'angleOffset': -0.12
+                #     # TODO: check if what it is, if it's used, and how to get it from our data.
+                # }
+                eTomoEdf = join(outPath, tsId + '.edf')
+                # writeEtomoEdf(eTomoEdf, eTomoDirectiveFileDict)
+
+                # TODO: in our case, rlnMicrographOriginalPixelSize and rlnTomoTiltSeriesPixelSize are expected to be
+                tomoTable.addRow(
+                    tsId,  # 1, rlnTomoName
+                    acq.getVoltage(),  # 2, rlnVoltage
+                    acq.getSphericalAberration(),  # 3, rlnSphericalAberration
+                    acq.getAmplitudeContrast(),  # 4, rlnAmplitudeContrast
+                    unbinnedSRate,  # 5, rlnMicrographOriginalPixelSize
+                    handedness,  # 6, rlnTomoHand
+                    # TODO: check if this may vary (seems not to...)
+                    'optics1',  # 7, rlnOpticsGroupName
+                    tsSRate,  # 8, rlnTomoTiltSeriesPixelSize
+                    getTsStarFile(tsId, outPath),  # 9, rlnTomoTiltSeriesStarFile
+                    eTomoEdf,  # 10, rlnEtomoDirectiveFile
+                )
+                # Write each tilt-series star file
+                Writer.alignedTs2Star(ts, outPath)
+            # Write the tilt-series set star file
+            tomoTable.writeStar(f, tableName=GLOBAL_TABLE)
+
+    @staticmethod
+    def alignedTs2Star(ts: TiltSeries,
+                       outPath: str) -> None:
+        """
+        FOR TOMOGRAM RECONSTRUCTION:
+
+        :param ts: TiltSeries.
+        :param outPath: path (only path, no filename) in which the star file will be generated.
+        """
+        tsId = ts.getTsId()
+        with open(getTsStarFile(tsId, outPath), 'w') as f:
+            Writer._writeScipionCommentLine(f)  # Initial comment
+            sRate = ts.getSamplingRate()
+            tiltAxisAngle = ts.getAcquisition().getTiltAxisAngle()
+            tsTable = Table(columns=alignedTsStarFields4TomoRec)
+            for ti in ts:
+                acqTi = ti.getAcquisition()
+                tiltAngle = ti.getTiltAngle()
+                oddEven = ti.getOddEven()
+                if oddEven:
+                    oddTi, evenTi = oddEven
+                else:
+                    oddTi = FILE_NOT_FOUND
+                    evenTi = FILE_NOT_FOUND
+
+                trMatrix = ti.getTransform().getMatrix() if ti.getTransform() is not None else eyeMatrix3x3
+                iTrMatrix = np.linalg.inv(trMatrix)
+                rotAngle = np.rad2deg(np.arccos(trMatrix[0, 0]))
+                sxAngst = iTrMatrix[0, 2] * sRate
+                syAngst = iTrMatrix[1, 2] * sRate
+                tsTable.addRow(
+                    FILE_NOT_FOUND,  # 1, rlnMicrographMovieName
+                    1,  # 2, rlnTomoTiltMovieFrameCount
+                    tiltAngle,  # 3, rlnTomoNominalStageTiltAngle
+                    tiltAxisAngle,  # 4, rlnTomoNominalTiltAxisAngle
+                    acqTi.getDoseInitial(),  # 5, rlnMicrographPreExposure
+                    # -1.5,  # 6, rlnTomoNominalDefocus
+                    # FILE_NOT_FOUND,  # 7, rlnCtfPowerSpectrum
+                    evenTi,  # 8, rlnMicrographNameEven
+                    oddTi,  # 9, rlnMicrographNameOdd
+                    f'{ti.getIndex()}@{ti.getFileName()}:mrcs',  # 10, rlnMicrographName
+                    getattr(ti, RELION_MIC_METADATA, String(FILE_NOT_FOUND)).get(),  # 11, rlnMicrographMetadata
+                    getattr(ti, RELION_ACCUM_DOSE_TOTAL, Integer(0)).get(),  # 12, rlnAccumMotionTotal
+                    getattr(ti, RELION_ACCUM_DOSE_EARLY, Integer(0)).get(),  # 13, rlnAccumMotionEarly
+                    getattr(ti, RELION_ACCUM_DOSE_LATER, Integer(0)).get(),  # 14, rlnAccumMotionLate
+                    # ctfTomo.getPsdFile() if ctfTomo.getPsdFile() else FILE_NOT_FOUND,  # 15, rlnCtfImage
+                    # defocusU,  # 16, rlnDefocusU
+                    # defocusV,  # 17, rlnDefocusV
+                    # abs(defocusU - defocusV),  # 18, rlnCtfAstigmatism
+                    # ctfTomo.getDefocusAngle(),  # 19, rlnDefocusAngle
+                    # 0,  # 20, rlnCtfFigureOfMerit
+                    # ctfTomo.getResolution(),  # 21, rlnCtfMaxResolution
+                    # ctfTomo.getFitQuality() if ctfTomo.getFitQuality() is not None else 0,  # 22, rlnCtfIceRingDensity
+                    0,  # 23, rlnTomoXTilt
+                    tiltAngle,  # 24, rlnTomoYTilt
+                    rotAngle,  # 25, rlnTomoZRot
+                    sxAngst,  # 26, rlnTomoXShiftAngst
+                    syAngst,  # 27, rlnTomoYShiftAngst
+                    # np.cos(np.deg2rad(tiltAngle)),  # 28, rlnCtfScalefactor
+                )
+            # Write the STAR file
+            tsTable.writeStar(f, tableName=tsId)
+
+    @staticmethod
     def tomoSet2Star(tomoDict: Dict[str, Tomogram],
                      tsDict: Dict[str, TiltSeries],
                      outPath: str,
                      unbinnedPixSize: Union[float, None] = None,
-                     handedness: int = -1) -> None:
+                     handedness: int = -1,
+                     outFileName: str = IN_TOMOS_STAR) -> None:
         """
-        It writes a tomograms star file in relion5 format. Only the tomograms that matches with a tilt-series from
+        FOR THE EXTRACTION OF SUBTOMOGRAMS:
+        It writes a tomograms star file in relion5 format. Only the tomograms that match with a tilt-series from
         tsDic will be added. Fields (output of the command execution relion_refine --print_metadata_labels):
 
         rlnTomoName #1 (string) : Arbitrary name for a tomogram
@@ -442,13 +584,14 @@ class Writer(WriterTomo):
         :param outPath: path (only path, no filename) in which the star file will be generated.
         :param unbinnedPixSize: original pixel size. If not provided, it will be considered the same as the tilt-series
         :param handedness: handedness of the tomograms (i.e. slope of defocus over the image-space z coordinate)
+        :param outFileName: name of the output file. Dedault is inTomograms.star
         """
 
         # We'll use the acquisition from the corresponding tilt-series to each tomogram as it is more reliable (in case
         # of imported tomograms it may not have some of the data required here). Also, we'll do it tomo by tomo, as
         # there may be heterogeneity in some of the parameters. Thus, each tilt-series acquisition is more reliable
         # than the one for the whole set
-        with open(join(outPath, IN_TOMOS_STAR), 'w') as f:
+        with open(join(outPath, outFileName), 'w') as f:
             Writer._writeScipionCommentLine(f)  # Initial comment
             tomoTable = Table(columns=tomoStarFields)
             ih = ImageHandler()
@@ -506,6 +649,7 @@ class Writer(WriterTomo):
                     coordsScale: float = 1.0
                     ):
         """
+        FOR THE EXTRACTION OF SUBTOMOGRAMS:
         It writes a particles star file in relion5 format. Fields (output of the command execution
         relion_refine --print_metadata_labels):
 

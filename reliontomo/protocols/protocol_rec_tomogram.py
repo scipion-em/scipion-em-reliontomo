@@ -64,7 +64,7 @@ class ProtRelionTomoReconstruct(EMProtocol):
         form.addParam('protPrepare', PointerParam,
                       pointerClass='ProtRelionPrepareData',
                       label='Prepare Data protocol',
-                      help='It is very usefulto check if the protocol "Prepare data" has been applied correctly (in '
+                      help='It is very useful to check if the protocol "Prepare data" has been applied correctly (in '
                            'terms of flip options, for example)')
         form.addParam('recTomoMode', EnumParam,
                       display=EnumParam.DISPLAY_HLIST,

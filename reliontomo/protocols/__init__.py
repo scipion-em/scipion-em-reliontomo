@@ -22,6 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+
 from .. import Plugin
 
 from .protocol_refine_subtomograms import ProtRelionRefineSubtomograms
@@ -44,4 +45,4 @@ else:
     from .protocol_re5_extract_subtomos import ProtRelion5ExtractSubtomos
     from .protocol_re5_reconstruc_particle_from_ts import ProtRelion5ReconstructParticle
     from .protocol_motion_corr import ProtRelionTomoMotionCorr
-
+    from .protocol_re5_rec_tomogram import ProtRelion5TomoReconstruct

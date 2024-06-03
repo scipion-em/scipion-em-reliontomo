@@ -79,7 +79,7 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
         form.addParam('inputTiltSeriesM', PointerParam,
                       pointerClass='SetOfTiltSeriesM',
                       important=True,
-                      label='Tilt-Series movies')
+                      label='Tilt-series movies')
         form.addParam('outputInFloat16', BooleanParam,
                       label='Write output in float16?',
                       expertLevel=LEVEL_ADVANCED,
