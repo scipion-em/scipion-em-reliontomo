@@ -175,7 +175,26 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
         self.genInStarFile(are2dParticles=are2dParticles)
 
     def operateStep(self):
-        Plugin.runRelionTomo(self, 'relion_star_handler', self._getOperateCommand())
+        program = 'relion_star_handler'
+        if IS_RELION_50:
+            # Remove duplicates and re-center particles needs to be executed separately, being the second call to the
+            # program required to be fed with the ourpur star of the first
+            doRemDuplicates = self.doRemoveDuplicates.get()
+            doRecenter = self.doRecenter.get()
+            if doRemDuplicates and doRecenter:
+                Plugin.runRelionTomo(self, program, self._genRemDuplicatesCmd())
+                outParticles = self._getExtraPath(OUT_PARTICLES_STAR)
+                cmd = '--i %s ' % outParticles
+                cmd += '--o %s ' % outParticles
+                cmd += self._genRecenterCmd()
+                Plugin.runRelionTomo(self, program, cmd)
+            else:
+                if doRemDuplicates:
+                    Plugin.runRelionTomo(self, program, self._genRemDuplicatesCmd())
+                if doRecenter:
+                    Plugin.runRelionTomo(self, program, self._genRecenterCmdWithIO())
+        else:
+            Plugin.runRelionTomo(self, program, self._getOperateCommand())
 
     def createOutputStep(self):
         psubtomoSet = self.genRelionParticles()
@@ -194,38 +213,51 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
         return valMsg
 
     # --------------------------- UTILS functions -----------------------------
-    def _getOperateCommand(self):
-        cmd = ''
-        cmd += '--i %s ' % self.getOutStarFileName()
+    def _genIOCmd(self):
+        cmd = '--i %s ' % self.getOutStarFileName()
         cmd += '--o %s ' % self._getExtraPath(OUT_PARTICLES_STAR)
+        return cmd
+
+    def _genRemDuplicatesCmd(self):
+        cmd = self._genIOCmd()
+        cmd += '--remove_duplicates %i ' % self.minDistPartRemoval.get()
+        return cmd
+
+    def _genRecenterCmd(self):
+        cmd = '--center '
+        if self.shiftX.get() != 0:
+            cmd += '--center_X %.2f ' % self.shiftX.get()
+        if self.shiftY.get() != 0:
+            cmd += '--center_Y %.2f ' % self.shiftY.get()
+        if self.shiftZ.get() != 0:
+            cmd += '--center_Z %.2f ' % self.shiftZ.get()
+        return cmd
+
+    def _genRecenterCmdWithIO(self):
+        cmd = self._genIOCmd()
+        cmd += self._genRecenterCmd()
+        return cmd
+
+    def _getOperateCommand(self):
+        cmd = self._genIOCmd()
         # Re-center particles
         if self.doRecenter.get():
-            cmd += '--center '
-            if self.shiftX.get() != 0:
-                cmd += '--center_X %.2f ' % self.shiftX.get()
-            if self.shiftY.get() != 0:
-                cmd += '--center_Y %.2f ' % self.shiftY.get()
-            if self.shiftZ.get() != 0:
-                cmd += '--center_Z %.2f ' % self.shiftZ.get()
-        # Section 'Remove duplicates' was added in Relion 5
-        if IS_RELION_50:
-            if self.doRemoveDuplicates.get():
-                cmd += '--remove_duplicates %i ' % self.minDistPartRemoval.get()
-        else:
-            # Operate particles - removed by Jorge in the protocol version for Relion 5 as it is rarely used and may
-            # be problematic as some of the fields involved are now defined in a different way, such as the coordinates
-            if self.chosenOperation.get() != self.operationDict[NO_OPERATION]:
-                opValue = self.opValue.get()
-                chosenOp = self.chosenOperation.get()
-                # Chosen operation
-                if chosenOp == self.operationDict[OP_ADDITION]:
-                    cmd += '--add_to %.2f ' % opValue
-                elif chosenOp == self.operationDict[OP_MULTIPLICATION]:
-                    cmd += '--multiply_by %.2f ' % opValue
-                else:
-                    cmd += '--set_to %.2f ' % opValue
-                # Chosen values
-                cmd += self._genOperateCmd()
+            self._genRecenterCmd()
+
+        # Operate particles - removed by Jorge in the protocol version for Relion 5 as it is rarely used and may
+        # be problematic as some of the fields involved are now defined in a different way, such as the coordinates
+        if self.chosenOperation.get() != self.operationDict[NO_OPERATION]:
+            opValue = self.opValue.get()
+            chosenOp = self.chosenOperation.get()
+            # Chosen operation
+            if chosenOp == self.operationDict[OP_ADDITION]:
+                cmd += '--add_to %.2f ' % opValue
+            elif chosenOp == self.operationDict[OP_MULTIPLICATION]:
+                cmd += '--multiply_by %.2f ' % opValue
+            else:
+                cmd += '--set_to %.2f ' % opValue
+            # Chosen values
+            cmd += self._genOperateCmd()
         return cmd
 
     def _genOperateCmd(self):
