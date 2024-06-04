@@ -32,7 +32,8 @@ from reliontomo import Plugin
 from reliontomo.constants import IN_TS_STAR, TOMOGRAMS_DIR
 from reliontomo.convert import convert50_tomo
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
-from tomo.objects import SetOfTomograms
+from reliontomo.utils import getProgram
+from tomo.objects import SetOfTomograms, Tomogram
 
 # Reconstruct options
 SINGLE_TOMO = 0
@@ -51,15 +52,20 @@ class ProtRelion5TomoReconstruct(ProtRelionTomoBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.tsDict = None
+        self.ctfDict = None
 
         # -------------------------- DEFINE param functions -----------------------
-
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
         form.addParam('inTsSet', PointerParam,
                       pointerClass='SetOfTiltSeries',
                       important=True,
                       label='Tilt-series')
+        form.addParam('inCtfSet', PointerParam,
+                      pointerClass='SetOfCTFTomoSeries',
+                      important=True,
+                      label='CTFs')
         form.addParam('unbinnedWidth', IntParam,
                       default=-1,
                       allowsNull=False,
@@ -91,7 +97,7 @@ class ProtRelion5TomoReconstruct(ProtRelionTomoBase):
                            "If set to -1, a thickness of 5/16 of the image width will be passed to Relion.")
         form.addParam('binnedPixSize', FloatParam,
                       allowsNull=False,
-                      imortant=True,
+                      important=True,
                       label='Binned pixel size (Å/px)',
                       help='The tomogram will be downscaled to this pixel size. Typically, the larger the pixel size, '
                            'the faster the tomogram reconstruction and the less space the tomograms occupy on disk.')
@@ -99,11 +105,15 @@ class ProtRelion5TomoReconstruct(ProtRelionTomoBase):
                       display=EnumParam.DISPLAY_HLIST,
                       choices=['Single tomogram', 'All tomograms'],
                       default=ALL_TOMOS,
-                      label='Choose a reconstruction option. If the option Single tomograms is selected, then the '
+                      label='Reconstruction mode',
+                      help='Choose a reconstruction option. If the option Single tomograms is selected, then the '
                             'program will only reconstruct the tomogram chosen by tilt-series id.')
         form.addParam('tomoId', StringParam,
                       condition='recTomoMode == %s' % SINGLE_TOMO,
                       label='Tomogram to be reconstructed')
+        form.addParam('doCtfCorrection', BooleanParam,
+                      default=False,
+                      label='Perform CTF correction?')
         form.addParam('genEvenOddTomos', BooleanParam,
                       default=False,
                       label='Generate the odd/even tomograms?',
@@ -117,36 +127,94 @@ class ProtRelion5TomoReconstruct(ProtRelionTomoBase):
                            "reconstruct lamellae that are all milled under a given angle. All tomograms will be "
                            "reconstructed with the same offset.")
         # TODO: add the params related to the 2D sums of the central Z-slices?
+        form.addParallelSection(threads=3, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self.convertInputStep()
+        self._initialize()
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.reconstructTomogramsStep)
+        # self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
+    def _initialize(self):
+        tsSet = self.inTsSet.get()
+        ctfSet = self.inCtfSet.get()
+        # Compute matching TS id among the tilt-series and the CTFs, they all could be a subset
+        tsIds = tsSet.getTSIds()
+        self.info("TsIds present in Tilt series are: %s" % tsIds)
+        ctfTsIds = ctfSet.getTSIds()
+        self.info("TsIds present in CTFs are: %s" % tsIds)
+        presentTsIds = set(tsIds) & set(ctfTsIds)
+
+        # Validate the intersection
+        if len(presentTsIds) > 0:
+            self.info("tsId matches between the introduces tilt-series and CTFs: %s" % presentTsIds)
+        else:
+            raise Exception("There isn't any common tilt-series ids among the CTFs and tilt-series introduced.")
+
+        self.tsDict = {ts.getTsId(): ts.clone(ignoreAttrs=[]) for ts in tsSet if ts.getTsId() in presentTsIds}
+        self.ctfDict = {ctf.getTsId(): ctf.clone(ignoreAttrs=[]) for ctf in ctfSet if ctf.getTsId() in presentTsIds}
+
     def convertInputStep(self):
         outPath = self._getExtraPath()
         writer = convert50_tomo.Writer()
         # Aligned tilt-series star files: the one corresponding to the set and each TS star file
-        writer.alignedTsSet2Star(self.inTsSet.get(), outPath)
+        writer.alignedTsSet2Star(self.tsDict, outPath)
+        writer.tsSet2Star(self.tsDict, self.ctfDict, outPath)
 
     def reconstructTomogramsStep(self):
-        Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_tomogram', self.genTomoRecCmd())
+        program = getProgram('relion_tomo_reconstruct_tomogram', nMpi=self.numberOfMpi.get())
+        Plugin.runRelionTomo(self, program, self.genTomoRecCmd())
+
+    # def createOutputStep(self):
+    #     def _createTomo():
+    #         tomo = Tomogram()
+    #         tomo.copyInfo(ts)
+    #         tomo.setSamplingRate(outSRate)
+    #         tomo.setFileName(self.getOutTomoFileName(tsId))
+    #         tomo.setOrigin()
+    #         outTomoSet.append(tomo)
+    #
+    #     inTsSet = self.inTsSet.get()
+    #     outSRate = self.binnedPixSize.get()
+    #     outTomoSet = SetOfTomograms.create(self._getPath(), template='tomograms%s.sqlite')
+    #     outTomoSet.copyInfo(inTsSet)
+    #     if self.recTomoMode.get() == SINGLE_TOMO:
+    #         ts = inTsSet.get()
+    #         _createTomo()
+    #     else:
+    #         for tsId, ts in self.tsDict.items():
+    #             # tomo = Tomogram()
+    #             # tomo.copyInfo(ts)
+    #             # tomo.setSamplingRate(outSRate)
+    #             # tomo.setFileName(self.getOutTomoFileName(tsId))
+    #             # tomo.setOrigin()
+    #             # outTomoSet.append(tomo)
+    #
+    #     self._defineOutputs(**{self._possibleOutputs.tomograms.name: outTomoSet})
+    #     self._defineSourceRelation(inTsSet, outTomoSet)
 
     # --------------------------- UTILS functions -----------------------------
+    def getOutTomoFileName(self, tsId):
+        return self._getExtraPath(TOMOGRAMS_DIR, f'rec_{tsId}.mrc')
+
     def genTomoRecCmd(self):
         cmd = [
             f'--t {self._getExtraPath(IN_TS_STAR)}',
-            f'--o {self._getExtraPath(TOMOGRAMS_DIR)}',
+            f'--o {self._getExtraPath()}/',
             f'--w {self.unbinnedWidth.get()}',
             f'--h {self.unbinnedHeight.get()}',
             f'--d {self.unbinnedThickness.get()}',
-            f'--binned_angpix {self.binnedPixSize.get:.3f}',
+            f'--binned_angpix {self.binnedPixSize.get():.3f}',
             f'--j {self.numberOfThreads.get()}'
         ]
         if self.genEvenOddTomos.get():
             cmd.append('----generate_split_tomograms')
         if self.recTomoMode.get() == SINGLE_TOMO:
             cmd.append(f'--tn {self.tomoId.get()}')
+        if self.doCtfCorrection.get():
+            cmd.append('--ctf')
         return ' '.join(cmd)
 
     # -------------------------- INFO functions -------------------------------

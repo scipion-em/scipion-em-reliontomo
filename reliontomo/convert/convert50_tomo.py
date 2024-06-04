@@ -410,7 +410,7 @@ class Writer(WriterTomo):
             tsTable.writeStar(f, tableName=tsId)
 
     @staticmethod
-    def alignedTsSet2Star(tsSet: SetOfTiltSeries,
+    def alignedTsSet2Star(tsDict: Dict[str, TiltSeries],
                           outPath: str,
                           handedness: int = -1,
                           unbinnedPixSize: Union[float, None] = None,
@@ -435,7 +435,7 @@ class Writer(WriterTomo):
             TS_01	300.000000	2.700000	0.100000	0.675000	-1.000000	optics1	1.350000
             AlignTiltSeries/job021/tilt_series/TS_01.star	AlignTiltSeries/job021/external/TS_01/TS_01.edf
 
-        :param tsSet: SetOfTiltSeries
+        :param tsDict: dictionary of type {tsId: TiltSeries}
         :param outPath: path (only path, no filename) in which the star file will be generated.
         :param handedness: handedness of the tomograms (i.e. slope of defocus over the image-space z coordinate)
         :param unbinnedPixSize: original pixel size. If not provided, it will be considered the same as the tilt-series
@@ -444,8 +444,7 @@ class Writer(WriterTomo):
         with open(join(outPath, outFileName), 'w') as f:
             Writer._writeScipionCommentLine(f)  # Initial comment
             tomoTable = Table(columns=alignedTsSetStarFields4TomoRec)
-            for ts in tsSet:
-                tsId = ts.getTsId()
+            for tsId, ts in tsDict.items():
                 tsSRate = ts.getSamplingRate()
                 unbinnedSRate = unbinnedPixSize if unbinnedPixSize else tsSRate
                 acq = ts.getAcquisition()
@@ -478,8 +477,8 @@ class Writer(WriterTomo):
                     getTsStarFile(tsId, outPath),  # 9, rlnTomoTiltSeriesStarFile
                     eTomoEdf,  # 10, rlnEtomoDirectiveFile
                 )
-                # Write each tilt-series star file
-                Writer.alignedTs2Star(ts, outPath)
+                # # Write each tilt-series star file
+                # Writer.alignedTs2Star(ts, outPath)
             # Write the tilt-series set star file
             tomoTable.writeStar(f, tableName=GLOBAL_TABLE)
 

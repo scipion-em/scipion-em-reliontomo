@@ -143,6 +143,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         tsIds = tsSet.getTSIds()
         self.info("TsIds present in Tilt series are: %s" % tsIds)
         ctfTsIds = ctfSet.getTSIds()
+        self.info("TsIds present in CTFs are: %s" % tsIds)
         presentTsIds = set(coordsTsIds) & set(tsIds) & set(ctfTsIds)
 
         # Validate the intersection
