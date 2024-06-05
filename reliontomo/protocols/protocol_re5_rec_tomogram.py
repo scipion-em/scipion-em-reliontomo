@@ -196,7 +196,10 @@ class ProtRelion5TomoReconstruct(ProtRelionTomoBase):
         tomo.setSamplingRate(self.binnedPixSize.get())
         tomo.setFileName(self.getOutTomoFileName(ts.getTsId()))
         tomo.setOrigin()
+        if self.doCtfCorrection.get():
+            tomo.setCtfCorrected(True)
         outTomoSet.append(tomo)
+        outTomoSet.update(tomo)
 
     def getOutTomoFileName(self, tsId):
         return self._getExtraPath(TOMOGRAMS_DIR, f'rec_{tsId}.mrc')

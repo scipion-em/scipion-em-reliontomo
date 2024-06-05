@@ -135,7 +135,8 @@ class TestRelionTomoRecTomograms(TestBaseCentralizedLayer):
         self.checkTomograms(outTomos,
                             expectedSetSize=1 if recTomoMode == SINGLE_TOMO else self.nTs,
                             expectedSRate=binnedPixSize,
-                            expectedDimensions=expectedDims.tolist())
+                            expectedDimensions=expectedDims.tolist(),
+                            ctfCorrected=correctCtf)
 
     def testRecTomos_01(self):
         binninFactor = 4
