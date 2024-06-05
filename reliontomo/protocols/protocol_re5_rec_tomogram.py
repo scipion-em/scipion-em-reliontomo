@@ -31,9 +31,9 @@ from pyworkflow.utils import Message
 from reliontomo import Plugin
 from reliontomo.constants import IN_TS_STAR, TOMOGRAMS_DIR
 from reliontomo.convert import convert50_tomo
-from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase, IS_RELION_50
 from reliontomo.utils import getProgram
-from tomo.objects import SetOfTomograms, Tomogram
+from tomo.objects import SetOfTomograms, Tomogram, TiltSeries
 
 # Reconstruct options
 SINGLE_TOMO = 0
@@ -134,7 +134,7 @@ class ProtRelion5TomoReconstruct(ProtRelionTomoBase):
         self._initialize()
         self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self.reconstructTomogramsStep)
-        # self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
@@ -167,35 +167,36 @@ class ProtRelion5TomoReconstruct(ProtRelionTomoBase):
         program = getProgram('relion_tomo_reconstruct_tomogram', nMpi=self.numberOfMpi.get())
         Plugin.runRelionTomo(self, program, self.genTomoRecCmd())
 
-    # def createOutputStep(self):
-    #     def _createTomo():
-    #         tomo = Tomogram()
-    #         tomo.copyInfo(ts)
-    #         tomo.setSamplingRate(outSRate)
-    #         tomo.setFileName(self.getOutTomoFileName(tsId))
-    #         tomo.setOrigin()
-    #         outTomoSet.append(tomo)
-    #
-    #     inTsSet = self.inTsSet.get()
-    #     outSRate = self.binnedPixSize.get()
-    #     outTomoSet = SetOfTomograms.create(self._getPath(), template='tomograms%s.sqlite')
-    #     outTomoSet.copyInfo(inTsSet)
-    #     if self.recTomoMode.get() == SINGLE_TOMO:
-    #         ts = inTsSet.get()
-    #         _createTomo()
-    #     else:
-    #         for tsId, ts in self.tsDict.items():
-    #             # tomo = Tomogram()
-    #             # tomo.copyInfo(ts)
-    #             # tomo.setSamplingRate(outSRate)
-    #             # tomo.setFileName(self.getOutTomoFileName(tsId))
-    #             # tomo.setOrigin()
-    #             # outTomoSet.append(tomo)
-    #
-    #     self._defineOutputs(**{self._possibleOutputs.tomograms.name: outTomoSet})
-    #     self._defineSourceRelation(inTsSet, outTomoSet)
+    def createOutputStep(self):
+        inTsSet = self.inTsSet.get()
+        outTomoSet = SetOfTomograms.create(self._getPath(), template='tomograms%s.sqlite')
+        outTomoSet.copyInfo(inTsSet)
+        if self.recTomoMode.get() == SINGLE_TOMO:
+            tsId = self.tomoId.get()
+            ts = inTsSet.getItem(TiltSeries.TS_ID_FIELD, tsId)
+            self._createTomo(ts, outTomoSet)
+        else:
+            for tsId, ts in self.tsDict.items():
+                self._createTomo(ts, outTomoSet)
+
+        self._defineOutputs(**{self._possibleOutputs.tomograms.name: outTomoSet})
+        self._defineSourceRelation(inTsSet, outTomoSet)
 
     # --------------------------- UTILS functions -----------------------------
+    @classmethod
+    def isDisabled(cls):
+        """ Return True if this Protocol is disabled.
+        Disabled protocols will not be offered in the available protocols."""
+        return False if IS_RELION_50 else True
+
+    def _createTomo(self, ts, outTomoSet):
+        tomo = Tomogram()
+        tomo.copyInfo(ts)
+        tomo.setSamplingRate(self.binnedPixSize.get())
+        tomo.setFileName(self.getOutTomoFileName(ts.getTsId()))
+        tomo.setOrigin()
+        outTomoSet.append(tomo)
+
     def getOutTomoFileName(self, tsId):
         return self._getExtraPath(TOMOGRAMS_DIR, f'rec_{tsId}.mrc')
 

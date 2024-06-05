@@ -26,7 +26,7 @@ from enum import Enum
 from pwem.convert.headers import fixVolume
 from pyworkflow.protocol.params import (PointerParam, FloatParam, StringParam, EnumParam, IntParam, LEVEL_ADVANCED)
 from pwem.protocols import ProtReconstruct3D
-from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase, IS_RELION_50
 from tomo.objects import AverageSubTomogram
 from reliontomo.convert import writeSetOfSubtomograms
 
@@ -140,6 +140,12 @@ class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):
         return summary
 
     # --------------------------- UTILS functions -----------------------------
+    @classmethod
+    def isDisabled(cls):
+        """ Return True if this Protocol is disabled.
+        Disabled protocols will not be offered in the available protocols."""
+        return True if IS_RELION_50 else False
+
     def _genReconstructCmd(self):
         imgSet = self.inputSubtomos.get()
 

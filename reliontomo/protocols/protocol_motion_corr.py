@@ -37,7 +37,7 @@ from reliontomo.constants import (IN_TS_STAR, FRAMES_DIR, MOTIONCORR_DIR,
                                   RLN_TOMO_NOMINAL_STAGE_TILT_ANGLE, RLN_MICROGRAPH_NAME, RLN_MICROGRAPH_NAME_EVEN,
                                   RLN_MICROGRAPH_NAME_ODD)
 from reliontomo.convert import convert50_tomo, readTsStarFile
-from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase, IS_RELION_50
 from reliontomo.utils import getProgram
 from tomo.objects import SetOfTiltSeries, TiltSeries
 
@@ -257,6 +257,12 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
         return errorMsg
 
     # --------------------------- UTILS functions -----------------------------
+    @classmethod
+    def isDisabled(cls):
+        """ Return True if this Protocol is disabled.
+        Disabled protocols will not be offered in the available protocols."""
+        return False if IS_RELION_50 else True
+
     def getMotionCorrSubtomosCmd(self):
         gainFile = self.inputTiltSeriesM.get().getGain()
         cmd = '--use_own --j 1 '

@@ -23,7 +23,7 @@
 # *
 # **************************************************************************
 from pyworkflow.protocol import IntParam, FloatParam, GE
-from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase, IS_RELION_50
 
 
 class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
@@ -90,6 +90,12 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
         return warnMsg
 
     # --------------------------- UTILS functions -----------------------------
+    @classmethod
+    def isDisabled(cls):
+        """ Return True if this Protocol is disabled.
+        Disabled protocols will not be offered in the available protocols."""
+        return True if IS_RELION_50 else False
+
     def _genCommonCmd(self):
         inRelionParticles = self.getInputParticles()
         cmd = ''

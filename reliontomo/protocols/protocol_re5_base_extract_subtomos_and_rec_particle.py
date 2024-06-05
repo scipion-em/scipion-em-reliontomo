@@ -25,7 +25,7 @@
 from pyworkflow.protocol import IntParam, FloatParam, GE
 from pyworkflow.utils import createLink
 from reliontomo.constants import IN_PARTICLES_STAR, IN_TOMOS_STAR
-from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase, IS_RELION_50
 
 
 class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
@@ -84,6 +84,12 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
         # The tilt-series star files will exist and their corresponding path will be provided by the file tomograms.star
 
     # --------------------------- UTILS functions -----------------------------
+    @classmethod
+    def isDisabled(cls):
+        """ Return True if this Protocol is disabled.
+        Disabled protocols will not be offered in the available protocols."""
+        return False if IS_RELION_50 else True
+
     def _genCommonExtractAndRecCmd(self):
         cmd = [f'--p {self._getExtraPath(IN_PARTICLES_STAR)}',
                f'--t {self._getExtraPath(IN_TOMOS_STAR)}',

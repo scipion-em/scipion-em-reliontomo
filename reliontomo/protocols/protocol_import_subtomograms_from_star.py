@@ -30,6 +30,7 @@ from reliontomo.constants import SUBTOMO_NAME, FILE_NOT_FOUND, PSUBTOMOS_SQLITE
 from reliontomo.convert import createReaderTomo
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_import_from_star import ProtBaseImportFromStar
+from reliontomo.protocols.protocol_base_relion import IS_RELION_50
 from reliontomo.utils import getAbsPath
 from tomo.objects import SetOfSubTomograms, SetOfCoordinates3D
 
@@ -91,6 +92,12 @@ class ProtImportSubtomogramsFromStar(ProtBaseImportFromStar):
         return errorMsg
 
     # --------------------------- UTILS functions ------------------------------
+    @classmethod
+    def isDisabled(cls):
+        """ Return True if this Protocol is disabled.
+        Disabled protocols will not be offered in the available protocols."""
+        return True if IS_RELION_50 else False
+
     def _checkFilesPointedFromStarFile(self, starFilePath, dataTable):
         errorsFound = ''
         fields2check = [SUBTOMO_NAME]
