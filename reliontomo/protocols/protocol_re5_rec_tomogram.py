@@ -171,6 +171,7 @@ class ProtRelion5TomoReconstruct(ProtRelionTomoBase):
         inTsSet = self.inTsSet.get()
         outTomoSet = SetOfTomograms.create(self._getPath(), template='tomograms%s.sqlite')
         outTomoSet.copyInfo(inTsSet)
+        outTomoSet.setSamplingRate(self.binnedPixSize.get())
         if self.recTomoMode.get() == SINGLE_TOMO:
             tsId = self.tomoId.get()
             ts = inTsSet.getItem(TiltSeries.TS_ID_FIELD, tsId)

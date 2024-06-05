@@ -24,12 +24,14 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+import numpy as np
+
 from imod.protocols import ProtImodImportTransformationMatrix
 from imod.protocols.protocol_base import OUTPUT_TILTSERIES_NAME
 from pyworkflow.tests import setupTestProject, DataSet
 from pyworkflow.utils import magentaStr
 from reliontomo.protocols import ProtRelion5TomoReconstruct
-from reliontomo.protocols.protocol_re5_rec_tomogram import SINGLE_TOMO
+from reliontomo.protocols.protocol_re5_rec_tomogram import SINGLE_TOMO, ALL_TOMOS
 from tomo.protocols import ProtImportTs, ProtImportTsCTF
 from tomo.protocols.protocol_import_ctf import ImportChoice
 from tomo.tests import RE4_STA_TUTO, DataSetRe4STATuto
@@ -38,9 +40,13 @@ from tomo.tests.test_base_centralized_layer import TestBaseCentralizedLayer
 
 class TestRelionTomoRecTomograms(TestBaseCentralizedLayer):
     unbinnedSRate = DataSetRe4STATuto.unbinnedPixSize.value
-    bin6 = 6
+    nTs = 2
     ts_03 = 'TS_03'
     ts_54 = 'TS_54'
+    unbinnedWidth = 4000
+    unbinnedHeight = 4000
+    unbinnedThickness = 2000
+    dims = [4000, 4000, 2000]
 
     @classmethod
     def setUpClass(cls):
@@ -98,36 +104,69 @@ class TestRelionTomoRecTomograms(TestBaseCentralizedLayer):
         outTsSet = getattr(protImportTrMatrix, OUTPUT_TILTSERIES_NAME, None)
         return outTsSet
 
-    def runRecTomograms(self, unbinnedWidth=None, unbinnedHeight=None, unbinnedThickness=None, binnedPixSize=None,
-                        recTomoMode=None, tomoId=None, ):
+    def runRecTomograms(self, binnedPixSize=None, recTomoMode=None, tomoId=None, correctCtf=False):
         recTomoMsg = f'Reconstruct single tomo - tomoId = {tomoId}' if recTomoMode == SINGLE_TOMO \
             else "Reconstruct all the tomograms"
         print(magentaStr(f"\n==> {recTomoMsg}:"
-                         f"\n\t- UnbinnedDims = [{unbinnedWidth}, {unbinnedHeight}, {unbinnedThickness}] px"
-                         f"\n\t- BinnedPixSize = {binnedPixSize:.3f}"
-                         ))
+                         f"\n\t- BinnedPixSize = {binnedPixSize:.3f} Å/px"
+                         f"\n\t- CTF correction = {correctCtf}"))
         protRecTomos = self.newProtocol(ProtRelion5TomoReconstruct,
                                         inTsSet=self.tsWithAlignment,
                                         inCtfSet=self.importedCtfs,
-                                        unbinnedWidth=unbinnedWidth,
-                                        unbinnedHeight=unbinnedHeight,
-                                        unbinnedThickness=unbinnedThickness,
+                                        unbinnedWidth=self.unbinnedWidth,
+                                        unbinnedHeight=self.unbinnedHeight,
+                                        unbinnedThickness=self.unbinnedThickness,
                                         binnedPixSize=binnedPixSize,
+                                        doCtfCorrection=correctCtf,
                                         recTomoMode=recTomoMode,
-                                        tomoId=tomoId)
+                                        tomoId=tomoId,
+                                        numberOfThreads=6)
         self.launchProtocol(protRecTomos)
+        return getattr(protRecTomos, protRecTomos._possibleOutputs.tomograms.name, None)
+
+    def _runTest(self, binningFactor=None, binnedPixSize=None, recTomoMode=None, tomoId=None, correctCtf=False):
+        # Run the protocol
+        outTomos = self.runRecTomograms(binnedPixSize=binnedPixSize,
+                                        recTomoMode=recTomoMode,
+                                        tomoId=tomoId,
+                                        correctCtf=correctCtf)
+        # Check the results
+        expectedDims = np.array(self.dims) / binningFactor
+        self.checkTomograms(outTomos,
+                            expectedSetSize=1 if recTomoMode == SINGLE_TOMO else self.nTs,
+                            expectedSRate=binnedPixSize,
+                            expectedDimensions=expectedDims.tolist())
 
     def testRecTomos_01(self):
-        unbinnedWidth = 4000
-        unbinnedHeight = 4000
-        unbinnedThickness = 2000
-        binnedPixSize = self.unbinnedSRate * self.bin6
+        binninFactor = 4
+        binnedPixSize = self.unbinnedSRate * binninFactor
         recTomoMode = SINGLE_TOMO
         tomoId = self.ts_03
-        self.runRecTomograms(unbinnedWidth=unbinnedWidth,
-                             unbinnedHeight=unbinnedHeight,
-                             unbinnedThickness=unbinnedThickness,
-                             binnedPixSize=binnedPixSize,
-                             recTomoMode=recTomoMode,
-                             tomoId=tomoId)
+        correctCtf = True
+        self._runTest(binningFactor=binninFactor,
+                      binnedPixSize=binnedPixSize,
+                      recTomoMode=recTomoMode,
+                      tomoId=tomoId,
+                      correctCtf=correctCtf)
 
+    def testRecTomos_02(self):
+        binninFactor = 10
+        binnedPixSize = self.unbinnedSRate * binninFactor
+        recTomoMode = SINGLE_TOMO
+        tomoId = self.ts_54
+        correctCtf = False
+        self._runTest(binningFactor=binninFactor,
+                      binnedPixSize=binnedPixSize,
+                      recTomoMode=recTomoMode,
+                      tomoId=tomoId,
+                      correctCtf=correctCtf)
+
+    def testRecTomos_03(self):
+        binninFactor = 10
+        binnedPixSize = self.unbinnedSRate * binninFactor
+        recTomoMode = ALL_TOMOS
+        correctCtf = True
+        self._runTest(binningFactor=binninFactor,
+                      binnedPixSize=binnedPixSize,
+                      recTomoMode=recTomoMode,
+                      correctCtf=correctCtf)
