@@ -33,7 +33,7 @@ from reliontomo.protocols.protocol_import_subtomograms_from_star import outputOb
 from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.protocols import ProtImportTomograms
 from tomo.protocols.protocol_import_tomograms import OUTPUT_NAME
-from tomo.tests import EMD_10439, DataSetEmd10439, RE5_STA, DataSetRe4STATuto, RE4_STA_TUTO
+from tomo.tests import EMD_10439, DataSetEmd10439, DataSetRe4STATuto, RE4_STA_TUTO
 from tomo.tests.test_base_centralized_layer import TestBaseCentralizedLayer
 
 IS_RE_40 = Plugin.isRe40()
@@ -181,7 +181,6 @@ class TestRelion5ImportFromStarFile(TestBaseCentralizedLayer):
     def setUpClass(cls):
         setupTestProject(cls)
         cls.dsRe4 = DataSet.getDataSet(RE4_STA_TUTO)
-        cls.dsRe5 = DataSet.getDataSet(RE5_STA)
         cls.tomogramsImported = cls._importTomograms()
 
     @classmethod
