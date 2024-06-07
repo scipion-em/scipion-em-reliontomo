@@ -23,11 +23,14 @@
 # *
 # **************************************************************************
 from pyworkflow.tests import setupTestProject, DataSet
-from pyworkflow.utils import magentaStr
+from pyworkflow.utils import magentaStr, yellowStr
+from reliontomo import Plugin
 from reliontomo.protocols import ProtRelionTomoMotionCorr
 from tomo.objects import TomoAcquisition
 from tomo.protocols import ProtImportTsMovies
 from tomo.tests.test_base_centralized_layer import TestBaseCentralizedLayer
+
+IS_RE_50 = Plugin.isRe50()
 
 
 class TestRelion5MotionCorr(TestBaseCentralizedLayer):
@@ -51,23 +54,24 @@ class TestRelion5MotionCorr(TestBaseCentralizedLayer):
 
     @classmethod
     def setUpClass(cls):
-        setupTestProject(cls)
-        cls.ds = DataSet.getDataSet('tomo-em')
-        cls.testAcqObj = TomoAcquisition(
-            voltage=cls.voltage,
-            magnification=cls.magnification,
-            sphericalAberration=cls.sphericalAberration,
-            amplitudeContrast=cls.amplitudeContrast,
-            samplingRate=cls.unbinnedSRate,
-            doseInitial=cls.initialDose,
-            dosePerFrame=cls.dosePerFrame,
-            tiltAxisAngle=cls.tiltAxisAngle,
-            angleMax=cls.maxAngle,
-            angleMin=cls.minAngle,
-            step=cls.step,
-            accumDose=cls.accumDose
-        )
-        cls.importedTsM = cls._runImportTiltSeriesM()
+        if IS_RE_50:
+            setupTestProject(cls)
+            cls.ds = DataSet.getDataSet('tomo-em')
+            cls.testAcqObj = TomoAcquisition(
+                voltage=cls.voltage,
+                magnification=cls.magnification,
+                sphericalAberration=cls.sphericalAberration,
+                amplitudeContrast=cls.amplitudeContrast,
+                samplingRate=cls.unbinnedSRate,
+                doseInitial=cls.initialDose,
+                dosePerFrame=cls.dosePerFrame,
+                tiltAxisAngle=cls.tiltAxisAngle,
+                angleMax=cls.maxAngle,
+                angleMin=cls.minAngle,
+                step=cls.step,
+                accumDose=cls.accumDose
+            )
+            cls.importedTsM = cls._runImportTiltSeriesM()
 
     @classmethod
     def _runImportTiltSeriesM(cls, filesPattern='{TS}_{TO}_{TA}.mrc'):
@@ -129,13 +133,16 @@ class TestRelion5MotionCorr(TestBaseCentralizedLayer):
                              anglesCountSet=self.nTiltImgsPerTs)
 
     def runTest(self, saveEvenOdd=False, binningFactor=1, patchX=1, patchY=1):
-        protMotionCorr = self._runMotionCorr(saveEvenOdd=saveEvenOdd,
-                                             binningFactor=binningFactor,
-                                             patchX=patchX,
-                                             patchY=patchY)
-        self._checkResults(protMotionCorr,
-                           saveEvenOdd=saveEvenOdd,
-                           binningFactor=binningFactor)
+        if IS_RE_50:
+            protMotionCorr = self._runMotionCorr(saveEvenOdd=saveEvenOdd,
+                                                 binningFactor=binningFactor,
+                                                 patchX=patchX,
+                                                 patchY=patchY)
+            self._checkResults(protMotionCorr,
+                               saveEvenOdd=saveEvenOdd,
+                               binningFactor=binningFactor)
+        else:
+            print(yellowStr('Relion 4 detected. Test for protocol "Motion correction" skipped.'))
 
     def testMotionCorr_01(self):
         self.runTest()

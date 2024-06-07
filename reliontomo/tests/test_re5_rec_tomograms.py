@@ -25,17 +25,19 @@
 # *
 # **************************************************************************
 import numpy as np
-
 from imod.protocols import ProtImodImportTransformationMatrix
 from imod.protocols.protocol_base import OUTPUT_TILTSERIES_NAME
 from pyworkflow.tests import setupTestProject, DataSet
-from pyworkflow.utils import magentaStr
+from pyworkflow.utils import magentaStr, yellowStr
+from reliontomo import Plugin
 from reliontomo.protocols import ProtRelion5TomoReconstruct
 from reliontomo.protocols.protocol_re5_rec_tomogram import SINGLE_TOMO, ALL_TOMOS
 from tomo.protocols import ProtImportTs, ProtImportTsCTF
 from tomo.protocols.protocol_import_ctf import ImportChoice
 from tomo.tests import RE4_STA_TUTO, DataSetRe4STATuto
 from tomo.tests.test_base_centralized_layer import TestBaseCentralizedLayer
+
+IS_RE_50 = Plugin.isRe50()
 
 
 class TestRelionTomoRecTomograms(TestBaseCentralizedLayer):
@@ -50,9 +52,10 @@ class TestRelionTomoRecTomograms(TestBaseCentralizedLayer):
 
     @classmethod
     def setUpClass(cls):
-        setupTestProject(cls)
-        cls.ds = DataSet.getDataSet(RE4_STA_TUTO)
-        cls._runPreviousProtocols()
+        if IS_RE_50:
+            setupTestProject(cls)
+            cls.ds = DataSet.getDataSet(RE4_STA_TUTO)
+            cls._runPreviousProtocols()
 
     @classmethod
     def _runPreviousProtocols(cls):
@@ -125,18 +128,21 @@ class TestRelionTomoRecTomograms(TestBaseCentralizedLayer):
         return getattr(protRecTomos, protRecTomos._possibleOutputs.tomograms.name, None)
 
     def _runTest(self, binningFactor=None, binnedPixSize=None, recTomoMode=None, tomoId=None, correctCtf=False):
-        # Run the protocol
-        outTomos = self.runRecTomograms(binnedPixSize=binnedPixSize,
-                                        recTomoMode=recTomoMode,
-                                        tomoId=tomoId,
-                                        correctCtf=correctCtf)
-        # Check the results
-        expectedDims = np.array(self.dims) / binningFactor
-        self.checkTomograms(outTomos,
-                            expectedSetSize=1 if recTomoMode == SINGLE_TOMO else self.nTs,
-                            expectedSRate=binnedPixSize,
-                            expectedDimensions=expectedDims.tolist(),
-                            ctfCorrected=correctCtf)
+        if IS_RE_50:
+            # Run the protocol
+            outTomos = self.runRecTomograms(binnedPixSize=binnedPixSize,
+                                            recTomoMode=recTomoMode,
+                                            tomoId=tomoId,
+                                            correctCtf=correctCtf)
+            # Check the results
+            expectedDims = np.array(self.dims) / binningFactor
+            self.checkTomograms(outTomos,
+                                expectedSetSize=1 if recTomoMode == SINGLE_TOMO else self.nTs,
+                                expectedSRate=binnedPixSize,
+                                expectedDimensions=expectedDims.tolist(),
+                                ctfCorrected=correctCtf)
+        else:
+            print(yellowStr('Relion 4 detected. Test for protocol "Reconstruct tomograms" skipped.'))
 
     def testRecTomos_01(self):
         binninFactor = 4

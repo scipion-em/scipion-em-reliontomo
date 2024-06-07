@@ -46,13 +46,12 @@ from reliontomo.protocols import ProtImportCoordinates3DFromStar
 from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR, IN_PARTICLES_STAR, POSTPROCESS_DIR, \
     POST_PROCESS_MRC
 from reliontomo.convert.convertBase import getTransformInfoFromCoordOrSubtomo
+from reliontomo.protocols import ProtRelionPrepareData, \
+    ProtRelionMakePseudoSubtomograms, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms, \
+    ProtRelionReconstructParticle, ProtRelionTomoReconstruct
+from reliontomo.protocols.protocol_3d_classify_subtomograms import ProtRelion3DClassifySubtomograms
 
 IS_RE_40 = Plugin.isRe40()
-if IS_RE_40:
-    from reliontomo.protocols import ProtRelionPrepareData, \
-        ProtRelionMakePseudoSubtomograms, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms, \
-        ProtRelionReconstructParticle, ProtRelionTomoReconstruct
-    from reliontomo.protocols.protocol_3d_classify_subtomograms import ProtRelion3DClassifySubtomograms
 
 
 class TestRefineCycleBase(TestBaseCentralizedLayer):
@@ -74,18 +73,18 @@ class TestRefineCycleBase(TestBaseCentralizedLayer):
 
     @classmethod
     def setUpClass(cls):
-        setupTestProject(cls)
-        cls.ds = DataSet.getDataSet(RE4_STA_TUTO)
-        cls._runPreviousProtocols(isRelion4=IS_RE_40)
+        if IS_RE_40:
+            setupTestProject(cls)
+            cls.ds = DataSet.getDataSet(RE4_STA_TUTO)
+            cls._runPreviousProtocols()
 
     @classmethod
-    def _runPreviousProtocols(cls, isRelion4=True):
-        if isRelion4:
-            cls.importedTs = cls._runImportTs()
-            cls.importedCtfs = cls._runImportCtf()
-            cls.tsWithAlignment = cls._runImportTrMatrix()
-            cls.importedTomos = cls._runImportTomograms()
-            cls.importedCoords = cls._runImportCoordinatesFromStar()
+    def _runPreviousProtocols(cls):
+        cls.importedTs = cls._runImportTs()
+        cls.importedCtfs = cls._runImportCtf()
+        cls.tsWithAlignment = cls._runImportTrMatrix()
+        cls.importedTomos = cls._runImportTomograms()
+        cls.importedCoords = cls._runImportCoordinatesFromStar()
 
     @classmethod
     def _runImportTs(cls):
@@ -254,10 +253,9 @@ class TestRelionTomoRecTomograms(TestRefineCycleBase):
     expectedTomoDims = [464, 464, 140]
 
     @classmethod
-    def _runPreviousProtocols(cls, isRelion4=True):
-        if isRelion4:
-            super()._runPreviousProtocols()
-            cls.protPrepare = cls._runPrepareData4RelionTomo()
+    def _runPreviousProtocols(cls):
+        super()._runPreviousProtocols()
+        cls.protPrepare = cls._runPrepareData4RelionTomo()
 
     def testRecSingleTomoFromPrep(self):
         if IS_RE_40:
@@ -312,10 +310,9 @@ class TestRelionTomoRecParticleFromTs(TestRefineCycleBase):
     boxSizeBin2 = DataSetRe4STATuto.boxSizeBin2.value
 
     @classmethod
-    def _runPreviousProtocols(cls, isRelion4=True):
-        if isRelion4:
-            super()._runPreviousProtocols()
-            cls.protPrepare = cls._runPrepareData4RelionTomo()
+    def _runPreviousProtocols(cls):
+        super()._runPreviousProtocols()
+        cls.protPrepare = cls._runPrepareData4RelionTomo()
 
     def testRecParticleFromTS(self):
         if IS_RE_40:
@@ -388,10 +385,9 @@ class TestRelionTomoRecParticleFromTs(TestRefineCycleBase):
 class TestRelionTomoMakePseudoSubtomos(TestRefineCycleBase):
 
     @classmethod
-    def _runPreviousProtocols(cls, isRelion4=True):
-        if isRelion4:
-            super()._runPreviousProtocols()
-            cls.protPrepare = cls._runPrepareData4RelionTomo()
+    def _runPreviousProtocols(cls):
+        super()._runPreviousProtocols()
+        cls.protPrepare = cls._runPrepareData4RelionTomo()
 
     def testMakePSubtomos(self):
         if IS_RE_40:
@@ -425,14 +421,13 @@ class TestRelionTomoEditStar(TestRefineCycleBase):
     editTestsTol = 0.01
 
     @classmethod
-    def _runPreviousProtocols(cls, isRelion4=True):
-        if isRelion4:
-            super()._runPreviousProtocols()
-            cls.importedRef = cls._runImportReference()
-            cls.protPrepare = cls._runPrepareData4RelionTomo()
-            protMakePSubtomos = cls._makePSubtomograms()
-            cls.inReParticles = getattr(protMakePSubtomos,
-                                        ProtRelionMakePseudoSubtomograms._possibleOutputs.relionParticles.name, None)
+    def _runPreviousProtocols(cls):
+        super()._runPreviousProtocols()
+        cls.importedRef = cls._runImportReference()
+        cls.protPrepare = cls._runPrepareData4RelionTomo()
+        protMakePSubtomos = cls._makePSubtomograms()
+        cls.inReParticles = getattr(protMakePSubtomos,
+                                    ProtRelionMakePseudoSubtomograms._possibleOutputs.relionParticles.name, None)
 
     def testEditStar_shiftCenter(self):
         if IS_RE_40:
@@ -578,13 +573,12 @@ class TestRelionTomoEditStar(TestRefineCycleBase):
 class TestRelionTomoGenInitialModel(TestRefineCycleBase):
 
     @classmethod
-    def _runPreviousProtocols(cls, isRelion4=True):
-        if isRelion4:
-            super()._runPreviousProtocols()
-            cls.protPrepare = cls._runPrepareData4RelionTomo()
-            protMakePSubtomos = cls._makePSubtomograms()
-            cls.inReParticles = getattr(protMakePSubtomos,
-                                        ProtRelionMakePseudoSubtomograms._possibleOutputs.relionParticles.name, None)
+    def _runPreviousProtocols(cls):
+        super()._runPreviousProtocols()
+        cls.protPrepare = cls._runPrepareData4RelionTomo()
+        protMakePSubtomos = cls._makePSubtomograms()
+        cls.inReParticles = getattr(protMakePSubtomos,
+                                    ProtRelionMakePseudoSubtomograms._possibleOutputs.relionParticles.name, None)
 
     def testInitialModel(self):
         if IS_RE_40:
@@ -618,14 +612,13 @@ class TestRelionTomo3dClassify(TestRefineCycleBase):
     nClasses = 2
 
     @classmethod
-    def _runPreviousProtocols(cls, isRelion4=True):
-        if isRelion4:
-            super()._runPreviousProtocols()
-            cls.importedRef = cls._runImportReference()
-            cls.protPrepare = cls._runPrepareData4RelionTomo()
-            protMakePSubtomos = cls._makePSubtomograms()
-            cls.inReParticles = getattr(protMakePSubtomos,
-                                        ProtRelionMakePseudoSubtomograms._possibleOutputs.relionParticles.name, None)
+    def _runPreviousProtocols(cls):
+        super()._runPreviousProtocols()
+        cls.importedRef = cls._runImportReference()
+        cls.protPrepare = cls._runPrepareData4RelionTomo()
+        protMakePSubtomos = cls._makePSubtomograms()
+        cls.inReParticles = getattr(protMakePSubtomos,
+                                    ProtRelionMakePseudoSubtomograms._possibleOutputs.relionParticles.name, None)
 
     def testCl3d(self):
         if IS_RE_40:
@@ -711,14 +704,13 @@ class TestRelionTomo3dClassify(TestRefineCycleBase):
 class TestRelionTomoRefine(TestRefineCycleBase):
 
     @classmethod
-    def _runPreviousProtocols(cls, isRelion4=True):
-        if isRelion4:
-            super()._runPreviousProtocols()
-            cls.importedRef = cls._runImportReference()
-            cls.protPrepare = cls._runPrepareData4RelionTomo()
-            protMakePSubtomos = cls._makePSubtomograms()
-            cls.inReParticles = getattr(protMakePSubtomos,
-                                        ProtRelionMakePseudoSubtomograms._possibleOutputs.relionParticles.name, None)
+    def _runPreviousProtocols(cls):
+        super()._runPreviousProtocols()
+        cls.importedRef = cls._runImportReference()
+        cls.protPrepare = cls._runPrepareData4RelionTomo()
+        protMakePSubtomos = cls._makePSubtomograms()
+        cls.inReParticles = getattr(protMakePSubtomos,
+                                    ProtRelionMakePseudoSubtomograms._possibleOutputs.relionParticles.name, None)
 
     def testAutoRefine(self):
         if IS_RE_40:

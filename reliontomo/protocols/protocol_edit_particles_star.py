@@ -242,7 +242,7 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
         cmd = self._genIOCmd()
         # Re-center particles
         if self.doRecenter.get():
-            self._genRecenterCmd()
+            cmd += self._genRecenterCmd()
 
         # Operate particles - removed by Jorge in the protocol version for Relion 5 as it is rarely used and may
         # be problematic as some of the fields involved are now defined in a different way, such as the coordinates

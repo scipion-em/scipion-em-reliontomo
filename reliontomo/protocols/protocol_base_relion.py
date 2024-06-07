@@ -188,7 +188,7 @@ class ProtRelionTomoBase(EMProtocol):
                                 '\n - Calling the protocol "Extract subtomos" to convert the particles into Relion 5 '
                                 'format OR'
                                 '\n - Configuring the plugin to work with Relion 4.')
-            if not IS_RELION_50 and areRe5Particles():
+            if not IS_RELION_50 and areRe5Particles:
                 errorMsg.append('The introduced particles were generated with Relion 5, while the plugin is currently '
                                 'configured to work with Relion 4. Please consider configuring the plugin to work with '
                                 'Relion 5.')
