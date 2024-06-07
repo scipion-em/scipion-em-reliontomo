@@ -31,10 +31,10 @@ from reliontomo.convert import convert40_tomo, convert30_tomo, convert50_tomo
 
 
 def createWriterTomo(isPyseg=False, **kwargs):
-    if Plugin.IS_GT50():
-        writer = createWriterTomo50()
-    elif isPyseg or not Plugin.isRe40():
+    if isPyseg:
         writer = createWriterTomo30(starHeaders=RELION_30_TOMO_LABELS, **kwargs)
+    elif Plugin.IS_GT50():
+        writer = createWriterTomo50()
     else:
         writer = createWriterTomo40(starHeaders=RELION_40_TOMO_LABELS, **kwargs)
     return writer
