@@ -24,6 +24,8 @@
 # **************************************************************************
 from enum import Enum
 from pyworkflow.protocol import PointerParam, IntParam, GE, LE
+from pyworkflow.utils import createLink
+from reliontomo.constants import IN_TOMOS_STAR
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
 
@@ -71,6 +73,17 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         pass
+
+    def convertInputStep(self):
+        inParticles = self.getInputParticles()
+        # Generate the file particles.star
+        self.genInStarFile(are2dParticles=inParticles.are2dStacks())
+        # Link the file tomograms.star
+        # The tomograms file will exist and be stored as an attribute of the set, having been updated if a new one is
+        # generated, like in the protocol bayesian polishing
+        createLink(inParticles.getTomogramsStar(), self._getExtraPath(IN_TOMOS_STAR))
+        # Tilt-series star files:
+        # The tilt-series star files will exist and their corresponding path will be provided by the file tomograms.star
 
     def createOutputStep(self):
         inPSubtomos = self.inReParticles.get()
