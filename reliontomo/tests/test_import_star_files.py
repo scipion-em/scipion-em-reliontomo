@@ -33,10 +33,11 @@ from reliontomo.protocols.protocol_import_subtomograms_from_star import outputOb
 from tomo.constants import BOTTOM_LEFT_CORNER
 from tomo.protocols import ProtImportTomograms
 from tomo.protocols.protocol_import_tomograms import OUTPUT_NAME
-from tomo.tests import EMD_10439, DataSetEmd10439, DataSetRe4STATuto, RE4_STA_TUTO
+from tomo.tests import EMD_10439, DataSetEmd10439, DataSetRe4STATuto, RE4_STA_TUTO, RE5_STA, DataSetRe5STA
 from tomo.tests.test_base_centralized_layer import TestBaseCentralizedLayer
 
 IS_RE_40 = Plugin.isRe40()
+IS_RE_50 = Plugin.isRe50()
 
 
 class TestImportFromStarFile(BaseTest):
@@ -259,3 +260,69 @@ class TestRelion5ImportFromStarFile(TestBaseCentralizedLayer):
         boxSize = self.boxSizeBin4 / 2
         self._runTest(tomograms=tomograms, sRate=sRate, boxSize=boxSize, isRelion5Picking=False)
 
+
+class TestImportRe5NativeCoordsFromStarFile(TestBaseCentralizedLayer):
+    """Import coordinates picked with native Relion 5"""
+
+    @classmethod
+    def setUpClass(cls):
+        if IS_RE_50:
+            setupTestProject(cls)
+            cls.ds = DataSet.getDataSet(RE5_STA)
+            cls.importedTomos = cls._importTomograms()
+
+    @classmethod
+    def _importTomograms(cls):
+        print(magentaStr("\n==> Importing data - tomograms:"))
+        protImportTomogram = cls.newProtocol(ProtImportTomograms,
+                                             filesPath=cls.ds.getFile(DataSetRe5STA.tomosDir.name),
+                                             filesPattern='*',
+                                             samplingRate=DataSetRe4STATuto.sRateBin4.value)
+
+        cls.launchProtocol(protImportTomogram)
+        outputTomos = getattr(protImportTomogram, OUTPUT_NAME, None)
+        cls.assertIsNotNone(outputTomos, 'No tomograms were generated.')
+        return outputTomos
+
+    @classmethod
+    def _runImportCoords3dFromStar(cls, starFile, samplingRate=None, inTomos=None, boxSize=None):
+        protImportCoords3dFromStar = cls.newProtocol(ProtImportCoordinates3DFromStar,
+                                                     starFile=starFile,
+                                                     inTomos=inTomos,
+                                                     samplingRate=samplingRate,
+                                                     boxSize=boxSize)
+
+        cls.launchProtocol(protImportCoords3dFromStar)
+        outCoords = getattr(protImportCoords3dFromStar, importCoordsOutputs.coordinates.name)
+        cls.assertIsNotNone(outCoords, 'No coordinates were generated.')
+        return outCoords
+
+    def _runTest(self, coordsSRate=None):
+        if IS_RE_50:
+            sRateMsg = '' if coordsSRate else 'not'
+            print(magentaStr(f"\n==> Import coordinates picked with Relion 5:"
+                             f"\n\t- Coordinates sampling rate {sRateMsg} provided."))
+            starFile = self.ds.getFile(DataSetRe5STA.coordsPickedWithRe5Star.name)
+            boxSize = DataSetRe5STA.boxSize.value
+            tomograms = self.importedTomos
+            importedCoords = self._runImportCoords3dFromStar(starFile,
+                                                             inTomos=tomograms,
+                                                             samplingRate=coordsSRate,
+                                                             boxSize=boxSize)
+            # Check the results
+            isRelion5Picking = True
+            self.checkCoordinates(importedCoords,
+                                  expectedSetSize=DataSetRe5STA.nCoords.value,
+                                  expectedBoxSize=boxSize,
+                                  expectedSRate=tomograms.getSamplingRate(),  # The coords are scaled to the
+                                  # size of the tomograms introduced
+                                  orientedParticles=True)  # Oriented picking
+            self.assertEqual(getattr(importedCoords, IS_RE5_PICKING_ATTR, -1), isRelion5Picking)
+        else:
+            print(yellowStr('Relion 4 detected. Test for protocol "Import coordinates picked with Relion 5" skipped.'))
+
+    def testImportsCoordsNativeRe5_01(self):
+        self._runTest(coordsSRate=DataSetRe5STA.coordsSRate.value)
+
+    def testImportsCoordsNativeRe5_02(self):
+        self._runTest()
