@@ -146,7 +146,7 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self.convertInputStep())
+        self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self._relionCTFRefine)
         self._insertFunctionStep(self.createOutputStep)
 
