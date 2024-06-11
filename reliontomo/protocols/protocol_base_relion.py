@@ -27,6 +27,7 @@ from emtable import Table
 
 from pwem.objects import VolumeMask, FSC
 from pwem.protocols import EMProtocol
+from pyworkflow import BETA, PROD
 from pyworkflow.protocol import PointerParam, StringParam
 from pyworkflow.utils import Message, createLink
 from reliontomo import Plugin
@@ -40,6 +41,7 @@ IS_RELION_50 = Plugin.isRe50()
 
 
 class ProtRelionTomoBase(EMProtocol):
+    _devStatus = BETA if IS_RELION_50 else PROD
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

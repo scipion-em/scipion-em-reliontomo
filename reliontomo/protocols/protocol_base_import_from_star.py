@@ -27,7 +27,6 @@ from enum import Enum
 from os.path import exists
 from emtable import Table
 from pwem.protocols import EMProtocol
-from pyworkflow import BETA
 from pyworkflow.object import Boolean
 from pyworkflow.protocol import FileParam, FloatParam, IntParam, PointerParam
 from pyworkflow.utils import Message, getParentFolder, createLink, makePath
@@ -47,7 +46,6 @@ class importCoordsOutputs(Enum):
 
 class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
     """Base protocol for importing data from a star file"""
-    _devStatus = BETA
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

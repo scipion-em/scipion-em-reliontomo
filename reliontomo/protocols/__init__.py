@@ -22,9 +22,6 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-
-from .. import Plugin
-
 from .protocol_refine_subtomograms import ProtRelionRefineSubtomograms
 from .protocol_3d_classify_subtomograms import ProtRelion3DClassifySubtomograms
 from .protocol_de_novo_initial_model import ProtRelionDeNovoInitialModel
@@ -33,15 +30,14 @@ from .protocol_edit_particles_star import ProtRelionEditParticlesStar
 from .protocol_post_process import ProtRelionPostProcess
 from .protocol_tomo_frame_align import ProtRelionTomoFrameAlign
 from .protocol_ctf_refine import ProtRelionCtfRefine
-
-# if Plugin.isRe40():
+# Relion 4 specific
 from .protocol_import_subtomograms_from_star import ProtImportSubtomogramsFromStar
 from .protocol_prepare_data import ProtRelionPrepareData
 from .protocol_make_pseudo_subtomos import ProtRelionMakePseudoSubtomograms
 from .protocol_rec_tomogram import ProtRelionTomoReconstruct
 from .protocol_reconstruc_particle_from_ts import ProtRelionReconstructParticle
 from .protocol_rec_particle_from_subtomograms import ProtRelionSubTomoReconstructAvg
-# else:
+# Relion 5 specific
 from .protocol_re5_extract_subtomos import ProtRelion5ExtractSubtomos
 from .protocol_re5_reconstruc_particle_from_ts import ProtRelion5ReconstructParticle
 from .protocol_motion_corr import ProtRelionTomoMotionCorr
