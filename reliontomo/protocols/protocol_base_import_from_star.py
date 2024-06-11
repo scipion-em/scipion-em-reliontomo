@@ -115,18 +115,6 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
     # --------------------------- INFO functions ------------------------------
 
     def _validate(self):
-        # JORGE
-        import os
-        fname = "/home/jjimenez/test_JJ.txt"
-        if os.path.exists(fname):
-            os.remove(fname)
-        fjj = open(fname, "a+")
-        fjj.write('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
-        fjj.close()
-        print('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
-        import time
-        time.sleep(10)
-        # JORGE_END
         errors = []
         # Check if the files referred in the star file exists
         starFile = self.starFile.get()
