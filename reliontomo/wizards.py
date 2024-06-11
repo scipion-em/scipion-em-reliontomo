@@ -25,14 +25,10 @@
 # *
 # **************************************************************************
 import tkinter as tk
-from tkinter import BOTH
-
-import matplotlib as plt
 
 from pwem.emlib.image import ImageHandler
 from pyworkflow.utils import Icon
 
-plt.use('TkAgg')
 import numpy as np
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -40,7 +36,7 @@ from matplotlib.figure import Figure
 
 from pwem.wizards import EmWizard
 from pyworkflow.gui import (ListTreeProviderString, dialog, configureWeigths,
-                            Dialog, RESULT_CLOSE, RESULT_YES, MessageDialog,
+                            Dialog, RESULT_CLOSE, RESULT_YES,
                             showError)
 from pyworkflow.object import String
 from relion.wizards import RelionWizMtfSelector

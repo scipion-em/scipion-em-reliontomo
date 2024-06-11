@@ -3,6 +3,8 @@ v4.0.0:
     - Adapted to scipion-em-relion deprecation of relion3.
     - Add warning preventing to set the box size and the cropped box size to the same value as it may cause an
       internal error in relion (Thanks to DSheperd).
+  Developers:
+    - Fix inspect in buildbot: Tkagg not set in wizard module.
 v3.4.0:
   Note: this was supposed to be 3.3.0, but was published as 3.4.0
   Users:
