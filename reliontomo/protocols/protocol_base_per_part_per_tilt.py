@@ -22,12 +22,22 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+import shutil
 from enum import Enum
+from os import walk
+from os.path import join, basename
+
+from emtable import Table
+
 from pyworkflow.protocol import PointerParam, IntParam, GE, LE
 from pyworkflow.utils import createLink
-from reliontomo.constants import IN_TOMOS_STAR
+from reliontomo.constants import IN_TOMOS_STAR, OUT_TOMOS_STAR, GLOBAL_TABLE, tomoStarFields, RLN_TOMONAME, RLN_VOLTAGE, \
+    RLN_SPHERICALABERRATION, RLN_AMPLITUDECONTRAST, RLN_MICROGRAPHORIGINALPIXELSIZE, RLN_TOMOHAND, RLN_OPTICSGROUPNAME, \
+    RLN_TOMOTILT_SERIES_PIXEL_SIZE, RLN_ETOMO_DIRECTIVE_FILE, RLN_TOMOTOMOGRAM_BINNING, RLN_TOMOSIZEX, RLN_TOMOSIZEY, \
+    RLN_TOMOSIZEZ, RLN_TOMORECONSTRUCTED_TOMOGRAM
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
-from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase, IS_RELION_50
+from tomo.objects import TiltSeries
 
 
 class outputObjects(Enum):
@@ -86,12 +96,44 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
         # The tilt-series star files will exist and their corresponding path will be provided by the file tomograms.star
 
     def createOutputStep(self):
-        inPSubtomos = self.inReParticles.get()
-        # Output RelionParticles
-        pSubtomos = self.genRelionParticles()
+        if IS_RELION_50:
+            # Manage the output files
+            tsStarDirTree = self._getExtraPath('Runs')
+            outTsStarFiles = sorted(self._getResultingTsStarFiles(tsStarDirTree))
+            [createLink(outTsStarFile, self._getExtraPath(basename(outTsStarFile))) for outTsStarFile in outTsStarFiles]
+            shutil.rmtree(tsStarDirTree)
+            # Update the file tomograms.star with the outTsStarFiles
+            outTomoStar = self._getExtraPath(OUT_TOMOS_STAR)
+            dataTable = Table()
+            dataTable.read(outTomoStar, tableName=GLOBAL_TABLE)
+            dataTable.sort(TiltSeries.TS_ID_FIELD)
+            tomoTable = Table(columns=tomoStarFields)
+            with open(outTomoStar, 'w') as f:
+                for row, tsStarFile in zip(dataTable, outTsStarFiles):
+                    tomoTable.addRow(
+                        row.get(RLN_TOMONAME),
+                        row.get(RLN_VOLTAGE),
+                        row.get(RLN_SPHERICALABERRATION),
+                        row.get(RLN_AMPLITUDECONTRAST),
+                        row.get(RLN_MICROGRAPHORIGINALPIXELSIZE),
+                        row.get(RLN_TOMOHAND),
+                        row.get(RLN_OPTICSGROUPNAME),
+                        row.get(RLN_TOMOTILT_SERIES_PIXEL_SIZE),
+                        tsStarFile,
+                        row.get(RLN_ETOMO_DIRECTIVE_FILE),
+                        row.get(RLN_TOMOTOMOGRAM_BINNING),
+                        row.get(RLN_TOMOSIZEX),
+                        row.get(RLN_TOMOSIZEY),
+                        row.get(RLN_TOMOSIZEZ),
+                        row.get(RLN_TOMORECONSTRUCTED_TOMOGRAM)
+                    )
+                # Write the STAR file
+                tomoTable.writeStar(f, tableName=GLOBAL_TABLE)
 
+        # Register outputs and define relations
+        pSubtomos = self.genRelionParticles()  # Output RelionParticles
         self._defineOutputs(**{outputObjects.relionParticles.name: pSubtomos})
-        self._defineSourceRelation(inPSubtomos, pSubtomos)
+        self._defineSourceRelation(self.getInputParticles(), pSubtomos)
 
     # -------------------------- UTILS functions -----------------------------
     def _genIOCommand(self):
@@ -112,6 +154,16 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
         cmd += '--b %i ' % self.boxSize.get()
         cmd += self._genExtraParamsCmd()
         return cmd
+
+    @staticmethod
+    def _getResultingTsStarFiles(iDir, ext='.mrc'):
+        tsStaFiles = []
+        for dirpath, dirnames, filenames in walk(iDir):
+            for filename in filenames:
+                if filename.lower().endswith(ext):  # Ensure case-insensitive search
+                    filepath = join(dirpath, filename)
+                    tsStaFiles.append(filepath)
+        return tsStaFiles
 
 
 
