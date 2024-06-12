@@ -25,7 +25,7 @@
 import shutil
 from enum import Enum
 from os import walk
-from os.path import join, basename
+from os.path import join, basename, exists
 
 from emtable import Table
 
@@ -100,8 +100,9 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
             # Manage the output files
             tsStarDirTree = self._getExtraPath('Runs')
             outTsStarFiles = sorted(self._getResultingTsStarFiles(tsStarDirTree))
-            [createLink(outTsStarFile, self._getExtraPath(basename(outTsStarFile))) for outTsStarFile in outTsStarFiles]
-            shutil.rmtree(tsStarDirTree)
+            [shutil.move(outTsStarFile, self._getExtraPath(basename(outTsStarFile))) for outTsStarFile in outTsStarFiles]
+            if exists(tsStarDirTree):
+                shutil.rmtree(tsStarDirTree)
             # Update the file tomograms.star with the outTsStarFiles
             outTomoStar = self._getExtraPath(OUT_TOMOS_STAR)
             dataTable = Table()
