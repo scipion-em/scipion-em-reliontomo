@@ -26,6 +26,7 @@ import shutil
 from enum import Enum
 from os import walk
 from os.path import join, basename, exists
+from typing import List
 
 from emtable import Table
 
@@ -37,7 +38,6 @@ from reliontomo.constants import IN_TOMOS_STAR, OUT_TOMOS_STAR, GLOBAL_TABLE, to
     RLN_TOMOSIZEZ, RLN_TOMORECONSTRUCTED_TOMOGRAM
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase, IS_RELION_50
-from tomo.objects import TiltSeries
 
 
 class outputObjects(Enum):
@@ -99,8 +99,13 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
         if IS_RELION_50:
             # Manage the output files
             tsStarDirTree = self._getExtraPath('Runs')
-            outTsStarFiles = sorted(self._getResultingTsStarFiles(tsStarDirTree))
-            [shutil.move(outTsStarFile, self._getExtraPath(basename(outTsStarFile))) for outTsStarFile in outTsStarFiles]
+            resultingTsStarFiles = self._getResultingTsStarFiles(tsStarDirTree)
+            outTsStarList = []
+            for inTsStarFile in resultingTsStarFiles:
+                outTsStar = self._getExtraPath(basename(inTsStarFile))
+                shutil.move(inTsStarFile, outTsStar)
+                outTsStarList.append(outTsStar)
+            outTsStarList = sorted(outTsStarList)
             if exists(tsStarDirTree):
                 shutil.rmtree(tsStarDirTree)
             # Update the file tomograms.star with the outTsStarFiles
@@ -110,7 +115,7 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
             dataTable.sort(RLN_TOMONAME)
             tomoTable = Table(columns=tomoStarFields)
             with open(outTomoStar, 'w') as f:
-                for row, tsStarFile in zip(dataTable, outTsStarFiles):
+                for row, tsStarFile in zip(dataTable, outTsStarList):
                     tomoTable.addRow(
                         row.get(RLN_TOMONAME),
                         row.get(RLN_VOLTAGE),
@@ -157,7 +162,7 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
         return cmd
 
     @staticmethod
-    def _getResultingTsStarFiles(iDir, ext='.mrc'):
+    def _getResultingTsStarFiles(iDir, ext='.star') -> List:
         tsStaFiles = []
         for dirpath, dirnames, filenames in walk(iDir):
             for filename in filenames:

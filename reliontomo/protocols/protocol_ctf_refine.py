@@ -138,8 +138,8 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase):
                           condition='refineEvenAbe',
                           choices=evenAberrationOrders,
                           default=0,
-                          help='The forth order aberrations are spherical aberration, quadrafoil and secondary astigmatism,'
-                               'higher aberrations are barely considered')
+                          help='The forth order aberrations are spherical aberration, quadrafoil and secondary '
+                               'astigmatism, higher aberrations are barely considered.')
 
         self._defineExtraParams(form)
         form.addParallelSection(threads=4, mpi=1)
