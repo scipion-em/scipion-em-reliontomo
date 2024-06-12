@@ -106,7 +106,7 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
             outTomoStar = self._getExtraPath(OUT_TOMOS_STAR)
             dataTable = Table()
             dataTable.read(outTomoStar, tableName=GLOBAL_TABLE)
-            dataTable.sort(TiltSeries.TS_ID_FIELD)
+            dataTable.sort(RLN_TOMONAME)
             tomoTable = Table(columns=tomoStarFields)
             with open(outTomoStar, 'w') as f:
                 for row, tsStarFile in zip(dataTable, outTsStarFiles):
