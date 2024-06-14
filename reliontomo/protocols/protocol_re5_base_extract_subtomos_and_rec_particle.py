@@ -49,6 +49,7 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
                       default=1,
                       validator=GE(0),
                       allowsNull=False,
+                      important=True,
                       help='The tilt series images will be binned by this (real-valued) factor and then '
                            'reconstructed in the specified box size above. Note that thereby the '
                            'reconstructed region becomes larger when specifying binning factors larger than one. '
@@ -57,6 +58,7 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
                       label='Box size (px)',
                       validator=GE(0),
                       allowsNull=False,
+                      important=True,
                       help='Box size, in pixels, of the reconstruction. Note that this is independent of the '
                            'box size used to refine the particle. This allows the user to construct a 3D map of '
                            'arbitrary size to gain an overview of the structure surrounding the particle. A '
@@ -65,6 +67,7 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
         form.addParam('croppedBoxSize', IntParam,
                       label="Cropped box size (px)",
                       allowsNull=True,
+                      important=True,
                       help='The resulting pseudo subtomograms are cropped to this size. A smaller box size '
                            'allows the (generally expensive) refinement using relion_refine to proceed more rapidly.')
 

@@ -73,15 +73,13 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                       allowsNull=False)
         form.addParam('inputCtfTs', PointerParam,
                       pointerClass='SetOfCTFTomoSeries',
-                      label="CTF tomo series",
-                      important=True,
-                      allowsNull=False)
+                      label="CTF tomo series (opt)",
+                      help='They are optional in case of the re-extraction of Relion particles.')
         form.addParam('inputTS', PointerParam,
-                      help="Tilt series with alignment (non interpolated) used in the tomograms reconstruction.",
                       pointerClass='SetOfTiltSeries',
-                      label="Tilt series",
-                      important=True,
-                      allowsNull=False)
+                      label="Tilt series (opt)",
+                      help='Tilt series with alignment (non interpolated) used in the tomograms reconstruction.. '
+                           'They are optional in case of the re-extraction of Relion particles.')
         form.addParam('handedness', BooleanParam,
                       label='Does focus decrease with Z distance?',
                       default=True,
@@ -103,6 +101,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         form.addParam('write2dStacks', BooleanParam,
                       label='Write output as 2D stacks?',
                       default=True,
+                      important=True,
                       help='If set to Yes, this program will write output subtomograms as 2D substacks. This is new '
                            'as of relion-4.1, and the preferred way of generating subtomograms. If set to No, '
                            'then relion-4.0 3D pseudo-subtomograms will be written out. Either can be used in '
@@ -251,6 +250,14 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         self._defineSourceRelation(tsPointer, fiducialModelGaps)
 
     # -------------------------- INFO functions -------------------------------
+    def _validate(self):
+        errorMsg = super()._validate()
+        if self.isInputSetOf3dCoords():  # Extraction of coordinates (first ex-traction, not re-extraction)
+            if not self.inputCtfTs.get() or not self.inputTS.get():
+                errorMsg.append('Inputs "Tilt series" and "CTF tomo series" are required for the first extraction ('
+                                'when the input are coordinates).')
+        return errorMsg
+
     def _warnings(self):
         warnMsg = []
         if not (self.inputTS.get().hasAlignment() and not self.inputTS.get().interpolated()):
