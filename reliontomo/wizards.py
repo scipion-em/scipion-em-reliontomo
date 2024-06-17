@@ -25,15 +25,11 @@
 # *
 # **************************************************************************
 import tkinter as tk
-from tkinter import BOTH
-
-import matplotlib as plt
 
 from pwem.emlib.image import ImageHandler
 from pyworkflow.utils import Icon
 from reliontomo.protocols.protocol_re5_rec_tomogram import ProtRelion5TomoReconstruct
 
-plt.use('TkAgg')
 import numpy as np
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
