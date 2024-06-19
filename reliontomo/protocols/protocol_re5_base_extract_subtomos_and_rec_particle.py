@@ -72,9 +72,6 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
                            'allows the (generally expensive) refinement using relion_refine to proceed more rapidly.')
 
     # -------------------------- STEPS functions ------------------------------
-    def _initialize(self):
-        self.isInSetOf3dCoords = self.isInputSetOf3dCoords()
-
     def convertInputStep(self):
         inParticles = self.getInputParticles()
         # Generate the file particles.star
