@@ -1,4 +1,4 @@
 emtable
-scipion-em-tomo>=3.5.1
+scipion-em-tomo>=3.7.2
 scipion-em-relion
 scipion-em-imod

@@ -173,7 +173,7 @@ class Writer(WriterTomo):
                                    pSubtomo.getCoordinate3D().getGroupId(),   # _sciGroupId #18
                                    ]
 
-                rowsValues += [pSubtomo.getRe4ParticleName(),  # _rlnTomoParticleName #18
+                rowsValues += [pSubtomo.getReParticleName(),  # _rlnTomoParticleName #18
                                pSubtomo.getOpticsGroupId(),  # _rlnOpticsGroup #19
                                pSubtomoFile,  # _rlnImageName #20
                                pSubtomoCtfFile]  # _rlnCtfImage #21

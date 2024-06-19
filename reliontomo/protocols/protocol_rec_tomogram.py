@@ -29,6 +29,7 @@ from pyworkflow.protocol.params import FloatParam, IntParam, StringParam, Pointe
 from pyworkflow.utils import Message
 from reliontomo import Plugin
 from reliontomo.objects import RelionPSubtomogram
+from reliontomo.protocols.protocol_base_relion import IS_RELION_50
 from reliontomo.protocols.protocol_prepare_data import outputObjects as prepareProtOutputs
 from tomo.objects import Tomogram, SetOfTomograms
 from tomo.utils import getObjFromRelation
@@ -64,7 +65,7 @@ class ProtRelionTomoReconstruct(EMProtocol):
         form.addParam('protPrepare', PointerParam,
                       pointerClass='ProtRelionPrepareData',
                       label='Prepare Data protocol',
-                      help='It is very usefulto check if the protocol "Prepare data" has been applied correctly (in '
+                      help='It is very useful to check if the protocol "Prepare data" has been applied correctly (in '
                            'terms of flip options, for example)')
         form.addParam('recTomoMode', EnumParam,
                       display=EnumParam.DISPLAY_HLIST,
@@ -145,6 +146,11 @@ class ProtRelionTomoReconstruct(EMProtocol):
         return summary
 
     # --------------------------- UTILS functions -----------------------------
+    @classmethod
+    def isDisabled(cls):
+        """ Return True if this Protocol is disabled.
+        Disabled protocols will not be offered in the available protocols."""
+        return True if IS_RELION_50 else False
 
     def _genTomoRecCommand(self, tomoId):
         cmd = '--t %s ' % self.inReParticles.getTomogramsStar()

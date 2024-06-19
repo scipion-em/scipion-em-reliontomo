@@ -28,6 +28,7 @@ import tkinter as tk
 
 from pwem.emlib.image import ImageHandler
 from pyworkflow.utils import Icon
+from reliontomo.protocols.protocol_re5_rec_tomogram import ProtRelion5TomoReconstruct
 
 import numpy as np
 
@@ -53,15 +54,19 @@ RelionWizMtfSelector._targets.append((ProtRelionPostProcess, ['mtf']))
 
 class RelionTomoIdsWizard(EmWizard):
     tomoIdParamName = 'tomoId'
-    _targets = [(ProtRelionTomoReconstruct, [tomoIdParamName])]
+    _targets = [(ProtRelionTomoReconstruct, [tomoIdParamName]),
+                (ProtRelion5TomoReconstruct, [tomoIdParamName])]
 
     def show(self, form, *args):
-        relionTomoRecProt = form.protocol
-        inReParticles = getattr(relionTomoRecProt.protPrepare.get(),
-                                prepareProtOutputs.relionParticles.name, None)
-        tomoSet = getObjFromRelation(inReParticles, relionTomoRecProt,
-                                     SetOfTomograms)
-        tsIds = [String(tomo.getTsId()) for tomo in tomoSet]
+        prot = form.protocol
+        if type(prot) is ProtRelion5TomoReconstruct:
+            tsSet = prot.inTsSet.get()
+            tsIds = tsSet.getTSIds()
+            tsIds = [String(tsId) for tsId in tsIds]
+        else:
+            inReParticles = getattr(prot.protPrepare.get(), prepareProtOutputs.relionParticles.name, None)
+            tomoSet = getObjFromRelation(inReParticles, prot, SetOfTomograms)
+            tsIds = [String(tomo.getTsId()) for tomo in tomoSet]
 
         # Get a data provider from the operations to be used in the tree (dialog)
         provider = ListTreeProviderString(tsIds)

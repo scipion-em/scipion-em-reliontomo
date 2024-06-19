@@ -23,16 +23,19 @@
 # *
 # **************************************************************************
 from pyworkflow.protocol import IntParam, FloatParam, GE
+from pyworkflow.utils import createLink
+from reliontomo.constants import IN_PARTICLES_STAR, IN_TOMOS_STAR
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase, IS_RELION_50
 
 
-class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
+class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
     """Reconstruct particle and make pseudo-subtomograms base class"""
 
     _label = None
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.isInSetOf3dCoords = None
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -41,11 +44,21 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
 
     @staticmethod
     def _defineCommonRecParams(form):
+        form.addParam('binningFactor', FloatParam,
+                      label='Binning factor (downsampling)',
+                      default=1,
+                      validator=GE(0),
+                      allowsNull=False,
+                      important=True,
+                      help='The tilt series images will be binned by this (real-valued) factor and then '
+                           'reconstructed in the specified box size above. Note that thereby the '
+                           'reconstructed region becomes larger when specifying binning factors larger than one. '
+                           'This does not alter the box size.')
         form.addParam('boxSize', IntParam,
                       label='Box size (px)',
                       validator=GE(0),
-                      important=True,
                       allowsNull=False,
+                      important=True,
                       help='Box size, in pixels, of the reconstruction. Note that this is independent of the '
                            'box size used to refine the particle. This allows the user to construct a 3D map of '
                            'arbitrary size to gain an overview of the structure surrounding the particle. A '
@@ -54,65 +67,41 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
         form.addParam('croppedBoxSize', IntParam,
                       label="Cropped box size (px)",
                       allowsNull=True,
+                      important=True,
                       help='The resulting pseudo subtomograms are cropped to this size. A smaller box size '
-                           ' allows the (generally expensive) refinement using relion_refine to proceed more rapidly.')
-        form.addParam('binningFactor', FloatParam,
-                      label='Binning factor (downsampling)',
-                      default=1,
-                      validator=GE(0),
-                      allowsNull=False,
-                      help='The tilt series images will be binned by this (real-valued) factor and then '
-                           ' reconstructed in the specified box size above. Note that thereby the '
-                           ' reconstructed region becomes larger when specifying binning factors larger than one.'
-                           ' This does not alter the box size.')
+                           'allows the (generally expensive) refinement using relion_refine to proceed more rapidly.')
 
-    # -------------------------- INSERT steps functions -----------------------
-    def _insertAllSteps(self):
-        pass
-
+    # -------------------------- STEPS functions ------------------------------
     def convertInputStep(self):
-        self.genInStarFile()
-
-    def createOutputStep(self):
-        return self.genRelionParticles(binningFactor=self.binningFactor.get(), boxSize=self.croppedBoxSize.get())
-
-    # -------------------------- INFO functions -------------------------------
-    def _warnings(self):
-        warnMsg = []
-        boxSize = self.boxSize.get()
-        croppedBoxSize = self.croppedBoxSize.get()
-        if boxSize == croppedBoxSize:
-            warnMsg.append('Setting the same value to the Box size and the Cropped box size may cause errors in '
-                           'later steps of the refinement cycle.')
-        elif boxSize < croppedBoxSize:
-            warnMsg.append(f"The Box size [{boxSize} px] should be lower than the Cropped box size [{croppedBoxSize} "
-                           f"px]. Please check these parameters' help to get more detailed information.")
-        return warnMsg
+        inParticles = self.getInputParticles()
+        # Generate the file particles.star
+        self.genInStarFile(are2dParticles=inParticles.are2dStacks())
+        # Link the file tomograms.star
+        # The tomograms file will exist and be stored as an attribute of the set, having been updated if a new one is
+        # generated, like in the protocol bayesian polishing
+        createLink(inParticles.getTomogramsStar(), self._getExtraPath(IN_TOMOS_STAR))
+        # Tilt-series star files:
+        # The tilt-series star files will exist and their corresponding path will be provided by the file tomograms.star
 
     # --------------------------- UTILS functions -----------------------------
     @classmethod
     def isDisabled(cls):
         """ Return True if this Protocol is disabled.
         Disabled protocols will not be offered in the available protocols."""
-        return True if IS_RELION_50 else False
+        return False if IS_RELION_50 else True
 
-    def _genCommonCmd(self):
-        inRelionParticles = self.getInputParticles()
-        cmd = ''
-
-        # Cancel this for now
-        self.info("Using optimization_set: %s" % inRelionParticles.filesMaster)
-        cmd += '--i %s ' % inRelionParticles.filesMaster
-
-        # This would be either the particles start file in the set or a new generated one from the subtomo set.
-        cmd += '--p %s ' % self.getOutStarFileName()
-
-        if inRelionParticles.getTrajectoriesStar():
-            cmd += '--mot %s ' % inRelionParticles.getTrajectoriesStar()
-
-        cmd += '--b %i ' % self.boxSize.get()
-        cmd += '--crop %i ' % self.croppedBoxSize.get()
-        cmd += '--bin %.1f ' % self.binningFactor.get()
-        cmd += '--j %i ' % self.numberOfThreads.get()
-        cmd += self._genExtraParamsCmd()
-        return cmd
+    def _genCommonExtractAndRecCmd(self):
+        cmd = [f'--p {self._getExtraPath(IN_PARTICLES_STAR)}',
+               f'--t {self._getExtraPath(IN_TOMOS_STAR)}',
+               f'--o {self._getExtraPath()}',
+               f"--b {self.boxSize.get()}",
+               f"--crop {self.croppedBoxSize.get()}",
+               f"--bin {self.binningFactor.get():.1f}",
+               f"--j {self.numberOfThreads.get()}",
+               self._genExtraParamsCmd()]
+        inParticles = self.getInputParticles()
+        if not self.isInputSetOf3dCoords():
+            trajectoriesFile = inParticles.getTrajectoriesStar()
+            if trajectoriesFile:
+                cmd.append(f'--mot {trajectoriesFile}')
+        return ' '.join(cmd)

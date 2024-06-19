@@ -27,7 +27,8 @@ import emtable
 from collections import OrderedDict
 from os.path import isabs, join
 
-def getProgram(program, nMpi):
+
+def getProgram(program, nMpi=1):
     """ Get the program name depending on the MPI use or not."""
     if nMpi > 1:
         program += '_mpi'
@@ -94,9 +95,9 @@ def generateProjections(particlesFilePath, tomogramsFilePath):
         tomoProjections = []
         for row in table.iterRows(mdFileName):
             tomoProjections.append(np.array([eval(row.get('rlnTomoProjX')),
-                                         eval(row.get('rlnTomoProjY')),
-                                         eval(row.get('rlnTomoProjZ')),
-                                         eval(row.get('rlnTomoProjW'))]))
+                                             eval(row.get('rlnTomoProjY')),
+                                             eval(row.get('rlnTomoProjZ')),
+                                             eval(row.get('rlnTomoProjW'))]))
         tomograms[tomoName] = tomoProjections
 
     return projectParticles(particles, tomograms)
@@ -118,6 +119,6 @@ def projectParticles(particles, tomograms):
 
         for tiltId, tomoProjection in enumerate(tomoProjections):
             multproj = tomoProjection.dot(particle[1])
-            particleProjections.append([tomoName,  tiltId, partId, multproj[0], multproj[1]])
+            particleProjections.append([tomoName, tiltId, partId, multproj[0], multproj[1]])
 
     return projections
