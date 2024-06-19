@@ -254,7 +254,7 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
 class TestRelion5TomoExtractSubtomos(TestRelion5RefineCycleBase):
 
     def _runTestExtractSubtomos(self, inParticles=None, binningFactor=None, boxSize=None, croppedBoxSize=None,
-                                are2dParticles=False):
+                                are2dParticles=False, isReExtraction=False):
         protExtract = self._runExtractSubtomos(inParticles=inParticles,
                                                binningFactor=binningFactor,
                                                boxSize=boxSize,
@@ -272,9 +272,11 @@ class TestRelion5TomoExtractSubtomos(TestRelion5RefineCycleBase):
                                are2dStacks=are2dParticles,
                                tsSamplingRate=self.unbinnedSRate)
         # Check that the projected coordinates have been generated
-        self.assertIsNotNone(
-            getattr(protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.projected2DCoordinates.name, None),
-            msg='The projected coordinates were not generated.')
+        fiducials = getattr(protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.projected2DCoordinates.name, None)
+        if isReExtraction:
+            self.assertIsNone(fiducials, msg='The projected coordinates wer not expected to be genrated.')
+        else:
+            self.assertIsNotNone(fiducials, msg='The projected coordinates were not generated.')
         # Check the pseudo-subtomograms
         unbinnedPixSize = self.unbinnedSRate
         nParticles = self.nParticles
@@ -308,7 +310,8 @@ class TestRelion5TomoExtractSubtomos(TestRelion5RefineCycleBase):
                                          binningFactor=self.binFactor2,
                                          boxSize=self.boxSizeBin2,
                                          croppedBoxSize=self.croppedBoxSizeBin2,
-                                         are2dParticles=True)
+                                         are2dParticles=True,
+                                         isReExtraction=True)
         else:
             print(yellowStr('Relion 4 detected. Test for protocol "Extract subtomos" skipped.'))
 

@@ -74,10 +74,12 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         form.addParam('inputCtfTs', PointerParam,
                       pointerClass='SetOfCTFTomoSeries',
                       label="CTF tomo series (opt)",
+                      allowsNull=True,
                       help='They are optional in case of the re-extraction of Relion particles.')
         form.addParam('inputTS', PointerParam,
                       pointerClass='SetOfTiltSeries',
                       label="Tilt series (opt)",
+                      allowsNull=True,
                       help='Tilt series with alignment (non interpolated) used in the tomograms reconstruction.. '
                            'They are optional in case of the re-extraction of Relion particles.')
         form.addParam('handedness', BooleanParam,
@@ -119,16 +121,15 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._initialize()
+        if self.isInputSetOf3dCoords():
+            self._initialize()
         self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self.extractSubtomos)
         self._insertFunctionStep(self.createOutputStep)
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
-        super()._initialize()
-        inParticles = self.getInputParticles()
-        coords = inParticles if self.isInSetOf3dCoords else inParticles.getCoordinates3D()
+        coords = self.getInputParticles()
         tsSet = self.inputTS.get()
         ctfSet = self.inputCtfTs.get()
         self.isRe5Picking = Boolean(getattr(coords, IS_RE5_PICKING_ATTR, Boolean(False).get()))
@@ -161,8 +162,8 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
     def convertInputStep(self):
         # Generate required star files
-        coords = self.getInputParticles()
-        if self.isInSetOf3dCoords:
+        if self.isInputSetOf3dCoords():
+            coords = self.getInputParticles()
             outPath = self._getExtraPath()
             writer = convert50_tomo.Writer()
             # Particles.star
@@ -185,69 +186,84 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                              numberOfMpi=nMpi)
 
     def createOutputStep(self):
-        tsPointer = self.inputTS
-        tsSet = tsPointer.get()
-        tsSRate = tsSet.getSamplingRate()
+        isInSetOf3dCoords = self.isInputSetOf3dCoords()
+        if isInSetOf3dCoords:
+            tsPointer = self.inputTS
+            tsSet = tsPointer.get()
+            tsSRate = tsSet.getSamplingRate()
+            inCoords = self.inCoords
+            boxSize = inCoords.getBoxSize()
+            acq = tsSet.getAcquisition()
+
+            # FIDUCIALS ################################################################################################
+            fiducialSize = int((inCoords.getBoxSize() * inCoords.getSamplingRate()) / (2 * 10))  # Radius in nm
+            fiducialModelGaps = SetOfLandmarkModels.create(self.getPath(),
+                                                           template='setOfLandmarks%s.sqlite',
+                                                           suffix='Gaps')
+            fiducialModelGaps.copyInfo(tsSet)
+            fiducialModelGaps.setSetOfTiltSeries(tsPointer)  # Use the pointer better when scheduling
+            starData = Table()
+            starData.read(self._getExtraPath(OUT_PARTICLES_STAR), tableName=PARTICLES_TABLE)
+            if not isInSetOf3dCoords:
+                tsStarFileDict = self.getTsStarFilesFromoTomgramsStar()
+            particleCounter = 1
+
+            for tsId, ts in self.tsDict.items():
+                tomo = self.tomoDict[tsId]
+                tomoSRate = tomo.getSamplingRate()
+                landmarkModelGapsFilePath = self._getExtraPath(tsId + "_gaps.sfid")
+                landmarkModelGaps = LandmarkModel(tsId=tsId,
+                                                  tiltSeriesPointer=ts,
+                                                  fileName=landmarkModelGapsFilePath,
+                                                  modelName=None,
+                                                  size=fiducialSize,
+                                                  applyTSTransformation=False)
+                landmarkModelGaps.setTiltSeries(ts)
+                tsStarFile = self._getExtraPath(tsId + '.star')
+                tsProjectionsList = getProjMatrixList(tsStarFile, tomo, ts)
+                for particleRow in StarFileIterator(starData, RLN_TOMONAME, tsId):
+                    particleCoords = np.array(
+                        [self.coordsScaleFactor.get() * particleRow.get(RLN_CENTEREDCOORDINATEXANGST) / tomoSRate,
+                         self.coordsScaleFactor.get() * particleRow.get(RLN_CENTEREDCOORDINATEYANGST) / tomoSRate,
+                         self.coordsScaleFactor.get() * particleRow.get(RLN_CENTEREDCOORDINATEZANGST) / tomoSRate,
+                         1])
+                    for tiltId, tomoProjection in enumerate(tsProjectionsList):
+                        proj = tomoProjection.dot(particleCoords)
+                        landmarkModelGaps.addLandmark(proj[0], proj[1], tiltId, particleCounter, 0, 0)
+                    particleCounter += 1
+
+                fiducialModelGaps.append(landmarkModelGaps)
+
+        # PARTICLES ####################################################################################################
+        else:
+            inParticles = self.getInputParticles()
+            tsSRate = inParticles.getTsSamplingRate()
+            acq = inParticles.getAcquisition()
+            boxSize = inParticles.getBoxSize()
+            inCoords = inParticles.getCoordinates3D()
+
         psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
                                                      self._getExtraPath(OPTIMISATION_SET_STAR),
-                                                     self.inCoords,
+                                                     inCoords,
                                                      template=PSUBTOMOS_SQLITE,
                                                      tsSamplingRate=tsSRate,
                                                      relionBinning=self.binningFactor.get(),
-                                                     boxSize=self.inCoords.getBoxSize(),
+                                                     boxSize=boxSize,
                                                      are2dStacks=self.write2dStacks.get(),
-                                                     acquisition=tsSet.getAcquisition())
+                                                     acquisition=acq)
         # Fill the set with the generated particles
         readSetOfPseudoSubtomograms(psubtomoSet)
 
-        # FIDUCIALS ####################################################################################################
-        fiducialSize = int((self.inCoords.getBoxSize() * self.inCoords.getSamplingRate()) / (2 * 10))  # Radius in nm
-        fiducialModelGaps = SetOfLandmarkModels.create(self.getPath(),
-                                                       template='setOfLandmarks%s.sqlite',
-                                                       suffix='Gaps')
-        fiducialModelGaps.copyInfo(tsSet)
-        fiducialModelGaps.setSetOfTiltSeries(tsPointer)  # Use the pointer better when scheduling
-        starData = Table()
-        starData.read(self._getExtraPath(OUT_PARTICLES_STAR), tableName=PARTICLES_TABLE)
-        if not self.isInSetOf3dCoords:
-            tsStarFileDict = self.getTsStarFilesFromoTomgramsStar()
-        particleCounter = 1
-
-        for tsId, ts in self.tsDict.items():
-            tomo = self.tomoDict[tsId]
-            tomoSRate = tomo.getSamplingRate()
-            landmarkModelGapsFilePath = self._getExtraPath(tsId + "_gaps.sfid")
-            landmarkModelGaps = LandmarkModel(tsId=tsId,
-                                              tiltSeriesPointer=ts,
-                                              fileName=landmarkModelGapsFilePath,
-                                              modelName=None,
-                                              size=fiducialSize,
-                                              applyTSTransformation=False)
-            landmarkModelGaps.setTiltSeries(ts)
-            tsStarFile = self._getExtraPath(tsId + '.star') if self.isInSetOf3dCoords else tsStarFileDict[tsId]
-            tsProjectionsList = getProjMatrixList(tsStarFile, tomo, ts)
-            for particleRow in StarFileIterator(starData, RLN_TOMONAME, tsId):
-                particleCoords = np.array(
-                    [self.coordsScaleFactor.get() * particleRow.get(RLN_CENTEREDCOORDINATEXANGST) / tomoSRate,
-                     self.coordsScaleFactor.get() * particleRow.get(RLN_CENTEREDCOORDINATEYANGST) / tomoSRate,
-                     self.coordsScaleFactor.get() * particleRow.get(RLN_CENTEREDCOORDINATEZANGST) / tomoSRate,
-                     1])
-                for tiltId, tomoProjection in enumerate(tsProjectionsList):
-                    proj = tomoProjection.dot(particleCoords)
-                    landmarkModelGaps.addLandmark(proj[0], proj[1], tiltId, particleCounter, 0, 0)
-                particleCounter += 1
-
-            fiducialModelGaps.append(landmarkModelGaps)
-
-        ################################################################################################################
-
         # Define the outputs and the relations
-        self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet,
-                               outputObjects.projected2DCoordinates.name: fiducialModelGaps})
+        outDict = {outputObjects.relionParticles.name: psubtomoSet}
+        if isInSetOf3dCoords:
+            outDict[outputObjects.projected2DCoordinates.name] = fiducialModelGaps
+        self._defineOutputs(**outDict)
         self._defineSourceRelation(self.inReParticles, psubtomoSet)
-        self._defineSourceRelation(self.inputCtfTs, psubtomoSet)
-        self._defineSourceRelation(tsPointer, psubtomoSet)
-        self._defineSourceRelation(tsPointer, fiducialModelGaps)
+        if isInSetOf3dCoords:
+            self._defineSourceRelation(self.inputCtfTs, psubtomoSet)
+            self._defineSourceRelation(tsPointer, psubtomoSet)
+            self._defineSourceRelation(tsPointer, fiducialModelGaps)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):

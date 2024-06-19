@@ -69,7 +69,6 @@ class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        super()._initialize()
         self._insertFunctionStep(self.convertInputStep)
         self._insertFunctionStep(self.relionReconstructParticle)
         self._insertFunctionStep(self.createOutputStep)
