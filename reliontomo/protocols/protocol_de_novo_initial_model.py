@@ -118,6 +118,12 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         self._defineSourceRelation(inRelionParticles, vol)
 
     # -------------------------- INFO functions -------------------------------
+    def _validate(self):
+        errorMsg = []
+        nMpi = self.numberOfMpi.get()
+        if nMpi > 1:
+            errorMsg.append('The initial volume can only run using 1 MPI.')
+        return errorMsg
 
     # --------------------------- UTILS functions -----------------------------
     def _genInitModelCommand(self):
