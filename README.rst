@@ -1,6 +1,22 @@
-=================
-Reliontomo plugin
-=================
+====================================
+Scipion plugin for Relion Tomography
+====================================
+
+.. image:: https://img.shields.io/pypi/v/scipion-em-reliontomo.svg
+        :target: https://pypi.python.org/pypi/scipion-em-reliontomo
+        :alt: PyPI release
+
+.. image:: https://img.shields.io/pypi/l/scipion-em-reliontomo.svg
+        :target: https://pypi.python.org/pypi/scipion-em-reliontomo
+        :alt: License
+
+.. image:: https://img.shields.io/pypi/pyversions/scipion-em-reliontomo.svg
+        :target: https://pypi.python.org/pypi/scipion-em-reliontomo
+        :alt: Supported Python versions
+
+.. image:: https://img.shields.io/pypi/dm/scipion-em-reliontomo
+        :target: https://pypi.python.org/pypi/scipion-em-reliontomo
+        :alt: Downloads
 
 This plugin provide wrappers around several programs of `RELION <https://relion.readthedocs.io/en/release-5.0/index.html>`_ software suite for its use in Tomography.
 
