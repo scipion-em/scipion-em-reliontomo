@@ -34,7 +34,7 @@ try:
     import relion
 
     class Plugin(relion.Plugin):
-        _supportedVersions = [V5_0]
+        _supportedVersions = [V5_0, V4_0]
         _homeVar = RELIONTOMO_HOME
         _pathVars = [RELIONTOMO_HOME]
 
