@@ -25,7 +25,7 @@
 from relion import V5_0
 
 _logo = "relion_logo.jpg"
-_references = ['Scheres2012a', 'Scheres2012b', 'Kimanius2016', 'Zivanov2018']
+_references = ['Zivanov2022', 'Burt2024']
 __version__ = '4.0.0'
 
 try:
