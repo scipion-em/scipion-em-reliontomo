@@ -1,5 +1,6 @@
 v4.0.0:
   Users:
+    - Relion 5.0.
     - Adapted to scipion-em-relion deprecation of relion3.
     - Add warning preventing to set the box size and the cropped box size to the same value as it may cause an
       internal error in relion (Thanks to DSheperd).

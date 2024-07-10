@@ -28,7 +28,7 @@ from enum import Enum
 from pwem.convert.headers import fixVolume
 from pwem.objects import SetOfFSCs
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
-from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
+from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase, IS_RELION_50
 from reliontomo import Plugin
 from os.path import getmtime
 from pyworkflow.protocol import PointerParam, LEVEL_ADVANCED, FloatParam, StringParam, BooleanParam, EnumParam
@@ -81,12 +81,12 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         self._defineOptimisationParamsCommon2All(form)
         self._defineAutoSamplingParams(form)
         self._defineComputeParams(form)
-        super()._insertGpuParams(form)
-        super()._defineAdditionalParams(form)
+        self._insertGpuParams(form)
+        self._defineAdditionalParams(form)
         form.addParallelSection(threads=1, mpi=1)
 
     def _defineInputParams(self, form):
-        super()._defineIOParams(form)
+        self._defineIOParams(form)
         form.addParam('referenceVolume', PointerParam,
                       pointerClass='Volume',
                       allowsNull=False,
@@ -104,16 +104,17 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
                            'of the mask for the experimental images will be applied.\n\n'
                            'In some cases, for example for non-empty icosahedral viruses, it is also useful '
                            'to use a second mask. Check _Advaced_ parameters to select another volume mask.')
-        form.addParam('solventMask2', PointerParam,
-                      pointerClass='VolumeMask',
-                      expertLevel=LEVEL_ADVANCED,
-                      allowsNull=True,
-                      label='Second reference mask (optional)',
-                      help='For all white (value 1) pixels in this second mask the '
-                           'corresponding pixels in the reconstructed map are set to the average value of '
-                           'these pixels. Thereby, for example, the higher density inside the virion may be '
-                           'set to a constant. Note that this second mask should have one-values inside the '
-                           'virion and zero-values in the capsid and the solvent areas.')
+        if not IS_RELION_50:
+            form.addParam('solventMask2', PointerParam,
+                          pointerClass='VolumeMask',
+                          expertLevel=LEVEL_ADVANCED,
+                          allowsNull=True,
+                          label='Second reference mask (optional)',
+                          help='For all white (value 1) pixels in this second mask the '
+                               'corresponding pixels in the reconstructed map are set to the average value of '
+                               'these pixels. Thereby, for example, the higher density inside the virion may be '
+                               'set to a constant. Note that this second mask should have one-values inside the '
+                               'virion and zero-values in the capsid and the solvent areas.')
 
     def _defineReferenceParams(self, form):
         form.addSection(label='Reference')
@@ -132,6 +133,14 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
                            'the initial low-pass filter. This procedure is relatively quick and typically does not '
                            'negatively affect the outcome of the subsequent map refinement. Therefore, if in doubt it '
                            'is recommended to set this option to No.')
+        if IS_RELION_50:
+            form.addParam('doResizeRef', BooleanParam,
+                          default=True,
+                          label='Resize references if needed?',
+                          help='If true, and if the input reference map (and mask) do not have the same pixel size '
+                               'and/or box size, then they will be re-scaled and re-boxed accordingly. If this option '
+                               'is set to false, then the program will die with an error if the reference does not '
+                               'have the correct pixel and/or box size.')
         form.addParam('initialLowPassFilterA', FloatParam,
                       default=30,
                       label='Initial low-pass filter (A)',
@@ -149,9 +158,9 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         super()._insertSymmetryParam(form, help3drefine)
 
     def _defineOptimisationParamsCommon2All(self, form):
-        super()._insertOptimisationSection(form)
-        super()._insertMaskDiameterParam(form)
-        super()._insertZeroMaskParam(form)
+        self._insertOptimisationSection(form)
+        self._insertMaskDiameterParam(form)
+        self._insertZeroMaskParam(form)
         form.addParam('solventCorrectFSC', BooleanParam,
                       default=False,
                       condition='solventMask',
@@ -162,6 +171,8 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
                            "This only works when a reference mask is provided. This may yield "
                            "higher-resolution maps, especially when the mask contains only a relatively small "
                            "volume inside the box.")
+        if IS_RELION_50:
+            self._insertBlushRegParam(form)
 
     def _defineAutoSamplingParams(self, form):
         form.addSection(label='Auto-sampling')
@@ -176,19 +187,21 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
                            "searches of -6/+6 times the sampling rate will be used from this angular sampling rate "
                            "onwards. For most lower-symmetric particles a value of 1.8 degrees will be sufficient. "
                            "Perhaps icosahedral symmetries may benefit from a smaller value such as 0.9 degrees.")
-        ProtRelionRefineSubtomograms._insertRelaxSymmetry(form)
+        self._insertRelaxSymmetry(form)
         form.addParam('useFinerAngularSampling', BooleanParam,
                       default=False,
                       label='Use finer angular sampling faster?',
                       help="If set to Yes, then let auto-refinement proceed faster with finer angular samplings. "
                            "Two additional conditions will be considered:\n\n "
-                           "\t-Angular sampling will go down despite changes still happening in the angles. (this is the"
-                           " Relion flag  --auto_ignore_angles )\n"
+                           "\t-Angular sampling will go down despite changes still happening in the angles. (this is "
+                           "the Relion flag  --auto_ignore_angles )\n"
                            "\t-Angular sampling will go down if the current resolution already requires that sampling "
                            "(this is the Relion flag --auto_resol_angles)\n"
                            "\t at the edge of the particle.\n\nThis option will make the computation faster, but "
                            "hasn't been tested for many cases for potential loss in reconstruction quality upon "
                            "convergence.")
+        if IS_RELION_50:
+            self._insertPriorWidthParam(form)
 
     def _defineComputeParams(self, form, isOnlyClassif=False):
         super()._defineComputeParams(form, isOnlyClassif=isOnlyClassif)
@@ -231,10 +244,12 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
 
     def autoRefineStep(self):
         nMpi = self.numberOfMpi.get()
-        Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi), self._genAutoRefineCommand(), numberOfMpi=nMpi)
+        Plugin.runRelionTomo(self, getProgram('relion_refine', nMpi),
+                             self._genAutoRefineCommand(),
+                             numberOfMpi=nMpi)
 
     def createOutputStep(self):
-        inParticles = self.inReParticles.get()
+        inParticles = self.getInputParticles()
 
         # Output Relion particles
         relionParticles = self.genRelionParticles(optimisationFileName='_optimisation_set.star',
@@ -266,6 +281,19 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         self._defineSourceRelation(inParticles, setOfFSC)
 
     # -------------------------- INFO functions -------------------------------
+    def _validate(self):
+        errorMsg = super()._validate()
+        sRateTol = 1e-3
+        inParticles = self.getInputParticles()
+        refVolume = self.referenceVolume.get()
+        # refMask = self.solventMask.get()
+        inParticlesSRate = inParticles.getSamplingRate()
+        refVolumeSRate = refVolume.getSamplingRate()
+        # refMask = refMask.getSamplingRate()
+        if abs(inParticlesSRate - refVolumeSRate) >= sRateTol:
+            errorMsg.append(f'The introduced particles and the reference volume must have the same sampling rate:\n'
+                            f'{inParticlesSRate:.3f} != {refVolumeSRate:.3f} Å/px')
+        return errorMsg
 
     # --------------------------- UTILS functions -----------------------------
     def _genAutoRefineCommand(self):
@@ -283,8 +311,6 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         cmd += '--ref %s ' % refFile
         if self.solventMask.get():
             cmd += '--solvent_mask %s ' % self.solventMask.get().getFileName()
-        if self.solventMask2.get():
-            cmd += '--solvent_mask2 %s ' % self.solventMask2.get().getFileName()
         # Reference args
         if not self.isMapAbsoluteGreyScale.get():
             cmd += '--firstiter_cc '
@@ -307,6 +333,23 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
             cmd += '--auto_ignore_angles --auto_resol_angles '
         # Compute args
         cmd += '--pad %i ' % (1 if self.skipPadding.get() else 2)
+        # Plugin version-dependent parameters
+        if IS_RELION_50:
+            # Reference
+            if self.doResizeRef.get():
+                cmd += '--trust_ref_size '
+            # Optimisation
+            if self.doBlushReg.get():
+                cmd += '--blush '
+                # Auto-sampling
+                cmd += '--sigma_tilt %i ' % self.priorWidthTiltAngle.get()
+        else:
+            # Input
+            if self.solventMask2.get():
+                cmd += '--solvent_mask2 %s ' % self.solventMask2.get().getFileName()
+                # Compute
+                if not self.skipGridding.get():
+                    cmd += '--dont_skip_gridding '
 
         return cmd
 

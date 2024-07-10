@@ -26,12 +26,12 @@
 # **************************************************************************
 from enum import Enum
 from pyworkflow.protocol import BooleanParam, FloatParam, EnumParam, \
-    PointerParam
+    PointerParam, IntParam, GE
 from reliontomo import Plugin
 from reliontomo.constants import OUT_PARTICLES_STAR, COORD_X, COORD_Y, COORD_Z, SHIFTX_ANGST, SHIFTY_ANGST, \
     SHIFTZ_ANGST, ROT, TILT, PSI
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
-from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase
+from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase, IS_RELION_50
 from reliontomo.utils import genEnumParamDict
 
 # Operation labels and values
@@ -60,8 +60,8 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
     operationDict = genEnumParamDict(OPERATION_LABELS)
     labelsDict = genEnumParamDict(LABELS_TO_OPERATE_WITH)
 
-    def __init__(self, **kargs):
-        super().__init__(**kargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -72,12 +72,16 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
                       default=False,
                       help='Perform centering of particles according to a position in the reference.')
         group = form.addGroup('Shift center', condition='doRecenter')
-        group.addParam('averageSubTomogram', PointerParam, pointerClass='AverageSubTomogram',
-                      label='Average of subtomogram (optional)', allowsNull=True,
-                      )
-        group.addParam('refMask', PointerParam, pointerClass='VolumeMask',
-                       label='Reference mask (optional)', allowsNull=True,
-                       )
+        group.addParam('averageSubTomogram',
+                       PointerParam,
+                       pointerClass='AverageSubTomogram',
+                       label='Average of subtomogram (optional)',
+                       allowsNull=True)
+        group.addParam('refMask',
+                       PointerParam,
+                       pointerClass='VolumeMask',
+                       label='Reference mask (optional)',
+                       allowsNull=True)
         group.addParam('shiftX', FloatParam,
                        label='X (pix.)',
                        default=0,
@@ -90,56 +94,75 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
                        label='Z (pix.)',
                        default=0,
                        help='Z-coordinate in the reference to center particles on (in pix)')
-        form.addSection(label='Operate')
-        form.addParam('chosenOperation', EnumParam,
-                      choices=list(self.operationDict.keys()),
-                      default=self.operationDict[NO_OPERATION],
-                      label='Choose operation')
-        form.addParam('opValue', FloatParam,
-                      condition='chosenOperation != %i' % self.operationDict[NO_OPERATION],
-                      default=1,
-                      label='Value to operate the selected labels')
-        group = form.addGroup('Operation', condition='chosenOperation > 0')
-        group.addParam('operateWith', EnumParam,
-                       choices=list(self.labelsDict.keys()),
-                       default=self.labelsDict[COORDINATES],
-                       label='Operate with')
-        group.addParam('label1x', BooleanParam,
-                       label='X (pix.)',
-                       condition='operateWith == %s' % self.labelsDict[COORDINATES],
-                       default=False)
-        group.addParam('label2y', BooleanParam,
-                       label='Y (pix.)',
-                       condition='operateWith == %s' % self.labelsDict[COORDINATES],
-                       default=False)
-        group.addParam('label3z', BooleanParam,
-                       label='Z (pix.)',
-                       condition='operateWith == %s' % self.labelsDict[COORDINATES],
-                       default=False)
-        group.addParam('label1sx', BooleanParam,
-                       label='Shift X (pix.)',
-                       condition='operateWith == %s' % self.labelsDict[SHIFTS],
-                       default=False)
-        group.addParam('label2sy', BooleanParam,
-                       label='Shift Y (pix.)',
-                       condition='operateWith == %s' % self.labelsDict[SHIFTS],
-                       default=False)
-        group.addParam('label3sz', BooleanParam,
-                       label='Shift Z (pix.)',
-                       condition='operateWith == %s' % self.labelsDict[SHIFTS],
-                       default=False)
-        group.addParam('label1rot', BooleanParam,
-                       label='Rot (deg.)',
-                       condition='operateWith == %s' % self.labelsDict[ANGLES],
-                       default=False)
-        group.addParam('label2tilt', BooleanParam,
-                       label='Tilt (deg.)',
-                       condition='operateWith == %s' % self.labelsDict[ANGLES],
-                       default=False)
-        group.addParam('label3psi', BooleanParam,
-                       label='Psi (deg.)',
-                       condition='operateWith == %s' % self.labelsDict[ANGLES],
-                       default=False)
+        # Section 'Remove duplicates' was added in Relion 5
+        if IS_RELION_50:
+            form.addSection('Remove duplicates')
+            form.addParam('doRemoveDuplicates', BooleanParam,
+                          default=False,
+                          label='Remove duplicates?',
+                          help='If set to Yes, duplicated particles that are within a given distance are removed '
+                               'leaving only one. Duplicated particles are sometimes generated when particles drift '
+                               'into the same position during alignment. They inflate and invalidate gold-standard '
+                               'FSC calculation.')
+            form.addParam('minDistPartRemoval', IntParam,
+                          default=30,
+                          label='Minimum inter-particle distance (Å)',
+                          condition='doRemoveDuplicates',
+                          validators=[GE(0)],
+                          help='Particles within this distance are removed leaving only one.')
+        else:
+            # This section is rarely used and makes nonsense in Relion 5 as there is not a explicit field for the
+            # coordinates
+            form.addSection(label='Operate')
+            form.addParam('chosenOperation', EnumParam,
+                          choices=list(self.operationDict.keys()),
+                          default=self.operationDict[NO_OPERATION],
+                          label='Choose operation')
+            form.addParam('opValue', FloatParam,
+                          condition='chosenOperation != %i' % self.operationDict[NO_OPERATION],
+                          default=1,
+                          label='Value to operate the selected labels')
+            group = form.addGroup('Operation', condition='chosenOperation > 0')
+            group.addParam('operateWith', EnumParam,
+                           choices=list(self.labelsDict.keys()),
+                           default=self.labelsDict[COORDINATES],
+                           label='Operate with')
+            group.addParam('label1x', BooleanParam,
+                           label='X (pix.)',
+                           condition='operateWith == %s' % self.labelsDict[COORDINATES],
+                           default=False)
+            group.addParam('label2y', BooleanParam,
+                           label='Y (pix.)',
+                           condition='operateWith == %s' % self.labelsDict[COORDINATES],
+                           default=False)
+            group.addParam('label3z', BooleanParam,
+                           label='Z (pix.)',
+                           condition='operateWith == %s' % self.labelsDict[COORDINATES],
+                           default=False)
+            group.addParam('label1sx', BooleanParam,
+                           label='Shift X (pix.)',
+                           condition='operateWith == %s' % self.labelsDict[SHIFTS],
+                           default=False)
+            group.addParam('label2sy', BooleanParam,
+                           label='Shift Y (pix.)',
+                           condition='operateWith == %s' % self.labelsDict[SHIFTS],
+                           default=False)
+            group.addParam('label3sz', BooleanParam,
+                           label='Shift Z (pix.)',
+                           condition='operateWith == %s' % self.labelsDict[SHIFTS],
+                           default=False)
+            group.addParam('label1rot', BooleanParam,
+                           label='Rot (deg.)',
+                           condition='operateWith == %s' % self.labelsDict[ANGLES],
+                           default=False)
+            group.addParam('label2tilt', BooleanParam,
+                           label='Tilt (deg.)',
+                           condition='operateWith == %s' % self.labelsDict[ANGLES],
+                           default=False)
+            group.addParam('label3psi', BooleanParam,
+                           label='Psi (deg.)',
+                           condition='operateWith == %s' % self.labelsDict[ANGLES],
+                           default=False)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -148,37 +171,81 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
         self._insertFunctionStep(self.createOutputStep)
 
     def convertInputStep(self):
-        self.genInStarFile()
+        are2dParticles = getattr(self.inReParticles.get(), RelionSetOfPseudoSubtomograms.ARE_2D_PARTICLES, False)
+        self.genInStarFile(are2dParticles=are2dParticles)
 
     def operateStep(self):
-        Plugin.runRelionTomo(self, 'relion_star_handler', self._getOperateCommand())
+        program = 'relion_star_handler'
+        if IS_RELION_50:
+            # Remove duplicates and re-center particles needs to be executed separately, being the second call to the
+            # program required to be fed with the ourpur star of the first
+            doRemDuplicates = self.doRemoveDuplicates.get()
+            doRecenter = self.doRecenter.get()
+            if doRemDuplicates and doRecenter:
+                Plugin.runRelionTomo(self, program, self._genRemDuplicatesCmd())
+                outParticles = self._getExtraPath(OUT_PARTICLES_STAR)
+                cmd = '--i %s ' % outParticles
+                cmd += '--o %s ' % outParticles
+                cmd += self._genRecenterCmd()
+                Plugin.runRelionTomo(self, program, cmd)
+            else:
+                if doRemDuplicates:
+                    Plugin.runRelionTomo(self, program, self._genRemDuplicatesCmd())
+                if doRecenter:
+                    Plugin.runRelionTomo(self, program, self._genRecenterCmdWithIO())
+        else:
+            Plugin.runRelionTomo(self, program, self._getOperateCommand())
 
     def createOutputStep(self):
-        inParticles = self.inReParticles.get()
         psubtomoSet = self.genRelionParticles()
         self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet})
-        self._defineSourceRelation(inParticles, psubtomoSet)
+        self._defineSourceRelation(self.inReParticles, psubtomoSet)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
         valMsg = []
-        if not self.doRecenter.get() and self.chosenOperation.get() == self.operationDict[NO_OPERATION]:
-            valMsg.append('No recentering or operation was chosen.')
+        if IS_RELION_50:
+            if not self.doRecenter.get() and not self.doRemoveDuplicates.get():
+                valMsg.append('No re-centering nor duplicate removal operation was chosen.')
+        else:
+            if not self.doRecenter.get() and self.chosenOperation.get() == self.operationDict[NO_OPERATION]:
+                valMsg.append('No re-centering or operation was chosen.')
         return valMsg
 
     # --------------------------- UTILS functions -----------------------------
-    def _getOperateCommand(self):
-        cmd = ''
-        cmd += '--i %s ' % self.getOutStarFileName()
+    def _genIOCmd(self):
+        cmd = '--i %s ' % self.getOutStarFileName()
         cmd += '--o %s ' % self._getExtraPath(OUT_PARTICLES_STAR)
+        return cmd
+
+    def _genRemDuplicatesCmd(self):
+        cmd = self._genIOCmd()
+        cmd += '--remove_duplicates %i ' % self.minDistPartRemoval.get()
+        return cmd
+
+    def _genRecenterCmd(self):
+        cmd = '--center '
+        if self.shiftX.get() != 0:
+            cmd += '--center_X %.2f ' % self.shiftX.get()
+        if self.shiftY.get() != 0:
+            cmd += '--center_Y %.2f ' % self.shiftY.get()
+        if self.shiftZ.get() != 0:
+            cmd += '--center_Z %.2f ' % self.shiftZ.get()
+        return cmd
+
+    def _genRecenterCmdWithIO(self):
+        cmd = self._genIOCmd()
+        cmd += self._genRecenterCmd()
+        return cmd
+
+    def _getOperateCommand(self):
+        cmd = self._genIOCmd()
+        # Re-center particles
         if self.doRecenter.get():
-            cmd += '--center '
-            if self.shiftX.get() != 0:
-                cmd += '--center_X %.2f ' % self.shiftX.get()
-            if self.shiftY.get() != 0:
-                cmd += '--center_Y %.2f ' % self.shiftY.get()
-            if self.shiftZ.get() != 0:
-                cmd += '--center_Z %.2f ' % self.shiftZ.get()
+            cmd += self._genRecenterCmd()
+
+        # Operate particles - removed by Jorge in the protocol version for Relion 5 as it is rarely used and may
+        # be problematic as some of the fields involved are now defined in a different way, such as the coordinates
         if self.chosenOperation.get() != self.operationDict[NO_OPERATION]:
             opValue = self.opValue.get()
             chosenOp = self.chosenOperation.get()
@@ -226,4 +293,3 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
 
     def getMask3D(self):
         return self.refMask.get()
-
