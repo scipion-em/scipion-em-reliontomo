@@ -193,13 +193,14 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
 
     # --------------------------- UTILS functions -----------------------------
     def genPostProcessCmd(self):
+        calPixSize = self.calPixSize.get() if self.calPixSize.get() > 0 else self.getInputParticles().getSamplingRate()
         half1, half2 = self.inVolume.get().getHalfMaps().split(',')
         cmd = ''
         cmd += '--i %s ' % half1
         cmd += '--i2 %s ' % half2
         cmd += '--o %s ' % self._getExtraPath(POSTPROCESS_DIR, POSTPROCESS_DIR.lower())
         cmd += '--mask %s ' % self.solventMask.get().getFileName()
-        cmd += '--angpix %.2f ' % self.calPixSize.get()
+        cmd += '--angpix %.2f ' % calPixSize
         # Sharpening
         if self.mtf.get():
             cmd += '--mtf %s ' % self.mtf.get()

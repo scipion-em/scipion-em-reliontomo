@@ -60,6 +60,7 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
         form.addParam('recVolume', PointerParam,
                       pointerClass='AverageSubTomogram',
                       allowsNull=False,
+                      important=True,
                       label='Volume to get the halves',
                       help='Provide a volume with half maps. Note that volumes with associated'
                            'halves in the Scipion summary as w/h.')

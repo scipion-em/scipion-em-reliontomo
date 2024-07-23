@@ -83,7 +83,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         self._defineComputeParams(form)
         self._insertGpuParams(form)
         self._defineAdditionalParams(form)
-        form.addParallelSection(threads=1, mpi=1)
+        form.addParallelSection(threads=1, mpi=3)
 
     def _defineInputParams(self, form):
         self._defineIOParams(form)
@@ -293,6 +293,9 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         if abs(inParticlesSRate - refVolumeSRate) >= sRateTol:
             errorMsg.append(f'The introduced particles and the reference volume must have the same sampling rate:\n'
                             f'{inParticlesSRate:.3f} != {refVolumeSRate:.3f} Å/px')
+        # Number of MPI must be at least 3
+        if self.numberOfMpi.get() < 3:
+            errorMsg.append('The number of MPIs must be at least 3.')
         return errorMsg
 
     # --------------------------- UTILS functions -----------------------------
