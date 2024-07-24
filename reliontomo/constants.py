@@ -515,3 +515,5 @@ particles3dStarFields = [
     RLN_MAXVALPROBDISTIRB,
     RLN_NSIGNIFSAMPLES,
 ]
+
+POSTPROCESS_STAR_FIELD = '_postprocessStar'
