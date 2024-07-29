@@ -643,7 +643,7 @@ class TestRelionTomo3dClassify(TestRefineCycleBase):
                       'symmetry': cls.symmetry,
                       'maskDiameter': 230,
                       'pooledSubtomos': 6,
-                      'numberOfMpi': 1,
+                      'numberOfMpi': 3,
                       'numberOfThreads': 3}
 
         if doAlingment:
