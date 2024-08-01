@@ -25,6 +25,7 @@
 import logging
 from enum import Enum
 from os import rename
+from os.path import exists
 
 import mrcfile
 import numpy as np
@@ -236,7 +237,7 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
             outTsStarName = self.getOutTsStarFileName(tsId)
             # Rename each TS output star files as they preserve the same base name as the input files, which are
             # preceded by an in_ suffix to avoid confusion. Only for the complete TS
-            if not suffix:
+            if not suffix and not exists(outTsStarName):
                 rename(self.getOutTsStarFileName(tsId, preffix='in'), outTsStarName)
             newTs = TiltSeries(tsId=tsId)
             outTsSet.append(newTs)

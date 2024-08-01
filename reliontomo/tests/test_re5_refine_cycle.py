@@ -715,7 +715,6 @@ class TestRelion5PostProcess(TestRelion5RefineCycleBase):
             refWithHalves = getattr(protImportRef, ProtImportVolumes._possibleOutputs.outputVolume.name, None)
             print(magentaStr("\n==> Post-processing:"))
             protPostProcess = self.newProtocol(ProtRelionPostProcess,
-                                               inReParticles=self.extractedParts,
                                                inVolume=refWithHalves,
                                                solventMask=self.importedFscMask)
             self.launchProtocol(protPostProcess)
@@ -727,19 +726,5 @@ class TestRelion5PostProcess(TestRelion5RefineCycleBase):
                               expectedBoxSize=self.croppedBoxSizeBin2,
                               hasHalves=False)
 
-            # The particles are the same that were introduced, excepting that the set metadata will have been updated with
-            # the referenceFscFile
-            fscStarFile = protPostProcess._getExtraPath(FSC_REF_STAR)
-            relionParticles = getattr(protPostProcess, protPostProcess._possibleOutputs.relionParticles.name, None)
-            self.assertTrue(exists(fscStarFile))
-            self._checkRe4Metadata(relionParticles,
-                                   noParticles=self.nParticles,
-                                   tomogramsFile=self.protExtract._getExtraPath(IN_TOMOS_STAR),
-                                   particlesFile=protPostProcess._getExtraPath(IN_PARTICLES_STAR),
-                                   trajectoriesFile=None,
-                                   referenceFscFile=fscStarFile,
-                                   relionBinning=self.binFactor2,
-                                   are2dStacks=True,
-                                   tsSamplingRate=self.unbinnedSRate)
         else:
             print(yellowStr('Relion 4 detected. Test for protocol "Post-process" skipped.'))

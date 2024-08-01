@@ -6,6 +6,8 @@ v4.0.0:
       internal error in relion (Thanks to DSheperd).
   Developers:
     - Fix inspect in buildbot: Tkagg not set in wizard module.
+    - Protocols CTF refine and Bayesian polising get the postprocess.star the introduced post-processed volume, as an
+      extended attribute.
 v3.4.0:
   Note: this was supposed to be 3.3.0, but was published as 3.4.0
   Users:

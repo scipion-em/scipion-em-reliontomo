@@ -35,7 +35,7 @@ from pyworkflow.utils import createLink
 from reliontomo.constants import IN_TOMOS_STAR, OUT_TOMOS_STAR, GLOBAL_TABLE, tomoStarFields, RLN_TOMONAME, RLN_VOLTAGE, \
     RLN_SPHERICALABERRATION, RLN_AMPLITUDECONTRAST, RLN_MICROGRAPHORIGINALPIXELSIZE, RLN_TOMOHAND, RLN_OPTICSGROUPNAME, \
     RLN_TOMOTILT_SERIES_PIXEL_SIZE, RLN_ETOMO_DIRECTIVE_FILE, RLN_TOMOTOMOGRAM_BINNING, RLN_TOMOSIZEX, RLN_TOMOSIZEY, \
-    RLN_TOMOSIZEZ, RLN_TOMORECONSTRUCTED_TOMOGRAM
+    RLN_TOMOSIZEZ, RLN_TOMORECONSTRUCTED_TOMOGRAM, POSTPROCESS_STAR_FIELD
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase, IS_RELION_50
 
@@ -60,6 +60,7 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
         form.addParam('recVolume', PointerParam,
                       pointerClass='AverageSubTomogram',
                       allowsNull=False,
+                      important=True,
                       label='Volume to get the halves',
                       help='Provide a volume with half maps. Note that volumes with associated'
                            'halves in the Scipion summary as w/h.')
@@ -144,9 +145,10 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
     # -------------------------- UTILS functions -----------------------------
     def _genIOCommand(self):
         inPSubtomos = self.inReParticles.get()
+        inVolume = self.recVolume.get()
         trajectories = inPSubtomos.getTrajectoriesStar()
-        postProcess = inPSubtomos.getReferenceFsc()
-        half1, half2 = self.recVolume.get().getHalfMaps().split(',')
+        postProcess = getattr(inVolume, POSTPROCESS_STAR_FIELD, None)
+        half1, half2 = inVolume.getHalfMaps().split(',')
         cmd = '--p %s ' % inPSubtomos.getParticlesStar()
         cmd += '--t %s ' % inPSubtomos.getTomogramsStar()
         cmd += '--o %s ' % self._getExtraPath()
@@ -170,6 +172,17 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
                     filepath = join(dirpath, filename)
                     tsStaFiles.append(filepath)
         return tsStaFiles
+
+    # -------------------------- INFO functions -------------------------------
+    def _warnings(self):
+        warnMsg = []
+        inVolume = self.recVolume.get()
+        postProcess = getattr(inVolume, POSTPROCESS_STAR_FIELD, None)
+        if not postProcess:
+            warnMsg.append('No postprocess.star file was found in the metadata of the introduced volume.\n'
+                           'If not provided, the SNR will be calculated without phase randomization, so it will be '
+                           'slightly optimistic.')
+        return warnMsg
 
 
 
