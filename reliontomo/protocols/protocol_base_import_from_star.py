@@ -33,6 +33,7 @@ from pyworkflow.utils import Message, getParentFolder, createLink, makePath
 from reliontomo import Plugin
 from reliontomo.constants import TOMO_NAME, IN_PARTICLES_STAR, PIXEL_SIZE, TOMO_PARTICLE_ID
 from reliontomo.convert import createReaderTomo
+from reliontomo.protocols.protocol_base_relion import IS_RELION_50
 from tomo.protocols.protocol_base import ProtTomoBase
 from tomo.objects import SetOfCoordinates3D
 
@@ -93,7 +94,9 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         newStarName = self._getExtraPath(self.linkedStarFileName)
         createLink(self.starFile.get(), newStarName)
         # Read the star file
-        self.reader, self.readerVersion = createReaderTomo(starFile=newStarName, isCoordsStar=self.isCoordsFile)
+        self.reader, self.readerVersion = createReaderTomo(starFile=newStarName,
+                                                           isRelion5=IS_RELION_50,
+                                                           isCoordsStar=self.isCoordsFile)
         # Generate the directory in which the linked tomograms pointed from the star file will be stored
         makePath(self._getExtraPath(self.linkedTomosDirName))
         # Get the coordinates sampling rate
@@ -123,7 +126,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
             return errors
         # Check the compatibility between the introduced file and the version of Relion used by the plugin
         isRe5Star = self.checkIfRe5PickedCoords()
-        reader, readerVersion = createReaderTomo(self.starFile.get())
+        reader, readerVersion = createReaderTomo(self.starFile.get(), isRelion5=IS_RELION_50)
         if self.isCoordsFile:
             if isRe5Star:
                 if Plugin.isRe40():

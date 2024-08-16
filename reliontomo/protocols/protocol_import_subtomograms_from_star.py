@@ -84,7 +84,7 @@ class ProtImportSubtomogramsFromStar(ProtBaseImportFromStar):
     # --------------------------- INFO functions -----------------------------
     def _validate(self):
         errorMsg = super()._validate()
-        reader, isReader40 = createReaderTomo(self.starFile.get())
+        reader, isReader40 = createReaderTomo(self.starFile.get(), isRelion5=False)
         errorsInPointedFiles = self._checkFilesPointedFromStarFile(getParentFolder(self.starFile.get()),
                                                                    reader.dataTable)
         if errorsInPointedFiles:
