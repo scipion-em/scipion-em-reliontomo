@@ -1,3 +1,5 @@
+v4.0.1:
+  Users: fix convert for 3D particles in Relion 5.
 v4.0.0:
   Users:
     - Relion 5.0.

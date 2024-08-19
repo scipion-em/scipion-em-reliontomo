@@ -242,7 +242,7 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
                                                      boxSize=coordSize)
         psubtomoSet.setCoordinates3D(self.inputCoords)
         # Fill the set with the generated particles
-        readSetOfPseudoSubtomograms(psubtomoSet)
+        readSetOfPseudoSubtomograms(psubtomoSet, isRelion5=False)
 
         self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet})
         self._defineSourceRelation(self.inputCoords.get(), psubtomoSet)

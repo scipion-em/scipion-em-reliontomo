@@ -25,7 +25,7 @@
 # *
 # **************************************************************************
 from enum import Enum
-from pwem.objects import VolumeMask, FSC
+from pwem.objects import FSC, Volume
 from pyworkflow.object import String
 from pyworkflow.protocol import PointerParam, BooleanParam, FloatParam, GE, LE, IntParam, FileParam
 from pyworkflow.utils import makePath, Message
@@ -39,7 +39,7 @@ NO_MTF_FILE = 0
 
 
 class outputObjects(Enum):
-    postProcessVolume = VolumeMask
+    postProcessVolume = Volume
     outputFSC = FSC
 
 
