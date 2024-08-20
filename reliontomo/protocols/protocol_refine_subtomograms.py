@@ -26,7 +26,6 @@ import glob
 import re
 from enum import Enum
 from pwem.convert.headers import fixVolume
-from pwem.emlib.image import ImageHandler
 from pwem.objects import SetOfFSCs
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase, IS_RELION_50
