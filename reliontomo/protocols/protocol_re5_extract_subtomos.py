@@ -25,8 +25,6 @@
 from enum import Enum
 import numpy as np
 from emtable import Table
-
-from pwem.convert.atom_struct import scipionMMCIFIO
 from pyworkflow.object import Boolean, Float
 from pyworkflow.protocol import PointerParam, BooleanParam, LEVEL_ADVANCED, IntParam
 from pyworkflow.utils import Message
@@ -123,18 +121,6 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        # JORGE
-        import os
-        fname = "/home/jjimenez/test_JJ.txt"
-        if os.path.exists(fname):
-            os.remove(fname)
-        fjj = open(fname, "a+")
-        fjj.write('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
-        fjj.close()
-        print('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
-        import time
-        time.sleep(10)
-        # JORGE_END
         if self.isInputSetOf3dCoords():
             self._initialize()
         self._insertFunctionStep(self.convertInputStep)
