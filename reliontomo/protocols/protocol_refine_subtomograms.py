@@ -281,22 +281,6 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         self._defineSourceRelation(inParticles, setOfFSC)
 
     # -------------------------- INFO functions -------------------------------
-    def _validate(self):
-        errorMsg = super()._validate()
-        sRateTol = 1e-3
-        inParticles = self.getInputParticles()
-        refVolume = self.referenceVolume.get()
-        # refMask = self.solventMask.get()
-        inParticlesSRate = inParticles.getSamplingRate()
-        refVolumeSRate = refVolume.getSamplingRate()
-        # refMask = refMask.getSamplingRate()
-        if abs(inParticlesSRate - refVolumeSRate) >= sRateTol:
-            errorMsg.append(f'The introduced particles and the reference volume must have the same sampling rate:\n'
-                            f'{inParticlesSRate:.3f} != {refVolumeSRate:.3f} Å/px')
-        # Number of MPI must be at least 3
-        if self.numberOfMpi.get() < 3:
-            errorMsg.append('The number of MPIs must be at least 3.')
-        return errorMsg
 
     # --------------------------- UTILS functions -----------------------------
     def _genAutoRefineCommand(self):

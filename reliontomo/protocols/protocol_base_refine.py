@@ -327,6 +327,53 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
             self.genInStarFile(withPriors=self.alignmentAsPriors)
 
     # -------------------------- INFO functions -------------------------------
+    def _validate(self):
+        errorMsg = super()._validate()
+        sRateTol = 2e-3
+        inParticles = self.getInputParticles()
+        refVolume = self.referenceVolume.get()
+        inParticlesSRate = inParticles.getSamplingRate()
+        refVolumeSRate = refVolume.getSamplingRate()
+        solventMask = self.solventMask.get()
+        # Check the sampling rate
+        if abs(inParticlesSRate - refVolumeSRate) >= sRateTol:
+            errorMsg.append(f'The introduced particles and the reference volume must have the same sampling rate:\n'
+                            f'{inParticlesSRate:.3f} != {refVolumeSRate:.3f} Å/px')
+        # Check the dimensions
+        x, y, z = refVolume.getDimensions()
+        xp, yp, zp = inParticles.getDimensions()
+        if inParticles.are2dStacks():
+            refVolDims = (x, y)
+            inParticlesDims = (xp, yp)
+        else:
+            refVolDims = (x, y, z)
+            inParticlesDims = (xp, yp, zp)
+
+        if refVolDims != inParticlesDims:
+            errorMsg.append(f'The dimensions of the reference volume {refVolDims} px and the particles '
+                            f'{inParticlesDims} px must be the same')
+        # If a solvent mask is provided, check the sampling rate and the dimensions
+        if solventMask:
+            # Sampling rate
+            if abs(inParticlesSRate - solventMask.getSamplingRate()) >= sRateTol:
+                errorMsg.append(f'The introduced particles and the solvent mask must have the same sampling rate:\n'
+                                f'{inParticlesSRate:.3f} != {refVolumeSRate:.3f} Å/px')
+                # Dimensions
+                x, y, z = solventMask.getDimensions()
+                if inParticles.are2dStacks():
+                    solvenMaskDims = (x, y)
+                    inParticlesDims = (xp, yp)
+                else:
+                    solvenMaskDims = (x, y, z)
+                    inParticlesDims = (xp, yp, zp)
+                if solvenMaskDims != inParticlesDims:
+                    errorMsg.append(f'The dimensions of the solvent mask {solventMask} px and the particles '
+                                    f'{inParticlesDims} px must be the same')
+
+        # Number of MPI must be at least 3
+        if self.numberOfMpi.get() < 3:
+            errorMsg.append('The number of MPIs must be at least 3.')
+        return errorMsg
 
     # --------------------------- UTILS functions -----------------------------
     def _genBaseCommand(self, useOptimizationSet=False):

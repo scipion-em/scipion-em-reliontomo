@@ -1,5 +1,3 @@
-v4.0.1:
-  Users: fix convert for 3D particles in Relion 5.
 v4.0.0:
   Users:
     - Relion 5.0.
@@ -10,6 +8,8 @@ v4.0.0:
     - Fix inspect in buildbot: Tkagg not set in wizard module.
     - Protocols CTF refine and Bayesian polising get the postprocess.star the introduced post-processed volume, as an
       extended attribute.
+    - Fix convert for 3D particles in Relion 5.
+    - Improve the validations in protocols autorefine and classify 3d.
 v3.4.0:
   Note: this was supposed to be 3.3.0, but was published as 3.4.0
   Users:

@@ -187,12 +187,12 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
     def createOutputStep(self):
         isInSetOf3dCoords = self.isInputSetOf3dCoords()
+        boxSize = self.croppedBoxSize.get()
         if isInSetOf3dCoords:
             tsPointer = self.inputTS
             tsSet = tsPointer.get()
             tsSRate = tsSet.getSamplingRate()
             inCoords = self.inCoords
-            boxSize = inCoords.getBoxSize()
             acq = tsSet.getAcquisition()
 
             # FIDUCIALS ################################################################################################
@@ -204,8 +204,6 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
             fiducialModelGaps.setSetOfTiltSeries(tsPointer)  # Use the pointer better when scheduling
             starData = Table()
             starData.read(self._getExtraPath(OUT_PARTICLES_STAR), tableName=PARTICLES_TABLE)
-            if not isInSetOf3dCoords:
-                tsStarFileDict = self.getTsStarFilesFromoTomgramsStar()
             particleCounter = 1
 
             for tsId, ts in self.tsDict.items():
@@ -239,7 +237,6 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
             inParticles = self.getInputParticles()
             tsSRate = inParticles.getTsSamplingRate()
             acq = inParticles.getAcquisition()
-            boxSize = inParticles.getBoxSize()
             inCoords = inParticles.getCoordinates3D()
 
         psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
