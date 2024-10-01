@@ -222,7 +222,6 @@ class Writer(WriterTomo):
         # Write the tilt_series.star
         with open(join(outPath, IN_TS_STAR), 'w') as f:
             acq = tsMSet.getAcquisition()
-            nAngles = tsMSet.getAnglesCount()
             Writer._writeScipionCommentLine(f)  # Initial comment
             tsMMainTable = Table(columns=tsMStarFields)
             tsSRate = tsMSet.getSamplingRate()
@@ -242,7 +241,7 @@ class Writer(WriterTomo):
                         createLink(angularStackFile, linkedAngularStackFile)
                         tsMTable.addRow(
                             join(FRAMES_DIR, basename(angularStackFile)),  # rlnMicrographMovieName #1
-                            nAngles,  # rlnTomoTiltMovieFrameCount #2
+                            tsM.getAnglesCount(),  # rlnTomoTiltMovieFrameCount #2
                             tiM.getTiltAngle(),  # rlnTomoNominalStageTiltAngle #3
                             acqTsM.getTiltAxisAngle(),  # rlnTomoNominalTiltAxisAngle #4
                             tiM.getAcquisition().getDoseInitial(),  # rlnMicrographPreExposure #5

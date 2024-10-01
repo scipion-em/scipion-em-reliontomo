@@ -46,8 +46,8 @@ class TestRelion5MotionCorr(TestBaseCentralizedLayer):
     initialDose = 0
     dosePerFrame = 3.0
     tiltAxisAngle = 84.1
-    # Only 3 images per TS, corresponding to the angles -60, 0, and 60 degrees
-    accumDose = 9
+    # Only 3 images per TS, corresponding to the angles -60, 0, and 60 degrees with acq orders, respectively, 0, 39, 40
+    accumDose = 120  # max acq order * dose per frame
     step = 60
     minAngle = -60
     maxAngle = 60
