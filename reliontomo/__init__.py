@@ -22,8 +22,6 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-from relion import V5_0
-
 _logo = "relion_logo.jpg"
 _references = ['Zivanov2022', 'Burt2024']
 __version__ = '4.0.0'
@@ -34,13 +32,13 @@ try:
     import relion
 
     class Plugin(relion.Plugin):
-        _supportedVersions = [V5_0, V4_0]
+        _supportedVersions = [relion.V5_0, V4_0]
         _homeVar = RELIONTOMO_HOME
         _pathVars = [RELIONTOMO_HOME]
 
         @classmethod
         def _defineVariables(cls):
-            cls._defineEmVar(RELIONTOMO_HOME, 'relion-%s' % V5_0)
+            cls._defineEmVar(RELIONTOMO_HOME, 'relion-%s' % relion.V5_0)
             cls._defineVar(RELIONTOMO_CUDA_LIB, pwem.Config.CUDA_LIB)
 
         @staticmethod
@@ -49,7 +47,7 @@ try:
 
         @staticmethod
         def isRe50():
-            return True if Plugin.getHome().endswith(V5_0) else False
+            return True if Plugin.getHome().endswith(relion.V5_0) else False
 
         @classmethod
         def runRelionTomo(cls, protocol, program, args, cwd=None, numberOfMpi=1):
