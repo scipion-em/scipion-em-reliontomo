@@ -22,30 +22,34 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+from relion import V5_0
+
 _logo = "relion_logo.jpg"
-_references = ['Scheres2012a', 'Scheres2012b', 'Kimanius2016', 'Zivanov2018']
-__version__ = '3.4.0'
+_references = ['Zivanov2022', 'Burt2024']
+__version__ = '4.0.0'
 
 try:
     import pwem
     from reliontomo.constants import RELIONTOMO_HOME, RELIONTOMO_DEFAULT, RELION, RELIONTOMO_CUDA_LIB, V4_0
     import relion
-    from relion import V3_1
 
     class Plugin(relion.Plugin):
-        _supportedVersions = [V4_0]
+        _supportedVersions = [V5_0, V4_0]
         _homeVar = RELIONTOMO_HOME
         _pathVars = [RELIONTOMO_HOME]
 
         @classmethod
         def _defineVariables(cls):
-            cls._defineEmVar(RELIONTOMO_HOME, 'relion-%s' % V4_0)
+            cls._defineEmVar(RELIONTOMO_HOME, 'relion-%s' % V5_0)
             cls._defineVar(RELIONTOMO_CUDA_LIB, pwem.Config.CUDA_LIB)
 
         @staticmethod
         def isRe40():
-            """We only allow one version older than 4.0, which is 3.1"""
-            return False if Plugin.getHome().endswith(V3_1) else True
+            return True if Plugin.getHome().endswith(V4_0) else False
+
+        @staticmethod
+        def isRe50():
+            return True if Plugin.getHome().endswith(V5_0) else False
 
         @classmethod
         def runRelionTomo(cls, protocol, program, args, cwd=None, numberOfMpi=1):

@@ -36,6 +36,7 @@ from reliontomo.objects import createSetOfRelionPSubtomograms, RelionSetOfPseudo
 from reliontomo.constants import (IN_TOMOS_STAR, OUT_TOMOS_STAR, IN_COORDS_STAR,
                                   OPTIMISATION_SET_STAR, OUT_PARTICLES_STAR, PSUBTOMOS_SQLITE)
 from reliontomo.convert import writeSetOfTomograms, writeSetOfCoordinates, readSetOfPseudoSubtomograms
+from reliontomo.protocols.protocol_base_relion import IS_RELION_50
 from reliontomo.utils import generateProjections
 import tomo.objects as tomoObj
 from tomo.protocols.protocol_base import ProtTomoBase
@@ -241,7 +242,7 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
                                                      boxSize=coordSize)
         psubtomoSet.setCoordinates3D(self.inputCoords)
         # Fill the set with the generated particles
-        readSetOfPseudoSubtomograms(psubtomoSet)
+        readSetOfPseudoSubtomograms(psubtomoSet, isRelion5=False)
 
         self._defineOutputs(**{outputObjects.relionParticles.name: psubtomoSet})
         self._defineSourceRelation(self.inputCoords.get(), psubtomoSet)
@@ -289,6 +290,12 @@ class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
         self._defineSourceRelation(self.tsSet, fiducialModelGaps)
 
     # -------------------------- INFO functions -------------------------------
+    @classmethod
+    def isDisabled(cls):
+        """ Return True if this Protocol is disabled.
+        Disabled protocols will not be offered in the available protocols."""
+        return True if IS_RELION_50 else False
+
     def _warnings(self):
         warnMsg = []
         if not (self.inputTS.get().hasAlignment() and not self.inputTS.get().interpolated()):

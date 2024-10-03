@@ -27,8 +27,9 @@ from os.path import exists, join
 
 from emtable import Table
 
-from pyworkflow.object import String, Integer, Float
+from pyworkflow.object import String, Integer, Float, Boolean
 from relion.convert import OpticsGroups
+from reliontomo import Plugin
 from reliontomo.constants import (OPT_TOMOS_STAR, OPT_PARTICLES_STAR,
                                   OPT_TRAJECTORIES_STAR, OPT_MANIFOLDS_STAR,
                                   OPT_FSC_STAR, OUT_TOMOS_STAR, OUT_PARTICLES_STAR,
@@ -36,7 +37,7 @@ from reliontomo.constants import (OPT_TOMOS_STAR, OPT_PARTICLES_STAR,
                                   STAR_DIFF_SIZE, STAR_DIFF_LABELS, STAR_DIFF_VALUES,
                                   STAR_FILES_EQUAL, PSUBTOMOS_SQLITE, OPTICS_TABLE)
 from tomo.constants import SCIPION, TR_SCIPION
-from tomo.objects import SetOfSubTomograms, SubTomogram
+from tomo.objects import SetOfSubTomograms, SubTomogram, SetOfCoordinates3D
 
 
 class EnumRe4GenFilesProps(Enum):
@@ -48,38 +49,51 @@ class EnumRe4GenFilesProps(Enum):
 
 
 class RelionPSubtomogram(SubTomogram):
-
     TS_ID_ATTRIBUTE = '_volName'
 
     def __init__(self, fileName=None, samplingRate=None, ctfFile=None, tsId=None, classId=None,
-                 x=None, y=None, z=None, rdnSubset=None, re4ParticleName=None,
+                 x=None, y=None, z=None, xInImg=None, yInImg=None, zInImg=None,
+                 rdnSubset=None, relionParticleName=None, visibleFrames=None,
                  opticsGroupId=1, manifoldIndex=None, logLikeliCont=None, maxValProbDist=None,
-                 noSignifSamples=None, **kwargs):
+                 noSignifSamples=None, rot=None, tilt=None, psi=None, tiltPrior=None, psiPrior=None,
+                 groupId=1, normCorrection=0, **kwargs):
         super().__init__(**kwargs)
         self.setFileName(fileName)
         self.setSamplingRate(samplingRate)
         self.setClassId(classId)
         self._volName.set(tsId)
         self._ctfFile = String(ctfFile)
-        self._x = Float(x)
-        self._y = Float(y)
-        self._z = Float(z)
         self._rdnSubset = Integer(rdnSubset)
-        self._re4ParticleName = String(re4ParticleName)
+        self._relionParticleName = String(relionParticleName)
+        self._visibleFrames = String(visibleFrames)
         self._opticsGroupId = Integer(opticsGroupId)
         self._manifoldIndex = Integer(manifoldIndex)
         self._logLikeliContribution = Float(logLikeliCont)
         self._maxValueProbDistribution = Float(maxValProbDist)
         self._nrOfSignificantSamples = Integer(noSignifSamples)
+        self._groupId = Integer(groupId)
+        self._normCorrection = Float(normCorrection)
+        # All of them in angstroms
+        self._x = Float(x)
+        self._y = Float(y)
+        self._z = Float(z)
+        self._xInImg = Float(xInImg)
+        self._yInImg = Float(yInImg)
+        self._zInImg = Float(zInImg)
+        # All of them in degrees
+        self._rot = Float(rot)
+        self._tilt = Float(tilt)
+        self._psi = Float(psi)
+        self._tiltPrior = Float(tiltPrior)
+        self._psiPrior = Float(psiPrior)
+        # NOTE: the angles used in the transformation matrix are rlnTomoSubtomogramRot|Tilt|Psi. Hence, the others are
+        # stored as class attributes
 
     def getCtfFile(self):
         return self._ctfFile.get()
 
     def getTsId(self):
         return self.getVolName()
-
-    def getBoxSize(self):
-        return self._boxSize.get()
 
     def getX(self):
         return self._x.get()
@@ -90,20 +104,62 @@ class RelionPSubtomogram(SubTomogram):
     def getZ(self):
         return self._z.get()
 
+    def getXInImg(self):
+        return self._xInImg.get()
+
+    def getYInImg(self):
+        return self._yInImg.get()
+
+    def getZInImg(self):
+        return self._zInImg.get()
+
+    def getRot(self):
+        return self._rot.get()
+
+    def getTilt(self):
+        return self._tilt.get()
+
+    def getPsi(self):
+        return self._psi.get()
+
+    def getTiltPrior(self):
+        return self._tiltPrior.get()
+
+    def getPsiPrior(self):
+        return self._psiPrior.get()
+
     def getCoords(self):
         return self.getX(), self.getY(), self.getZ()
 
     def getRdnSubset(self):
         return self._rdnSubset.get()
 
-    def getRe4ParticleName(self):
-        return self._re4ParticleName.get()
+    def getRelionParticleName(self):
+        return self._relionParticleName.get()
+
+    def getVisibleFrames(self):
+        return self._visibleFrames.get()
 
     def getOpticsGroupId(self):
         return self._opticsGroupId.get()
 
     def getManifoldIndex(self):
         return self._manifoldIndex.get()
+
+    def getGroupId(self):
+        return self._groupId.get()
+
+    def getNormCorrection(self):
+        return self._normCorrection.get()
+
+    def getLogLikeliContribution(self):
+        return self._logLikeliContribution.get()
+
+    def getMaxValueProbDistribution(self):
+        return self._maxValueProbDistribution.get()
+
+    def getNrOfSignificantSamples(self):
+        return self._nrOfSignificantSamples.get()
 
     def setCtfFile(self, val):
         self._ctfFile.set(val)
@@ -114,34 +170,64 @@ class RelionPSubtomogram(SubTomogram):
     def setTransform(self, newTransform, convention=TR_SCIPION):
         super().setTransform(newTransform, convention=convention)
 
-    def setBoxSize(self, val):
-        self._boxSize = val
-
     def setX(self, val):
-        self._x = val
+        self._x.set(val)
 
     def setY(self, val):
-        self._y = val
+        self._y.set(val)
 
     def setZ(self, val):
-        self._z = val
+        self._z.set(val)
+
+    def setXInImg(self, val):
+        self._xInImg.set(val)
+
+    def setYInImg(self, val):
+        self._yInImg.set(val)
+
+    def setZInImg(self, val):
+        self._zInImg.set(val)
 
     def setCoords(self, x, y, z):
         self.setX(x)
         self.setY(y)
         self.setZ(z)
 
+    def setRot(self, val):
+        self._rot.set(val)
+
+    def setTilt(self, val):
+        self._tilt.set(val)
+
+    def setPsi(self, val):
+        self._psi.set(val)
+
+    def setTiltPrior(self, val):
+        self._tiltPrior.set(val)
+
+    def setPsiPrior(self, val):
+        self._psiPrior.set(val)
+
     def setRdnSubset(self, val):
         self._rdnSubset.set(val)
 
-    def setReParticleName(self, val):
-        self._re4ParticleName.set(val)
+    def setRelionParticleName(self, val):
+        self._relionParticleName.set(val)
+
+    def setVisibleFrames(self, val):
+        return self._visibleFrames.set(val)
 
     def setOpticsGroupId(self, val):
         self._opticsGroupId.set(val)
 
     def setManifoldIndex(self, val):
         self._manifoldIndex.set(val)
+
+    def setGroupId(self, val):
+        self._groupId.set(val)
+
+    def setNormCorrection(self, val):
+        self._normCorrection.set(val)
 
     # def copyInfo(self, other):
     #     self.copyAttributes(other, '_samplingRate', '_tsId', '_rdnSubset',
@@ -160,31 +246,26 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     a new one filtered out base on  this set ids? (warning, ids will fail if there are joins!!)
     """
     ITEM_TYPE = RelionPSubtomogram
+    ARE_2D_PARTICLES = '_areRe5Particles'
 
     def __init__(self, optimSetStar=None, relionBinning=None, tsSamplingRate=None, boxSize=24,
-                 nReParticles=0, **kwargs):
+                 nReParticles=0, are2dStacks=None, areRe5Particles=None, **kwargs):
         super().__init__(**kwargs)
-        self._filesMaster = String() # Optimisation set file path
+        self._filesMaster = String()  # Optimisation set file path
         self._boxSize = Integer(boxSize)
-        self._tomograms = String() # Path to tomograms star file, usually the one prepared by relion at the beginning
-        self._particles = String() # Path to particles.star file where particles metadata
-        self._trajectories = String() # Path to trajectories file
-        self._manifolds = String() # Path to manifolds file
-        self._referenceFsc = String() # FSC file
-        self._relionBinning = Float(relionBinning) # Binning of this set
-        self._tsSamplingRate = Float(tsSamplingRate) # Sampling rate of the tilt series
-        self._nReParticles = Integer(nReParticles) # number of relion particles in the particles star file
+        self._tomograms = String()  # Path to tomograms star file, usually the one prepared by relion at the beginning
+        self._particles = String()  # Path to particles.star file where particles metadata
+        self._trajectories = String()  # Path to trajectories file
+        self._manifolds = String()  # Path to manifolds file
+        self._referenceFsc = String()  # FSC file
+        self._relionBinning = Float(relionBinning)  # Binning of this set
+        self._tsSamplingRate = Float(tsSamplingRate)  # Sampling rate of the tilt series
+        self._nReParticles = Integer(nReParticles)  # Number of relion particles in the particles star file
+        self._are2dStacks = Boolean(are2dStacks)  # Fag to identify if the particles are 2D or 3D
+        self._areRe5Particles = Boolean(areRe5Particles)
 
         if optimSetStar:
             self.filesMaster = optimSetStar
-
-    # def __str__(self):
-    #     strRep = ''
-    #     if self.getNumParticles():
-    #         strRep += '%i items, ' % self.getNumParticles()
-    #     if self.getRelionBinning():
-    #         strRep += 'binning %.1f' % self.getRelionBinning()
-    #     return self.getClassName() + ' %s' % ('(%s)' % strRep if strRep else '')
 
     @property
     def filesMaster(self):
@@ -227,10 +308,10 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     def getTomogramsStar(self):
         return self._tomograms.get()
 
-    def getParticles(self):
+    def getParticlesStar(self):
         return self._particles.get()
 
-    def getTrajectories(self):
+    def getTrajectoriesStar(self):
         return self._trajectories.get()
 
     def getManifolds(self):
@@ -254,6 +335,18 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     def getNReParticles(self):
         return self._nReParticles.get()
 
+    def are2dStacks(self):
+        return self._are2dStacks.get()
+
+    def areRe5Particles(self):
+        return self._areRe5Particles.get()
+
+    def setAre2dStacks(self, val):
+        return self._are2dStacks.set(val)
+
+    def setAreRe5Particles(self, val):
+        self._areRe5Particles.set(val)
+
     def setNReParticles(self, val):
         self._nReParticles.set(val)
 
@@ -266,70 +359,62 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     def setBoxSize(self, val):
         self._boxSize.set(val)
 
+    def setParticles(self, val):
+        self._particles.set(val)
+
     def copyInfo(self, other):
-        self.copyAttributes(other,'_filesMaster', '_tomograms', '_particles', '_trajectories', '_manifolds', '_referenceFsc',
-                            '_relionBinning', '_tsSamplingRate', '_samplingRate', '_boxSize', '_nReParticles',
-                            '_coordsPointer')
-        self._acquisition.copyInfo(other._acquisition)
+        self.copyAttributes(other, '_filesMaster', '_tomograms', '_particles', '_trajectories', '_manifolds',
+                            '_referenceFsc', '_relionBinning', '_tsSamplingRate', '_samplingRate', '_boxSize',
+                            '_nReParticles', '_coordsPointer', '_are2dStacks', '_areRe5Particles')
+        self._acquisition.copyInfo(other.getAcquisition())
         # self._relionMd = relionMd if relionMd else relionTomoMetadata
+
     def _samplingRateStr(self):
         return "%0.2f Å/px" % self.getCurrentSamplingRate()
-        
-    # def iterPSubtomos(self, ts=None, orderBy='id'):
-    #     if ts is None:
-    #         tsId = None
-    #     elif isinstance(ts, str):
-    #         tsId = ts
-    #     elif isinstance(ts, TiltSeries):
-    #         tsId = ts.getTsId()
-    #     else:
-    #         raise Exception('Invalid input tilt series of type %s' % type(ts))
-    #
-    #     # Iterate over all psubtomos if tomoId is None,
-    #     # otherwise use tomoId to filter the where selection
-    #     psubtomoWhere = '1' if tsId is None else '_tomoId=%s' % tsId
-    #     for psubtomo in self.iterItems(where=psubtomoWhere, orderBy=orderBy):
-    #         yield psubtomo
-    #
-    # def getRelionMd(self):
-    #     return self._relionMd
-    #
-    # def setRelionMd(self, reMd):
-    #     self._relionMd = reMd
-    #
-    # def copyInfo(self, other):
-    #     self.copyAttributes(other, '_samplingRate', '_relionMd')
-    #     self._acquisition.copyInfo(other._acquisition)
 
 
-def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, coordsPointer, template=PSUBTOMOS_SQLITE, tsSamplingRate=1,
-                                   relionBinning=1, boxSize=24, nReParticles=0):
+def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, coordsPointer, template=PSUBTOMOS_SQLITE,
+                                   tsSamplingRate=1, relionBinning=1, boxSize=24, nReParticles=0, are2dStacks=None,
+                                   acquisition=None):
     """ Creates the RelionSetOfSubtomograms from the input arguments
 
     :param protocolPath: Path of the protocol where to create the sqlite
     :param optimSetStar: optimization set star file. This file is a small collection of files(images and metadata to pass to future jobs
-    :param coordsPointer: Pointer to the set of coordinates
+    :param coordsPointer: Pointer to the set of coordinates. It can also be the SetOfCoordinates3D directly.
+    :param template: template name for the sqlite file.
     :param tsSamplingRate: Sampling rate of the tilt series
     :param relionBinning: binning of the set
     :param boxSize: Box size of the set
     :param nReParticles: Number of particles in relion's particles star file
+    :param are2dStacks: Boolean used to indicate if the generated particles are 2d stacks or not.
+    :param acquisition: TomoAcquisition. The recommended is the one from the tilt-series, as it may contain more data
+    if they were imported compared to imported tomograms. If not provided, the coordinates pointer will be used to
+    access to the precedent tomograms and clone their acquisition.
 
     """
     psubtomoSet = RelionSetOfPseudoSubtomograms.create(protocolPath, template=template)
-    psubtomoSet.filesMaster = optimSetStar
     psubtomoSet.setTsSamplingRate(tsSamplingRate)
     psubtomoSet.setRelionBinning(relionBinning)
     psubtomoSet.setSamplingRate(psubtomoSet.getCurrentSamplingRate())
     psubtomoSet.setBoxSize(boxSize)
     psubtomoSet.setNReParticles(nReParticles)
     psubtomoSet.setCoordinates3D(coordsPointer)
+    psubtomoSet.setAre2dStacks(are2dStacks)
+    psubtomoSet.setAreRe5Particles(True if Plugin.isRe50() else False)
 
-    # Clone acquisition from tomograms
-    acquisition = coordsPointer.get().getPrecedents().getAcquisition()
+    # Manage the acquisition
+    if not acquisition:
+        # Clone acquisition from tomograms
+        if type(coordsPointer) is SetOfCoordinates3D:
+            acquisition = coordsPointer.getPrecedents().getAcquisition()
+        else:
+            acquisition = coordsPointer.get().getPrecedents().getAcquisition()
     newAcquisition = acquisition.clone()
     psubtomoSet.setAcquisition(newAcquisition)
-    return psubtomoSet
 
+    # Assign the optimisation file, which will also update the acquisition with the optics table info
+    psubtomoSet.filesMaster = optimSetStar
+    return psubtomoSet
 
 
 class StarFileComparer:
@@ -444,6 +529,3 @@ class StarFileComparer:
 
 def list2str(inList):
     return ' '.join([str(label) for label in inList])
-
-
-

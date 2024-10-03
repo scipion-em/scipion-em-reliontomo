@@ -24,17 +24,17 @@
 # **************************************************************************
 
 from emtable import Table
-
-from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo import Plugin
 from reliontomo.constants import TOMO_NAME_30, PARTICLES_TABLE, RELION_30_TOMO_LABELS, RELION_40_TOMO_LABELS, \
-    PSUBTOMOS_SQLITE
-from reliontomo.convert import convert40_tomo, convert30_tomo
+    GENERAL_TABLE, TOMO_PARTICLE_ID
+from reliontomo.convert import convert40_tomo, convert30_tomo, convert50_tomo
 
 
 def createWriterTomo(isPyseg=False, **kwargs):
-    if isPyseg or not Plugin.isRe40():
+    if isPyseg:
         writer = createWriterTomo30(starHeaders=RELION_30_TOMO_LABELS, **kwargs)
+    elif Plugin.IS_GT50():
+        writer = createWriterTomo50()
     else:
         writer = createWriterTomo40(starHeaders=RELION_40_TOMO_LABELS, **kwargs)
     return writer
@@ -52,6 +52,12 @@ def createWriterTomo40(**kwargs):
     return Writer(**kwargs)
 
 
+def createWriterTomo50(**kwargs):
+    """ Create a new Writer instance for Relion 5."""
+    Writer = convert50_tomo.Writer
+    return Writer(**kwargs)
+
+
 def writeSetOfCoordinates(coordSet, starFile, whitelist, **kwargs):
     return createWriterTomo40().coordinates2Star(coordSet, starFile, whitelist, **kwargs)
 
@@ -62,7 +68,7 @@ def writeSetOfSubtomograms(particlesSet, starFile, **kwargs):
     return writer.subtomograms2Star(particlesSet, starFile)
 
 
-def writeSetOfPseudoSubtomograms(particlesSet, starFile, withPriors=False,**kwargs):
+def writeSetOfPseudoSubtomograms(particlesSet, starFile, withPriors=False, **kwargs):
     return createWriterTomo40(**kwargs).pseudoSubtomograms2Star(particlesSet, starFile, withPriors=withPriors)
 
 
@@ -72,26 +78,44 @@ def writeSetOfTomograms(imgSet, starFile, whiteList=None, **kwargs):
     return createWriterTomo40(**kwargs).tiltSeries2Star(imgSet, starFile, whiteList=whiteList, **kwargs)
 
 
-def createReaderTomo(starFile, **kwargs):
+def createReaderTomo(starFile, isRelion5, tableName=PARTICLES_TABLE, isCoordsStar=False,  **kwargs):
     dataTable = Table()
     try:
-        dataTable.read(starFile, tableName=PARTICLES_TABLE)
-    except Exception:
+        dataTable.read(starFile, tableName=tableName)
+    except:
         dataTable.read(starFile, tableName=None)
 
     labels = dataTable.getColumnNames()
     if TOMO_NAME_30 in labels:
         reader = convert30_tomo.Reader(starFile, dataTable, **kwargs)
-        isReader40 = False
+        readerVersion = 3
     else:
-        reader = convert40_tomo.Reader(starFile, dataTable, **kwargs)
-        isReader40 = True
+        if isCoordsStar:
+            if TOMO_PARTICLE_ID in labels:
+                reader = convert40_tomo.Reader(starFile, dataTable, **kwargs)
+                readerVersion = 4
+            else:
+                reader = convert50_tomo.Reader(starFile, dataTable, **kwargs)
+                readerVersion = 5
+        else:
+            if isRelion5:
+                reader = convert50_tomo.Reader(starFile, dataTable, **kwargs)
+                readerVersion = 5
+            else:
+                reader = convert40_tomo.Reader(starFile, dataTable, **kwargs)
+                readerVersion = 4
+    return reader, readerVersion
 
-    return reader, isReader40
 
-
-def readSetOfPseudoSubtomograms(outputSet):
+def readSetOfPseudoSubtomograms(outputSet, isRelion5=True):
     """ Convenience function to write a SetOfPseudoSubtomograms as Relion metadata using a Reader."""
     # Subtomograms are represented in Relion 4 as Pseudosubtomograms
-    reader, _ = createReaderTomo(outputSet.getParticles())
+    reader, _ = createReaderTomo(outputSet.getParticlesStar(), isRelion5=isRelion5)
     return reader.starFile2PseudoSubtomograms(outputSet)
+
+
+def readTsStarFile(inTs, outTs, starFile, outStackName, extraPath, isEvenOdd=False):
+    dataTable = Table()
+    dataTable.read(starFile, tableName=outTs.getTsId())
+    reader = convert50_tomo.Reader(starFile, dataTable)
+    return reader.starFile2Ts(inTs, outTs, outStackName, extraPath, isEvenOdd=isEvenOdd)

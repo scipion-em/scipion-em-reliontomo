@@ -1,4 +1,17 @@
-v3.3.0:
+v4.0.0:
+  Users:
+    - Relion 5.0.
+    - Adapted to scipion-em-relion deprecation of relion3.
+    - Add warning preventing to set the box size and the cropped box size to the same value as it may cause an
+      internal error in relion (Thanks to DSheperd).
+  Developers:
+    - Fix inspect in buildbot: Tkagg not set in wizard module.
+    - Protocols CTF refine and Bayesian polising get the postprocess.star the introduced post-processed volume, as an
+      extended attribute.
+    - Fix convert for 3D particles in Relion 5.
+    - Improve the validations in protocols autorefine and classify 3d.
+v3.4.0:
+  Note: this was supposed to be 3.3.0, but was published as 3.4.0
   Users:
     - After having performed a refine or classification of particles, fields _rlnLogLikeliContribution,
       _rlnMaxValueProbDistribution and _rlnNrOfSignificantSamples are registered, so they can be plotted versus the
