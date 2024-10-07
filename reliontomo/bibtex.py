@@ -45,14 +45,14 @@ publisher = "eLife Sciences Publications, Ltd",
 }
 
 @article{Burt2024,
-author = "Burt, Alister and Toader, Bogdan and Warshamanage, Rangana and von Kugelgen, Andriko and Pyle, Euan and Zivanov, Jasenko and Kimanius, Dari and Bharat, Tanmay A.M. and Scheres, Sjors H.W.",
-title = "An image processing pipeline for electron cryo-tomography in RELION-5",
-year = "2024",
-doi = "https://doi.org/10.1101/2024.04.26.591129",
-publisher = "Cold Spring Harbor Laboratory",
-URL = "https://www.biorxiv.org/content/early/2024/04/27/2024.04.26.591129",
-eprint = "https://www.biorxiv.org/content/early/2024/04/27/2024.04.26.591129.full.pdf",
-journal = "bioRxiv",
+  title = {An image processing pipeline for electron cryo?tomography in <scp>RELION</scp>?5},
+  ISSN = {2211-5463},
+  DOI = {http://dx.doi.org/10.1002/2211-5463.13873},
+  journal = {FEBS Open Bio},
+  publisher = {Wiley},
+  author = {Burt,  Alister and Toader,  Bogdan and Warshamanage,  Rangana and von K\"{u}gelgen,  Andriko and Pyle,  Euan and Zivanov,  Jasenko and Kimanius,  Dari and Bharat,  Tanmay A. M. and Scheres,  Sjors H. W.},
+  year = {2024},
+  month = aug
 }
 
 """
