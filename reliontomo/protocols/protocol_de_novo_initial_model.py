@@ -123,6 +123,10 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         nMpi = self.numberOfMpi.get()
         if nMpi > 1:
             errorMsg.append('The initial volume can only run using 1 MPI.')
+
+        if self.inReParticles.get().getBoxSize() % 2 != 0:
+            errorMsg.append('The dimensions of the extracted pseudo-subtomograms '
+                            'must be even!')
         return errorMsg
 
     # --------------------------- UTILS functions -----------------------------
