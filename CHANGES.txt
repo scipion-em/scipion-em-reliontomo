@@ -1,3 +1,6 @@
+v4.0.1:
+  Users:
+    - Ensure that the pseudo-subtomograms of the initial model protocol have even dimensions
 v4.0.0:
   Users:
     - Relion 5.0.
