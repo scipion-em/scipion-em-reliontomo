@@ -257,13 +257,14 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                       help="Adaptive oversampling order to speed-up calculations (0=no oversampling, 1=2x, 2=4x, etc)")
 
         # Generate priors fields
-        form.addParam('alignmentAsPriors', BooleanParam, default=False,
-                      expertLevel=LEVEL_ADVANCED,
-                      label='Consider alignment as priors?',
-                      help='If set to Yes, then alignment information from '
-                           'input particles will be considered as PRIORS. This '
-                           'option can be used to do restricted local '
-                           'search within a range centered around those priors.')
+        if not IS_RELION_50:
+            form.addParam('alignmentAsPriors', BooleanParam, default=False,
+                          expertLevel=LEVEL_ADVANCED,
+                          label='Consider alignment as priors?',
+                          help='If set to Yes, then alignment information from '
+                               'input particles will be considered as PRIORS. This '
+                               'option can be used to do restricted local '
+                               'search within a range centered around those priors.')
 
         ProtRelionTomoBase._defineExtraParams(form, addAdditionalSection=False)
         form.addParallelSection(threads=1, mpi=1)
