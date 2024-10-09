@@ -362,6 +362,12 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     def setParticles(self, val):
         self._particles.set(val)
 
+    def setTomogramsStar(self, val):
+        return self._tomograms.set(val)
+
+    def setTrajectoriesStar(self, val):
+        return self._trajectories.set(val)
+
     def copyInfo(self, other):
         self.copyAttributes(other, '_filesMaster', '_tomograms', '_particles', '_trajectories', '_manifolds',
                             '_referenceFsc', '_relionBinning', '_tsSamplingRate', '_samplingRate', '_boxSize',

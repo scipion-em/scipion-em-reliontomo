@@ -32,7 +32,7 @@ from pyworkflow.protocol import PointerParam, StringParam
 from pyworkflow.utils import Message, createLink
 from reliontomo import Plugin
 from reliontomo.constants import IN_PARTICLES_STAR, POSTPROCESS_DIR, OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE, \
-    OUT_PARTICLES_STAR
+    OUT_PARTICLES_STAR, OUT_TOMOS_STAR, TRAJECTORIES_STAR
 from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms, convert50_tomo
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from tomo.objects import SetOfCoordinates3D
@@ -125,6 +125,8 @@ class ProtRelionTomoBase(EMProtocol):
     def genRelionParticles(self,
                            optimisationFileName=OPTIMISATION_SET_STAR,
                            particles=OUT_PARTICLES_STAR,
+                           tomograms=OUT_TOMOS_STAR,
+                           trajectories=TRAJECTORIES_STAR,
                            binningFactor=None,
                            boxSize=24):
         """Generate a RelionSetOfPseudoSubtomograms object containing the files involved for the next protocol,
@@ -138,14 +140,21 @@ class ProtRelionTomoBase(EMProtocol):
         psubtomoSet.copyInfo(inParticlesSet)
 
         # Verify out star file
-        extraPath = self._getExtraPath()
-        optimSetStar = join(extraPath, optimisationFileName)
+        optimSetStar =  self._getExtraPath(optimisationFileName)
         if exists(optimSetStar):
             psubtomoSet.filesMaster = optimSetStar
 
-        particles = join(extraPath, particles)
+        particles =  self._getExtraPath(particles)
         if exists(particles):
             psubtomoSet.setParticles(particles)
+
+        tomograms =  self._getExtraPath(tomograms)
+        if exists(tomograms):
+            psubtomoSet.setTomogramsStar(tomograms)
+
+        trajectiories = self._getExtraPath(trajectories)
+        if exists(trajectiories):
+            psubtomoSet.setTrajectoriesStar(trajectories)
 
         if binningFactor:
             psubtomoSet.setRelionBinning(binningFactor)
