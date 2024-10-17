@@ -25,7 +25,7 @@
 from os.path import exists, join
 from emtable import Table
 
-from pwem.objects import VolumeMask, FSC
+from pwem.objects import Volume, FSC
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA, PROD
 from pyworkflow.protocol import PointerParam, StringParam
@@ -111,7 +111,7 @@ class ProtRelionTomoBase(EMProtocol):
     def _genPostProcessOutputMrcFile(self, fileName):
         """File generated using the sharpening protocol (called post-process protocol) and also using the
         rec particle from TS protocol in case the optional input 'solvent mask' is introduced."""
-        postProccesMrc = VolumeMask()
+        postProccesMrc = Volume()
         postProccesMrc.setFileName(self._getExtraPath(POSTPROCESS_DIR, fileName))
         sRate = -1
         if getattr(self, 'inReParticles', None):
