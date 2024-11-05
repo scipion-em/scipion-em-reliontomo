@@ -168,6 +168,7 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
         # Output FSC
         setOfFSC = self.genFSCs(fn, POSTPROCESS_STAR_FSC_TABLE,
                                 POSTPROCESS_STAR_FSC_COLUMNS)
+        setattr(setOfFSC, POSTPROCESS_STAR_FIELD, String(fn))
 
         self._defineOutputs(**{outputObjects.postProcessVolume.name: postProccesMrc,
                                outputObjects.outputFSC.name: setOfFSC})

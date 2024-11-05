@@ -31,7 +31,7 @@ from pwem.protocols.protocol_import.masks import ImportMaskOutput
 from pyworkflow.tests import setupTestProject, DataSet
 from pyworkflow.utils import magentaStr, yellowStr
 from reliontomo import Plugin
-from reliontomo.constants import OUT_PARTICLES_STAR, IN_TOMOS_STAR, FILE_NOT_FOUND, FSC_REF_STAR, IN_PARTICLES_STAR
+from reliontomo.constants import OUT_PARTICLES_STAR, IN_TOMOS_STAR, FILE_NOT_FOUND, POSTPROCESS_STAR_FIELD
 from reliontomo.convert.convertBase import getTransformInfoFromCoordOrSubtomo
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelion5ExtractSubtomos, \
     ProtRelion5ReconstructParticle, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms, \
@@ -691,15 +691,8 @@ class TestRelion5PostProcess(TestRelion5RefineCycleBase):
 
     @classmethod
     def _runPreviousProtocols(cls):
-        super()._runPreviousProtocols()
         cls.importedFscMask = cls._runImportReference(filePath=cls.ds.getFile(DataSetRe4STATuto.maskFscBin2.name),
                                                       samplingRate=cls.unbinnedSRate * cls.binFactor2)
-        cls.protExtract = cls._runExtractSubtomos(inParticles=cls.importedCoords,
-                                                  binningFactor=cls.binFactor2,
-                                                  boxSize=cls.boxSizeBin2,
-                                                  croppedBoxSize=cls.croppedBoxSizeBin2,
-                                                  gen2dParticles=True)
-        cls.extractedParts = getattr(cls.protExtract, cls.protExtract._possibleOutputs.relionParticles.name, None)
 
     def test_runPostProcess(self):
         if IS_RE_50:
@@ -726,5 +719,10 @@ class TestRelion5PostProcess(TestRelion5RefineCycleBase):
                               expectedBoxSize=self.croppedBoxSizeBin2,
                               hasHalves=False)
 
+            # Check the FSC (it must contain an extended attribute pointing to the postprocess star file that can be
+            # introduced as input in the CTF refinement and bayesian polishing
+            fsc = getattr(protPostProcess, protPostProcess._possibleOutputs.outputFSC.name, None)
+            self.assertTrue(hasattr(fsc, POSTPROCESS_STAR_FIELD))
+            self.assertTrue(exists(getattr(fsc, POSTPROCESS_STAR_FIELD).get()))
         else:
             print(yellowStr('Relion 4 detected. Test for protocol "Post-process" skipped.'))

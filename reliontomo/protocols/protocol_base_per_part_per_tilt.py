@@ -27,9 +27,8 @@ from enum import Enum
 from os import walk
 from os.path import join, basename, exists
 from typing import List
-
 from emtable import Table
-
+from pyworkflow.object import String
 from pyworkflow.protocol import PointerParam, IntParam, GE, LE
 from pyworkflow.utils import createLink
 from reliontomo.constants import IN_TOMOS_STAR, OUT_TOMOS_STAR, GLOBAL_TABLE, tomoStarFields, RLN_TOMONAME, RLN_VOLTAGE, \
@@ -69,6 +68,13 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
                       label="Input reference mask",
                       help='This mask localizes the signal in the reference map. The mask should be'
                            'soft (non-binary)')
+        if IS_RELION_50:
+            form.addParam('inFsc', PointerParam,
+                          pointerClass='SetOfFSCs',
+                          allowsNull=True,
+                          label='Post-process FSC (opt)',
+                          help='If not provided, the SNR will be calculated without phase randomization, '
+                               'so it will be slightly optimistic.')
 
     @staticmethod
     def _insertBoxSizeForEstimationParam(form):
@@ -147,7 +153,8 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
         inPSubtomos = self.inReParticles.get()
         inVolume = self.recVolume.get()
         trajectories = inPSubtomos.getTrajectoriesStar()
-        postProcess = getattr(inVolume, POSTPROCESS_STAR_FIELD, None)
+        # postProcess = getattr(inVolume, POSTPROCESS_STAR_FIELD, None)
+        postProcess = self._getPostProcessStar()
         half1, half2 = inVolume.getHalfMaps().split(',')
         cmd = '--p %s ' % inPSubtomos.getParticlesStar()
         cmd += '--t %s ' % inPSubtomos.getTomogramsStar()
@@ -173,20 +180,22 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
                     tsStaFiles.append(filepath)
         return tsStaFiles
 
+    def _getPostProcessStar(self):
+        fsc = self.inFsc.get()
+        if fsc:
+            mdPostProcessStar = getattr(fsc, POSTPROCESS_STAR_FIELD, String(None)).get()
+            if mdPostProcessStar and exists(mdPostProcessStar):
+                return mdPostProcessStar
+        return None
+
     # -------------------------- INFO functions -------------------------------
     def _warnings(self):
         warnMsg = []
-        inVolume = self.recVolume.get()
-        postProcess = getattr(inVolume, POSTPROCESS_STAR_FIELD, None)
-        if not postProcess:
-            warnMsg.append('No postprocess.star file was found in the metadata of the introduced volume.\n'
-                           'If not provided, the SNR will be calculated without phase randomization, so it will be '
+        # inVolume = self.recVolume.get()
+        postProcessStar = self._getPostProcessStar()
+        if not postProcessStar:
+            warnMsg.append('No FSC was introduced or no postprocess.star file was found in the metadata of the '
+                           'introduced FSC.\n'
+                           'In that case, the SNR will be calculated without phase randomization, so it will be '
                            'slightly optimistic.')
         return warnMsg
-
-
-
-
-
-
-

@@ -520,7 +520,7 @@ class Writer(WriterTomo):
 
                 trMatrix = ti.getTransform().getMatrix() if ti.getTransform() is not None else eyeMatrix3x3
                 iTrMatrix = np.linalg.inv(trMatrix)
-                rotAngle = np.rad2deg(np.arccos(trMatrix[0, 0]))
+                rotAngle = np.rad2deg(np.arctan2(trMatrix[0, 1], trMatrix[0, 0]))
                 sxAngst = iTrMatrix[0, 2] * sRate
                 syAngst = iTrMatrix[1, 2] * sRate
                 tsTable.addRow(
