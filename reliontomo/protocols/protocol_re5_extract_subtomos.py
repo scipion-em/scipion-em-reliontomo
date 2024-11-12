@@ -82,6 +82,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                       allowsNull=True,
                       help='Tilt series with alignment (non interpolated) used in the tomograms reconstruction.. '
                            'They are optional in case of the re-extraction of Relion particles.')
+        self._insertBinThreadsParam(form)
         form.addParam('handedness', BooleanParam,
                       label='Does focus decrease with Z distance?',
                       default=True,

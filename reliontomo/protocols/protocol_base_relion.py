@@ -28,7 +28,7 @@ from emtable import Table
 from pwem.objects import Volume, FSC
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA, PROD
-from pyworkflow.protocol import PointerParam, StringParam
+from pyworkflow.protocol import PointerParam, StringParam, IntParam
 from pyworkflow.utils import Message, createLink
 from reliontomo import Plugin
 from reliontomo.constants import IN_PARTICLES_STAR, POSTPROCESS_DIR, OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE, \
@@ -62,6 +62,17 @@ class ProtRelionTomoBase(EMProtocol):
                            'constructed from the sums of 2D tilt-series images pre-multiplied by contrast transfer '
                            'functions (CTFs), along with auxiliary arrays that store the corresponding sum of squared '
                            'CTFs and the frequency of observation for each 3D voxel.')
+
+    @staticmethod
+    def _insertBinThreadsParam(form):
+        form.addParam('binThreads', IntParam,
+                      label='Relion threads',
+                      default=3,
+                      help='Number of threads used by Relion each time it is called in the protocol execution. For '
+                           'example, if 2 Scipion threads and 3 Relion threads are set, the tomograms will be '
+                           'processed in groups of 2 at the same time with a call of tomo3d with 3 threads each, so '
+                           '6 threads will be used at the same time. Beware the memory of your machine has '
+                           'memory enough to load together the number of tomograms specified by Scipion threads.')
 
     @staticmethod
     def _defineExtraParams(form, addAdditionalSection=True):

@@ -97,7 +97,7 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
                f"--b {self.boxSize.get()}",
                f"--crop {self.croppedBoxSize.get()}",
                f"--bin {self.binningFactor.get():.1f}",
-               f"--j {self.numberOfThreads.get()}",
+               f"--j {self.binThreads.get()}",
                self._genExtraParamsCmd()]
         inParticles = self.getInputParticles()
         if not self.isInputSetOf3dCoords():
