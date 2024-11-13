@@ -37,6 +37,7 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
         self._defineCommonInputParams(form)
+        self._insertBinThreadsParam(form)
         form.addParallelSection(threads=1, mpi=3)
 
     @staticmethod
@@ -113,6 +114,6 @@ class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
         cmd += '--b %i ' % self.boxSize.get()
         cmd += '--crop %i ' % self.croppedBoxSize.get()
         cmd += '--bin %.1f ' % self.binningFactor.get()
-        cmd += '--j %i ' % self.numberOfThreads.get()
+        cmd += '--j %i ' % self.binThreads.get()
         cmd += self._genExtraParamsCmd()
         return cmd

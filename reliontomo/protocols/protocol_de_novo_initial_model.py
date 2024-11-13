@@ -89,10 +89,10 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.generateDeNovo3DModel)
-        self._insertFunctionStep(self.alignSymmetry)
-        self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.convertInputStep, needsGPU=False)
+        self._insertFunctionStep(self.generateDeNovo3DModel, needsGPU=True)
+        self._insertFunctionStep(self.alignSymmetry, needsGPU=False)
+        self._insertFunctionStep(self.createOutputStep, needsGPU=False)
 
     # -------------------------- STEPS functions ------------------------------
     def generateDeNovo3DModel(self):

@@ -124,9 +124,9 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     def _insertAllSteps(self):
         if self.isInputSetOf3dCoords():
             self._initialize()
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.extractSubtomos)
-        self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.convertInputStep, needsGPU=False)
+        self._insertFunctionStep(self.extractSubtomos, needsGPU=False)
+        self._insertFunctionStep(self.createOutputStep, needsGPU=False)
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):

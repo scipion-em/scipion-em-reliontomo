@@ -184,7 +184,7 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
                                       croppedBoxSize=croppedBoxSize,
                                       write2dStacks=gen2dParticles,
                                       numberOfMpi=2,  # There are 2 tomograms in the current dataset
-                                      numberOfThreads=4)
+                                      binThreads=4)
         protExtract.setObjLabel(f"{extractMsg} subtomos {partTypeMsg}")
         return cls.launchProtocol(protExtract)
 
@@ -362,7 +362,7 @@ class TestRelion5TomoRecParticleFromTs(TestRelion5RefineCycleBase):
                                             croppedBoxSize=croppedBoxSize,
                                             symmetry='C6',  # HIV symmetry
                                             numberOfMpi=2,  # 2 TS in the dataset used
-                                            numberOfThreads=4)
+                                            binThreads=4)
         protRecPartFromTS.setObjLabel(f'Rec particle from TS, {partTypeStr} stacks')
         cls.launchProtocol(protRecPartFromTS)
         return protRecPartFromTS
@@ -503,7 +503,7 @@ class TestRelion5TomoGenInitialModel(TestRelion5RefineCycleBase):
                                            doGpu=True,
                                            gpusToUse='0',
                                            numberOfMpi=1,
-                                           numberOfThreads=6)
+                                           binThreads=6)
         cls.launchProtocol(protInitialModel)
         return getattr(protInitialModel, ProtRelionDeNovoInitialModel._possibleOutputs.average.name, None)
 
@@ -548,7 +548,7 @@ class TestRelionTomo5Classify3d(TestRelion5RefineCycleBase):
                       'maskDiameter': 500,
                       'pooledSubtomos': 6,
                       'numberOfMpi': 3,
-                      'numberOfThreads': 3}
+                      'binThreads': 3}
 
         if doAlingment:
             paramsDict['doImageAlignment'] = True
@@ -680,7 +680,7 @@ class TestRelion5TomoRefine(TestRelion5RefineCycleBase):
                                          doGpu=True,
                                          gpusToUse='0',
                                          numberOfMpi=3,
-                                         numberOfThreads=3)
+                                         binThreads=3)
         cls.launchProtocol(protAutoRefine)
         return protAutoRefine
 

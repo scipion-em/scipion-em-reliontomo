@@ -29,7 +29,7 @@ from os.path import join, basename, exists
 from typing import List
 from emtable import Table
 from pyworkflow.object import String
-from pyworkflow.protocol import PointerParam, IntParam, GE, LE
+from pyworkflow.protocol import PointerParam, IntParam, GE
 from pyworkflow.utils import createLink
 from reliontomo.constants import IN_TOMOS_STAR, OUT_TOMOS_STAR, GLOBAL_TABLE, tomoStarFields, RLN_TOMONAME, RLN_VOLTAGE, \
     RLN_SPHERICALABERRATION, RLN_AMPLITUDECONTRAST, RLN_MICROGRAPHORIGINALPIXELSIZE, RLN_TOMOHAND, RLN_OPTICSGROUPNAME, \
@@ -56,6 +56,7 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
 
     def _defineParams(self, form):
         super()._defineCommonInputParams(form)
+        self._insertBinThreadsParam(form)
         form.addParam('recVolume', PointerParam,
                       pointerClass='AverageSubTomogram',
                       allowsNull=False,
@@ -89,6 +90,7 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
+        # To be defined in the subclasses
         pass
 
     def convertInputStep(self):
@@ -153,7 +155,6 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
         inPSubtomos = self.inReParticles.get()
         inVolume = self.recVolume.get()
         trajectories = inPSubtomos.getTrajectoriesStar()
-        # postProcess = getattr(inVolume, POSTPROCESS_STAR_FIELD, None)
         postProcess = self._getPostProcessStar()
         half1, half2 = inVolume.getHalfMaps().split(',')
         cmd = '--p %s ' % inPSubtomos.getParticlesStar()
@@ -167,6 +168,7 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
         if postProcess:
             cmd += '--fsc %s ' % postProcess
         cmd += '--b %i ' % self.boxSize.get()
+        cmd += '--j %i ' % self.binThreads.get()
         cmd += self._genExtraParamsCmd()
         return cmd
 
@@ -183,7 +185,7 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
     def _getPostProcessStar(self):
         fsc = self.inFsc.get()
         if fsc:
-            mdPostProcessStar = getattr(fsc, POSTPROCESS_STAR_FIELD, String(None)).get()
+            mdPostProcessStar = getattr(fsc, POSTPROCESS_STAR_FIELD, String()).get()
             if mdPostProcessStar and exists(mdPostProcessStar):
                 return mdPostProcessStar
         return None
@@ -191,7 +193,6 @@ class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
     # -------------------------- INFO functions -------------------------------
     def _warnings(self):
         warnMsg = []
-        # inVolume = self.recVolume.get()
         postProcessStar = self._getPostProcessStar()
         if not postProcessStar:
             warnMsg.append('No FSC was introduced or no postprocess.star file was found in the metadata of the '

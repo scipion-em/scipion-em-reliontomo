@@ -63,6 +63,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
         self._defineInputParams(form)
+        self._insertBinThreadsParam(form)
         self._defineReferenceParams(form)
         self._defineCTFParams(form)
         self._defineOptimisationParams(form)
@@ -147,9 +148,9 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self._classify3d)
-        self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.convertInputStep, needsGPU=False)
+        self._insertFunctionStep(self._classify3d, needsGPU=True)
+        self._insertFunctionStep(self.createOutputStep, needsGPU=False)
 
     # -------------------------- STEPS functions ------------------------------
     def _classify3d(self):

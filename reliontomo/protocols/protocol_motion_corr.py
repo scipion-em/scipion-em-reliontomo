@@ -81,6 +81,7 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
                       pointerClass='SetOfTiltSeriesM',
                       important=True,
                       label='Tilt-series movies')
+        self._insertBinThreadsParam(form)
         form.addParam('outputInFloat16', BooleanParam,
                       label='Write output in float16?',
                       expertLevel=LEVEL_ADVANCED,
@@ -185,13 +186,13 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
                            "detailed guidance on EER processing.")
 
         self._defineExtraParams(form)
-        form.addParallelSection(threads=4, mpi=1)
+        form.addParallelSection(threads=1, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.correctMotionStep)
-        self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.convertInputStep, needsGPU=False)
+        self._insertFunctionStep(self.correctMotionStep, needsGPU=False)
+        self._insertFunctionStep(self.createOutputStep, needsGPU=False)
 
     # -------------------------- STEPS functions ------------------------------
     def convertInputStep(self):
@@ -266,7 +267,7 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
 
     def getMotionCorrSubtomosCmd(self):
         gainFile = self.inputTiltSeriesM.get().getGain()
-        cmd = '--use_own --j 1 '
+        cmd = f'--use_own --j {self.binThreads.get()} '
         cmd += f'--i {IN_TS_STAR} '
         cmd += f'--o {MOTIONCORR_DIR}/ '
         if self.outputInFloat16.get():

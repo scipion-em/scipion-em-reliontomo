@@ -42,7 +42,7 @@ class outputObjects(Enum):
 class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase):
     """Reconstructs/averages from the tilt series projected particles"""
 
-    _label = 'Reconstruct particle re5'
+    _label = 'Reconstruct particle Relion 5'
     _possibleOutputs = outputObjects
 
     def __init__(self, **args):
@@ -53,7 +53,7 @@ class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase
     def _defineParams(self, form):
         super()._defineParams(form)
         form.addSection(label='Average')
-        super()._defineCommonRecParams(form)
+        self._defineCommonRecParams(form)
         form.addParam('symmetry', StringParam,
                       label='Symmetry group',
                       default='C1',
@@ -69,9 +69,9 @@ class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.relionReconstructParticle)
-        self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.convertInputStep, needsGPU=False)
+        self._insertFunctionStep(self.relionReconstructParticle, needsGPU=False)
+        self._insertFunctionStep(self.createOutputStep, needsGPU=False)
 
     # -------------------------- STEPS functions ------------------------------
     def relionReconstructParticle(self):
@@ -124,7 +124,7 @@ class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase
             #        parallelise the procedure, but it does not require additional memory. Unless memory is limited,
             #        the --j_out option should be preferred. The product of --j_out and --j_in should not exceed the
             #        number of CPU cores available.
-            f'--j_out {self.numberOfThreads.get()}',
+            f'--j_out {self.binThreads.get()}',
             '--j_in 1'
         ]
         if self.snrWiener.get() > 0:

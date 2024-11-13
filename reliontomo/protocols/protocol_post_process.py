@@ -152,8 +152,8 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         makePath(self._getExtraPath(POSTPROCESS_DIR))
-        self._insertFunctionStep(self.relionPostProcessStep)
-        self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.relionPostProcessStep, needsGPU=False)
+        self._insertFunctionStep(self.createOutputStep, needsGPU=False)
 
     def relionPostProcessStep(self):
         Plugin.runRelionTomo(self, 'relion_postprocess', self.genPostProcessCmd())

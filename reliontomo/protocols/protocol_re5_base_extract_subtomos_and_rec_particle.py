@@ -40,6 +40,7 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
         self._defineCommonInputParams(form)
+        self._insertBinThreadsParam(form)
         form.addParallelSection(threads=1, mpi=3)
 
     @staticmethod

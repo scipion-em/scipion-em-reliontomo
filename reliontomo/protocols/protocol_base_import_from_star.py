@@ -86,7 +86,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
 
     def _insertAllSteps(self):
         self._initialize()
-        self._insertFunctionStep(self._importStep)
+        self._insertFunctionStep(self._importStep, needsGPU=False)
 
     def _initialize(self):
         # Get the star file and make a symbolic link in extra directory
