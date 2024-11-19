@@ -322,14 +322,14 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         cmd += '--pad %i ' % (1 if self.skipPadding.get() else 2)
         # Plugin version-dependent parameters
         if IS_RELION_50:
+            # Auto-sampling
+            cmd += '--sigma_tilt %i ' % self.priorWidthTiltAngle.get()
             # Reference
             if self.doResizeRef.get():
                 cmd += '--trust_ref_size '
             # Optimisation
             if self.doBlushReg.get():
                 cmd += '--blush '
-                # Auto-sampling
-                cmd += '--sigma_tilt %i ' % self.priorWidthTiltAngle.get()
         else:
             # Input
             if self.solventMask2.get():
