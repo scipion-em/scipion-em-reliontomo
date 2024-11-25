@@ -215,8 +215,6 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         cmd += '--iter %i ' % self.nIterations.get()
         if self.useFastSubsets.get():
             cmd += '--fast_subsets '
-        if self.zeroMask.get():
-            cmd += '--zero_mask '
         if self.limitResolutionEStepTo.get() > 0:
             cmd += '--strict_highres_exp %d ' % self.limitResolutionEStepTo.get()
         if IS_RELION_50 and self.doBlushReg.get():
