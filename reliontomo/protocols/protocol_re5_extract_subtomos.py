@@ -238,7 +238,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
             inParticles = self.getInputParticles()
             tsSRate = inParticles.getTsSamplingRate()
             acq = inParticles.getAcquisition()
-            inCoords = inParticles.getCoordinates3D()
+            inCoords = inParticles.getCoordinates3D(asPointer=True)
 
         psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
                                                      self._getExtraPath(OPTIMISATION_SET_STAR),
@@ -274,8 +274,10 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
     def _warnings(self):
         warnMsg = []
-        if not (self.inputTS.get().hasAlignment() and not self.inputTS.get().interpolated()):
-            warnMsg.append('The introduced tilt series do not have an alignment transformation associated.')
+        inTsSet = self.inputTS.get()
+        if inTsSet:
+            if not (inTsSet.hasAlignment() and not inTsSet.interpolated()):
+                warnMsg.append('The introduced tilt series do not have an alignment transformation associated.')
         return warnMsg
 
     def _summary(self):

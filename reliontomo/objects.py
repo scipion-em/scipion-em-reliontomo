@@ -24,10 +24,11 @@
 # **************************************************************************
 from enum import Enum
 from os.path import exists, join
+from typing import Union
 
 from emtable import Table
 
-from pyworkflow.object import String, Integer, Float, Boolean
+from pyworkflow.object import String, Integer, Float, Boolean, Pointer
 from relion.convert import OpticsGroups
 from reliontomo import Plugin
 from reliontomo.constants import (OPT_TOMOS_STAR, OPT_PARTICLES_STAR,
@@ -37,7 +38,7 @@ from reliontomo.constants import (OPT_TOMOS_STAR, OPT_PARTICLES_STAR,
                                   STAR_DIFF_SIZE, STAR_DIFF_LABELS, STAR_DIFF_VALUES,
                                   STAR_FILES_EQUAL, PSUBTOMOS_SQLITE, OPTICS_TABLE)
 from tomo.constants import SCIPION, TR_SCIPION
-from tomo.objects import SetOfSubTomograms, SubTomogram, SetOfCoordinates3D
+from tomo.objects import SetOfSubTomograms, SubTomogram, SetOfCoordinates3D, TomoAcquisition
 
 
 class EnumRe4GenFilesProps(Enum):
@@ -379,9 +380,16 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
         return "%0.2f Å/px" % self.getCurrentSamplingRate()
 
 
-def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, coordsPointer, template=PSUBTOMOS_SQLITE,
-                                   tsSamplingRate=1, relionBinning=1, boxSize=24, nReParticles=0, are2dStacks=None,
-                                   acquisition=None):
+def createSetOfRelionPSubtomograms(protocolPath: str,
+                                   optimSetStar: str,
+                                   coordsPointer: Pointer,
+                                   template: str = PSUBTOMOS_SQLITE,
+                                   tsSamplingRate: float = 1.0,
+                                   relionBinning: int = 1,
+                                   boxSize: int = 24,
+                                   nReParticles: int = 0,
+                                   are2dStacks: bool = False,
+                                   acquisition: Union[TomoAcquisition, None] = None) -> RelionSetOfPseudoSubtomograms:
     """ Creates the RelionSetOfSubtomograms from the input arguments
 
     :param protocolPath: Path of the protocol where to create the sqlite
@@ -411,10 +419,7 @@ def createSetOfRelionPSubtomograms(protocolPath, optimSetStar, coordsPointer, te
     # Manage the acquisition
     if not acquisition:
         # Clone acquisition from tomograms
-        if type(coordsPointer) is SetOfCoordinates3D:
-            acquisition = coordsPointer.getPrecedents().getAcquisition()
-        else:
-            acquisition = coordsPointer.get().getPrecedents().getAcquisition()
+        acquisition = coordsPointer.get().getPrecedents().getAcquisition()
     newAcquisition = acquisition.clone()
     psubtomoSet.setAcquisition(newAcquisition)
 

@@ -169,16 +169,16 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
         return outCoords
 
     @classmethod
-    def _runExtractSubtomos(cls, inParticles=None, binningFactor=None, boxSize=None, croppedBoxSize=None,
-                            gen2dParticles=False):
+    def _runExtractSubtomos(cls, inParticles=None, inputCtfTs=None, inputTS=None, binningFactor=None,
+                            boxSize=None, croppedBoxSize=None, gen2dParticles=False):
         extractMsg = 'Extract' if type(inParticles) is SetOfCoordinates3D else 'Re-extract'
         partTypeMsg = '2D' if gen2dParticles else '3D'
         print(magentaStr(f"\n==> {extractMsg}ing the particles from the tilt-series:\n"
                          f"\t- Particles type selected: {partTypeMsg}"))
         protExtract = cls.newProtocol(ProtRelion5ExtractSubtomos,
-                                      inputCtfTs=cls.importedCtfs,
+                                      inputCtfTs=inputCtfTs,
                                       inReParticles=inParticles,
-                                      inputTS=cls.tsWithAlignment,
+                                      inputTS=inputTS,
                                       binningFactor=binningFactor,
                                       boxSize=boxSize,
                                       croppedBoxSize=croppedBoxSize,
@@ -253,9 +253,11 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
 
 class TestRelion5TomoExtractSubtomos(TestRelion5RefineCycleBase):
 
-    def _runTestExtractSubtomos(self, inParticles=None, binningFactor=None, boxSize=None, croppedBoxSize=None,
-                                are2dParticles=False, isReExtraction=False):
+    def _runTestExtractSubtomos(self, inParticles=None, inputCtfTs=None, inputTS=None, binningFactor=None,
+                                boxSize=None, croppedBoxSize=None, are2dParticles=False, isReExtraction=False):
         protExtract = self._runExtractSubtomos(inParticles=inParticles,
+                                               inputCtfTs=inputCtfTs,
+                                               inputTS=inputTS,
                                                binningFactor=binningFactor,
                                                boxSize=boxSize,
                                                croppedBoxSize=croppedBoxSize,
@@ -291,6 +293,8 @@ class TestRelion5TomoExtractSubtomos(TestRelion5RefineCycleBase):
     def testExtractSubtomos3d(self):
         if IS_RE_50:
             self._runTestExtractSubtomos(inParticles=self.importedCoords,
+                                         inputCtfTs=self.importedCtfs,
+                                         inputTS=self.tsWithAlignment,
                                          binningFactor=self.binFactor6,
                                          boxSize=self.boxSizeBin6,
                                          croppedBoxSize=self.croppedBoxSizeBin6,
@@ -300,12 +304,26 @@ class TestRelion5TomoExtractSubtomos(TestRelion5RefineCycleBase):
 
     def testExtractSubtomos2d(self):
         if IS_RE_50:
+            inputCtfTs = self.importedCtfs
+            inputTS = self.tsWithAlignment
             extractedParticles = self._runTestExtractSubtomos(inParticles=self.importedCoords,
+                                                              inputCtfTs=inputCtfTs,
+                                                              inputTS=inputTS,
                                                               binningFactor=self.binFactor6,
                                                               boxSize=self.boxSizeBin6,
                                                               croppedBoxSize=self.croppedBoxSizeBin6,
                                                               are2dParticles=True)
             # Run a re-extraction
+            self._runTestExtractSubtomos(inParticles=extractedParticles,
+                                         inputCtfTs=inputCtfTs,
+                                         inputTS=inputTS,
+                                         binningFactor=self.binFactor2,
+                                         boxSize=self.boxSizeBin2,
+                                         croppedBoxSize=self.croppedBoxSizeBin2,
+                                         are2dParticles=True,
+                                         isReExtraction=True)
+
+            # Run a re-extraction without input TS nor CTFs
             self._runTestExtractSubtomos(inParticles=extractedParticles,
                                          binningFactor=self.binFactor2,
                                          boxSize=self.boxSizeBin2,
@@ -330,6 +348,8 @@ class TestRelion5TomoRecParticleFromTs(TestRelion5RefineCycleBase):
             bozSize = self.boxSizeBin6
             croppedBoxSize = self.croppedBoxSizeBin6
             protExtract = self._runExtractSubtomos(inParticles=self.importedCoords,
+                                                   inputCtfTs=self.importedCtfs,
+                                                   inputTS=self.tsWithAlignment,
                                                    binningFactor=binningFactor,
                                                    boxSize=bozSize,
                                                    croppedBoxSize=croppedBoxSize,
@@ -385,6 +405,8 @@ class TestRelion5TomoEditStar(TestRelion5RefineCycleBase):
     def _runPreviousProtocols(cls):
         super()._runPreviousProtocols()
         cls.protExtract = cls._runExtractSubtomos(inParticles=cls.importedCoords,
+                                                  inputCtfTs=cls.importedCtfs,
+                                                  inputTS=cls.tsWithAlignment,
                                                   binningFactor=cls.binFactor6,
                                                   boxSize=cls.boxSizeBin6,
                                                   croppedBoxSize=cls.croppedBoxSizeBin6,
@@ -485,6 +507,8 @@ class TestRelion5TomoGenInitialModel(TestRelion5RefineCycleBase):
     def _genInitialModel(cls, are2dStacks=True):
         protExtract = cls._runExtractSubtomos(
             inParticles=cls.importedCoords,
+            inputCtfTs=cls.importedCtfs,
+            inputTS=cls.tsWithAlignment,
             binningFactor=cls.binFactor6,
             boxSize=cls.boxSizeBin6,
             croppedBoxSize=cls.croppedBoxSizeBin6,
@@ -517,11 +541,14 @@ class TestRelionTomo5Classify3d(TestRelion5RefineCycleBase):
         cls.importedRef = cls._runImportReference(filePath=cls.ds.getFile(DataSetRe4STATuto.recParticleBin6.name),
                                                   samplingRate=cls.unbinnedSRate * cls.binFactor6)
         cls.protExtract = cls._runExtractSubtomos(inParticles=cls.importedCoords,
+                                                  inputCtfTs=cls.importedCtfs,
+                                                  inputTS=cls.tsWithAlignment,
                                                   binningFactor=cls.binFactor6,
                                                   boxSize=cls.boxSizeBin6,
                                                   croppedBoxSize=cls.croppedBoxSizeBin6,
                                                   gen2dParticles=True)
-        cls.extractedParts = getattr(cls.protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.relionParticles.name,
+        cls.extractedParts = getattr(cls.protExtract,
+                                     ProtRelion5ExtractSubtomos._possibleOutputs.relionParticles.name,
                                      None)
 
     def testCl3d(self):
@@ -618,6 +645,8 @@ class TestRelion5TomoRefine(TestRelion5RefineCycleBase):
         cls.importedRef = cls._runImportReference(filePath=cls.ds.getFile(DataSetRe4STATuto.recParticleBin6.name),
                                                   samplingRate=cls.unbinnedSRate * cls.binFactor6)
         cls.protExtract = cls._runExtractSubtomos(inParticles=cls.importedCoords,
+                                                  inputCtfTs=cls.importedCtfs,
+                                                  inputTS=cls.tsWithAlignment,
                                                   binningFactor=cls.binFactor6,
                                                   boxSize=cls.boxSizeBin6,
                                                   croppedBoxSize=cls.croppedBoxSizeBin6,
