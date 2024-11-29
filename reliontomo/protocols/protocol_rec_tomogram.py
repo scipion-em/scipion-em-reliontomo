@@ -106,7 +106,7 @@ class ProtRelionTomoReconstruct(EMProtocol):
                            'processed in groups of 2 at the same time with a call of tomo3d with 3 threads each, so '
                            '6 threads will be used at the same time. Beware the memory of your machine has '
                            'memory enough to load together the number of tomograms specified by Scipion threads.')
-        form.addParallelSection(threads=1, mpi=1)
+        form.addParallelSection(threads=0, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

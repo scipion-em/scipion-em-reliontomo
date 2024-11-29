@@ -71,7 +71,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         self._defineComputeParams(form)
         self._insertGpuParams(form)
         self._defineAdditionalParams(form)
-        form.addParallelSection(threads=1, mpi=3)
+        form.addParallelSection(threads=0, mpi=3)
 
     def _defineOptimisationParams(self, form):
         self._insertOptimisationSection(form)

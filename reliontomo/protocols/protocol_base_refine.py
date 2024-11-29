@@ -268,7 +268,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                                'search within a range centered around those priors.')
 
         ProtRelionTomoBase._defineExtraParams(form, addAdditionalSection=False)
-        form.addParallelSection(threads=1, mpi=1)
+        form.addParallelSection(threads=0, mpi=1)
 
     # ANGULAR SAMPLING PARAMS ------------------------------------------------------------------------------------------
     @staticmethod

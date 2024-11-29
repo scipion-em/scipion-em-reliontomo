@@ -128,7 +128,7 @@ class ProtRelion5TomoReconstruct(ProtRelionTomoBase):
                            "reconstruct lamellae that are all milled under a given angle. All tomograms will be "
                            "reconstructed with the same offset.")
         # TODO: add the params related to the 2D sums of the central Z-slices?
-        form.addParallelSection(threads=1, mpi=1)
+        form.addParallelSection(threads=0, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

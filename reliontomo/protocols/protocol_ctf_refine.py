@@ -142,7 +142,7 @@ class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase):
                                'astigmatism, higher aberrations are barely considered.')
 
         self._defineExtraParams(form)
-        form.addParallelSection(threads=1, mpi=1)
+        form.addParallelSection(threads=0, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

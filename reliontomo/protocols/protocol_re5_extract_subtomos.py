@@ -118,7 +118,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                            'Note that RELION and CCPEM will read float16 images, but other programs may '
                            'not (yet) do so.')
         self._defineExtraParams(form)
-        form.addParallelSection(threads=1, mpi=3)
+        form.addParallelSection(threads=0, mpi=3)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):

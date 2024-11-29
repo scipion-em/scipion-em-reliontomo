@@ -67,12 +67,14 @@ class ProtRelionTomoBase(EMProtocol):
     def _insertBinThreadsParam(form):
         form.addParam('binThreads', IntParam,
                       label='Relion threads',
+                      important=True,
                       default=3,
                       help='Number of threads used by Relion each time it is called in the protocol execution. For '
-                           'example, if 2 Scipion threads and 3 Relion threads are set, the tomograms will be '
-                           'processed in groups of 2 at the same time with a call of tomo3d with 3 threads each, so '
-                           '6 threads will be used at the same time. Beware the memory of your machine has '
-                           'memory enough to load together the number of tomograms specified by Scipion threads.')
+                           'example, if 2 Scipion threads and 3 Relion threads are set, the tilt-series, tomograms, etc '
+                           'will be processed in groups of 2 at the same time with a call of tomo3d with 3 threads '
+                           'each, so 6 threads will be used at the same time. Beware the memory of your machine has '
+                           'memory enough to load together the number of tilt-series, tomograms, etc specified by '
+                           'Scipion threads.')
 
     @staticmethod
     def _defineExtraParams(form, addAdditionalSection=True):
