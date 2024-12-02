@@ -58,6 +58,12 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         self.starFilePath = None
         self.isCoordsFile = None  # To be defined by the child classes
 
+    @classmethod
+    def isDisabled(cls):
+        """ Return True if this Protocol is disabled.
+        Disabled protocols will not be offered in the available protocols."""
+        return True if IS_RELION_50 else False
+
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
         form.addParam('starFile', FileParam,
@@ -107,7 +113,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         precedentsSet = inTomosPointer.get()
         coordSet = SetOfCoordinates3D.create(self._getPath(), template='coordinates%s.sqlite')
         coordSet.setPrecedents(inTomosPointer)  # As a pointer is better for streaming
-        coordSet.setSamplingRate(precedentsSet.getSamplingRate())
+        coordSet.setSamplingRate(self.coordsSRate)
         coordSet.setBoxSize(self.boxSize.get())
         self.reader.starFile2Coords3D(coordSet, precedentsSet, self.coordsSRate / precedentsSet.getSamplingRate())
         setattr(coordSet, IS_RE5_PICKING_ATTR, Boolean(self.checkIfRe5PickedCoords()))
