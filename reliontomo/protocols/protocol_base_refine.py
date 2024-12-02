@@ -43,6 +43,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
     # I/O PARAMS -------------------------------------------------------------------------------------------------------
     def _defineIOParams(self, form):
         self._defineCommonInputParams(form)
+        self._insertBinThreadsParam(form)
 
     # CTF PARAMS -------------------------------------------------------------------------------------------------------
     @staticmethod
@@ -257,16 +258,17 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
                       help="Adaptive oversampling order to speed-up calculations (0=no oversampling, 1=2x, 2=4x, etc)")
 
         # Generate priors fields
-        form.addParam('alignmentAsPriors', BooleanParam, default=False,
-                      expertLevel=LEVEL_ADVANCED,
-                      label='Consider alignment as priors?',
-                      help='If set to Yes, then alignment information from '
-                           'input particles will be considered as PRIORS. This '
-                           'option can be used to do restricted local '
-                           'search within a range centered around those priors.')
+        if not IS_RELION_50:
+            form.addParam('alignmentAsPriors', BooleanParam, default=False,
+                          expertLevel=LEVEL_ADVANCED,
+                          label='Consider alignment as priors?',
+                          help='If set to Yes, then alignment information from '
+                               'input particles will be considered as PRIORS. This '
+                               'option can be used to do restricted local '
+                               'search within a range centered around those priors.')
 
         ProtRelionTomoBase._defineExtraParams(form, addAdditionalSection=False)
-        form.addParallelSection(threads=1, mpi=1)
+        form.addParallelSection(threads=0, mpi=1)
 
     # ANGULAR SAMPLING PARAMS ------------------------------------------------------------------------------------------
     @staticmethod
@@ -398,7 +400,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
             if trajectoriesFile:
                 cmd += '--trajectories %s ' % trajectoriesFile
         cmd += '--o %s ' % (self._getExtraPath() + '/')  # If not, Relion will concatenate it directly as a prefix
-        cmd += '--j %i ' % self.numberOfThreads
+        cmd += '--j %i ' % self.binThreads.get()
         return cmd
 
     def _genCTFBaseCmd(self):

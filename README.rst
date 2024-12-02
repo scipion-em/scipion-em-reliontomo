@@ -102,7 +102,7 @@ To check the installation, simply run one of the tests. A complete list of tests
 Supported versions
 ------------------
 
-Relion 3.0, 4.0
+Relion 4.0, 5.0
 
 
 References
@@ -111,16 +111,4 @@ References
 1. Zivanov et al., eLife, 2022
 2. Burt et al., bioRxiv, 2024
 
-
-Buildbot status
----------------
-
-Status devel version:
-
-.. image:: http://scipion-test.cnb.csic.es:9980/badges/reliontomo_devel.svg
-
-
-Status production version:
-
-.. image:: http://scipion-test.cnb.csic.es:9980/badges/reliontomo_prod.svg
 

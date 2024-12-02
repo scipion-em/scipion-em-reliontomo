@@ -1,6 +1,12 @@
 v4.0.1:
   Users:
-    - Ensure that the pseudo-subtomograms of the initial model protocol have even dimensions
+    - Ensure that the pseudo-subtomograms of the initial model protocol have even dimensions.
+    - Post-process: the FSC generated contain the path to the postprocess.star file.
+    - CTF refinement and bayesian polishing: form adapted to admit FSC as input and get the postprocess.star
+      file from it.
+  Developers:
+    - Fix in the convert transformation matrix for negative rotation angles.
+    - Add binThreads and needsGpu to the protocols.
 v4.0.0:
   Users:
     - Relion 5.0.
