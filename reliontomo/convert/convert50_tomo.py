@@ -901,9 +901,9 @@ class Reader(ReaderTomo):
         vol = precedentIdDict.get(tomoId, None)
         if vol:
             coordinate3d = Coordinate3D()
-            x = row.get(RLN_COORDINATEX, 0)
-            y = row.get(RLN_COORDINATEY, 0)
-            z = row.get(RLN_COORDINATEZ, 0)
+            x = row.get(RLN_COORDINATEX, 0)  # / sRate
+            y = row.get(RLN_COORDINATEY, 0)  # / sRate
+            z = row.get(RLN_COORDINATEZ, 0)  # / sRate
             coordinate3d.setVolume(vol)
             coordinate3d.setX(float(x) * factor, RELION_3D_COORD_ORIGIN)
             coordinate3d.setY(float(y) * factor, RELION_3D_COORD_ORIGIN)
@@ -929,13 +929,13 @@ class Reader(ReaderTomo):
         :param scaleFactor: used to scale the coordinates to the size of the tomograms."""
         presentTsIds = tomogramsSet.getTSIds()
         precedentIdDict = {tomo.getTsId(): tomo.clone() for tomo in tomogramsSet if tomo.getTsId() in presentTsIds}
-
+        sRate = tomogramsSet.getSamplingRate()
         nonMatchingTomoIds = ''
         for row in self.dataTable:
             # Consider that there can be coordinates in the star file that does not belong to any of the tomograms
             # introduced
             coord, tomoId = self.gen3dCoordFromStarRow(row,
-                                                       coordsSet.getSamplingRate(),
+                                                       sRate,
                                                        precedentIdDict,
                                                        factor=scaleFactor)
             if coord:

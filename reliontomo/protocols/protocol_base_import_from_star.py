@@ -111,11 +111,12 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
     def _importStep(self):
         inTomosPointer = self.inTomos
         precedentsSet = inTomosPointer.get()
+        inTomosSRate = precedentsSet.getSamplingRate()
         coordSet = SetOfCoordinates3D.create(self._getPath(), template='coordinates%s.sqlite')
         coordSet.setPrecedents(inTomosPointer)  # As a pointer is better for streaming
-        coordSet.setSamplingRate(self.coordsSRate)
+        coordSet.setSamplingRate(inTomosSRate)  # They will be re-scaled to the tomograms sRate
         coordSet.setBoxSize(self.boxSize.get())
-        self.reader.starFile2Coords3D(coordSet, precedentsSet, self.coordsSRate / precedentsSet.getSamplingRate())
+        self.reader.starFile2Coords3D(coordSet, precedentsSet, self.coordsSRate / inTomosSRate)
         setattr(coordSet, IS_RE5_PICKING_ATTR, Boolean(self.checkIfRe5PickedCoords()))
 
         self._defineOutputs(**{importCoordsOutputs.coordinates.name: coordSet})
