@@ -7,6 +7,7 @@ v4.0.1:
   Developers:
     - Fix in the convert transformation matrix for negative rotation angles.
     - Add binThreads and needsGpu to the protocols.
+    - Replace the setup.py + requirements.txt files by the new pyproject.toml.
 v4.0.0:
   Users:
     - Relion 5.0.
