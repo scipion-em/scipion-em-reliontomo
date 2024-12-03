@@ -92,12 +92,6 @@ class ProtImportSubtomogramsFromStar(ProtBaseImportFromStar):
         return errorMsg
 
     # --------------------------- UTILS functions ------------------------------
-    @classmethod
-    def isDisabled(cls):
-        """ Return True if this Protocol is disabled.
-        Disabled protocols will not be offered in the available protocols."""
-        return True if IS_RELION_50 else False
-
     def _checkFilesPointedFromStarFile(self, starFilePath, dataTable):
         errorsFound = ''
         fields2check = [SUBTOMO_NAME]

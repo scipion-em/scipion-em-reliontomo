@@ -63,6 +63,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
         self._defineInputParams(form)
+        self._insertBinThreadsParam(form)
         self._defineReferenceParams(form)
         self._defineCTFParams(form)
         self._defineOptimisationParams(form)
@@ -70,7 +71,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         self._defineComputeParams(form)
         self._insertGpuParams(form)
         self._defineAdditionalParams(form)
-        form.addParallelSection(threads=1, mpi=3)
+        form.addParallelSection(threads=0, mpi=3)
 
     def _defineOptimisationParams(self, form):
         self._insertOptimisationSection(form)
@@ -147,9 +148,9 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self._classify3d)
-        self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.convertInputStep, needsGPU=False)
+        self._insertFunctionStep(self._classify3d, needsGPU=True)
+        self._insertFunctionStep(self.createOutputStep, needsGPU=False)
 
     # -------------------------- STEPS functions ------------------------------
     def _classify3d(self):
@@ -214,8 +215,6 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         cmd += '--iter %i ' % self.nIterations.get()
         if self.useFastSubsets.get():
             cmd += '--fast_subsets '
-        if self.zeroMask.get():
-            cmd += '--zero_mask '
         if self.limitResolutionEStepTo.get() > 0:
             cmd += '--strict_highres_exp %d ' % self.limitResolutionEStepTo.get()
         if IS_RELION_50 and self.doBlushReg.get():

@@ -31,6 +31,7 @@ from reliontomo import Plugin
 from reliontomo.objects import RelionPSubtomogram
 from reliontomo.protocols.protocol_base_relion import IS_RELION_50
 from reliontomo.protocols.protocol_prepare_data import outputObjects as prepareProtOutputs
+from reliontomo.utils import getProgram
 from tomo.objects import Tomogram, SetOfTomograms
 from tomo.utils import getObjFromRelation
 
@@ -97,15 +98,23 @@ class ProtRelionTomoReconstruct(EMProtocol):
                        help='If -1, the thickness considered will be of the original tilt series after having applied '
                             'the introduced binning factor.')
 
-        form.addParallelSection(threads=4, mpi=0)
+        form.addParam('binThreads', IntParam,
+                      label='Relion threads',
+                      default=3,
+                      help='Number of threads used by Relion each time it is called in the protocol execution. For '
+                           'example, if 2 Scipion threads and 3 Relion threads are set, the tomograms will be '
+                           'processed in groups of 2 at the same time with a call of tomo3d with 3 threads each, so '
+                           '6 threads will be used at the same time. Beware the memory of your machine has '
+                           'memory enough to load together the number of tomograms specified by Scipion threads.')
+        form.addParallelSection(threads=0, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._initialize()
         for tomo in self.tomoList:
             tomoId = tomo.getTsId()
-            self._insertFunctionStep(self._reconstructStep, tomoId)
-            self._insertFunctionStep(self._createOutputStep, tomoId)
+            self._insertFunctionStep(self._reconstructStep, tomoId, needsGPU=False)
+            self._insertFunctionStep(self._createOutputStep, tomoId, needsGPU=False)
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
@@ -122,7 +131,11 @@ class ProtRelionTomoReconstruct(EMProtocol):
                              self.inReParticles.getUniqueValues(RelionPSubtomogram.TS_ID_ATTRIBUTE)]
 
     def _reconstructStep(self, tomoId):
-        Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_tomogram', self._genTomoRecCommand(tomoId))
+        nMpi = self.numberOfMpi.get()
+        Plugin.runRelionTomo(self,
+                             getProgram('relion_tomo_reconstruct_tomogram', nMpi=nMpi),
+                             self._genTomoRecCommand(tomoId),
+                             numberOfMpi=nMpi)
 
     def _createOutputStep(self, tomoId):
         tomo = Tomogram()
@@ -160,7 +173,7 @@ class ProtRelionTomoReconstruct(EMProtocol):
         cmd += '--w %i ' % self.width.get()
         cmd += '--h %i ' % self.height.get()
         cmd += '--d %i ' % self.thickness.get()
-        cmd += '--j %i ' % self.numberOfThreads.get()
+        cmd += '--j %i ' % self.binThreads.get()
         return cmd
 
     def _getOutTomoFileName(self, tomoId):

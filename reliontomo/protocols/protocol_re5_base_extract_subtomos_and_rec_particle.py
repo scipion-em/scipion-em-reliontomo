@@ -40,7 +40,8 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
         self._defineCommonInputParams(form)
-        form.addParallelSection(threads=1, mpi=3)
+        self._insertBinThreadsParam(form)
+        form.addParallelSection(threads=0, mpi=3)
 
     @staticmethod
     def _defineCommonRecParams(form):
@@ -97,7 +98,7 @@ class ProtRelion5ExtractSubtomoAndRecParticleBase(ProtRelionTomoBase):
                f"--b {self.boxSize.get()}",
                f"--crop {self.croppedBoxSize.get()}",
                f"--bin {self.binningFactor.get():.1f}",
-               f"--j {self.numberOfThreads.get()}",
+               f"--j {self.binThreads.get()}",
                self._genExtraParamsCmd()]
         inParticles = self.getInputParticles()
         if not self.isInputSetOf3dCoords():

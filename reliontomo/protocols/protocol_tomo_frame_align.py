@@ -146,13 +146,13 @@ class ProtRelionTomoFrameAlign(ProtRelionPerParticlePerTiltBase):
                            default=False,
                            help='If set to Yes, it models deformations per tilt frame instead of per tilt series.')
         self._defineExtraParams(form)
-        form.addParallelSection(threads=4, mpi=1)
+        form.addParallelSection(threads=0, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self._relionTomoFrameAlign)
-        self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.convertInputStep, needsGPU=False)
+        self._insertFunctionStep(self._relionTomoFrameAlign, needsGPU=False)
+        self._insertFunctionStep(self.createOutputStep, needsGPU=False)
 
     # -------------------------- STEPS functions ------------------------------
     def _relionTomoFrameAlign(self):

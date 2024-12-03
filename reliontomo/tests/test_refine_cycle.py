@@ -184,7 +184,7 @@ class TestRefineCycleBase(TestBaseCentralizedLayer):
                                             croppedBoxSize=cls.croppedBoxSizeBin4,
                                             binningFactor=cls.binFactor4,
                                             outputInFloat16=False,
-                                            numberOfThreads=5,
+                                            binThreads=5,
                                             numberOfMpi=3)
         return cls.launchProtocol(protMakePsubtomos)
 
@@ -603,7 +603,7 @@ class TestRelionTomoGenInitialModel(TestRefineCycleBase):
                                            doGpu=True,
                                            gpusToUse='0',
                                            numberOfMpi=1,
-                                           numberOfThreads=3)
+                                           binThreads=3)
         cls.launchProtocol(protInitialModel)
         return getattr(protInitialModel, ProtRelionDeNovoInitialModel._possibleOutputs.average.name, None)
 
@@ -644,7 +644,7 @@ class TestRelionTomo3dClassify(TestRefineCycleBase):
                       'maskDiameter': 230,
                       'pooledSubtomos': 6,
                       'numberOfMpi': 3,
-                      'numberOfThreads': 3}
+                      'binThreads': 3}
 
         if doAlingment:
             paramsDict['doImageAlignment'] = True
@@ -761,7 +761,7 @@ class TestRelionTomoRefine(TestRefineCycleBase):
                                          doGpu=True,
                                          gpusToUse='0',
                                          numberOfMpi=3,
-                                         numberOfThreads=3)
+                                         binThreads=3)
         cls.launchProtocol(protAutoRefine)
         return protAutoRefine
 

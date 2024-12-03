@@ -30,9 +30,11 @@ from os.path import exists
 import mrcfile
 import numpy as np
 from emtable import Table
+
+from pwem.emlib.image import ImageHandler
 from pyworkflow.protocol import PointerParam, IntParam, GE, BooleanParam, LEVEL_ADVANCED, FloatParam, EnumParam, \
     FileParam
-from pyworkflow.utils import Message, makePath
+from pyworkflow.utils import Message, makePath, removeBaseExt, createLink
 from reliontomo import Plugin
 from reliontomo.constants import (IN_TS_STAR, FRAMES_DIR, MOTIONCORR_DIR,
                                   RLN_TOMO_NOMINAL_STAGE_TILT_ANGLE, RLN_MICROGRAPH_NAME, RLN_MICROGRAPH_NAME_EVEN,
@@ -59,6 +61,8 @@ FLIP_LEFT_RIGHT = 2
 EVEN = 'even'
 ODD = 'odd'
 
+MRC = '.mrc'
+
 
 class outputObjects(Enum):
     tiltSeries = SetOfTiltSeries()
@@ -81,6 +85,7 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
                       pointerClass='SetOfTiltSeriesM',
                       important=True,
                       label='Tilt-series movies')
+        self._insertBinThreadsParam(form)
         form.addParam('outputInFloat16', BooleanParam,
                       label='Write output in float16?',
                       expertLevel=LEVEL_ADVANCED,
@@ -185,13 +190,13 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
                            "detailed guidance on EER processing.")
 
         self._defineExtraParams(form)
-        form.addParallelSection(threads=4, mpi=1)
+        form.addParallelSection(threads=0, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.correctMotionStep)
-        self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.convertInputStep, needsGPU=False)
+        self._insertFunctionStep(self.correctMotionStep, needsGPU=False)
+        self._insertFunctionStep(self.createOutputStep, needsGPU=False)
 
     # -------------------------- STEPS functions ------------------------------
     def convertInputStep(self):
@@ -199,6 +204,15 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
         makePath(framesPath)
         writer = convert50_tomo.Writer()
         writer.tsMSet2Star(self.inputTiltSeriesM.get(), self._getExtraPath())
+        # Convert the gain file to MRC if it is in another format, such as dm4
+        gainFile = self.inputTiltSeriesM.get().getGain()
+        if gainFile:
+            gainMrcFName = self._getGainMrcFName(gainFile)
+            if gainFile.endswith(MRC):
+                createLink(gainFile, gainMrcFName)
+            else:
+                ih = ImageHandler()
+                ih.convert(gainFile, gainMrcFName)
 
     def correctMotionStep(self):
         nMpi = self.numberOfMpi.get()
@@ -266,7 +280,7 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
 
     def getMotionCorrSubtomosCmd(self):
         gainFile = self.inputTiltSeriesM.get().getGain()
-        cmd = '--use_own --j 1 '
+        cmd = f'--use_own --j {self.binThreads.get()} '
         cmd += f'--i {IN_TS_STAR} '
         cmd += f'--o {MOTIONCORR_DIR}/ '
         if self.outputInFloat16.get():
@@ -282,7 +296,8 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
         cmd += f'--group_frames {self.groupFrames.get()} '
         cmd += f'--bin_factor {self.binningFactor.get()} '
         if gainFile:
-            cmd += f'--gainref {gainFile} '
+            gainMrcFName = self._getGainMrcFName(gainFile)
+            cmd += f'--gainref {gainMrcFName} '
             cmd += f'--gain_rot {self.gainRot.get()} '
             cmd += f'--gain_flip {self.gainFlip.get()} '
         if self.defectFile.get():
@@ -298,7 +313,7 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
 
     def getOutStackName(self, tsId, suffix=''):
         bName = f'{tsId}_{suffix}' if suffix else tsId
-        return self._getExtraPath(MOTIONCORR_DIR, bName + '.mrc')
+        return self._getExtraPath(MOTIONCORR_DIR, bName + MRC)
 
     def mountStack(self, ts):
         tsId = ts.getTsId()
@@ -338,3 +353,6 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
             mrc.update_header_from_data()
             mrc.update_header_stats()
             mrc.voxel_size = sRate
+
+    def _getGainMrcFName(self, inGainFileName):
+        return self._getExtraPath(removeBaseExt(inGainFileName) + MRC)

@@ -64,7 +64,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         self._defineComputeParams(form)
         self._insertGpuParams(form)
         self._defineAdditionalParams(form)
-        form.addParallelSection(threads=1, mpi=1)
+        form.addParallelSection(threads=0, mpi=1)
 
     def _defineOptimisationParams(self, form):
         self._insertOptimisationSection(form)
@@ -89,10 +89,10 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.generateDeNovo3DModel)
-        self._insertFunctionStep(self.alignSymmetry)
-        self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.convertInputStep, needsGPU=False)
+        self._insertFunctionStep(self.generateDeNovo3DModel, needsGPU=True)
+        self._insertFunctionStep(self.alignSymmetry, needsGPU=False)
+        self._insertFunctionStep(self.createOutputStep, needsGPU=False)
 
     # -------------------------- STEPS functions ------------------------------
     def generateDeNovo3DModel(self):
@@ -123,6 +123,10 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         nMpi = self.numberOfMpi.get()
         if nMpi > 1:
             errorMsg.append('The initial volume can only run using 1 MPI.')
+
+        if self.inReParticles.get().getBoxSize() % 2 != 0:
+            errorMsg.append('The dimensions of the extracted pseudo-subtomograms '
+                            'must be even!')
         return errorMsg
 
     # --------------------------- UTILS functions -----------------------------

@@ -58,6 +58,12 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
         self.starFilePath = None
         self.isCoordsFile = None  # To be defined by the child classes
 
+    @classmethod
+    def isDisabled(cls):
+        """ Return True if this Protocol is disabled.
+        Disabled protocols will not be offered in the available protocols."""
+        return True if IS_RELION_50 else False
+
     def _defineParams(self, form):
         form.addSection(label=Message.LABEL_INPUT)
         form.addParam('starFile', FileParam,
@@ -86,7 +92,7 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
 
     def _insertAllSteps(self):
         self._initialize()
-        self._insertFunctionStep(self._importStep)
+        self._insertFunctionStep(self._importStep, needsGPU=False)
 
     def _initialize(self):
         # Get the star file and make a symbolic link in extra directory
@@ -105,11 +111,12 @@ class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
     def _importStep(self):
         inTomosPointer = self.inTomos
         precedentsSet = inTomosPointer.get()
+        inTomosSRate = precedentsSet.getSamplingRate()
         coordSet = SetOfCoordinates3D.create(self._getPath(), template='coordinates%s.sqlite')
         coordSet.setPrecedents(inTomosPointer)  # As a pointer is better for streaming
-        coordSet.setSamplingRate(precedentsSet.getSamplingRate())
+        coordSet.setSamplingRate(inTomosSRate)  # They will be re-scaled to the tomograms sRate
         coordSet.setBoxSize(self.boxSize.get())
-        self.reader.starFile2Coords3D(coordSet, precedentsSet, self.coordsSRate / precedentsSet.getSamplingRate())
+        self.reader.starFile2Coords3D(coordSet, precedentsSet, self.coordsSRate / inTomosSRate)
         setattr(coordSet, IS_RE5_PICKING_ATTR, Boolean(self.checkIfRe5PickedCoords()))
 
         self._defineOutputs(**{importCoordsOutputs.coordinates.name: coordSet})

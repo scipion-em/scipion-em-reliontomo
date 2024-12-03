@@ -152,8 +152,8 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         makePath(self._getExtraPath(POSTPROCESS_DIR))
-        self._insertFunctionStep(self.relionPostProcessStep)
-        self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.relionPostProcessStep, needsGPU=False)
+        self._insertFunctionStep(self.createOutputStep, needsGPU=False)
 
     def relionPostProcessStep(self):
         Plugin.runRelionTomo(self, 'relion_postprocess', self.genPostProcessCmd())
@@ -168,6 +168,7 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
         # Output FSC
         setOfFSC = self.genFSCs(fn, POSTPROCESS_STAR_FSC_TABLE,
                                 POSTPROCESS_STAR_FSC_COLUMNS)
+        setattr(setOfFSC, POSTPROCESS_STAR_FIELD, String(fn))
 
         self._defineOutputs(**{outputObjects.postProcessVolume.name: postProccesMrc,
                                outputObjects.outputFSC.name: setOfFSC})
