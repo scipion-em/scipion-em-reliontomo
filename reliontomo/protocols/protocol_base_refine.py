@@ -379,7 +379,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
 
     def _warnings(self):
         warnMsg = []
-        if self.inReParticles.get().are2dStacks():
+        if not self.inReParticles.get().are2dStacks():
             warnMsg.append('Relion will likely fail.\n'
                            'Masking with noise (option Masking with zeros - No ) '
                            'seems to be incompatible with 3D pseudo-subtomograms. '
