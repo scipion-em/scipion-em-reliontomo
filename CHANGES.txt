@@ -1,3 +1,7 @@
+v4.0.2:
+  Users:
+    - RelionSubtomograms do not longer have an index in the path. Just the file name. This allows for correct visualization
+      of the subtomograms in the metadata viewers.
 v4.0.1:
   Users:
     - Ensure that the pseudo-subtomograms of the initial model protocol have even dimensions.

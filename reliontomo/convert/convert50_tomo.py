@@ -999,7 +999,7 @@ class Reader(ReaderTomo):
             # Set the transformation matrix
             t.setMatrix(getTransformMatrixFromRow(row, sRate=sRate, isRe5Star=True))
             psubtomo.setTransform(t)
-            psubtomo.setIndex(counter)
+            # This is not necessary: psubtomo.setIndex(counter)
             psubtomo.setClassId(row.get(RLN_CLASSNUMBER, 1))
 
             # Add current pseudosubtomogram to the output set
