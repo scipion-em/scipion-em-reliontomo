@@ -377,6 +377,17 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
             errorMsg.append('The number of MPIs must be at least 3.')
         return errorMsg
 
+    def _warnings(self):
+        warnMsg = []
+        if not self.inReParticles.get().are2dStacks():
+            warnMsg.append('Relion5 will likely fail.\n'
+                           'Masking with noise (option Masking with zeros - No ) '
+                           'seems to be incompatible with 3D pseudo-subtomograms. '
+                           'If Relion has fixed this behavior, please let us '
+                           'know so we can remove this warning.')
+        return warnMsg
+
+
     # --------------------------- UTILS functions -----------------------------
     def _genBaseCommand(self, useOptimizationSet=False):
         cmd = ''
