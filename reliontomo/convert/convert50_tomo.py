@@ -418,7 +418,7 @@ class Writer(WriterTomo):
                     sxAngst,  # 26, rlnTomoXShiftAngst
                     syAngst,  # 27, rlnTomoYShiftAngst
                     np.cos(np.deg2rad(tiltAngle)),  # 28, rlnCtfScalefactor
-                    acqTi.getAcquisitionOrder(), #29, sciAcquisitionOrder
+                    ti.getAcquisitionOrder(), #29, sciAcquisitionOrder
                     ti.getObjId() # 30, sciTiltId
                 )
             # Write the STAR file

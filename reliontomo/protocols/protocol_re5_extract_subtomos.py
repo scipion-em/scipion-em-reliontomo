@@ -227,7 +227,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                          1])
                     for tiltId, tomoProjection in zip(tiltIdList, tsProjectionsList):
                         proj = tomoProjection.dot(particleCoords)
-                        landmarkModelGaps.addLandmark(proj[0], proj[1], tiltId-1, particleCounter, 0, 0)
+                        landmarkModelGaps.addLandmark(proj[0], proj[1], tiltId, particleCounter, 0, 0)
                     particleCounter += 1
 
                 fiducialModelGaps.append(landmarkModelGaps)
