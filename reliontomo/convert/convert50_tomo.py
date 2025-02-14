@@ -39,7 +39,7 @@ from reliontomo.convert.convertBase import (getTransformInfoFromCoordOrSubtomo,
 from reliontomo.objects import RelionPSubtomogram, RelionSetOfPseudoSubtomograms
 from tomo.constants import TR_RELION, SCIPION
 from tomo.objects import Coordinate3D, Tomogram, TiltSeries, CTFTomoSeries, SetOfCoordinates3D, SetOfTomograms, \
-    TiltSeriesM, SetOfTiltSeriesM, TiltImage, SetOfTiltSeries
+    TiltSeriesM, SetOfTiltSeriesM, TiltImage, SetOfTiltSeries, CTFTomo
 from tomo.utils import getCommonTsAndCtfElements
 
 logger = logging.getLogger(__name__)
@@ -344,79 +344,79 @@ class Writer(WriterTomo):
             sRate = ts.getSamplingRate()
             tiltAxisAngle = ts.getAcquisition().getTiltAxisAngle()
             tsTable = Table(columns=tsStarFields)
-            for ti, ctfTomo in zip(ts, ctf):
-                # Add only the images that correspond to a non-excluded view in alignment and in CTF estimation
-                if ti.getAcquisitionOrder() in presentAcqOrders and ctfTomo.getAcquisitionOrder() in presentAcqOrders:
-                    acqTi = ti.getAcquisition()
-                    tiltAngle = ti.getTiltAngle()
-                    oddEven = ti.getOddEven()
-                    if oddEven:
-                        oddTi, evenTi = oddEven
-                    else:
-                        oddTi = FILE_NOT_FOUND
-                        evenTi = FILE_NOT_FOUND
+            for acqOrder in presentAcqOrders:
+                ti = ts.getItem(TiltImage.ACQ_ORDER_FIELD, acqOrder)
+                ctfTomo = ctf.getItem(CTFTomo.ACQ_ORDER_FIELD, acqOrder)
+                acqTi = ti.getAcquisition()
+                tiltAngle = ti.getTiltAngle()
+                oddEven = ti.getOddEven()
+                if oddEven:
+                    oddTi, evenTi = oddEven
+                else:
+                    oddTi = FILE_NOT_FOUND
+                    evenTi = FILE_NOT_FOUND
 
-                    defocusU = ctfTomo.getDefocusU()
-                    defocusV = ctfTomo.getDefocusV()
-                    trMatrix = ti.getTransform().getMatrix() if ti.getTransform() is not None else eyeMatrix3x3
-                    iTrMatrix = np.linalg.inv(trMatrix)
-                    rotAngle = np.rad2deg(np.arccos(trMatrix[0, 0]))
-                    sxAngst = iTrMatrix[0, 2] * sRate
-                    syAngst = iTrMatrix[1, 2] * sRate
-                    tsTable.addRow(
-                        FILE_NOT_FOUND,  # 1, rlnMicrographMovieName
-                        1,  # 2, rlnTomoTiltMovieFrameCount
-                        tiltAngle,  # 3, rlnTomoNominalStageTiltAngle
-                        tiltAxisAngle,  # 4, rlnTomoNominalTiltAxisAngle
-                        acqTi.getDoseInitial(),  # 5, rlnMicrographPreExposure
-                        # TODO: it has to be read from the mdoc from label TargetDefocus
-                        -1.5,  # 6, rlnTomoNominalDefocus
-                        # TODO: manage this
-                        FILE_NOT_FOUND,  # 7, rlnCtfPowerSpectrum
-                        # TODO: the tilt-images are expexted to be unstacked, as there is no index field
-                        evenTi,  # 8, rlnMicrographNameEven
-                        oddTi,  # 9, rlnMicrographNameOdd
-                        f'{ti.getIndex()}@{ti.getFileName()}:mrcs',  # 10, rlnMicrographName
-                        # TODO: check if it's used for other calculations apart from the Bayesian polishing
-                        FILE_NOT_FOUND,  # 11, rlnMicrographMetadata
-                        # TODO: check if it's used for other calculations apart from the Bayesian polishing. If True,
-                        #  we would have to add it to our data model
-                        0,  # 12, rlnAccumMotionTotal
-                        0,  # 13, rlnAccumMotionEarly
-                        0,  # 14, rlnAccumMotionLate
-                        # TODO: check if it's used for something or if it's just an internal metric
-                        # src/reconstructor.cpp
-                        # C++
-                        # ·
-                        # master
-                        # 			Image<RFLOAT> Ictf;
-                        # 			FileName fn_ctf;
-                        # 			if (!DF.getValue(EMDL_CTF_IMAGE, fn_ctf, p))
-                        # 				REPORT_ERROR("ERROR: cannot find rlnCtfImage for 3D CTF correction!");
-                        # 			Ictf.read(fn_ctf);
-                        # 			// If there is a redundant half, get rid of it
-                        ctfTomo.getPsdFile() if ctfTomo.getPsdFile() else FILE_NOT_FOUND,  # 15, rlnCtfImage
-                        defocusU,  # 16, rlnDefocusU
-                        defocusV,  # 17, rlnDefocusV
-                        abs(defocusU - defocusV),  # 18, rlnCtfAstigmatism
-                        ctfTomo.getDefocusAngle(),  # 19, rlnDefocusAngle
-                        # TODO: from Relion label definition: "not used inside relion_refine", but may be _fitQuality from
-                        #  our model
-                        0,  # 20, rlnCtfFigureOfMerit
-                        # TODO: check if CTFFind's Estimated maximum resolution (in A) of significant CTF Thon rings is the
-                        #  same in other plugins that estimate the CTF
-                        ctfTomo.getResolution(),  # 21, rlnCtfMaxResolution
-                        # TODO: check if this value is used and, in that case, if we have this somewhere or have to store it
-                        #  in the data model
-                        ctfTomo.getFitQuality() if ctfTomo.getFitQuality() is not None else 0,  # 22, rlnCtfIceRingDensity
-                        # TODO: I've only seen this off tilt axis estimated in EMAN...
-                        0,  # 23, rlnTomoXTilt
-                        tiltAngle,  # 24, rlnTomoYTilt
-                        rotAngle,  # 25, rlnTomoZRot
-                        sxAngst,  # 26, rlnTomoXShiftAngst
-                        syAngst,  # 27, rlnTomoYShiftAngst
-                        np.cos(np.deg2rad(tiltAngle)),  # 28, rlnCtfScalefactor
-                    )
+                defocusU = ctfTomo.getDefocusU()
+                defocusV = ctfTomo.getDefocusV()
+                trMatrix = ti.getTransform().getMatrix() if ti.getTransform() is not None else eyeMatrix3x3
+                iTrMatrix = np.linalg.inv(trMatrix)
+                rotAngle = np.rad2deg(np.arccos(trMatrix[0, 0]))
+                sxAngst = iTrMatrix[0, 2] * sRate
+                syAngst = iTrMatrix[1, 2] * sRate
+                tsTable.addRow(
+                    FILE_NOT_FOUND,  # 1, rlnMicrographMovieName
+                    1,  # 2, rlnTomoTiltMovieFrameCount
+                    tiltAngle,  # 3, rlnTomoNominalStageTiltAngle
+                    tiltAxisAngle,  # 4, rlnTomoNominalTiltAxisAngle
+                    acqTi.getDoseInitial(),  # 5, rlnMicrographPreExposure
+                    # TODO: it has to be read from the mdoc from label TargetDefocus
+                    -1.5,  # 6, rlnTomoNominalDefocus
+                    # TODO: manage this
+                    FILE_NOT_FOUND,  # 7, rlnCtfPowerSpectrum
+                    # TODO: the tilt-images are expexted to be unstacked, as there is no index field
+                    evenTi,  # 8, rlnMicrographNameEven
+                    oddTi,  # 9, rlnMicrographNameOdd
+                    f'{ti.getIndex()}@{ti.getFileName()}:mrcs',  # 10, rlnMicrographName
+                    # TODO: check if it's used for other calculations apart from the Bayesian polishing
+                    FILE_NOT_FOUND,  # 11, rlnMicrographMetadata
+                    # TODO: check if it's used for other calculations apart from the Bayesian polishing. If True,
+                    #  we would have to add it to our data model
+                    0,  # 12, rlnAccumMotionTotal
+                    0,  # 13, rlnAccumMotionEarly
+                    0,  # 14, rlnAccumMotionLate
+                    # TODO: check if it's used for something or if it's just an internal metric
+                    # src/reconstructor.cpp
+                    # C++
+                    # ·
+                    # master
+                    # 			Image<RFLOAT> Ictf;
+                    # 			FileName fn_ctf;
+                    # 			if (!DF.getValue(EMDL_CTF_IMAGE, fn_ctf, p))
+                    # 				REPORT_ERROR("ERROR: cannot find rlnCtfImage for 3D CTF correction!");
+                    # 			Ictf.read(fn_ctf);
+                    # 			// If there is a redundant half, get rid of it
+                    ctfTomo.getPsdFile() if ctfTomo.getPsdFile() else FILE_NOT_FOUND,  # 15, rlnCtfImage
+                    defocusU,  # 16, rlnDefocusU
+                    defocusV,  # 17, rlnDefocusV
+                    abs(defocusU - defocusV),  # 18, rlnCtfAstigmatism
+                    ctfTomo.getDefocusAngle(),  # 19, rlnDefocusAngle
+                    # TODO: from Relion label definition: "not used inside relion_refine", but may be _fitQuality from
+                    #  our model
+                    0,  # 20, rlnCtfFigureOfMerit
+                    # TODO: check if CTFFind's Estimated maximum resolution (in A) of significant CTF Thon rings is the
+                    #  same in other plugins that estimate the CTF
+                    ctfTomo.getResolution(),  # 21, rlnCtfMaxResolution
+                    # TODO: check if this value is used and, in that case, if we have this somewhere or have to store it
+                    #  in the data model
+                    ctfTomo.getFitQuality() if ctfTomo.getFitQuality() is not None else 0,  # 22, rlnCtfIceRingDensity
+                    # TODO: I've only seen this off tilt axis estimated in EMAN...
+                    0,  # 23, rlnTomoXTilt
+                    tiltAngle,  # 24, rlnTomoYTilt
+                    rotAngle,  # 25, rlnTomoZRot
+                    sxAngst,  # 26, rlnTomoXShiftAngst
+                    syAngst,  # 27, rlnTomoYShiftAngst
+                    np.cos(np.deg2rad(tiltAngle)),  # 28, rlnCtfScalefactor
+                )
             # Write the STAR file
             tsTable.writeStar(f, tableName=tsId)
 
