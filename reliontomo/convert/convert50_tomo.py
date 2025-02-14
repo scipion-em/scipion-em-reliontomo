@@ -325,8 +325,7 @@ class Writer(WriterTomo):
         rlnTomoXShiftAngst #26 (double) : X-translation (in A) to align the projection of a tomogram with the tilt series image
         rlnTomoYShiftAngst #27 (double) : Y-translation (in A) to align the projection of a tomogram with the tilt series image
         rlnCtfScalefactor #28 (double) : Linear scale-factor on the CTF (values between 0 and 1)
-        sciAcquisitionOrder #29 (int) : Chronological order
-        sciTiltId #30 (int) : Tilt image id in Scipion
+        sciTiltId #29 (int) : Tilt image id in Scipion
 
         Example:
             frames/TS_01_038_-57.0.mrc            8    -56.99850    85.000000   114.000000     -4.00000
@@ -418,8 +417,7 @@ class Writer(WriterTomo):
                     sxAngst,  # 26, rlnTomoXShiftAngst
                     syAngst,  # 27, rlnTomoYShiftAngst
                     np.cos(np.deg2rad(tiltAngle)),  # 28, rlnCtfScalefactor
-                    ti.getAcquisitionOrder(), #29, sciAcquisitionOrder
-                    ti.getObjId() # 30, sciTiltId
+                    ti.getObjId() # 29, sciTiltId
                 )
             # Write the STAR file
             tsTable.writeStar(f, tableName=tsId)
