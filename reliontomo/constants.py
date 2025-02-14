@@ -98,6 +98,8 @@ SCIPION_COORD_X = 'sciXCoord'
 SCIPION_COORD_Y = 'sciYCoord'
 SCIPION_COORD_Z = 'sciZCoord'
 SCIPION_COORD_GROUP_ID = 'sciGroupId'
+SCIPION_ACQUISITION_ORDER = 'sciAcquisitionOrder'
+SCIPION_TILT_ID = 'sciTiltId'
 
 FILE_NOT_FOUND = 'FileNotFound'
 
@@ -276,7 +278,9 @@ tsStarFields = [
     RLN_TOMO_Z_ROT,
     RLN_TOMO_X_SHIFT_ANGST,
     RLN_TOMO_Y_SHIFT_ANGST,
-    RLN_CTF_SCALEFACTOR
+    RLN_CTF_SCALEFACTOR,
+    SCIPION_ACQUISITION_ORDER,
+    SCIPION_TILT_ID
 ]
 
 alignedTsStarFields4TomoRec = [

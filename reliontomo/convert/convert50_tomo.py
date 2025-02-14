@@ -23,7 +23,7 @@
 # *
 # **************************************************************************
 import logging
-from typing import Dict, Union, List, Set
+from typing import Dict, Union, List, Set, Tuple
 from emtable import Table
 from pwem import ALIGN_NONE
 from pwem.emlib.image import ImageHandler
@@ -325,6 +325,8 @@ class Writer(WriterTomo):
         rlnTomoXShiftAngst #26 (double) : X-translation (in A) to align the projection of a tomogram with the tilt series image
         rlnTomoYShiftAngst #27 (double) : Y-translation (in A) to align the projection of a tomogram with the tilt series image
         rlnCtfScalefactor #28 (double) : Linear scale-factor on the CTF (values between 0 and 1)
+        sciAcquisitionOrder #29 (int) : Chronological order
+        sciTiltId #30 (int) : Tilt image id in Scipion
 
         Example:
             frames/TS_01_038_-57.0.mrc            8    -56.99850    85.000000   114.000000     -4.00000
@@ -416,6 +418,8 @@ class Writer(WriterTomo):
                     sxAngst,  # 26, rlnTomoXShiftAngst
                     syAngst,  # 27, rlnTomoYShiftAngst
                     np.cos(np.deg2rad(tiltAngle)),  # 28, rlnCtfScalefactor
+                    acqTi.getAcquisitionOrder(), #29, sciAcquisitionOrder
+                    ti.getObjId() # 30, sciTiltId
                 )
             # Write the STAR file
             tsTable.writeStar(f, tableName=tsId)
@@ -1009,7 +1013,10 @@ class Reader(ReaderTomo):
         outputSet.setNReParticles(self.dataTable.size())
 
 
-def getProjMatrixList(tsStarFile: str, tomogram: Tomogram, ts: TiltSeries) -> List[np.ndarray]:
+def getProjMatrixList(tsStarFile: str, 
+                      tomogram: Tomogram, 
+                      ts: TiltSeries, 
+                      returnTiltId = False) -> Union[List[np.ndarray], Tuple[List[np.ndarray], List[np.ndarray]]]:
     # / *From
     # Alister
     # Burt
@@ -1031,6 +1038,7 @@ def getProjMatrixList(tsStarFile: str, tomogram: Tomogram, ts: TiltSeries) -> Li
     # * /
     # specimen_shifts(xshift_angst / optics.pixelSize, yshift_angst / optics.pixelSize, 0.);
     prjMatrixList = []
+    tiltIds = []
     dataTable = Table()
     dataTable.read(tsStarFile)
     tsSRate = ts.getSamplingRate()
@@ -1062,8 +1070,12 @@ def getProjMatrixList(tsStarFile: str, tomogram: Tomogram, ts: TiltSeries) -> Li
         # logger.info(f'r0 =\n{r0}')
         # logger.info(f's0 =\n{s0}')
         prjMatrixList.append(prjMatrix)
+        tiltIds.append(int(row.get(SCIPION_TILT_ID)))
 
-    return prjMatrixList
+    if returnTiltId:
+        return prjMatrixList, tiltIds
+    else:
+        return prjMatrixList
 
 
 def gen3dRotXMatrix(angleInDeg):
