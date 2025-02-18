@@ -346,7 +346,7 @@ class Writer(WriterTomo):
             tsTable = Table(columns=tsStarFields)
             for ti in ts.iterItems():
                 ctfTomo = ctf.getCtfTomoFromTi(ti)
-                acqOrder = ti.getAcqOrder()
+                acqOrder = ti.getAcquisitionOrder()
                 if ctfTomo and acqOrder in presentAcqOrders:
                     acqTi = ti.getAcquisition()
                     tiltAngle = ti.getTiltAngle()
