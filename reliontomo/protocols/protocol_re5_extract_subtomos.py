@@ -218,16 +218,16 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                                                   applyTSTransformation=False)
                 landmarkModelGaps.setTiltSeries(ts)
                 tsStarFile = self._getExtraPath(tsId + '.star')
-                tsProjectionsList, tiltIdList = getProjMatrixList(tsStarFile, tomo, ts, returnTiltId=True)
+                tsProjectionsList, indexList = getProjMatrixList(tsStarFile, tomo, ts)
                 for particleRow in StarFileIterator(starData, RLN_TOMONAME, tsId):
                     particleCoords = np.array(
                         [self.coordsScaleFactor.get() * particleRow.get(RLN_CENTEREDCOORDINATEXANGST) / tomoSRate,
                          self.coordsScaleFactor.get() * particleRow.get(RLN_CENTEREDCOORDINATEYANGST) / tomoSRate,
                          self.coordsScaleFactor.get() * particleRow.get(RLN_CENTEREDCOORDINATEZANGST) / tomoSRate,
                          1])
-                    for tiltId, tomoProjection in zip(tiltIdList, tsProjectionsList):
+                    for index, tomoProjection in zip(indexList, tsProjectionsList):
                         proj = tomoProjection.dot(particleCoords)
-                        landmarkModelGaps.addLandmark(proj[0], proj[1], tiltId, particleCounter, 0, 0)
+                        landmarkModelGaps.addLandmark(proj[0], proj[1], index, particleCounter, 0, 0)
                     particleCounter += 1
 
                 fiducialModelGaps.append(landmarkModelGaps)

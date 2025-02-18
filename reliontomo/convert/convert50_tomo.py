@@ -325,7 +325,6 @@ class Writer(WriterTomo):
         rlnTomoXShiftAngst #26 (double) : X-translation (in A) to align the projection of a tomogram with the tilt series image
         rlnTomoYShiftAngst #27 (double) : Y-translation (in A) to align the projection of a tomogram with the tilt series image
         rlnCtfScalefactor #28 (double) : Linear scale-factor on the CTF (values between 0 and 1)
-        sciTiltId #29 (int) : Tilt image id in Scipion
 
         Example:
             frames/TS_01_038_-57.0.mrc            8    -56.99850    85.000000   114.000000     -4.00000
@@ -415,9 +414,8 @@ class Writer(WriterTomo):
                     tiltAngle,  # 24, rlnTomoYTilt
                     rotAngle,  # 25, rlnTomoZRot
                     sxAngst,  # 26, rlnTomoXShiftAngst
-                    syAngst,  # 27, rlnTomoYShiftAngst
-                    np.cos(np.deg2rad(tiltAngle)),  # 28, rlnCtfScalefactor
-                    ti.getObjId() # 29, sciTiltId
+                    syAngst  # 27, rlnTomoYShiftAngst
+                    np.cos(np.deg2rad(tiltAngle))  # 28, rlnCtfScalefactor
                 )
             # Write the STAR file
             tsTable.writeStar(f, tableName=tsId)
@@ -1013,8 +1011,7 @@ class Reader(ReaderTomo):
 
 def getProjMatrixList(tsStarFile: str, 
                       tomogram: Tomogram, 
-                      ts: TiltSeries, 
-                      returnTiltId = False) -> Union[List[np.ndarray], Tuple[List[np.ndarray], List[np.ndarray]]]:
+                      ts: TiltSeries ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     # / *From
     # Alister
     # Burt
@@ -1036,7 +1033,7 @@ def getProjMatrixList(tsStarFile: str,
     # * /
     # specimen_shifts(xshift_angst / optics.pixelSize, yshift_angst / optics.pixelSize, 0.);
     prjMatrixList = []
-    tiltIds = []
+    indexList = []
     dataTable = Table()
     dataTable.read(tsStarFile)
     tsSRate = ts.getSamplingRate()
@@ -1068,12 +1065,9 @@ def getProjMatrixList(tsStarFile: str,
         # logger.info(f'r0 =\n{r0}')
         # logger.info(f's0 =\n{s0}')
         prjMatrixList.append(prjMatrix)
-        tiltIds.append(int(row.get(SCIPION_TILT_ID)))
+        indexList.append(int(row.get(RLN_MICROGRAPH_NAME).split('@')[0]))
 
-    if returnTiltId:
-        return prjMatrixList, tiltIds
-    else:
-        return prjMatrixList
+    return prjMatrixList, indexList
 
 
 def gen3dRotXMatrix(angleInDeg):
