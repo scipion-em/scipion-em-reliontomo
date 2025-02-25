@@ -277,7 +277,7 @@ class TestImportRe5NativeCoordsFromStarFile(TestBaseCentralizedLayer):
         protImportTomogram = cls.newProtocol(ProtImportTomograms,
                                              filesPath=cls.ds.getFile(DataSetRe5STA.tomosDir.name),
                                              filesPattern='*',
-                                             samplingRate=DataSetRe4STATuto.sRateBin4.value)
+                                             samplingRate=DataSetRe5STA.tomosSRate.value)
 
         cls.launchProtocol(protImportTomogram)
         outputTomos = getattr(protImportTomogram, OUTPUT_NAME, None)

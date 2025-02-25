@@ -123,7 +123,7 @@ class TestRelionTomoRecTomograms(TestBaseCentralizedLayer):
                                         doCtfCorrection=correctCtf,
                                         recTomoMode=recTomoMode,
                                         tomoId=tomoId,
-                                        numberOfThreads=6)
+                                        binThreads=6)
         self.launchProtocol(protRecTomos)
         return getattr(protRecTomos, protRecTomos._possibleOutputs.tomograms.name, None)
 

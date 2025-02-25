@@ -32,7 +32,7 @@ from reliontomo.convert import writeSetOfSubtomograms
 
 
 class outputObjects(Enum):
-    average = AverageSubTomogram()
+    average = AverageSubTomogram
 
 
 class ProtRelionSubTomoReconstructAvg(ProtReconstruct3D):

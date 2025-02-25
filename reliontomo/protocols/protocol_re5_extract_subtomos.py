@@ -82,6 +82,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                       allowsNull=True,
                       help='Tilt series with alignment (non interpolated) used in the tomograms reconstruction.. '
                            'They are optional in case of the re-extraction of Relion particles.')
+        self._insertBinThreadsParam(form)
         form.addParam('handedness', BooleanParam,
                       label='Does focus decrease with Z distance?',
                       default=True,
@@ -117,15 +118,15 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                            'Note that RELION and CCPEM will read float16 images, but other programs may '
                            'not (yet) do so.')
         self._defineExtraParams(form)
-        form.addParallelSection(threads=1, mpi=3)
+        form.addParallelSection(threads=0, mpi=3)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         if self.isInputSetOf3dCoords():
             self._initialize()
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.extractSubtomos)
-        self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.convertInputStep, needsGPU=False)
+        self._insertFunctionStep(self.extractSubtomos, needsGPU=False)
+        self._insertFunctionStep(self.createOutputStep, needsGPU=False)
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
@@ -237,7 +238,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
             inParticles = self.getInputParticles()
             tsSRate = inParticles.getTsSamplingRate()
             acq = inParticles.getAcquisition()
-            inCoords = inParticles.getCoordinates3D()
+            inCoords = inParticles.getCoordinates3D(asPointer=True)
 
         psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
                                                      self._getExtraPath(OPTIMISATION_SET_STAR),
@@ -273,8 +274,10 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
     def _warnings(self):
         warnMsg = []
-        if not (self.inputTS.get().hasAlignment() and not self.inputTS.get().interpolated()):
-            warnMsg.append('The introduced tilt series do not have an alignment transformation associated.')
+        inTsSet = self.inputTS.get()
+        if inTsSet:
+            if not (inTsSet.hasAlignment() and not inTsSet.interpolated()):
+                warnMsg.append('The introduced tilt series do not have an alignment transformation associated.')
         return warnMsg
 
     def _summary(self):

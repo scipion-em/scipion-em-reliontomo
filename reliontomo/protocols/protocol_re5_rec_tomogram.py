@@ -66,6 +66,7 @@ class ProtRelion5TomoReconstruct(ProtRelionTomoBase):
                       pointerClass='SetOfCTFTomoSeries',
                       important=True,
                       label='CTFs')
+        self._insertBinThreadsParam(form)
         form.addParam('unbinnedWidth', IntParam,
                       default=-1,
                       allowsNull=False,
@@ -127,14 +128,14 @@ class ProtRelion5TomoReconstruct(ProtRelionTomoBase):
                            "reconstruct lamellae that are all milled under a given angle. All tomograms will be "
                            "reconstructed with the same offset.")
         # TODO: add the params related to the 2D sums of the central Z-slices?
-        form.addParallelSection(threads=3, mpi=1)
+        form.addParallelSection(threads=0, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._initialize()
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.reconstructTomogramsStep)
-        self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.convertInputStep, needsGPU=False)
+        self._insertFunctionStep(self.reconstructTomogramsStep, needsGPU=False)
+        self._insertFunctionStep(self.createOutputStep, needsGPU=False)
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
@@ -212,7 +213,7 @@ class ProtRelion5TomoReconstruct(ProtRelionTomoBase):
             f'--h {self.unbinnedHeight.get()}',
             f'--d {self.unbinnedThickness.get()}',
             f'--binned_angpix {self.binnedPixSize.get():.3f}',
-            f'--j {self.numberOfThreads.get()}'
+            f'--j {self.binThreads.get()}'
         ]
         if self.genEvenOddTomos.get():
             cmd.append('----generate_split_tomograms')

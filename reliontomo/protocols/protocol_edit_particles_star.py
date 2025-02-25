@@ -166,9 +166,9 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.operateStep)
-        self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.convertInputStep, needsGPU=False)
+        self._insertFunctionStep(self.operateStep, needsGPU=False)
+        self._insertFunctionStep(self.createOutputStep, needsGPU=False)
 
     def convertInputStep(self):
         are2dParticles = getattr(self.inReParticles.get(), RelionSetOfPseudoSubtomograms.ARE_2D_PARTICLES, False)

@@ -25,14 +25,14 @@
 from os.path import exists, join
 from emtable import Table
 
-from pwem.objects import VolumeMask, FSC
+from pwem.objects import Volume, FSC
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA, PROD
-from pyworkflow.protocol import PointerParam, StringParam
+from pyworkflow.protocol import PointerParam, StringParam, IntParam
 from pyworkflow.utils import Message, createLink
 from reliontomo import Plugin
 from reliontomo.constants import IN_PARTICLES_STAR, POSTPROCESS_DIR, OPTIMISATION_SET_STAR, PSUBTOMOS_SQLITE, \
-    OUT_PARTICLES_STAR
+    OUT_PARTICLES_STAR, OUT_TOMOS_STAR, TRAJECTORIES_STAR
 from reliontomo.convert import writeSetOfPseudoSubtomograms, readSetOfPseudoSubtomograms, convert50_tomo
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from tomo.objects import SetOfCoordinates3D
@@ -62,6 +62,19 @@ class ProtRelionTomoBase(EMProtocol):
                            'constructed from the sums of 2D tilt-series images pre-multiplied by contrast transfer '
                            'functions (CTFs), along with auxiliary arrays that store the corresponding sum of squared '
                            'CTFs and the frequency of observation for each 3D voxel.')
+
+    @staticmethod
+    def _insertBinThreadsParam(form):
+        form.addParam('binThreads', IntParam,
+                      label='Relion threads',
+                      important=True,
+                      default=3,
+                      help='Number of threads used by Relion each time it is called in the protocol execution. For '
+                           'example, if 2 Scipion threads and 3 Relion threads are set, the tilt-series, tomograms, etc '
+                           'will be processed in groups of 2 at the same time with a call of tomo3d with 3 threads '
+                           'each, so 6 threads will be used at the same time. Beware the memory of your machine has '
+                           'memory enough to load together the number of tilt-series, tomograms, etc specified by '
+                           'Scipion threads.')
 
     @staticmethod
     def _defineExtraParams(form, addAdditionalSection=True):
@@ -111,7 +124,7 @@ class ProtRelionTomoBase(EMProtocol):
     def _genPostProcessOutputMrcFile(self, fileName):
         """File generated using the sharpening protocol (called post-process protocol) and also using the
         rec particle from TS protocol in case the optional input 'solvent mask' is introduced."""
-        postProccesMrc = VolumeMask()
+        postProccesMrc = Volume()
         postProccesMrc.setFileName(self._getExtraPath(POSTPROCESS_DIR, fileName))
         sRate = -1
         if getattr(self, 'inReParticles', None):
@@ -125,6 +138,8 @@ class ProtRelionTomoBase(EMProtocol):
     def genRelionParticles(self,
                            optimisationFileName=OPTIMISATION_SET_STAR,
                            particles=OUT_PARTICLES_STAR,
+                           tomograms=OUT_TOMOS_STAR,
+                           trajectories=TRAJECTORIES_STAR,
                            binningFactor=None,
                            boxSize=24):
         """Generate a RelionSetOfPseudoSubtomograms object containing the files involved for the next protocol,
@@ -138,14 +153,21 @@ class ProtRelionTomoBase(EMProtocol):
         psubtomoSet.copyInfo(inParticlesSet)
 
         # Verify out star file
-        extraPath = self._getExtraPath()
-        optimSetStar = join(extraPath, optimisationFileName)
+        optimSetStar =  self._getExtraPath(optimisationFileName)
         if exists(optimSetStar):
             psubtomoSet.filesMaster = optimSetStar
 
-        particles = join(extraPath, particles)
+        particles =  self._getExtraPath(particles)
         if exists(particles):
             psubtomoSet.setParticles(particles)
+
+        tomograms =  self._getExtraPath(tomograms)
+        if exists(tomograms):
+            psubtomoSet.setTomogramsStar(tomograms)
+
+        trajectiories = self._getExtraPath(trajectories)
+        if exists(trajectiories):
+            psubtomoSet.setTrajectoriesStar(trajectories)
 
         if binningFactor:
             psubtomoSet.setRelionBinning(binningFactor)

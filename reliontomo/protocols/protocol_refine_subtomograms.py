@@ -83,7 +83,7 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         self._defineComputeParams(form)
         self._insertGpuParams(form)
         self._defineAdditionalParams(form)
-        form.addParallelSection(threads=1, mpi=3)
+        form.addParallelSection(threads=0, mpi=3)
 
     def _defineInputParams(self, form):
         self._defineIOParams(form)
@@ -230,9 +230,9 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._initialize()
-        self._insertFunctionStep(self.convertInputStep)
-        self._insertFunctionStep(self.autoRefineStep)
-        self._insertFunctionStep(self.createOutputStep)
+        self._insertFunctionStep(self.convertInputStep, needsGPU=False)
+        self._insertFunctionStep(self.autoRefineStep, needsGPU=True)
+        self._insertFunctionStep(self.createOutputStep, needsGPU=False)
 
     # -------------------------- STEPS functions ------------------------------
     def _initialize(self):
@@ -322,14 +322,14 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         cmd += '--pad %i ' % (1 if self.skipPadding.get() else 2)
         # Plugin version-dependent parameters
         if IS_RELION_50:
+            # Auto-sampling
+            cmd += '--sigma_tilt %i ' % self.priorWidthTiltAngle.get()
             # Reference
             if self.doResizeRef.get():
                 cmd += '--trust_ref_size '
             # Optimisation
             if self.doBlushReg.get():
                 cmd += '--blush '
-                # Auto-sampling
-                cmd += '--sigma_tilt %i ' % self.priorWidthTiltAngle.get()
         else:
             # Input
             if self.solventMask2.get():

@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scipion-em-reliontomo"
+dynamic = ["version"]
+description = "Plugin to use reliontomo within the Scipion framework"
+authors = [
+    {name = "Scipion Team", email = "scipion@cnb.csic.es"}
+]
+dependencies = [
+    "scipion-em-tomo>=3.9.1",
+    "emtable",
+    "scipion-em-relion",
+    "scipion-em-imod",  # Remove this when Relion4 is deprecated
+]
+requires-python = ">=3.8"
+readme = "README.rst"
+license = {text = "GNU General Public License v3 (GPLv3)"}
+classifiers = [
+    #   3 - Alpha
+    #   4 - Beta
+    #   5 - Production/Stable
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["scipion", "cryoem", "cryoet", "imageprocessing", "scipion-3.0"]
+
+[project.urls]
+Homepage = "https://github.com/scipion-em/scipion-em-reliontomo"
+Issues = "https://github.com/scipion-em/scipion-em-reliontomo/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "reliontomo.__version__"}
+
+[project.entry-points."pyworkflow.plugin"]
+reliontomo = "reliontomo"
