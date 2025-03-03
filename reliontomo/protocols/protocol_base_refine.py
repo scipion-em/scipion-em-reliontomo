@@ -378,7 +378,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         return errorMsg
 
     def _warnings(self):
-       pass
+        pass
 
 
     # --------------------------- UTILS functions -----------------------------
