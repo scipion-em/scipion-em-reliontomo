@@ -101,6 +101,7 @@ class ProtRelionPostProcess(ProtRelionTomoBase):
                            'much lower or higher than 10 Angstroms. If your map does not extend beyond 10 Angstroms, '
                            'then instead of the automated procedure use your own B-factor.')
         form.addParam('useOwnBFactor', BooleanParam,
+                      condition='not estimateBFactor',
                       default=False,
                       label='Use your own B-factor?',
                       help='Instead of using the automated B-factor estimation, provide your own value. Use negative '
