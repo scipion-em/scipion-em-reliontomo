@@ -197,7 +197,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
             acq = tsSet.getAcquisition()
 
             # FIDUCIALS ################################################################################################
-            fiducialSize = int((inCoords.getBoxSize() * inCoords.getSamplingRate()) / (2 * 10))  # Radius in nm
+            fiducialSize = int((inCoords.getBoxSize() * inCoords.getSamplingRate()) / 2)  # Radius in angstroms
             fiducialModelGaps = SetOfLandmarkModels.create(self.getPath(),
                                                            template='setOfLandmarks%s.sqlite',
                                                            suffix='Gaps')
