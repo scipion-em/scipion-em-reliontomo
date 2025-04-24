@@ -47,12 +47,12 @@ try:
 
         @staticmethod
         def isRe50():
-            return True if Plugin.getHome().endswith(relion.V5_0) else False
+            return True #if Plugin.getHome().endswith(relion.V5_0) else False
 
         @classmethod
         def runRelionTomo(cls, protocol, program, args, cwd=None, numberOfMpi=1):
             """ Run Relion command from a given protocol. """
-            protocol.runJob(program, args, cwd=cwd, env=cls.getEnviron(), numberOfMpi=numberOfMpi)
+            protocol.runJob(program, args, cwd=cwd, numberOfMpi=numberOfMpi) #env=cls.getEnviron(),
 
         @classmethod
         def defineBinaries(cls, env):

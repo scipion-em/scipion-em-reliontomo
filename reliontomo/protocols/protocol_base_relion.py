@@ -217,3 +217,15 @@ class ProtRelionTomoBase(EMProtocol):
                                 'configured to work with Relion 4. Please consider configuring the plugin to work with '
                                 'Relion 5.')
         return errorMsg
+
+    def _getEnviron(self):
+        env = Plugin.getEnviron()
+
+        if self.usesGpu():
+            prepend = env.get('RELION_TOMO_PREPEND', '')
+        else:
+            prepend = env.get('RELION_TOMO_PREPEND_CPU', '')
+
+        env.setPrepend(prepend)
+        self.info("Using prepend: %s" % prepend)
+        return env
