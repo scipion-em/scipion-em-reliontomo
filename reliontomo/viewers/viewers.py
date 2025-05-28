@@ -267,32 +267,31 @@ class RelionTomoViewer(RelionViewer):
                                 mainTitle=title, windowTitle="Angular Distribution")
 
         for clId in range(nClasses):
-            mdList = self._readParticlesStarFile(it, clId)
             classId = clId + 1
+            mdList = self._readParticlesStarFile(it, classId)
             title = f'class {classId:03d}'
             sqliteFn = self.protocol._getExtraPath(f'class{classId:03d}_projections.sqlite')
-            if not exists(sqliteFn):
-                self.createAngDistributionSqlite(sqliteFn,
-                                                 nparts,
-                                                 itemDataIterator=self._iterAngles(mdList))
+            self.createAngDistributionSqlite(sqliteFn,
+                                             nparts,
+                                             itemDataIterator=self._iterAngles(mdList))
             plotter.plotAngularDistributionFromMd(sqliteFn, title)
 
         return plotter
 
-
-    @staticmethod
-    def _getStarFile(iteration: int) -> str:
-        return f'_it{iteration:03d}_data.star'
+    def _getStarFile(self, iteration: int) -> str:
+        return self.protocol._getExtraPath(f'_it{iteration:03d}_data.star')
 
     def _readParticlesStarFile(self, iteration: int, classIndex: int) -> list:
         from reliontomo.constants import RLN_CLASSNUMBER, PARTICLES_TABLE
         starFile = self._getStarFile(iteration)
-        dataTable = Table(fileName=starFile, tableName=PARTICLES_TABLE)
-        mdList = []
-        for row in dataTable:
-            if int(row.get(RLN_CLASSNUMBER, -1)) == classIndex:
-                mdList.append(row)
-        return mdList
+        dataTable = Table()
+        with open(starFile) as fid:
+            mdList = []
+            dataTable.readStar(fid, tableName=PARTICLES_TABLE)
+            for row in dataTable:
+                if int(row.get(RLN_CLASSNUMBER, -1)) == classIndex:
+                    mdList.append(row)
+            return mdList
 
     def _iterAngles(self, mdList: list):
         from reliontomo.constants import RLN_ANGLEROT, RLN_ANGLETILT
