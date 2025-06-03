@@ -3,16 +3,20 @@ import re
 from glob import glob
 from os.path import join, exists, basename
 from typing import Tuple, Union
-from emtable import Table
 from pyworkflow.protocol import EnumParam, NumericRangeParam
-from relion.viewers import RelionViewer, RelionPlotter, protected_show
+from relion.viewers import RelionViewer
 from pwem.viewers import ObjectView, ChimeraView
-# from reliontomo.constants import RLN_CLASSNUMBER, RLN_ANGLEROT, RLN_ANGLETILT, PARTICLES_TABLE
-# from reliontomo.objects import RelionSetOfPseudoSubtomograms
 from reliontomo.protocols import ProtRelionRefineSubtomograms, ProtRelion3DClassifySubtomograms, \
     ProtRelionDeNovoInitialModel
 
 logger = logging.getLogger(__name__)
+
+# Form params
+VIEW_ITER = 'viewIter'
+ITER_SELECT = 'iterSelection'
+CLASSES_TO_SHOW = 'classesToShow'
+DISPLAY_VOL = 'displayVol'
+
 
 # Viewer constants
 ITER_LAST = 0
@@ -54,7 +58,7 @@ class RelionTomoVolumeViewer(RelionViewer):
 
     def _defineParams(self, form):
         form.addSection(label='Visualization')
-        form.addParam('viewIter', EnumParam,
+        form.addParam(VIEW_ITER, EnumParam,
                       choices=['last', 'selection', 'final volume'],
                       default=ITER_LAST,
                       display=EnumParam.DISPLAY_LIST,
@@ -71,20 +75,22 @@ class RelionTomoVolumeViewer(RelionViewer):
         volume may be the symmetrized volume of the final iteration 
         once the refinement is finished."   
         """)
-        form.addParam('iterSelection', NumericRangeParam,
+
+        form.addParam(ITER_SELECT, NumericRangeParam,
                       condition=f'viewIter == {ITER_SELECTION}',
-                      label="Iterations list",
-                      help=f"Write the iteration list to visualize."
+                      label="Iterations",
+                      help=f"Write the iteration list to visualize.\n"
                            f"{ITER_NOTATIONS_MSG}\n")
 
         group = form.addGroup('Volumes')
-        group.addParam('classesToShow', NumericRangeParam,
+        group.addParam(CLASSES_TO_SHOW, NumericRangeParam,
                        condition=f'{self._getNClasses()} > 1',
-                       label='Class list',
-                       help=f"Write the class list to visualize."
+                       label='Classes',
+                       help=f"Write the class list to visualize. "
+                            f"If empty, all the classes will be displayed.\n"
                             f"{ITER_NOTATIONS_MSG}\n")
 
-        group.addParam('displayVol', EnumParam,
+        group.addParam(DISPLAY_VOL, EnumParam,
                        choices=['slices', 'chimera'],
                        default=VOLUME_SLICES,
                        display=EnumParam.DISPLAY_HLIST,
@@ -93,7 +99,7 @@ class RelionTomoVolumeViewer(RelionViewer):
                             '*chimera*: display volumes as surface with Chimera.')
 
     def _getVisualizeDict(self) -> dict:
-        visualizeDict = {'displayVol': self._showVolumes}
+        visualizeDict = {DISPLAY_VOL: self._showVolumes}
         return visualizeDict
 
     def _hasClasses(self):
@@ -164,8 +170,12 @@ class RelionTomoVolumeViewer(RelionViewer):
     def _getVolumeNames(self):
         vols = []
         nClasses = self._getNClasses()
-        selectedClasses = self._getRange(self.classesToShow, 'classes')
-        viewerIter = self.viewIter.get()
+        classesToShow = getattr(self, CLASSES_TO_SHOW)
+        if classesToShow:
+            selectedClasses = self._getRange(getattr(self, CLASSES_TO_SHOW), 'classes')
+        else:
+            selectedClasses = list(range(1, nClasses + 1))
+        viewerIter = getattr(self, VIEW_ITER)
         if viewerIter == ITER_SYMMETRIZED:
             logger.debug(f"Symmetrized final volumes requested.")
             if nClasses == 1:
@@ -180,10 +190,9 @@ class RelionTomoVolumeViewer(RelionViewer):
             firstIter, lastIter = self._getFirstAndLastIter()
             if viewerIter == ITER_LAST:
                 iterations = [lastIter]
-            elif viewerIter == ITER_SELECTION:
-                iterations = self._getRange(self.iterSelection, 'iterations')
+            else:  # viewerIter == ITER_SELECTION
+                iterations = self._getRange(getattr(self, ITER_SELECT), 'iterations')
 
-            logger.debug(f"self._iterations: {iterations}.")
             for it in iterations:
                 for clId in selectedClasses:
                     volFn =self._getIterVolname(it, clId)
