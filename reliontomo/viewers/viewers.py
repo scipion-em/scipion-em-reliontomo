@@ -28,6 +28,11 @@ VOLUME_CHIMERA = 1
 ANGDIST_2DPLOT = 0
 ANGDIST_CHIMERA = 1
 
+ITER_NOTATIONS_MSG = ("Possible notation are:\n"
+                      "1,5-8,10 -> [1,5,6,7,8,10]\n"
+                      "2,6,9-11 -> [2,6,9,10,11]\n"
+                      "2 5, 6-8 -> [2,5,6,7,8]")
+
 
 # DataViewer.registerConfig(RelionSetOfPseudoSubtomograms,
 #                           config={MODE: MODE_MD,
@@ -35,9 +40,10 @@ ANGDIST_CHIMERA = 1
 #                                            '_transform._matrix '})
 
 
-class RelionTomoViewer(RelionViewer):
+class RelionTomoVolumeViewer(RelionViewer):
     """ Visualization of Relion results. """
-    _targets = [ProtRelionRefineSubtomograms, ProtRelion3DClassifySubtomograms,
+    _targets = [ProtRelionRefineSubtomograms,
+                ProtRelion3DClassifySubtomograms,
                 ProtRelionDeNovoInitialModel]
 
     def __init__(self, **kwargs):
@@ -53,15 +59,12 @@ class RelionTomoViewer(RelionViewer):
                       default=ITER_LAST,
                       display=EnumParam.DISPLAY_LIST,
                       label="Iteration to visualize",
-                      help="""
+                      help=f"""
         *last*: only the last iteration will be visualized.
-        
+
         *selection*: you may specify a range of iterations.
-        Examples:
-        "1,5-8,10" -> [1,5,6,7,8,10]
-        "2,6,9-11" -> [2,6,9,10,11]
-        "2 5, 6-8" -> [2,5,6,7,8]                      
-                                   
+        {ITER_NOTATIONS_MSG}                    
+
         *final volume:* depending on if the symmetry is not C1 
         and if refinement was carried out with the parameter "Run 
         in C1 and apply symmetry later" (recommended), the final 
@@ -69,32 +72,17 @@ class RelionTomoViewer(RelionViewer):
         once the refinement is finished."   
         """)
         form.addParam('iterSelection', NumericRangeParam,
-                      condition='viewIter==%d' % ITER_SELECTION,
+                      condition=f'viewIter == {ITER_SELECTION}',
                       label="Iterations list",
-                      help="Write the iteration list to visualize.")
+                      help=f"Write the iteration list to visualize."
+                           f"{ITER_NOTATIONS_MSG}\n")
 
         group = form.addGroup('Volumes')
-
-        # if self._hasClasses():
-        #     group.addParam('showClasses3D', EnumParam,
-        #                    default=CLASSES_ALL,
-        #                    choices=['all', 'selection'],
-        #                    display=EnumParam.DISPLAY_HLIST,
-        #                    label='3D Class to visualize',
-        #                    help='')
-        #     group.addParam('class3DSelection', NumericRangeParam,
-        #                    default='1',
-        #                    condition='showClasses3D == %d' % CLASSES_SEL,
-        #                    label='Classes list',
-        #                    help='')
-        # else:
-        #     if self.isInitVol:
-        #         group.addHidden('showHalves', IntParam, default=3)
-        #     else:
-        #         group.addParam('showHalves', EnumParam, default=0,
-        #                        choices=['half1', 'half2', 'both', 'final'],
-        #                        label='Volume to visualize',
-        #                        help='Select which half do you want to visualize.')
+        group.addParam('classesToShow', NumericRangeParam,
+                       condition=f'{self._getNClasses()} > 1',
+                       label='Class list',
+                       help=f"Write the class list to visualize."
+                            f"{ITER_NOTATIONS_MSG}\n")
 
         group.addParam('displayVol', EnumParam,
                        choices=['slices', 'chimera'],
@@ -103,40 +91,19 @@ class RelionTomoViewer(RelionViewer):
                        label='Display volume with',
                        help='*slices*: display volumes as 2D slices along z axis.\n'
                             '*chimera*: display volumes as surface with Chimera.')
-        group.addParam('displayAngDist', EnumParam,
-                       choices=['2D plot', 'chimera'],
-                       default=ANGDIST_2DPLOT,
-                       display=EnumParam.DISPLAY_HLIST,
-                       label='Display angular distribution',
-                       help='*2D plot*: display angular distribution as interactive 2D in matplotlib.\n'
-                            '*chimera*: display angular distribution using Chimera with red spheres.')
-        # group.addParam('spheresScale', IntParam,
-        #                default=-1,
-        #                expertLevel=LEVEL_ADVANCED,
-        #                condition='displayAngDist == %d' % ANGDIST_CHIMERA,
-        #                label='Spheres distance',
-        #                help='If the value is -1 then the distance is set '
-        #                     'to 0.75 * xVolDim')
 
     def _getVisualizeDict(self) -> dict:
-        # self._load()
-        visualizeDict = {'displayVol': self._showVolumes,
-                         # 'showClassesOnly': self._showClassesOnly,
-                         'displayAngDist': self._showAngularDistribution,}
+        visualizeDict = {'displayVol': self._showVolumes}
         return visualizeDict
-
-    # def _load(self):
-    #     from matplotlib.ticker import FuncFormatter
-    #     self._plotFormatter = FuncFormatter(self._formatFreq)
 
     def _hasClasses(self):
         return self.isCl3d or self.isInitVol
 
-    def _getInParticles(self):# -> RelionSetOfPseudoSubtomograms:
+    def _getInParticles(self):  # -> RelionSetOfPseudoSubtomograms:
         return self.protocol.inReParticles.get()
 
     def _getNClasses(self) -> int:
-        return self.protocol.numberOfClasses.get()
+        return self.protocol.numberOfClasses.get() if self._hasClasses() else 1
 
     def _getFirstAndLastIter(self) -> Union[Tuple[int, int], None]:
         filesPath = self.protocol._getExtraPath()
@@ -197,15 +164,16 @@ class RelionTomoViewer(RelionViewer):
     def _getVolumeNames(self):
         vols = []
         nClasses = self._getNClasses()
+        selectedClasses = self._getRange(self.classesToShow, 'classes')
         viewerIter = self.viewIter.get()
         if viewerIter == ITER_SYMMETRIZED:
             logger.debug(f"Symmetrized final volumes requested.")
             if nClasses == 1:
-                volFn = self.protocol._getInitialModelOutFn()
+                volFn = self._getInitialModelOutFn()
                 self.__appendVolFn(volFn, vols)
             else:
-                for clId in range(nClasses):
-                    volFn = self.protocol._getInitialModelOutFn(clId + 1)
+                for clId in selectedClasses:
+                    volFn = self._getInitialModelOutFn(clId)
                     self.__appendVolFn(volFn, vols)
         else:
             # Get the iterations
@@ -217,11 +185,27 @@ class RelionTomoViewer(RelionViewer):
 
             logger.debug(f"self._iterations: {iterations}.")
             for it in iterations:
-                for clId in range(nClasses):
-                    volFn = self.protocol._getExtraPath(f'_it{it:03d}_class{clId + 1:03d}.mrc')
+                for clId in selectedClasses:
+                    volFn =self._getIterVolname(it, clId)
                     self.__appendVolFn(volFn, vols)
 
         return vols
+
+    def _getInitialModelOutFn(self, classIndex: Union[int, None] = None) -> str:
+        initialModelFn = self.protocol._getInitialModelOutFn(classIndex)
+        if exists(initialModelFn):
+            return initialModelFn
+        else:
+            raise FileNotFoundError(f"Volume {initialModelFn} does not exists.\n"
+                                    "Please select a valid class number.")
+
+    def _getIterVolname(self, iter: int, classInd: int) -> str:
+        volFn = self.protocol._getExtraPath(f'_it{iter:03d}_class{classInd:03d}.mrc')
+        if exists(volFn):
+            return volFn
+        else:
+            raise FileNotFoundError(f"Volume {volFn} does not exists.\n"
+                                    "Please select a valid iteration and/or class number.")
 
     @staticmethod
     def __appendVolFn(volFn: str, vols: list) -> None:
@@ -233,79 +217,11 @@ class RelionTomoViewer(RelionViewer):
                                     "Please select a valid iteration number or wait the "
                                     "protocol to finish in case of the symmetrized final volumes.")
 
-    # =============================================================================
-    # showAngularDistribution
-    # =============================================================================
-    @protected_show
-    def _showAngularDistribution(self, paramName=None):
-        views = []
-        _, lastIter = self._getFirstAndLastIter()
-        if self.displayAngDist == ANGDIST_CHIMERA:
-            for it in self._iterations:
-                views.append(self._createAngDistChimera(it))
-
-        elif self.displayAngDist == ANGDIST_2DPLOT:
-            plot = self._createAngDist2D(lastIter)
-            views.append(plot)
-        return views
-
-    def _createAngDist2D(self, it: int) -> RelionPlotter:
-        # Common variables to use
-        nparts = self._getInParticles().getSize()
-        # prefixes = self._getPrefixes()
-        # nrefs = len(self._refsList)
-        # n = nrefs * len(prefixes)
-        nClasses = self._getNClasses()
-        gridsize = self._getGridSize(nClasses)
-
-        if self.viewIter.get() == ITER_LAST:
-            title = "Final"
-        else:
-            title = 'Iteration %d' % it
-
-        plotter = RelionPlotter(x=gridsize[0], y=gridsize[1],
-                                mainTitle=title, windowTitle="Angular Distribution")
-
-        for clId in range(nClasses):
-            classId = clId + 1
-            mdList = self._readParticlesStarFile(it, classId)
-            title = f'class {classId:03d}'
-            sqliteFn = self.protocol._getExtraPath(f'class{classId:03d}_projections.sqlite')
-            self.createAngDistributionSqlite(sqliteFn,
-                                             nparts,
-                                             itemDataIterator=self._iterAngles(mdList))
-            plotter.plotAngularDistributionFromMd(sqliteFn, title)
-
-        return plotter
-
-    def _getStarFile(self, iteration: int) -> str:
-        return self.protocol._getExtraPath(f'_it{iteration:03d}_data.star')
-
-    def _readParticlesStarFile(self, iteration: int, classIndex: int) -> list:
-        from reliontomo.constants import RLN_CLASSNUMBER, PARTICLES_TABLE
-        starFile = self._getStarFile(iteration)
-        dataTable = Table()
-        with open(starFile) as fid:
-            mdList = []
-            dataTable.readStar(fid, tableName=PARTICLES_TABLE)
-            for row in dataTable:
-                if int(row.get(RLN_CLASSNUMBER, -1)) == classIndex:
-                    mdList.append(row)
-            return mdList
-
-    def _iterAngles(self, mdList: list):
-        from reliontomo.constants import RLN_ANGLEROT, RLN_ANGLETILT
-        for row in mdList:
-            rot = float(row.get(RLN_ANGLEROT, 0))
-            tilt = float(row.get(RLN_ANGLETILT, 0))
-            yield rot, tilt
-
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
         pass
 
     # classIndexStr = f'{classIndex:03d}' if classIndex is not None else ''
-
 
 # b
 

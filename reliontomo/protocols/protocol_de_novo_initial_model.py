@@ -23,6 +23,7 @@
 # *
 # **************************************************************************
 from enum import Enum
+from os.path import exists
 from typing import Union
 from pwem.convert.headers import fixVolume
 from pwem.objects import Volume, SetOfVolumes
@@ -184,7 +185,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         classIndexStr = f'{classIndex:03d}' if classIndex is not None else ''
         return f'_it{self.nVdamMiniBatches.get():03d}_class{classIndexStr}.mrc'
 
-    def _getInitialModelOutFn(self, classIndex: Union[int, None] = None):
+    def _getInitialModelOutFn(self, classIndex: Union[int, None] = None) -> str:
         classIndexStr = f'_{classIndex:03d}' if classIndex is not None else ''
         return self._getExtraPath(f'initial_model{classIndexStr}.mrc')
 

@@ -1,2 +1,2 @@
-from reliontomo.viewers.viewers import RelionTomoViewer
+from reliontomo.viewers.viewers import RelionTomoVolumeViewer
 
