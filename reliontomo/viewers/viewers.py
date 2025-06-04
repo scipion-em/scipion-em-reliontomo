@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 # Form params
 VIEW_ITER = 'viewIter'
 ITER_SELECT = 'iterSelection'
+CLASS_MODE = 'classesMode'
 CLASSES_TO_SHOW = 'classesToShow'
 DISPLAY_VOL = 'displayVol'
 
@@ -29,19 +30,10 @@ CLASSES_SEL = 1
 VOLUME_SLICES = 0
 VOLUME_CHIMERA = 1
 
-ANGDIST_2DPLOT = 0
-ANGDIST_CHIMERA = 1
-
 ITER_NOTATIONS_MSG = ("Possible notation are:\n"
                       "1,5-8,10 -> [1,5,6,7,8,10]\n"
                       "2,6,9-11 -> [2,6,9,10,11]\n"
                       "2 5, 6-8 -> [2,5,6,7,8]")
-
-
-# DataViewer.registerConfig(RelionSetOfPseudoSubtomograms,
-#                           config={MODE: MODE_MD,
-#                                   VISIBLE: 'id _filename _volName _coordinate._x _coordinate._y _coordinate._z '
-#                                            '_transform._matrix '})
 
 
 class RelionTomoVolumeViewer(RelionViewer):
@@ -83,8 +75,16 @@ class RelionTomoVolumeViewer(RelionViewer):
                            f"{ITER_NOTATIONS_MSG}\n")
 
         group = form.addGroup('Volumes')
+        multiClassCond = f'{self._getNClasses()} > 1'
+        group.addParam(CLASS_MODE, EnumParam,
+                       choices=['all', 'selection'],
+                       default=CLASSES_ALL,
+                       display=EnumParam.DISPLAY_HLIST,
+                       condition=multiClassCond,
+                       label='Classes to visualize')
+
         group.addParam(CLASSES_TO_SHOW, NumericRangeParam,
-                       condition=f'{self._getNClasses()} > 1',
+                       condition=f'{multiClassCond} & {CLASS_MODE} == {CLASSES_SEL}',
                        label='Classes',
                        help=f"Write the class list to visualize. "
                             f"If empty, all the classes will be displayed.\n"
@@ -101,6 +101,10 @@ class RelionTomoVolumeViewer(RelionViewer):
     def _getVisualizeDict(self) -> dict:
         visualizeDict = {DISPLAY_VOL: self._showVolumes}
         return visualizeDict
+
+    def _getAttrib(self, attribName: str, retScipionType: bool = False):
+        scipionTypeAttrib = getattr(self, attribName)
+        return scipionTypeAttrib if retScipionType else scipionTypeAttrib.get()
 
     def _hasClasses(self):
         return self.isCl3d or self.isInitVol
@@ -138,6 +142,19 @@ class RelionTomoVolumeViewer(RelionViewer):
         path = self.protocol._getExtraPath('relion_viewer_volumes.sqlite')
         samplingRate = self._getInParticles().getSamplingRate()
 
+        # JORGE
+        import os
+        fname = "/home/jjimenez/test_JJ.txt"
+        if os.path.exists(fname):
+            os.remove(fname)
+        fjj = open(fname, "a+")
+        fjj.write('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
+        fjj.close()
+        print('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
+        import time
+        time.sleep(10)
+        # JORGE_END
+
         files = []
         volumes = self._getVolumeNames()
         for volFn in volumes:
@@ -170,12 +187,12 @@ class RelionTomoVolumeViewer(RelionViewer):
     def _getVolumeNames(self):
         vols = []
         nClasses = self._getNClasses()
-        classesToShow = getattr(self, CLASSES_TO_SHOW)
-        if classesToShow:
-            selectedClasses = self._getRange(getattr(self, CLASSES_TO_SHOW), 'classes')
+        classesToShow = self._getAttrib(CLASSES_TO_SHOW, retScipionType=True)
+        if classesToShow.get():
+            selectedClasses = self._getRange(classesToShow, 'classes')
         else:
             selectedClasses = list(range(1, nClasses + 1))
-        viewerIter = getattr(self, VIEW_ITER)
+        viewerIter = self._getAttrib(VIEW_ITER)
         if viewerIter == ITER_SYMMETRIZED:
             logger.debug(f"Symmetrized final volumes requested.")
             if nClasses == 1:
@@ -191,7 +208,7 @@ class RelionTomoVolumeViewer(RelionViewer):
             if viewerIter == ITER_LAST:
                 iterations = [lastIter]
             else:  # viewerIter == ITER_SELECTION
-                iterations = self._getRange(getattr(self, ITER_SELECT), 'iterations')
+                iterations = self._getRange(self._getAttrib(ITER_SELECT, retScipionType=True), 'iterations')
 
             for it in iterations:
                 for clId in selectedClasses:
