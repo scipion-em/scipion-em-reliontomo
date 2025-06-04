@@ -50,8 +50,11 @@ class RelionTomoVolumeViewer(RelionViewer):
 
     def _defineParams(self, form):
         form.addSection(label='Visualization')
+        viewIterChoices = ['last', 'selection']
+        if self.isInitVol:
+            viewIterChoices.append('final volume')
         form.addParam(VIEW_ITER, EnumParam,
-                      choices=['last', 'selection', 'final volume'],
+                      choices=viewIterChoices,
                       default=ITER_LAST,
                       display=EnumParam.DISPLAY_LIST,
                       label="Iteration to visualize",
@@ -115,12 +118,12 @@ class RelionTomoVolumeViewer(RelionViewer):
     def _getNClasses(self) -> int:
         return self.protocol.numberOfClasses.get() if self._hasClasses() else 1
 
-    def _getFirstAndLastIter(self) -> Union[Tuple[int, int], None]:
+    def _getFirstAndLastIter(self) -> Tuple[int, int]:
         filesPath = self.protocol._getExtraPath()
-        if self.isInitVol:
-            filesPattern = '_class001'
-            return self._readResultFiles(filesPath, filesPattern)
-        return None
+        # if self.isInitVol:
+        filesPattern = '_class001'
+        return self._readResultFiles(filesPath, filesPattern)
+        # return None
 
     @staticmethod
     def _readResultFiles(filesPath: str,
@@ -131,9 +134,15 @@ class RelionTomoVolumeViewer(RelionViewer):
             # Check if the file matches the given pattern
             if re.match(fr'.*{filesPattern}\.{fileExt}$', file):
                 # Extract the iteration number using regular expression
-                iteration = re.search(fr'_it(\d+){filesPattern}\.{fileExt}$', file).group(1)
-                # Append the iteration number to the list
-                iterations.append(int(iteration))
+                try:
+                    iteration = re.search(fr'_it(\d+){filesPattern}\.{fileExt}$', file).group(1)
+                    # Append the iteration number to the list
+                    iterations.append(int(iteration))
+                except Exception as e:
+                    logger.info(f'_readResultFiles failed for:\n'
+                                f'\t- file = {file}\n'
+                                f'\t- error = {e}')
+                    continue
 
         return min(iterations), max(iterations)
 
