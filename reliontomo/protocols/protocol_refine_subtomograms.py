@@ -25,6 +25,8 @@
 import glob
 import re
 from enum import Enum
+from typing import Tuple
+
 from pwem.convert.headers import fixVolume
 from pwem.objects import SetOfFSCs
 from reliontomo.objects import RelionSetOfPseudoSubtomograms
@@ -257,13 +259,11 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
 
         # Output volume
         vol = AverageSubTomogram()
-        volName = self._getExtraPath('_class001.mrc')
+        volName = self._getRefineResultFn()
         fixVolume(volName)  # Fix header for xmipp to consider it a volume instead of a stack
         vol.setFileName(volName)
         vol.setSamplingRate(relionParticles.getCurrentSamplingRate())
-        pattern = '*it*half%s_class*.mrc'
-        half1 = self._getLastFileName(self._getExtraPath(pattern % 1))
-        half2 = self._getLastFileName(self._getExtraPath(pattern % 2))
+        half1, half2 = self._getRefineResultHalves()
         vol.setHalfMaps([half1, half2])
 
         # Output FSC
@@ -283,6 +283,15 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
     # -------------------------- INFO functions -------------------------------
 
     # --------------------------- UTILS functions -----------------------------
+    def _getRefineResultFn(self) -> str:
+        return self._getExtraPath('_class001.mrc')
+
+    def _getRefineResultHalves(self) -> Tuple[str, str]:
+        pattern = '*it*half%s_class*.mrc'
+        half1 = self._getLastFileName(self._getExtraPath(pattern % 1))
+        half2 = self._getLastFileName(self._getExtraPath(pattern % 2))
+        return half1, half2
+
     def _genAutoRefineCommand(self):
         cmd = self._genBaseCommand()
         cmd += ' --auto_refine --split_random_halves --low_resol_join_halves 40 --norm --scale --flatten_solvent '

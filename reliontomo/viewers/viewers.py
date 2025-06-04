@@ -22,7 +22,7 @@ DISPLAY_VOL = 'displayVol'
 # Viewer constants
 ITER_LAST = 0
 ITER_SELECTION = 1
-ITER_SYMMETRIZED = 2
+ITER_FINAL_VOL = 2
 
 CLASSES_ALL = 0
 CLASSES_SEL = 1
@@ -51,7 +51,7 @@ class RelionTomoVolumeViewer(RelionViewer):
     def _defineParams(self, form):
         form.addSection(label='Visualization')
         viewIterChoices = ['last', 'selection']
-        if self.isInitVol:
+        if not self.isCl3d:
             viewIterChoices.append('final volume')
         form.addParam(VIEW_ITER, EnumParam,
                       choices=viewIterChoices,
@@ -120,8 +120,7 @@ class RelionTomoVolumeViewer(RelionViewer):
 
     def _getFirstAndLastIter(self) -> Tuple[int, int]:
         filesPath = self.protocol._getExtraPath()
-        # if self.isInitVol:
-        filesPattern = '_class001'
+        filesPattern = '_half1_class001' if self.isRefine else '_class001'
         return self._readResultFiles(filesPath, filesPattern)
         # return None
 
@@ -150,19 +149,6 @@ class RelionTomoVolumeViewer(RelionViewer):
         """Write a sqlite with all volumes selected for visualization."""
         path = self.protocol._getExtraPath('relion_viewer_volumes.sqlite')
         samplingRate = self._getInParticles().getSamplingRate()
-
-        # JORGE
-        import os
-        fname = "/home/jjimenez/test_JJ.txt"
-        if os.path.exists(fname):
-            os.remove(fname)
-        fjj = open(fname, "a+")
-        fjj.write('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
-        fjj.close()
-        print('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
-        import time
-        time.sleep(10)
-        # JORGE_END
 
         files = []
         volumes = self._getVolumeNames()
@@ -202,15 +188,19 @@ class RelionTomoVolumeViewer(RelionViewer):
         else:
             selectedClasses = list(range(1, nClasses + 1))
         viewerIter = self._getAttrib(VIEW_ITER)
-        if viewerIter == ITER_SYMMETRIZED:
-            logger.debug(f"Symmetrized final volumes requested.")
-            if nClasses == 1:
-                volFn = self._getInitialModelOutFn()
-                self.__appendVolFn(volFn, vols)
-            else:
-                for clId in selectedClasses:
-                    volFn = self._getInitialModelOutFn(clId)
+        if viewerIter == ITER_FINAL_VOL:
+            logger.debug(f"Final volumes requested.")
+            if self.isInitVol:
+                if nClasses == 1:
+                    volFn = self._getInitialModelOutFn()
                     self.__appendVolFn(volFn, vols)
+                else:
+                    for clId in selectedClasses:
+                        volFn = self._getInitialModelOutFn(clId)
+                        self.__appendVolFn(volFn, vols)
+            else:  # Refinement
+                volFn = self._getRefineResultFn()
+                self.__appendVolFn(volFn, vols)
         else:
             # Get the iterations
             firstIter, lastIter = self._getFirstAndLastIter()
@@ -219,9 +209,10 @@ class RelionTomoVolumeViewer(RelionViewer):
             else:  # viewerIter == ITER_SELECTION
                 iterations = self._getRange(self._getAttrib(ITER_SELECT, retScipionType=True), 'iterations')
 
+            halfStr = '_half1' if self.isRefine else ''
             for it in iterations:
                 for clId in selectedClasses:
-                    volFn =self._getIterVolname(it, clId)
+                    volFn =self._getIterVolname(it, clId, halfStr=halfStr)
                     self.__appendVolFn(volFn, vols)
 
         return vols
@@ -234,13 +225,21 @@ class RelionTomoVolumeViewer(RelionViewer):
             raise FileNotFoundError(f"Volume {initialModelFn} does not exists.\n"
                                     "Please select a valid class number.")
 
-    def _getIterVolname(self, iter: int, classInd: int) -> str:
-        volFn = self.protocol._getExtraPath(f'_it{iter:03d}_class{classInd:03d}.mrc')
+    def _getIterVolname(self, iter: int, classInd: int, halfStr: str = '') -> str:
+        volFn = self.protocol._getExtraPath(f'_it{iter:03d}{halfStr}_class{classInd:03d}.mrc')
         if exists(volFn):
             return volFn
         else:
             raise FileNotFoundError(f"Volume {volFn} does not exists.\n"
                                     "Please select a valid iteration and/or class number.")
+
+    def _getRefineResultFn(self):
+        volFn = self.protocol._getRefineResultFn()
+        if exists(volFn):
+            return volFn
+        else:
+            raise FileNotFoundError(f"Volume {volFn} does not exists.\n"
+                                    "Please wait until the refinement finishes.")
 
     @staticmethod
     def __appendVolFn(volFn: str, vols: list) -> None:
