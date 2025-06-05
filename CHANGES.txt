@@ -1,7 +1,11 @@
 v4.0.2:
   Users:
-    - RelionSubtomograms do not longer have an index in the path. Just the file name. This allows for correct visualization
+    - RelionSubtomograms no longer have an index in the path. Just the file name. This allows for correct visualization
       of the subtomograms in the metadata viewers.
+    - Analyze results now displays an auxiliar window with display options for the protocols initial volume,
+      3d classification, and subtomos refine.
+    - Improved Relion version detection by checking both the path and the conda environment name, ensuring
+      either ends with relion-5.0.
 v4.0.1:
   Users:
     - Ensure that the pseudo-subtomograms of the initial model protocol have even dimensions.
