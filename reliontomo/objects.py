@@ -23,7 +23,7 @@
 # *
 # **************************************************************************
 from enum import Enum
-from os.path import exists, join
+from os.path import exists, join, isfile, basename, dirname
 from typing import Union
 
 from emtable import Table
@@ -57,7 +57,7 @@ class RelionPSubtomogram(SubTomogram):
                  rdnSubset=None, relionParticleName=None, visibleFrames=None,
                  opticsGroupId=1, manifoldIndex=None, logLikeliCont=None, maxValProbDist=None,
                  noSignifSamples=None, rot=None, tilt=None, psi=None, tiltPrior=None, psiPrior=None,
-                 groupId=1, normCorrection=0, **kwargs):
+                 groupId=1, normCorrection=0, coordX=None, coordY=None, coordZ=None, **kwargs):
         super().__init__(**kwargs)
         self.setFileName(fileName)
         self.setSamplingRate(samplingRate)
@@ -89,6 +89,18 @@ class RelionPSubtomogram(SubTomogram):
         self._psiPrior = Float(psiPrior)
         # NOTE: the angles used in the transformation matrix are rlnTomoSubtomogramRot|Tilt|Psi. Hence, the others are
         # stored as class attributes
+        self._coordX = Float(coordX)
+        self._coordY = Float(coordY)
+        self._coordZ = Float(coordZ)
+
+    def getCoordX(self):
+        return self._coordX
+
+    def getCoordY(self):
+        return self._coordY
+
+    def getCoordZ(self):
+        return self._coordZ
 
     def getCtfFile(self):
         return self._ctfFile.get()
@@ -283,19 +295,37 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
             raise TypeError('No optimisation set star file was provided.')
 
     def _readOptimSetStar(self, optimSetStar):
+        def resolvePath(filePath, baseDir):
+            """Return filePath if it exists, otherwise try to find it in baseDir."""
+            if filePath and not isfile(filePath):
+                altPath = join(baseDir, basename(filePath))
+                if isfile(altPath):
+                    return altPath
+            return filePath
+
+        baseDir = dirname(optimSetStar)
+
         dataTable = Table()
         dataTable.read(optimSetStar)
         rowObj = dataTable[0]  # This file only contains the different filenames related to the current STA step
-        self._tomograms.set(rowObj.get(OPT_TOMOS_STAR, None))
-        self._particles.set(rowObj.get(OPT_PARTICLES_STAR, None))
-        self._trajectories.set(rowObj.get(OPT_TRAJECTORIES_STAR, None))
-        self._manifolds.set(rowObj.get(OPT_MANIFOLDS_STAR, None))
-        self._referenceFsc.set(rowObj.get(OPT_FSC_STAR, None))
-        # Read optimisation set and fill the corresponding attribute
-        og = OpticsGroups(Table(fileName=self._particles.get(), tableName=OPTICS_TABLE))
-        acq = self.getAcquisition()
-        acq.opticsGroupInfo = String(og.toString())
-        self.setAcquisition(acq)
+
+        tomosPath = resolvePath(rowObj.get(OPT_TOMOS_STAR, None), baseDir)
+        particlesPath = resolvePath(rowObj.get(OPT_PARTICLES_STAR, None), baseDir)
+        trajectoriesPath = resolvePath(rowObj.get(OPT_TRAJECTORIES_STAR, None), baseDir)
+        manifoldsPath = resolvePath(rowObj.get(OPT_MANIFOLDS_STAR, None), baseDir)
+        fscPath = resolvePath(rowObj.get(OPT_FSC_STAR, None), baseDir)
+
+        self._tomograms.set(tomosPath)
+        self._particles.set(particlesPath)
+        self._trajectories.set(trajectoriesPath)
+        self._manifolds.set(manifoldsPath)
+        self._referenceFsc.set(fscPath)
+
+        # Read the optimisation set and fill the corresponding attribute
+        opticsGroups = OpticsGroups(Table(fileName=self._particles.get(), tableName=OPTICS_TABLE))
+        acquisition = self.getAcquisition()
+        acquisition.opticsGroupInfo = String(opticsGroups.toString())
+        self.setAcquisition(acquisition)
 
     def updateGenFiles(self, extraPath):
         """Some protocols don't generate the optimisation_set.star file. In that case, the input Object which

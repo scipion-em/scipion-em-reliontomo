@@ -23,6 +23,7 @@
 # *
 # **************************************************************************
 import logging
+import os.path
 from typing import Dict, Union, List, Set, Tuple
 from emtable import Table
 from pwem import ALIGN_NONE
@@ -33,7 +34,7 @@ from pyworkflow.utils import yellowStr, prettyTime, createLink
 from relion.convert import OpticsGroups
 from reliontomo.constants import *
 import numpy as np
-from os.path import join, basename
+from os.path import join, basename, exists
 from reliontomo.convert.convertBase import (getTransformInfoFromCoordOrSubtomo,
                                             WriterTomo, ReaderTomo, getTransformMatrixFromRow, genTransformMatrix)
 from reliontomo.objects import RelionPSubtomogram, RelionSetOfPseudoSubtomograms
@@ -981,6 +982,9 @@ class Reader(ReaderTomo):
                                           psiPrior=row.get(RLN_ANGLEPSIPRIOR, 0),
                                           groupId=row.get(RLN_GROUPNUMBER, -1),
                                           normCorrection=row.get(RLN_NORMCORRECTION, -1),
+                                          coordX=row.get(RLN_COORDINATEX, 0),
+                                          coordY=row.get(RLN_COORDINATEY, 0),
+                                          coordZ=row.get(RLN_COORDINATEZ, 0),
                                           )
 
             # TODO: decide what to do with this
