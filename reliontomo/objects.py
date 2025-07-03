@@ -94,13 +94,13 @@ class RelionPSubtomogram(SubTomogram):
         self._coordZ = Float(coordZ)
 
     def getCoordX(self):
-        return self._coordX
+        return self._coordX.get()
 
     def getCoordY(self):
-        return self._coordY
+        return self._coordY.get()
 
     def getCoordZ(self):
-        return self._coordZ
+        return self._coordZ.get()
 
     def getCtfFile(self):
         return self._ctfFile.get()

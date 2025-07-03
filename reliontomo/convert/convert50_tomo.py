@@ -787,7 +787,8 @@ class Writer(WriterTomo):
 
             # Particles table
             particlesStarFields = particles2dStarFields if are2dParticles else particles3dStarFields
-            hasCoords = pSubtomoSet.getFirstItem().hasCoordinate3D()
+            firstItem = pSubtomoSet.getFirstItem()
+            hasCoords = firstItem.hasCoordinate3D()
             if hasCoords:
                 sciCoordsFields = [
                     SCIPION_COORD_X,
@@ -796,6 +797,14 @@ class Writer(WriterTomo):
                     SCIPION_COORD_GROUP_ID
                 ]
                 particlesStarFields.extend(sciCoordsFields)
+
+            hasWarpCoords = firstItem.getCoordX()
+            if hasWarpCoords is not None:
+                warpCoordsFields = [
+                    COORD_X, COORD_Y, COORD_Z
+                ]
+            particlesStarFields.extend(warpCoordsFields)
+
             particlesTable = Table(columns=particlesStarFields)
             for pSubtomo in pSubtomoSet.iterSubtomos():
                 angles, shifts = getTransformInfoFromCoordOrSubtomo(pSubtomo, sRate)
@@ -844,6 +853,11 @@ class Writer(WriterTomo):
                                      pSubtomo.getCoordinate3D().getZ(SCIPION),  # 29, sciZCoord
                                      pSubtomo.getCoordinate3D().getGroupId(),  # 30, sciGroupId
                                      ]
+                if hasWarpCoords:
+                    particlesRow += [pSubtomo.getCoordX(),  #28 rlnCoordinateX
+                                     pSubtomo.getCoordY(),  #29 rlnCoordinateY
+                                     pSubtomo.getCoordZ()]  #30 rlnCoordinateZ
+
                 particlesTable.addRow(*particlesRow)
                 # Write the STAR file
             particlesTable.writeStar(f, tableName=PARTICLES_TABLE)
