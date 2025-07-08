@@ -242,7 +242,7 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         cmd += '--pad %i ' % (1 if self.skipPadding.get() else 2)
 
         # Additional args
-        cmd += self._genAddiotionalBaseCmd()
+        cmd += self._genAdditionalBaseCmd()
 
         return cmd
 

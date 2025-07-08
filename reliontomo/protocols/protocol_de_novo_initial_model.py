@@ -23,18 +23,22 @@
 # *
 # **************************************************************************
 from enum import Enum
+from os.path import exists
+from typing import Union
 from pwem.convert.headers import fixVolume
-from reliontomo.constants import INITIAL_MODEL, SYMMETRY_HELP_MSG
+from pwem.objects import Volume, SetOfVolumes
+from pyworkflow.object import Pointer
+from reliontomo.constants import SYMMETRY_HELP_MSG
 from reliontomo.protocols.protocol_base_refine import ProtRelionRefineBase
 from reliontomo.protocols.protocol_base_relion import IS_RELION_50
-from tomo.objects import AverageSubTomogram
 from reliontomo import Plugin
 from pyworkflow.protocol import LEVEL_ADVANCED
 from reliontomo.utils import getProgram
 
 
 class outputObjects(Enum):
-    average = AverageSubTomogram()
+    average = Volume
+    averages = SetOfVolumes
 
 
 class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
@@ -103,19 +107,31 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
                              numberOfMpi=nMpi)
 
     def alignSymmetry(self):
-        Plugin.runRelionTomo(self,
-                             'relion_align_symmetry',
-                             self._genApplySymCmd())
+        if self.numberOfClasses.get() == 1:
+            Plugin.runRelionTomo(self,
+                                 'relion_align_symmetry',
+                                 self._genApplySymCmd())
+        else:
+            for i in range(self.numberOfClasses.get()):
+                Plugin.runRelionTomo(self,
+                                     'relion_align_symmetry',
+                                     self._genApplySymCmd(classIndex=i + 1))
 
     def createOutputStep(self):
-        inRelionParticles = self.getInputParticles()
-        vol = AverageSubTomogram()
-        iniModel = self._getExtraPath(INITIAL_MODEL)
-        fixVolume(iniModel)  # Fix header to make it interpreted as volume instead of a stack by xmipp
-        vol.setFileName(iniModel)
-        vol.setSamplingRate(inRelionParticles.getSamplingRate())
-        self._defineOutputs(**{outputObjects.average.name: vol})
-        self._defineSourceRelation(inRelionParticles, vol)
+        inRelionParticlesPointer = self.getInputParticles(returnPointer=True)
+        if self.numberOfClasses.get() == 1:
+            vol = self._createOutputModel(inRelionParticlesPointer)
+            self._defineOutputs(**{outputObjects.average.name: vol})
+            self._defineSourceRelation(inRelionParticlesPointer, vol)
+        else:
+            avgSet = SetOfVolumes.create(self._getPath(), template='averages%s.sqlite')
+            avgSet.copyInfo(self.getInputParticles())
+            for i in range(self.numberOfClasses.get()):
+                vol = self._createOutputModel(inRelionParticlesPointer, classIndex=i + 1)
+                avgSet.append(vol)
+
+            self._defineOutputs(**{outputObjects.averages.name: avgSet})
+            self._defineSourceRelation(inRelionParticlesPointer, avgSet)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
@@ -130,7 +146,7 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         return errorMsg
 
     # --------------------------- UTILS functions -----------------------------
-    def _genInitModelCommand(self):
+    def _genInitModelCommand(self) -> str:
         # Common parameters from base protocol
         cmd = self._genBaseCommand(useOptimizationSet=False)
 
@@ -153,9 +169,10 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
             cmd += '--sigma_tilt %i ' % self.priorWidthTiltAngle.get()
         return cmd
 
-    def _genApplySymCmd(self):
-        cmd = '--i %s ' % self._getExtraPath(self._getModelName())
-        cmd += '--o %s ' % self._getExtraPath(INITIAL_MODEL)
+    def _genApplySymCmd(self, classIndex: Union[int, None] = None) -> str:
+        cmd = '--o %s ' % self._getInitialModelOutFn(classIndex=classIndex)
+        classIndex = 1 if classIndex is None else classIndex
+        cmd += '--i %s ' % self._getExtraPath(self._getModelName(classIndex))
         if self.doInC1AndApplySymLater.get() and 'c1' not in self.symmetry.get().lower():
             cmd += '--sym %s ' % self.symmetry.get()
         else:
@@ -163,6 +180,21 @@ class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
         cmd += '--apply_sym --select_largest_class '
         return cmd
 
-    def _getModelName(self):
+    def _getModelName(self, classIndex: Union[int, None]) -> str:
         """generate the name of the volume following this pattern _it002_model.star"""
-        return '_it{:03d}_model.star'.format(self.nVdamMiniBatches.get())
+        classIndexStr = f'{classIndex:03d}' if classIndex is not None else ''
+        return f'_it{self.nVdamMiniBatches.get():03d}_class{classIndexStr}.mrc'
+
+    def _getInitialModelOutFn(self, classIndex: Union[int, None] = None) -> str:
+        classIndexStr = f'_{classIndex:03d}' if classIndex is not None else ''
+        return self._getExtraPath(f'initial_model{classIndexStr}.mrc')
+
+    def _createOutputModel(self,
+                           inRelionParticlesPointer: Pointer,
+                           classIndex: Union[int, None] = None) -> Volume:
+        vol = Volume()
+        iniModelFile = self._getInitialModelOutFn(classIndex=classIndex)
+        fixVolume(iniModelFile)  # Fix header to make it interpreted as volume instead of a stack by xmipp
+        vol.setFileName(iniModelFile)
+        vol.setSamplingRate(inRelionParticlesPointer.get().getSamplingRate())
+        return vol

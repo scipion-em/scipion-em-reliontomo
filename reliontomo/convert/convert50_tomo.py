@@ -814,8 +814,8 @@ class Writer(WriterTomo):
                     field12 = pSubtomo.getVisibleFrames()
                     field13 = imageName
                 else:
-                    field12 = imageName
-                    field13 = pSubtomo.getCtfFile() if pSubtomo.getCtfFile() else FILE_NOT_FOUND
+                    field12 = pSubtomo.getCtfFile() if pSubtomo.getCtfFile() else FILE_NOT_FOUND
+                    field13 = imageName
 
                 # Add row to the table which will be used to generate the STAR file
                 particlesRow = [

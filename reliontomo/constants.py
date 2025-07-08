@@ -171,7 +171,6 @@ PSUBTOMOS_SQLITE = 'pseudosubtomograms%s.sqlite'
 # Initial models
 REC_PARTICLES_DIR = 'recParticles'
 PSEUDO_SUBTOMOS_DIR = 'pseudoSubtomos'
-INITIAL_MODEL = 'initial_model.mrc'
 
 # Refine - angular sampling
 ANGULAR_SAMPLING_LIST = ['30', '15', '7.5', '3.7', '1.8', '0.9', '0.5',

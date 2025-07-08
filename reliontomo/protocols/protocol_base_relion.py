@@ -23,11 +23,14 @@
 # *
 # **************************************************************************
 from os.path import exists, join
+from typing import Union
+
 from emtable import Table
 
 from pwem.objects import Volume, FSC
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA, PROD
+from pyworkflow.object import Pointer
 from pyworkflow.protocol import PointerParam, StringParam, IntParam
 from pyworkflow.utils import Message, createLink
 from reliontomo import Plugin
@@ -88,8 +91,9 @@ class ProtRelionTomoBase(EMProtocol):
                            "--pad 2\n")
 
     # --------------------------- UTILS functions -----------------------------
-    def getInputParticles(self):
-        return self.inReParticles.get()
+    def getInputParticles(self, returnPointer: bool=False) -> Union[Pointer, RelionSetOfPseudoSubtomograms]:
+        reParticlesPointer = self.inReParticles
+        return reParticlesPointer if returnPointer else reParticlesPointer.get()
 
     def getOutStarFileName(self):
         return self._getExtraPath(IN_PARTICLES_STAR)

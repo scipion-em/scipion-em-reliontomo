@@ -388,7 +388,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         cmd += self._genCTFBaseCmd()  # CTF args
         cmd += self._genOptimisationBaseCmd()  # Optimisation args
         cmd += self._genComputeBaseCmd()  # Compute args
-        cmd += self._genAddiotionalBaseCmd()  # Additional args
+        cmd += self._genAdditionalBaseCmd()  # Additional args
         return cmd
 
     def _genIOBaseCmd(self, useOptimizationSet=False):
@@ -433,7 +433,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
             cmd += '--gpu "%s" ' % self.gpusToUse.get()
         return cmd
 
-    def _genAddiotionalBaseCmd(self):
+    def _genAdditionalBaseCmd(self):
         cmd = '--oversampling %i ' % self.oversampling.get()
         cmd += self._genExtraParamsCmd()
         return cmd
