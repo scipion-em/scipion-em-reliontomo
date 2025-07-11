@@ -1,3 +1,15 @@
+v4.0.2:
+  Users:
+    - RelionSubtomograms no longer have an index in the path. Just the file name. This allows for correct visualization
+      of the subtomograms in the metadata viewers.
+    - Analyze results now displays an auxiliar window with display options for the protocols initial volume,
+      3d classification, and subtomos refine.
+    - Improved Relion version detection by checking both the path and the conda environment name, ensuring
+      either ends with relion-5.0.
+    - The initial protocol model now supports multiple classes in Scipion..
+    - Fix bug in pseudoSubtomograms2Star for 3D particles.
+   Developers:
+    - The initial model protocol tests were expanded to cover multiclass and 3D particle cases.
 v4.0.1:
   Users:
     - Ensure that the pseudo-subtomograms of the initial model protocol have even dimensions.

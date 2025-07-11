@@ -23,7 +23,7 @@
 # *
 # **************************************************************************
 import logging
-from typing import Dict, Union, List, Set
+from typing import Dict, Union, List, Set, Tuple
 from emtable import Table
 from pwem import ALIGN_NONE
 from pwem.emlib.image import ImageHandler
@@ -39,7 +39,7 @@ from reliontomo.convert.convertBase import (getTransformInfoFromCoordOrSubtomo,
 from reliontomo.objects import RelionPSubtomogram, RelionSetOfPseudoSubtomograms
 from tomo.constants import TR_RELION, SCIPION
 from tomo.objects import Coordinate3D, Tomogram, TiltSeries, CTFTomoSeries, SetOfCoordinates3D, SetOfTomograms, \
-    TiltSeriesM, SetOfTiltSeriesM, TiltImage, SetOfTiltSeries
+    TiltSeriesM, SetOfTiltSeriesM, TiltImage, SetOfTiltSeries, CTFTomo
 from tomo.utils import getCommonTsAndCtfElements
 
 logger = logging.getLogger(__name__)
@@ -344,9 +344,10 @@ class Writer(WriterTomo):
             sRate = ts.getSamplingRate()
             tiltAxisAngle = ts.getAcquisition().getTiltAxisAngle()
             tsTable = Table(columns=tsStarFields)
-            for ti, ctfTomo in zip(ts, ctf):
-                # Add only the images that correspond to a non-excluded view in alignment and in CTF estimation
-                if ti.getAcquisitionOrder() in presentAcqOrders and ctfTomo.getAcquisitionOrder() in presentAcqOrders:
+            for ti in ts.iterItems():
+                ctfTomo = ctf.getCtfTomoFromTi(ti)
+                acqOrder = ti.getAcquisitionOrder()
+                if ctfTomo and acqOrder in presentAcqOrders:
                     acqTi = ti.getAcquisition()
                     tiltAngle = ti.getTiltAngle()
                     oddEven = ti.getOddEven()
@@ -415,7 +416,7 @@ class Writer(WriterTomo):
                         rotAngle,  # 25, rlnTomoZRot
                         sxAngst,  # 26, rlnTomoXShiftAngst
                         syAngst,  # 27, rlnTomoYShiftAngst
-                        np.cos(np.deg2rad(tiltAngle)),  # 28, rlnCtfScalefactor
+                        np.cos(np.deg2rad(tiltAngle))  # 28, rlnCtfScalefactor
                     )
             # Write the STAR file
             tsTable.writeStar(f, tableName=tsId)
@@ -803,8 +804,8 @@ class Writer(WriterTomo):
                     field12 = pSubtomo.getVisibleFrames()
                     field13 = imageName
                 else:
-                    field12 = imageName
-                    field13 = pSubtomo.getCtfFile() if pSubtomo.getCtfFile() else FILE_NOT_FOUND
+                    field12 = pSubtomo.getCtfFile() if pSubtomo.getCtfFile() else FILE_NOT_FOUND
+                    field13 = imageName
 
                 # Add row to the table which will be used to generate the STAR file
                 particlesRow = [
@@ -999,7 +1000,7 @@ class Reader(ReaderTomo):
             # Set the transformation matrix
             t.setMatrix(getTransformMatrixFromRow(row, sRate=sRate, isRe5Star=True))
             psubtomo.setTransform(t)
-            psubtomo.setIndex(counter)
+            # This is not necessary: psubtomo.setIndex(counter)
             psubtomo.setClassId(row.get(RLN_CLASSNUMBER, 1))
 
             # Add current pseudosubtomogram to the output set
@@ -1009,7 +1010,9 @@ class Reader(ReaderTomo):
         outputSet.setNReParticles(self.dataTable.size())
 
 
-def getProjMatrixList(tsStarFile: str, tomogram: Tomogram, ts: TiltSeries) -> List[np.ndarray]:
+def getProjMatrixList(tsStarFile: str, 
+                      tomogram: Tomogram, 
+                      ts: TiltSeries ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     # / *From
     # Alister
     # Burt
@@ -1031,6 +1034,7 @@ def getProjMatrixList(tsStarFile: str, tomogram: Tomogram, ts: TiltSeries) -> Li
     # * /
     # specimen_shifts(xshift_angst / optics.pixelSize, yshift_angst / optics.pixelSize, 0.);
     prjMatrixList = []
+    indexList = []
     dataTable = Table()
     dataTable.read(tsStarFile)
     tsSRate = ts.getSamplingRate()
@@ -1062,8 +1066,9 @@ def getProjMatrixList(tsStarFile: str, tomogram: Tomogram, ts: TiltSeries) -> Li
         # logger.info(f'r0 =\n{r0}')
         # logger.info(f's0 =\n{s0}')
         prjMatrixList.append(prjMatrix)
+        indexList.append(int(row.get(RLN_MICROGRAPH_NAME).split('@')[0]))
 
-    return prjMatrixList
+    return prjMatrixList, indexList
 
 
 def gen3dRotXMatrix(angleInDeg):

@@ -23,9 +23,10 @@
 # *
 # **************************************************************************
 from os.path import exists
-from typing import Type
+from typing import Type, Union, Tuple
 from imod.protocols import ProtImodImportTransformationMatrix
 from imod.protocols.protocol_base import OUTPUT_TILTSERIES_NAME
+from pwem.objects import Volume, SetOfVolumes
 from pwem.protocols import ProtImportMask, ProtImportVolumes
 from pwem.protocols.protocol_import.masks import ImportMaskOutput
 from pyworkflow.tests import setupTestProject, DataSet
@@ -493,18 +494,44 @@ class TestRelion5TomoEditStar(TestRelion5RefineCycleBase):
 
 class TestRelion5TomoGenInitialModel(TestRelion5RefineCycleBase):
 
-    def testInitialModel(self):
+    def testInitialModel_01(self):
+        self._runInitModelTest()
+
+    def testInitialModel_02(self):
+        self._runInitModelTest(nClasses=2)
+
+    def testInitialModel_03(self):
+        self._runInitModelTest(are2dStacks=False)
+
+    def _runInitModelTest(self,
+                          are2dStacks: bool = True,
+                          nClasses: int = 1) -> None:
         if IS_RE_50:
-            recVol = self._genInitialModel()
-            self.checkAverage(recVol,
-                              expectedSRate=self.unbinnedSRate * self.binFactor6,
-                              expectedBoxSize=self.croppedBoxSizeBin6,
-                              hasHalves=False)
+            recVol, recVolSet = self._genInitialModel(are2dStacks=are2dStacks,
+                                           nClasses=nClasses)
+            if nClasses == 1:
+                self._checkAverage(recVol)
+                self.assertIsNone(recVolSet)
+            else:
+                self.assertIsNone(recVol)
+                self.checkSetGeneralProps(recVolSet,
+                                          expectedSetSize=nClasses,
+                                          expectedSRate=self.unbinnedSRate * self.binFactor6)
+                for recVol in recVolSet:
+                    self._checkAverage(recVol)
         else:
             print(yellowStr('Relion 4 detected. Test for protocol "Generate initial volume" skipped.'))
 
+    def _checkAverage(self, recVol: Volume):
+        self.checkAverage(recVol,
+                          expectedSRate=self.unbinnedSRate * self.binFactor6,
+                          expectedBoxSize=self.croppedBoxSizeBin6,
+                          hasHalves=False)
+
     @classmethod
-    def _genInitialModel(cls, are2dStacks=True):
+    def _genInitialModel(cls,
+                         are2dStacks: bool = True,
+                         nClasses: int = 1) -> Tuple[Volume, SetOfVolumes]:
         protExtract = cls._runExtractSubtomos(
             inParticles=cls.importedCoords,
             inputCtfTs=cls.importedCtfs,
@@ -515,10 +542,13 @@ class TestRelion5TomoGenInitialModel(TestRelion5RefineCycleBase):
             gen2dParticles=are2dStacks)
         extractedPars = getattr(protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.relionParticles.name, None)
 
-        print(magentaStr("\n==> Generating the a de novo 3D initial model:"))
+        print(magentaStr(f"\n==> Generating the a de novo 3D initial model:"
+                         f"\n\t- are2dStacks = {are2dStacks}"
+                         f"\n\t- nClasses = {nClasses}"))
         protInitialModel = cls.newProtocol(ProtRelionDeNovoInitialModel,
                                            inReParticles=extractedPars,
                                            nVdamMiniBatches=20,
+                                           numberOfClasses=nClasses,
                                            maskDiameter=500,
                                            symmetry=cls.symmetry,
                                            priorWidthTiltAngle=10,
@@ -529,7 +559,8 @@ class TestRelion5TomoGenInitialModel(TestRelion5RefineCycleBase):
                                            numberOfMpi=1,
                                            binThreads=6)
         cls.launchProtocol(protInitialModel)
-        return getattr(protInitialModel, ProtRelionDeNovoInitialModel._possibleOutputs.average.name, None)
+        return (getattr(protInitialModel, ProtRelionDeNovoInitialModel._possibleOutputs.average.name, None),
+                getattr(protInitialModel, ProtRelionDeNovoInitialModel._possibleOutputs.averages.name, None))
 
 
 class TestRelionTomo5Classify3d(TestRelion5RefineCycleBase):
