@@ -725,7 +725,8 @@ class Writer(WriterTomo):
     @staticmethod
     def pseudoSubtomograms2Star(pSubtomoSet: RelionSetOfPseudoSubtomograms,
                                 outPath: str,
-                                are2dParticles: bool = True):
+                                are2dParticles: bool = True,
+                                isWarp=False):
         """Reads the data_particles table of a generated particles.star file. (output of the command execution
         relion_refine --print_metadata_labels):
 
@@ -798,11 +799,11 @@ class Writer(WriterTomo):
                 ]
                 particlesStarFields.extend(sciCoordsFields)
 
-            hasWarpCoords = firstItem.getCoordX()
-            if hasWarpCoords is not None:
-                warpCoordsFields = [
-                    COORD_X, COORD_Y, COORD_Z
-                ]
+            if isWarp:
+                warpCoordsFields = [COORD_X, COORD_Y, COORD_Z]
+            else:
+                warpCoordsFields = [WRP_COORDINATE_X, WRP_COORDINATE_Y, WRP_COORDINATE_Z]
+
             particlesStarFields.extend(warpCoordsFields)
 
             particlesTable = Table(columns=particlesStarFields)
@@ -853,10 +854,10 @@ class Writer(WriterTomo):
                                      pSubtomo.getCoordinate3D().getZ(SCIPION),  # 29, sciZCoord
                                      pSubtomo.getCoordinate3D().getGroupId(),  # 30, sciGroupId
                                      ]
-                if hasWarpCoords:
-                    particlesRow += [pSubtomo.getCoordX(),  #28 rlnCoordinateX
-                                     pSubtomo.getCoordY(),  #29 rlnCoordinateY
-                                     pSubtomo.getCoordZ()]  #30 rlnCoordinateZ
+
+                particlesRow += [pSubtomo.getCoordX(),  #28 rlnCoordinateX
+                                 pSubtomo.getCoordY(),  #29 rlnCoordinateY
+                                 pSubtomo.getCoordZ()]  #30 rlnCoordinateZ
 
                 particlesTable.addRow(*particlesRow)
                 # Write the STAR file
@@ -964,11 +965,24 @@ class Reader(ReaderTomo):
             logger.info(yellowStr('The star file contains coordinates that belong to tomograms not present '
                                   'in the introduced set of tomograms: %s' % nonMatchingTomoIds))
 
-    def starFile2PseudoSubtomograms(self, outputSet: RelionSetOfPseudoSubtomograms):
+    def starFile2PseudoSubtomograms(self, outputSet: RelionSetOfPseudoSubtomograms,
+                                    calculateWarpCoords=False,
+                                    coordFactor=1):
         sRate = outputSet.getSamplingRate()
-        for counter, row in enumerate(self.dataTable):
+        coordSet = outputSet.getCoordinates3D()
+        counter = 0
+        for row, coord in zip(self.dataTable, coordSet):
             t = Transform()
             particleFile = row.get(RLN_IMAGENAME, None)
+            if calculateWarpCoords:
+                coordX = coord.getX(BOTTOM_LEFT_CORNER) * coordFactor
+                coordY = coord.getY(BOTTOM_LEFT_CORNER) * coordFactor
+                coordZ = coord.getZ(BOTTOM_LEFT_CORNER) * coordFactor
+            else:
+                coordX = row.get(RLN_COORDINATEX, 0)
+                coordY = row.get(RLN_COORDINATEY, 0)
+                coordZ = row.get(RLN_COORDINATEZ, 0)
+
             psubtomo = RelionPSubtomogram(fileName=particleFile,
                                           samplingRate=sRate,
                                           tsId=row.get(RLN_TOMONAME),
@@ -996,10 +1010,11 @@ class Reader(ReaderTomo):
                                           psiPrior=row.get(RLN_ANGLEPSIPRIOR, 0),
                                           groupId=row.get(RLN_GROUPNUMBER, -1),
                                           normCorrection=row.get(RLN_NORMCORRECTION, -1),
-                                          coordX=row.get(RLN_COORDINATEX, 0),
-                                          coordY=row.get(RLN_COORDINATEY, 0),
-                                          coordZ=row.get(RLN_COORDINATEZ, 0),
+                                          coordX=coordX,
+                                          coordY=coordY,
+                                          coordZ=coordZ,
                                           )
+            counter += 1
 
             # TODO: decide what to do with this
             # Keeping particle id

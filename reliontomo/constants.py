@@ -99,6 +99,11 @@ SCIPION_COORD_Y = 'sciYCoord'
 SCIPION_COORD_Z = 'sciZCoord'
 SCIPION_COORD_GROUP_ID = 'sciGroupId'
 
+# Warp Coordinates fields
+WRP_COORDINATE_X = 'wrpCoordinateX'
+WRP_COORDINATE_Y = 'wrpCoordinateY'
+WRP_COORDINATE_Z = 'wrpCoordinateZ'
+
 FILE_NOT_FOUND = 'FileNotFound'
 
 RELION_30_TOMO_LABELS = [TOMO_NAME_30,
