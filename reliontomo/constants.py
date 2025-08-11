@@ -405,6 +405,9 @@ RLN_ANGLETILT = 'rlnAngleTilt'
 RLN_ANGLEPSI = 'rlnAnglePsi'
 RLN_ANGLETILTPRIOR = 'rlnAngleTiltPrior'
 RLN_ANGLEPSIPRIOR = 'rlnAnglePsiPrior'
+RLN_ORIGINXANGST = 'rlnOriginXAngst'
+RLN_ORIGINYANGST = 'rlnOriginYAngst'
+RLN_ORIGINZANGST = 'rlnOriginZAngst'
 
 coordsStarFields = [
     RLN_TOMONAME,
@@ -422,7 +425,10 @@ coordsStarFields = [
     SCIPION_COORD_X,
     SCIPION_COORD_Y,
     SCIPION_COORD_Z,
-    SCIPION_COORD_GROUP_ID
+    SCIPION_COORD_GROUP_ID,
+    RLN_ORIGINXANGST,
+    RLN_ORIGINYANGST,
+    RLN_ORIGINZANGST
 ]
 
 # Relion 5 coordinates attributes
@@ -443,9 +449,6 @@ RLN_TOMOPARTICLENAME = 'rlnTomoParticleName'
 RLN_TOMOVISIBLEFRAMES = 'rlnTomoVisibleFrames'
 RLN_CTFIMAGE = 'rlnCtfImage'
 RLN_IMAGENAME = 'rlnImageName'
-RLN_ORIGINXANGST = 'rlnOriginXAngst'
-RLN_ORIGINYANGST = 'rlnOriginYAngst'
-RLN_ORIGINZANGST = 'rlnOriginZAngst'
 RLN_CENTEREDCOORDINATEXANGST = 'rlnCenteredCoordinateXAngst'
 RLN_CENTEREDCOORDINATEYANGST = 'rlnCenteredCoordinateYAngst'
 RLN_CENTEREDCOORDINATEZANGST = 'rlnCenteredCoordinateZAngst'
