@@ -422,13 +422,13 @@ coordsStarFields = [
     RLN_ANGLEPSI,
     RLN_ANGLETILTPRIOR,
     RLN_ANGLEPSIPRIOR,
+    RLN_ORIGINX,
+    RLN_ORIGINY,
+    RLN_ORIGINZ,
     SCIPION_COORD_X,
     SCIPION_COORD_Y,
     SCIPION_COORD_Z,
     SCIPION_COORD_GROUP_ID,
-    RLN_ORIGINX,
-    RLN_ORIGINY,
-    RLN_ORIGINZ
 ]
 
 # Relion 5 coordinates attributes
