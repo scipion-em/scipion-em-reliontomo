@@ -698,7 +698,7 @@ class Writer(WriterTomo):
             coordsScale = 1 if isRe5Picking else coordsScale
             for tsId, tomo in tomoDict.items():
                 for coord in coordSet.iterCoordinates(volume=tomo):
-                    angles, _ = getTransformInfoFromCoordOrSubtomo(coord, sRate)
+                    angles, shifts = getTransformInfoFromCoordOrSubtomo(coord, sRate)
                     particlesTable.addRow(
                         tsId,  # 1, rlnTomoName
                         coord.getX(RELION_3D_COORD_ORIGIN) * coordsScale,  # 2, rlnCoordinateX
@@ -712,6 +712,9 @@ class Writer(WriterTomo):
                         getattr(coord, R5_PSI_ATTRIB, Float(0)).get(),  # 10, rlnAnglePsi
                         getattr(coord, R5_TILT_PRIOR_ATTRIB, Float(0)).get(),  # 11, rlnAngleTiltPrior
                         getattr(coord, R5_PSI_PRIO_ATTRIB, Float(0)).get(),  # 12, rlnAnglePsiPrior
+                        shifts[0],  # 13, rlnOriginXAngst
+                        shifts[1],  # 14, rlnOriginYAngst
+                        shifts[2],  # 15, rlnOriginZAngst,
                         # Scipion fields
                         coord.getX(SCIPION),  # _sciXCoord
                         coord.getY(SCIPION),  # _sciYCoord
