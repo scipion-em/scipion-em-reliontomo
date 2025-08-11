@@ -405,12 +405,12 @@ RLN_ANGLETILT = 'rlnAngleTilt'
 RLN_ANGLEPSI = 'rlnAnglePsi'
 RLN_ANGLETILTPRIOR = 'rlnAngleTiltPrior'
 RLN_ANGLEPSIPRIOR = 'rlnAnglePsiPrior'
-# RLN_ORIGINX = 'rlnOriginX'
-# RLN_ORIGINY = 'rlnOriginY'
-# RLN_ORIGINZ = 'rlnOriginZ'
-RLN_ORIGINXANGST = 'rlnOriginXAngst'
-RLN_ORIGINYANGST = 'rlnOriginYAngst'
-RLN_ORIGINZANGST = 'rlnOriginZAngst'
+RLN_ORIGINX = 'rlnOriginX'
+RLN_ORIGINY = 'rlnOriginY'
+RLN_ORIGINZ = 'rlnOriginZ'
+# RLN_ORIGINXANGST = 'rlnOriginXAngst'
+# RLN_ORIGINYANGST = 'rlnOriginYAngst'
+# RLN_ORIGINZANGST = 'rlnOriginZAngst'
 
 coordsStarFields = [
     RLN_TOMONAME,
@@ -425,9 +425,9 @@ coordsStarFields = [
     RLN_ANGLEPSI,
     RLN_ANGLETILTPRIOR,
     RLN_ANGLEPSIPRIOR,
-    RLN_ORIGINXANGST,
-    RLN_ORIGINYANGST,
-    RLN_ORIGINZANGST,
+    RLN_ORIGINX,
+    RLN_ORIGINY,
+    RLN_ORIGINZ,
     SCIPION_COORD_X,
     SCIPION_COORD_Y,
     SCIPION_COORD_Z,

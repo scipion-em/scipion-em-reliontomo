@@ -698,7 +698,7 @@ class Writer(WriterTomo):
             coordsScale = 1 if isRe5Picking else coordsScale
             for tsId, tomo in tomoDict.items():
                 for coord in coordSet.iterCoordinates(volume=tomo):
-                    angles, shifts = getTransformInfoFromCoordOrSubtomo(coord, sRate)  # pix, not angstroms
+                    angles, shifts = getTransformInfoFromCoordOrSubtomo(coord, 1)  # pix, not angstroms
                     particlesTable.addRow(
                         tsId,  # 1, rlnTomoName
                         coord.getX(RELION_3D_COORD_ORIGIN) * coordsScale,  # 2, rlnCoordinateX
