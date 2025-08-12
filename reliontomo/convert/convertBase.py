@@ -22,17 +22,19 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+import logging
 from os.path import join
 import numpy as np
 from pwem.convert import transformations
 from pwem.convert.transformations import translation_from_matrix, euler_from_matrix
 from pwem.emlib.image import ImageHandler
-from pyworkflow.utils import getExt, removeBaseExt, replaceBaseExt, makePath
+from pyworkflow.utils import getExt, removeBaseExt, replaceBaseExt, makePath, cyanStr
 from relion.convert.convert_base import WriterBase
-from reliontomo import Plugin
 from reliontomo.constants import MRC, SHIFTX_ANGST, SHIFTY_ANGST, SHIFTZ_ANGST, TILT, PSI, ROT
 from tomo.constants import TR_RELION
 from tomo.objects import Coordinate3D
+
+logger = logging.getLogger(__name__)
 
 
 class WriterTomo(WriterBase):
@@ -96,6 +98,7 @@ def checkSubtomogramFormat(subtomo, extraPath):
 
 def getTransformMatrixFromRow(row, sRate=1, isRe5Star=False):
     if isRe5Star:
+        logger.info(cyanStr('Is Relion 5'))
         from reliontomo.convert.convert50_tomo import RLN_ORIGINZANGST, RLN_ORIGINYANGST, RLN_ORIGINXANGST, \
             R5_ROT_ATTRIB, R5_TILT_ATTRIB, R5_PSI_ATTRIB
         shiftx = float(row.get(RLN_ORIGINXANGST, 0))
@@ -105,6 +108,7 @@ def getTransformMatrixFromRow(row, sRate=1, isRe5Star=False):
         tilt = row.get(R5_TILT_ATTRIB, 0)
         psi = row.get(R5_PSI_ATTRIB, 0)
     else:
+        logger.info(cyanStr('It is NOT Relion 5'))
         shiftx = float(row.get(SHIFTX_ANGST, 0))
         shifty = float(row.get(SHIFTY_ANGST, 0))
         shiftz = float(row.get(SHIFTZ_ANGST, 0))
@@ -112,6 +116,7 @@ def getTransformMatrixFromRow(row, sRate=1, isRe5Star=False):
         tilt = row.get(TILT, 0)
         psi = row.get(PSI, 0)
 
+    logger.info(cyanStr(f'rot = {rot}, tilt = {tilt}, psi = {psi}'))
     return genTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, sRate)
 
 
