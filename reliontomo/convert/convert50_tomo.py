@@ -29,7 +29,7 @@ from pwem import ALIGN_NONE
 from pwem.emlib.image import ImageHandler
 from pwem.objects import Transform
 from pyworkflow.object import Float, String, Integer
-from pyworkflow.utils import yellowStr, prettyTime, createLink
+from pyworkflow.utils import yellowStr, createLink
 from relion.convert import OpticsGroups
 from reliontomo.constants import *
 import numpy as np
@@ -39,7 +39,7 @@ from reliontomo.convert.convertBase import (getTransformInfoFromCoordOrSubtomo,
 from reliontomo.objects import RelionPSubtomogram, RelionSetOfPseudoSubtomograms
 from tomo.constants import TR_RELION, SCIPION
 from tomo.objects import Coordinate3D, Tomogram, TiltSeries, CTFTomoSeries, SetOfCoordinates3D, SetOfTomograms, \
-    TiltSeriesM, SetOfTiltSeriesM, TiltImage, SetOfTiltSeries, CTFTomo
+    TiltSeriesM, SetOfTiltSeriesM, TiltImage
 from tomo.utils import getCommonTsAndCtfElements
 
 logger = logging.getLogger(__name__)

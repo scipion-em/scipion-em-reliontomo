@@ -379,6 +379,10 @@ class RelionSetOfPseudoSubtomograms(SetOfSubTomograms):
     def _samplingRateStr(self):
         return "%0.2f Å/px" % self.getCurrentSamplingRate()
 
+    def getTSIds(self):
+        """ Returns al the Tilt series ids involved in the set."""
+        return self.getUniqueValues(RelionPSubtomogram.TS_ID_ATTRIBUTE)
+
 
 def createSetOfRelionPSubtomograms(protocolPath: str,
                                    optimSetStar: str,
