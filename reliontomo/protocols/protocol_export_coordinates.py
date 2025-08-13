@@ -131,10 +131,11 @@ class ProtTomoExportRe5Coords(EMProtocol):
         scaleFactor = self.coordsScaleFactor.get()
 
         for tsId, tomo in self.tomosDict.items():
+            logger.info(cyanStr(f'tsId = {tsId} - tomogram {tomo}. Exporting the coordinates...'))
             for pSubtomo in inParticles.iterSubtomos(volume=tomo):
                 try:
+                    logger.info(cyanStr(f'--> {pSubtomo}'))
                     coord = Coordinate3D()
-
                     coord.setVolume(tomo)
                     x = scaleFactor * pSubtomo.getXInImg() / partSRate  # Originally in agstrom at the scale of the particle
                     y = scaleFactor * pSubtomo.getYInImg() / partSRate
