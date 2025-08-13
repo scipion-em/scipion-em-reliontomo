@@ -95,10 +95,6 @@ class ProtTomoExportRe5Coords(EMProtocol):
         inTomograms = self.getInputTomograms()
         inParticles = self.getInputParticles()
 
-        # The coordinates need to be re-scaled to be at the same size of the tomograms
-        self.coordsScaleFactor = Float(inParticles.getSamplingRate() / inTomograms.getSamplingRate())
-        self._store(self.coordsScaleFactor)
-
         # Compute matching TS id among coordinates, the tilt-series and the CTFs, they all could be a subset
         particlesTsIds = set(inParticles.getTSIds())
         tomoTsIds = set(inTomograms.getTSIds())
@@ -122,13 +118,10 @@ class ProtTomoExportRe5Coords(EMProtocol):
         tomosSRate = inTomogramsPointer.get().getSamplingRate()
         outAttribName = self._possibleOutputs.coordinates3d.name
         outCoords = SetOfCoordinates3D.create(self.getPath(), template='coordinates%s.sqlite')
-        self._defineOutputs(**{outAttribName: outCoords})
-        self._defineSourceRelation(inTomogramsPointer, outCoords)
-        self._defineSourceRelation(inParticlesPointer, outCoords)
         outCoords.setSamplingRate(tomosSRate)
         outCoords.setPrecedents(self.getInputTomograms(returnPointer=True))
         partSRate = inParticles.getSamplingRate()
-        scaleFactor = self.coordsScaleFactor.get()
+        scaleFactor = self._getCoordsScaleFactor()
 
         for tsId, tomo in self.tomosDict.items():
             logger.info(cyanStr(f'tsId = {tsId} - tomogram {tomo}. Exporting the coordinates...'))
@@ -153,6 +146,10 @@ class ProtTomoExportRe5Coords(EMProtocol):
         if len(outCoords) == 0:
             raise Exception(f'No output/s {outAttribName} were generated. '
                             f'Please check the Output Log > run.stdout and run.stderr')
+
+        self._defineOutputs(**{outAttribName: outCoords})
+        self._defineSourceRelation(inTomogramsPointer, outCoords)
+        self._defineSourceRelation(inParticlesPointer, outCoords)
 
     # --------------------------- UTILS functions -----------------------------
     def getInputParticles(self, returnPointer: bool=False) -> Union[Pointer, RelionSetOfPseudoSubtomograms]:
@@ -183,12 +180,16 @@ class ProtTomoExportRe5Coords(EMProtocol):
         M = np.linalg.inv(M)
         return M
 
+    def _getCoordsScaleFactor(self) -> float:
+        return self.getInputParticles().getSamplingRate() / self.getInputTomograms().getSamplingRate()
+
     # -------------------------- INFO functions -------------------------------
     def _summary(self):
         msg = []
         if self.isFinished():
+            scaleFacotr = self._getCoordsScaleFactor()
             msg.append(f'The particles introduced were scaled using an scale factor of '
-                       f'{self.coordsScaleFactor.get():.2f} to be expressed considering '
+                       f'{scaleFacotr:.2f} to be expressed considering '
                        f'the size of the introduced tomograms')
 
         return msg
