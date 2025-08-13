@@ -120,7 +120,6 @@ class ProtTomoExportRe5Coords(EMProtocol):
         inTomograms = self.getInputTomograms()
         tomosSRate = inTomograms.getSamplingRate()
         outCoords = SetOfCoordinates3D.create(self.getPath(), template='coordinates%s.sqlite')
-        outCoords.copyInfo(inParticles)
         outCoords.setSamplingRate(tomosSRate)
         outCoords.setPrecedents(self.getInputTomograms(returnPointer=True))
         partSRate = inParticles.getSamplingRate()
