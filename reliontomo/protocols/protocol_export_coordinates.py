@@ -179,7 +179,7 @@ class ProtTomoExportRe5Coords(EMProtocol):
         M[0, 3] = -shifts[0]
         M[1, 3] = -shifts[1]
         M[2, 3] = -shifts[2]
-        M = np.linalg.inv(M)
+        # M = np.linalg.inv(M)
         return M
 
     def _getCoordsScaleFactor(self) -> float:
@@ -189,9 +189,9 @@ class ProtTomoExportRe5Coords(EMProtocol):
     def _summary(self):
         msg = []
         if self.isFinished():
-            scaleFacotr = self._getCoordsScaleFactor()
+            scaleFactor = self._getCoordsScaleFactor()
             msg.append(f'The particles introduced were scaled using an scale factor of '
-                       f'{scaleFacotr:.2f} to be expressed considering '
+                       f'{scaleFactor:.2f} to be expressed considering '
                        f'the size of the introduced tomograms')
 
         return msg
