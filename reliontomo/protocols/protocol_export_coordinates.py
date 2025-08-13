@@ -116,10 +116,15 @@ class ProtTomoExportRe5Coords(EMProtocol):
                           if tomo.getTsId() in presentTsIds}
 
     def exportCoordsStep(self):
-        inParticles = self.getInputParticles()
-        inTomograms = self.getInputTomograms()
-        tomosSRate = inTomograms.getSamplingRate()
+        inParticlesPointer = self.getInputParticles(returnPointer=True)
+        inTomogramsPointer = self.getInputTomograms(returnPointer=True)
+        inParticles = inParticlesPointer.get()
+        tomosSRate = inTomogramsPointer.get().getSamplingRate()
+        outAttribName = self._possibleOutputs.coordinates3d.name
         outCoords = SetOfCoordinates3D.create(self.getPath(), template='coordinates%s.sqlite')
+        self._defineOutputs(**{outAttribName: outCoords})
+        self._defineSourceRelation(inTomogramsPointer, outCoords)
+        self._defineSourceRelation(inParticlesPointer, outCoords)
         outCoords.setSamplingRate(tomosSRate)
         outCoords.setPrecedents(self.getInputTomograms(returnPointer=True))
         partSRate = inParticles.getSamplingRate()
@@ -142,6 +147,11 @@ class ProtTomoExportRe5Coords(EMProtocol):
 
                 except Exception as e:
                     logger.error(redStr(f'tsId = {tsId} - psubtomo {pSubtomo} failed: {e}. Skipping...'))
+                    continue
+
+        if len(outCoords) == 0:
+            raise Exception(f'No output/s {outAttribName} were generated. '
+                            f'Please check the Output Log > run.stdout and run.stderr')
 
     # --------------------------- UTILS functions -----------------------------
     def getInputParticles(self, returnPointer: bool=False) -> Union[Pointer, RelionSetOfPseudoSubtomograms]:
