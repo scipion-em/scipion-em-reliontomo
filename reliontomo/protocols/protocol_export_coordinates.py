@@ -115,19 +115,21 @@ class ProtTomoExportRe5Coords(EMProtocol):
         inParticlesPointer = self.getInputParticles(returnPointer=True)
         inTomogramsPointer = self.getInputTomograms(returnPointer=True)
         inParticles = inParticlesPointer.get()
+        partSRate = inParticles.getSamplingRate()
+        scaleFactor = self._getCoordsScaleFactor()
+        boxSize = int(inParticles.getBoxSize() * scaleFactor)
         tomosSRate = inTomogramsPointer.get().getSamplingRate()
         outAttribName = self._possibleOutputs.coordinates3d.name
+
         outCoords = SetOfCoordinates3D.create(self.getPath(), template='coordinates%s.sqlite')
         outCoords.setSamplingRate(tomosSRate)
         outCoords.setPrecedents(self.getInputTomograms(returnPointer=True))
-        partSRate = inParticles.getSamplingRate()
-        scaleFactor = self._getCoordsScaleFactor()
+        outCoords.setBoxSize(boxSize)
 
         for tsId, tomo in self.tomosDict.items():
             logger.info(cyanStr(f'tsId = {tsId} - tomogram {tomo}. Exporting the coordinates...'))
             for pSubtomo in inParticles.iterSubtomos(volume=tomo):
                 try:
-                    logger.info(cyanStr(f'--> {pSubtomo}'))
                     coord = Coordinate3D()
                     coord.setVolume(tomo)
                     x = scaleFactor * pSubtomo.getXInImg() / partSRate  # Originally in agstrom at the scale of the particle
