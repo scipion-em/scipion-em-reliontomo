@@ -100,8 +100,8 @@ class ProtTomoExportRe5Coords(EMProtocol):
         self._store(self.coordsScaleFactor)
 
         # Compute matching TS id among coordinates, the tilt-series and the CTFs, they all could be a subset
-        particlesTsIds = inParticles.getTSIds()
-        tomoTsIds = inTomograms.getTSIds()
+        particlesTsIds = set(inParticles.getTSIds())
+        tomoTsIds = set(inTomograms.getTSIds())
         presentTsIds = particlesTsIds & tomoTsIds
         nonMatchingTsIds = (particlesTsIds ^ tomoTsIds) - presentTsIds
         # Validate the intersection
