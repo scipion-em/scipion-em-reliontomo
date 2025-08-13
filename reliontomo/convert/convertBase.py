@@ -100,13 +100,13 @@ def getTransformMatrixFromRow(row, sRate=1, isRe5Star=False):
     if isRe5Star:
         logger.info(cyanStr('Is Relion 5'))
         from reliontomo.convert.convert50_tomo import RLN_ORIGINZANGST, RLN_ORIGINYANGST, RLN_ORIGINXANGST, \
-            R5_ROT_ATTRIB, R5_TILT_ATTRIB, R5_PSI_ATTRIB
+            RLN_TOMOSUBTOMOGRAMROT, RLN_TOMOSUBTOMOGRAMTILT, RLN_TOMOSUBTOMOGRAMPSI
         shiftx = float(row.get(RLN_ORIGINXANGST, 0))
         shifty = float(row.get(RLN_ORIGINYANGST, 0))
         shiftz = float(row.get(RLN_ORIGINZANGST, 0))
-        rot = row.get(R5_ROT_ATTRIB, 0)
-        tilt = row.get(R5_TILT_ATTRIB, 0)
-        psi = row.get(R5_PSI_ATTRIB, 0)
+        rot = row.get(RLN_TOMOSUBTOMOGRAMROT, 0)
+        tilt = row.get(RLN_TOMOSUBTOMOGRAMTILT, 0)
+        psi = row.get(RLN_TOMOSUBTOMOGRAMPSI, 0)
     else:
         logger.info(cyanStr('It is NOT Relion 5'))
         shiftx = float(row.get(SHIFTX_ANGST, 0))

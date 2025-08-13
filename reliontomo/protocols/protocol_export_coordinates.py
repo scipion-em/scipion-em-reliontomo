@@ -32,6 +32,8 @@ from pyworkflow import BETA
 from pyworkflow.object import Pointer, Float
 from pyworkflow.protocol import PointerParam, IntParam, LEVEL_ADVANCED
 from pyworkflow.utils import Message, cyanStr, redStr
+from reliontomo.constants import R5_ROT_ATTRIB
+from reliontomo.convert.convertBase import getTransformInfoFromCoordOrSubtomo
 from reliontomo.objects import RelionSetOfPseudoSubtomograms, RelionPSubtomogram
 from tomo.constants import SCIPION
 from tomo.objects import SetOfCoordinates3D, SetOfTomograms, Coordinate3D
@@ -88,6 +90,18 @@ class ProtTomoExportRe5Coords(EMProtocol):
 
     # --------------------------- INSERT steps functions ----------------------
     def _insertAllSteps(self):
+        # JORGE
+        import os
+        fname = "/home/jjimenez/test_JJ.txt"
+        if os.path.exists(fname):
+            os.remove(fname)
+        fjj = open(fname, "a+")
+        fjj.write('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
+        fjj.close()
+        print('JORGE--------->onDebugMode PID {}'.format(os.getpid()))
+        import time
+        time.sleep(10)
+        # JORGE_END
         self._initialize()
         self._insertFunctionStep(self.exportCoordsStep, needsGPU=False)
 
@@ -118,6 +132,7 @@ class ProtTomoExportRe5Coords(EMProtocol):
         partSRate = inParticles.getSamplingRate()
         scaleFactor = self._getCoordsScaleFactor()
         boxSize = int(inParticles.getBoxSize() * scaleFactor)
+        boxSize = boxSize if boxSize % 2 == 0 else boxSize + 1
         tomosSRate = inTomogramsPointer.get().getSamplingRate()
         outAttribName = self._possibleOutputs.coordinates3d.name
 
@@ -132,7 +147,7 @@ class ProtTomoExportRe5Coords(EMProtocol):
                 try:
                     coord = Coordinate3D()
                     coord.setVolume(tomo)
-                    x = scaleFactor * pSubtomo.getXInImg() / partSRate  # Originally in agstrom at the scale of the particle
+                    x = scaleFactor * pSubtomo.getXInImg() / partSRate  # Originally in angstrom at the scale of the particle
                     y = scaleFactor * pSubtomo.getYInImg() / partSRate
                     z = scaleFactor * pSubtomo.getZInImg() / partSRate
                     coord.setPosition(x, y, z, SCIPION)  # Already centered in Relion 5
@@ -166,6 +181,19 @@ class ProtTomoExportRe5Coords(EMProtocol):
     def getTransformMatrix(particle: RelionPSubtomogram,
                            sRate: float = 1.,
                            scaleFactor: float = 1.) -> np.ndarray:
+
+        # angles[0],  # 2, rlnTomoSubtomogramRot
+        # angles[1],  # 3, rlnTomoSubtomogramTilt
+        # angles[2],  # 4, rlnTomoSubtomogramPsi
+        # pSubtomo.getRot(),  # 5, rlnAngleRot
+        # pSubtomo.getTilt(),  # 6, rlnAngleTilt
+        # pSubtomo.getPsi(),  # 7, rlnAnglePsi
+        # pSubtomo.getTiltPrior(),  # 8, rlnAngleTiltPrior
+        # pSubtomo.getPsiPrior(),  # 9, rlnAnglePsiPrior
+        # shifts[0],  # 14, rlnOriginXAngst
+        # shifts[1],  # 15, rlnOriginYAngst
+        # shifts[2],  # 16, rlnOriginZAngst,
+        anglesTomoSubtomo, _ = getTransformInfoFromCoordOrSubtomo(particle, sRate)
         shiftx = scaleFactor * particle.getX() / sRate  # They are stored in Relion 5 in angstroms, but needed here in px
         shifty = scaleFactor * particle.getY() / sRate
         shiftz = scaleFactor * particle.getZ() / sRate
@@ -173,13 +201,23 @@ class ProtTomoExportRe5Coords(EMProtocol):
         tilt = particle.getTilt()
         psi = particle.getPsi()
         angles = (rot, tilt, psi)
-        shifts = (shiftx, shifty, shiftz)
+        shifts = np.array([shiftx, shifty, shiftz])
+
+        radAnglesTomoSubtomo = -np.deg2rad(anglesTomoSubtomo)
         radAngles = -np.deg2rad(angles)
-        M = transformations.euler_matrix(radAngles[0], radAngles[1], radAngles[2], 'szyz')
-        M[0, 3] = -shifts[0]
-        M[1, 3] = -shifts[1]
-        M[2, 3] = -shifts[2]
-        # M = np.linalg.inv(M)
+        MPicking = transformations.euler_matrix(*radAnglesTomoSubtomo, 'szyz')
+        MRefine = transformations.euler_matrix(*radAngles, 'szyz')
+        # MRefine[0, 3] = -shifts[0]
+        # MRefine[1, 3] = -shifts[1]
+        # MRefine[2, 3] = -shifts[2]
+        M = np.dot(MPicking, MRefine)
+        M = np.linalg.inv(M)
+
+        # rotShifts = - np.linalg.inv(MPicking[:3,:3]).dot(shifts)
+        # rotShifts = - MPicking[:3,:3].dot(shifts)
+        # M[0, 3] = rotShifts[0]
+        # M[1, 3] = rotShifts[1]
+        # M[2, 3] = rotShifts[2]
         return M
 
     def _getCoordsScaleFactor(self) -> float:
