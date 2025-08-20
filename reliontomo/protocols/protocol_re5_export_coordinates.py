@@ -29,10 +29,9 @@ import numpy as np
 from pwem.convert import transformations
 from pwem.protocols import EMProtocol
 from pyworkflow import BETA
-from pyworkflow.object import Pointer, Float
+from pyworkflow.object import Pointer
 from pyworkflow.protocol import PointerParam, IntParam, LEVEL_ADVANCED
 from pyworkflow.utils import Message, cyanStr, redStr
-from reliontomo.constants import R5_ROT_ATTRIB
 from reliontomo.convert.convertBase import getTransformInfoFromCoordOrSubtomo
 from reliontomo.objects import RelionSetOfPseudoSubtomograms, RelionPSubtomogram
 from tomo.constants import SCIPION

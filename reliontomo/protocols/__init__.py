@@ -42,6 +42,6 @@ from .protocol_re5_extract_subtomos import ProtRelion5ExtractSubtomos
 from .protocol_re5_reconstruc_particle_from_ts import ProtRelion5ReconstructParticle
 from .protocol_motion_corr import ProtRelionTomoMotionCorr
 from .protocol_re5_rec_tomogram import ProtRelion5TomoReconstruct
-from .protocol_export_coordinates import ProtTomoExportRe5Coords
+from .protocol_re5_export_coordinates import ProtTomoExportRe5Coords
 
 
