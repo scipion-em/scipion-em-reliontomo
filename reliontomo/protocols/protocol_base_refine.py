@@ -331,7 +331,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
         errorMsg = super()._validate()
-        sRateTol = 2e-3
+        sRateTol = 1e-2
         inParticles = self.getInputParticles()
         refVolume = self.referenceVolume.get()
         inParticlesSRate = inParticles.getSamplingRate()
