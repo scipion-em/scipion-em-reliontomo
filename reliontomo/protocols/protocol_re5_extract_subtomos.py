@@ -22,6 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
+import time
 from enum import Enum
 import numpy as np
 from emtable import Table
@@ -250,7 +251,8 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                                                      are2dStacks=self.write2dStacks.get(),
                                                      acquisition=acq)
         # Fill the set with the generated particles
-        readSetOfPseudoSubtomograms(psubtomoSet)
+        readSetOfPseudoSubtomograms(psubtomoSet, calculateWarpCoords=isInSetOf3dCoords,
+                                    coordFactor=psubtomoSet.getCurrentSamplingRate())
 
         # Define the outputs and the relations
         outDict = {outputObjects.relionParticles.name: psubtomoSet}

@@ -108,22 +108,22 @@ class ProtRelionTomoBase(EMProtocol):
         """
         inReParticlesSet = self.getInputParticles()
         outStarFileName = self.getOutStarFileName()
+        # if IS_RELION_50:
+        #     withPriors = False
+        # if inReParticlesSet.getSize() == inReParticlesSet.getNReParticles() and not withPriors:
+        #     if inReParticlesSet.getSize() == inReParticlesSet.getNReParticles():
+        #         self.info("Using existing star (%s) file instead of generating a new one." %
+        #                   inReParticlesSet.getParticlesStar())
+        #         createLink(inReParticlesSet.getParticlesStar(), outStarFileName)
+        # else:
+        #     self.info("Less particles detected in the input set respecting to it associated star file. Assuming "
+        #               "that a subset was made. Writing the new particles file.")
         if IS_RELION_50:
-            withPriors = False
-        if inReParticlesSet.getSize() == inReParticlesSet.getNReParticles() and not withPriors:
-            if inReParticlesSet.getSize() == inReParticlesSet.getNReParticles():
-                self.info("Using existing star (%s) file instead of generating a new one." %
-                          inReParticlesSet.getParticlesStar())
-                createLink(inReParticlesSet.getParticlesStar(), outStarFileName)
+            outPath = self._getExtraPath()
+            writer = convert50_tomo.Writer()
+            writer.pseudoSubtomograms2Star(inReParticlesSet, outPath, are2dParticles=are2dParticles)
         else:
-            self.info("Less particles detected in the input set respecting to it associated star file. Assuming "
-                      "that a subset was made. Writing the new particles file.")
-            if IS_RELION_50:
-                outPath = self._getExtraPath()
-                writer = convert50_tomo.Writer()
-                writer.pseudoSubtomograms2Star(inReParticlesSet, outPath, are2dParticles=are2dParticles)
-            else:
-                writeSetOfPseudoSubtomograms(inReParticlesSet, outStarFileName, withPriors=withPriors)
+            writeSetOfPseudoSubtomograms(inReParticlesSet, outStarFileName, withPriors=withPriors)
 
     def _genPostProcessOutputMrcFile(self, fileName):
         """File generated using the sharpening protocol (called post-process protocol) and also using the

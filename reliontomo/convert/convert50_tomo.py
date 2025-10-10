@@ -23,6 +23,7 @@
 # *
 # **************************************************************************
 import logging
+import os.path
 from typing import Dict, Union, List, Set, Tuple
 from emtable import Table
 from pwem import ALIGN_NONE
@@ -33,7 +34,7 @@ from pyworkflow.utils import yellowStr, createLink
 from relion.convert import OpticsGroups
 from reliontomo.constants import *
 import numpy as np
-from os.path import join, basename
+from os.path import join, basename, exists
 from reliontomo.convert.convertBase import (getTransformInfoFromCoordOrSubtomo,
                                             WriterTomo, ReaderTomo, getTransformMatrixFromRow, genTransformMatrix)
 from reliontomo.objects import RelionPSubtomogram, RelionSetOfPseudoSubtomograms
@@ -724,7 +725,8 @@ class Writer(WriterTomo):
     @staticmethod
     def pseudoSubtomograms2Star(pSubtomoSet: RelionSetOfPseudoSubtomograms,
                                 outPath: str,
-                                are2dParticles: bool = True):
+                                are2dParticles: bool = True,
+                                isWarp=False):
         """Reads the data_particles table of a generated particles.star file. (output of the command execution
         relion_refine --print_metadata_labels):
 
@@ -786,7 +788,8 @@ class Writer(WriterTomo):
 
             # Particles table
             particlesStarFields = particles2dStarFields if are2dParticles else particles3dStarFields
-            hasCoords = pSubtomoSet.getFirstItem().hasCoordinate3D()
+            firstItem = pSubtomoSet.getFirstItem()
+            hasCoords = firstItem.hasCoordinate3D()
             if hasCoords:
                 sciCoordsFields = [
                     SCIPION_COORD_X,
@@ -795,6 +798,14 @@ class Writer(WriterTomo):
                     SCIPION_COORD_GROUP_ID
                 ]
                 particlesStarFields.extend(sciCoordsFields)
+
+            if isWarp:
+                warpCoordsFields = [COORD_X, COORD_Y, COORD_Z]
+            else:
+                warpCoordsFields = [WRP_COORDINATE_X, WRP_COORDINATE_Y, WRP_COORDINATE_Z]
+
+            particlesStarFields.extend(warpCoordsFields)
+
             particlesTable = Table(columns=particlesStarFields)
             for pSubtomo in pSubtomoSet.iterSubtomos():
                 angles, shifts = getTransformInfoFromCoordOrSubtomo(pSubtomo, sRate)
@@ -843,6 +854,11 @@ class Writer(WriterTomo):
                                      pSubtomo.getCoordinate3D().getZ(SCIPION),  # 29, sciZCoord
                                      pSubtomo.getCoordinate3D().getGroupId(),  # 30, sciGroupId
                                      ]
+
+                particlesRow += [pSubtomo.getCoordX(),  #28 rlnCoordinateX
+                                 pSubtomo.getCoordY(),  #29 rlnCoordinateY
+                                 pSubtomo.getCoordZ()]  #30 rlnCoordinateZ
+
                 particlesTable.addRow(*particlesRow)
                 # Write the STAR file
             particlesTable.writeStar(f, tableName=PARTICLES_TABLE)
@@ -949,11 +965,24 @@ class Reader(ReaderTomo):
             logger.info(yellowStr('The star file contains coordinates that belong to tomograms not present '
                                   'in the introduced set of tomograms: %s' % nonMatchingTomoIds))
 
-    def starFile2PseudoSubtomograms(self, outputSet: RelionSetOfPseudoSubtomograms):
+    def starFile2PseudoSubtomograms(self, outputSet: RelionSetOfPseudoSubtomograms,
+                                    calculateWarpCoords=False,
+                                    coordFactor=1):
         sRate = outputSet.getSamplingRate()
-        for counter, row in enumerate(self.dataTable):
+        coordSet = outputSet.getCoordinates3D()
+        counter = 0
+        for row, coord in zip(self.dataTable, coordSet):
             t = Transform()
             particleFile = row.get(RLN_IMAGENAME, None)
+            if calculateWarpCoords:
+                coordX = coord.getX(BOTTOM_LEFT_CORNER) * coordFactor
+                coordY = coord.getY(BOTTOM_LEFT_CORNER) * coordFactor
+                coordZ = coord.getZ(BOTTOM_LEFT_CORNER) * coordFactor
+            else:
+                coordX = row.get(RLN_COORDINATEX, 0)
+                coordY = row.get(RLN_COORDINATEY, 0)
+                coordZ = row.get(RLN_COORDINATEZ, 0)
+
             psubtomo = RelionPSubtomogram(fileName=particleFile,
                                           samplingRate=sRate,
                                           tsId=row.get(RLN_TOMONAME),
@@ -981,7 +1010,11 @@ class Reader(ReaderTomo):
                                           psiPrior=row.get(RLN_ANGLEPSIPRIOR, 0),
                                           groupId=row.get(RLN_GROUPNUMBER, -1),
                                           normCorrection=row.get(RLN_NORMCORRECTION, -1),
+                                          coordX=coordX,
+                                          coordY=coordY,
+                                          coordZ=coordZ,
                                           )
+            counter += 1
 
             # TODO: decide what to do with this
             # Keeping particle id
