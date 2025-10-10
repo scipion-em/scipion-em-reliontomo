@@ -770,6 +770,7 @@ class Writer(WriterTomo):
         :param outPath: path in which the particles.star file will be generated.
         :param are2dParticles: bool used case to choose the fields that will be present in the generated particles.star
         file, as they are not the same depending on if the particles are 2D or 3D.
+        :param isWarp: flag to indicate if the particles used come from a Warp/M processing
         """
         logger.info("Generating particles file from pseudosubtomogram set.")
         # Write the STAR file
