@@ -856,9 +856,9 @@ class Writer(WriterTomo):
                                      pSubtomo.getCoordinate3D().getGroupId(),  # 30, sciGroupId
                                      ]
 
-                particlesRow += [pSubtomo.getCoordX(),  #28 rlnCoordinateX
-                                 pSubtomo.getCoordY(),  #29 rlnCoordinateY
-                                 pSubtomo.getCoordZ()]  #30 rlnCoordinateZ
+                particlesRow += [str(pSubtomo.getCoordX()),  #31 rlnCoordinateX / warp
+                                 str(pSubtomo.getCoordY()),  #32 rlnCoordinateY / warp
+                                 str(pSubtomo.getCoordZ())]  #33 rlnCoordinateZ / warp
 
                 particlesTable.addRow(*particlesRow)
                 # Write the STAR file
