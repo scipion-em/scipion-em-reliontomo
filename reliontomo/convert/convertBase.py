@@ -116,7 +116,6 @@ def getTransformMatrixFromRow(row, sRate=1, isRe5Star=False):
         tilt = row.get(TILT, 0)
         psi = row.get(PSI, 0)
 
-    logger.info(cyanStr(f'rot = {rot}, tilt = {tilt}, psi = {psi}'))
     return genTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, sRate)
 
 
