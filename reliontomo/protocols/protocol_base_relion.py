@@ -54,6 +54,7 @@ class ProtRelionTomoBase(EMProtocol):
         form.addSection(label=Message.LABEL_INPUT)
         form.addParam('inReParticles', PointerParam,
                       important=True,
+                      strict=True,
                       pointerClass='RelionSetOfPseudoSubtomograms',
                       label='Pseudo-Subtomograms',
                       help='Pseudo-subtomograms do not aim to accurately represent the scattering potential of '
