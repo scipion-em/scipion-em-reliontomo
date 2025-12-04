@@ -331,7 +331,7 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
         errorMsg = super()._validate()
-        sRateTol = 2e-3
+        sRateTol = 1e-2
         inParticles = self.getInputParticles()
         refVolume = self.referenceVolume.get()
         inParticlesSRate = inParticles.getSamplingRate()
@@ -375,6 +375,13 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         # Number of MPI must be at least 3
         if self.numberOfMpi.get() < 3:
             errorMsg.append('The number of MPIs must be at least 3.')
+
+        # GPUs: they must be separated by ':'
+        gpus = self.gpusToUse.get()
+        gpuNoSpaces = gpus.replace(' ', '')
+        if len(gpuNoSpaces) > 1 and ':' not in gpuNoSpaces:
+            errorMsg.append("Bad format detected in GPUs -> they should be separated by ':'. "
+                            "See the help for detailed info.")
         return errorMsg
 
     def _warnings(self):
