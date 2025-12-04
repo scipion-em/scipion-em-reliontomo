@@ -98,7 +98,6 @@ def checkSubtomogramFormat(subtomo, extraPath):
 
 def getTransformMatrixFromRow(row, sRate=1, isRe5Star=False):
     if isRe5Star:
-        logger.info(cyanStr('Is Relion 5'))
         from reliontomo.convert.convert50_tomo import RLN_ORIGINZANGST, RLN_ORIGINYANGST, RLN_ORIGINXANGST, \
             RLN_TOMOSUBTOMOGRAMROT, RLN_TOMOSUBTOMOGRAMTILT, RLN_TOMOSUBTOMOGRAMPSI
         shiftx = float(row.get(RLN_ORIGINXANGST, 0))
