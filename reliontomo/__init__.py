@@ -22,7 +22,7 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-from relion import V5_0, RELION_ENV_ACTIVATION
+
 
 _logo = "relion_logo.jpg"
 _references = ['Zivanov2022', 'Burt2024']
@@ -30,7 +30,8 @@ __version__ = '4.0.2'
 
 try:
     import pwem
-    from reliontomo.constants import RELIONTOMO_HOME, RELIONTOMO_DEFAULT, RELION, RELIONTOMO_CUDA_LIB, V4_0
+    from reliontomo.constants import RELIONTOMO_HOME, RELIONTOMO_DEFAULT, RELION, RELIONTOMO_CUDA_LIB, V4_0, \
+    RELION_ENV_ACTIVATION, V5_0
     import relion
 
     class Plugin(relion.Plugin):

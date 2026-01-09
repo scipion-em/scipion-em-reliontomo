@@ -4,16 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scipion-em-reliontomo"
-dynamic = ["version"]
+dynamic = ["version", "dependencies"]
 description = "Plugin to use reliontomo within the Scipion framework"
 authors = [
     {name = "Scipion Team", email = "scipion@cnb.csic.es"}
-]
-dependencies = [
-    "scipion-em-tomo>=3.9.1",
-    "emtable",
-    "scipion-em-relion",
-    "scipion-em-imod",  # Remove this when Relion4 is deprecated
 ]
 requires-python = ">=3.8"
 readme = "README.rst"
@@ -34,6 +28,10 @@ Issues = "https://github.com/scipion-em/scipion-em-reliontomo/issues"
 
 [tool.setuptools.dynamic]
 version = {attr = "reliontomo.__version__"}
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools.package-data]
+"reliontomo" = ["protocols.conf", "icon.png", "templates/*"]
 
 [project.entry-points."pyworkflow.plugin"]
 reliontomo = "reliontomo"
