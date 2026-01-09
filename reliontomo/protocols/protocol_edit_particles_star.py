@@ -25,6 +25,8 @@
 # *
 # **************************************************************************
 from enum import Enum
+
+from pyworkflow.object import Boolean
 from pyworkflow.protocol import BooleanParam, FloatParam, EnumParam, \
     PointerParam, IntParam, GE
 from reliontomo import Plugin
@@ -171,7 +173,7 @@ class ProtRelionEditParticlesStar(ProtRelionTomoBase):
         self._insertFunctionStep(self.createOutputStep, needsGPU=False)
 
     def convertInputStep(self):
-        are2dParticles = getattr(self.inReParticles.get(), RelionSetOfPseudoSubtomograms.ARE_2D_PARTICLES, False)
+        are2dParticles = self.inReParticles.get().areRe5Particles()
         self.genInStarFile(are2dParticles=are2dParticles)
 
     def operateStep(self):

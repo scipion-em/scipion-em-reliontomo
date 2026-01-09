@@ -107,11 +107,13 @@ def createReaderTomo(starFile, isRelion5, tableName=PARTICLES_TABLE, isCoordsSta
     return reader, readerVersion
 
 
-def readSetOfPseudoSubtomograms(outputSet, isRelion5=True):
+def readSetOfPseudoSubtomograms(outputSet, isRelion5=True, calculateWarpCoords=False, coordFactor=1):
     """ Convenience function to write a SetOfPseudoSubtomograms as Relion metadata using a Reader."""
     # Subtomograms are represented in Relion 4 as Pseudosubtomograms
     reader, _ = createReaderTomo(outputSet.getParticlesStar(), isRelion5=isRelion5)
-    return reader.starFile2PseudoSubtomograms(outputSet)
+    return reader.starFile2PseudoSubtomograms(outputSet,
+                                              calculateWarpCoords=calculateWarpCoords,
+                                              coordFactor=coordFactor)
 
 
 def readTsStarFile(inTs, outTs, starFile, outStackName, extraPath, isEvenOdd=False):
