@@ -34,14 +34,13 @@ from .protocol_ctf_refine import ProtRelionCtfRefine
 from .protocol_import_subtomograms_from_star import ProtImportSubtomogramsFromStar
 from .protocol_prepare_data import ProtRelionPrepareData
 from .protocol_make_pseudo_subtomos import ProtRelionMakePseudoSubtomograms
-from .protocol_rec_tomogram import ProtRelionTomoReconstruct
+from reliontomo.protocols.deprecated.protocol_rec_tomogram import ProtRelionTomoReconstruct
 from .protocol_reconstruc_particle_from_ts import ProtRelionReconstructParticle
 from .protocol_rec_particle_from_subtomograms import ProtRelionSubTomoReconstructAvg
 # Relion 5 specific
 from .protocol_re5_extract_subtomos import ProtRelion5ExtractSubtomos
 from .protocol_re5_reconstruc_particle_from_ts import ProtRelion5ReconstructParticle
 from .protocol_motion_corr import ProtRelionTomoMotionCorr
-from .protocol_re5_rec_tomogram import ProtRelion5TomoReconstruct
 from .protocol_re5_export_coordinates import ProtTomoExportRe5Coords
 
 

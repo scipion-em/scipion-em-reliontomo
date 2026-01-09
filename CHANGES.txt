@@ -9,6 +9,7 @@ v4.0.2:
     - The initial protocol model now supports multiple classes in Scipion.
     - Fix bug in pseudoSubtomograms2Star for 3D particles.
     - Start using the new parameter for PointerParams in forms when needed.
+    - Deprecate the protocol tomo reconstruction.
    Developers:
     - The initial model protocol tests were expanded to cover multiclass and 3D particle cases.
 v4.0.1:
