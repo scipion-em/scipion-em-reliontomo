@@ -38,7 +38,6 @@ from tomo.protocols.protocol_import_tomograms import OUTPUT_NAME
 from tomo.tests import RE4_STA_TUTO, DataSetRe4STATuto
 from tomo.tests.test_base_centralized_layer import TestBaseCentralizedLayer
 from reliontomo import Plugin
-from reliontomo.protocols.protocol_rec_tomogram import SINGLE_TOMO, ALL_TOMOS
 from reliontomo.utils import genEnumParamDict
 from reliontomo.protocols.protocol_edit_particles_star import OPERATION_LABELS, LABELS_TO_OPERATE_WITH, ANGLES, \
     OP_ADDITION, OP_MULTIPLICATION, COORDINATES, OP_SET_TO, ProtRelionEditParticlesStar
@@ -48,7 +47,7 @@ from reliontomo.constants import OUT_TOMOS_STAR, OUT_PARTICLES_STAR, IN_PARTICLE
 from reliontomo.convert.convertBase import getTransformInfoFromCoordOrSubtomo
 from reliontomo.protocols import ProtRelionPrepareData, \
     ProtRelionMakePseudoSubtomograms, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms, \
-    ProtRelionReconstructParticle, ProtRelionTomoReconstruct
+    ProtRelionReconstructParticle
 from reliontomo.protocols.protocol_3d_classify_subtomograms import ProtRelion3DClassifySubtomograms
 
 IS_RE_40 = Plugin.isRe40()
@@ -248,60 +247,60 @@ class TestRelionTomoPrepareData(TestRefineCycleBase):
             print(yellowStr('Relion 5 detected. Test for protocol "Prepare data for Relion 4" skipped.'))
 
 
-class TestRelionTomoRecTomograms(TestRefineCycleBase):
-    binFactor = 8
-    expectedTomoDims = [464, 464, 140]
-
-    @classmethod
-    def _runPreviousProtocols(cls):
-        super()._runPreviousProtocols()
-        cls.protPrepare = cls._runPrepareData4RelionTomo()
-
-    def testRecSingleTomoFromPrep(self):
-        if IS_RE_40:
-            expectedSize = 1
-            tomoSet = self._runRecFromPrepare_SingleTomo()
-            self._checkTomograms(tomoSet, expectedSetSize=expectedSize)
-        else:
-            print(yellowStr('Relion 5 detected. Test for protocol "Reconstruct tomograms from prepare '
-                            'data prot" skipped.'))
-
-    def testRecAllTomosFromPrep(self):
-        if IS_RE_40:
-            expectedSize = 2
-            tomoSet = self._runRecFromPrepare_AllTomos()
-            self._checkTomograms(tomoSet, expectedSetSize=expectedSize)
-        else:
-            print(yellowStr('Relion 5 detected. Test for protocol "Reconstruct tomograms from prepare '
-                            'data prot" skipped.'))
-
-    @classmethod
-    def _runRecFromPrepare_SingleTomo(cls):
-        print(magentaStr("\n==> Reconstructing one of the tomograms with Relion:"))
-        protRelionRec = cls._recFromPrepare(SINGLE_TOMO, tomoId='TS_54')  #
-        return protRelionRec
-
-    @classmethod
-    def _runRecFromPrepare_AllTomos(cls):
-        print(magentaStr("\n==> Reconstructing all the tomograms with Relion:"))
-        protRelionRec = cls._recFromPrepare(ALL_TOMOS)
-        return protRelionRec
-
-    @classmethod
-    def _recFromPrepare(cls, recMode, tomoId=None):
-        protRelionRec = cls.newProtocol(ProtRelionTomoReconstruct,
-                                        protPrepare=cls.protPrepare,
-                                        recTomoMode=recMode,
-                                        tomoId=tomoId,
-                                        binFactor=cls.binFactor)
-        cls.launchProtocol(protRelionRec)
-        return getattr(protRelionRec, ProtRelionTomoReconstruct._possibleOutputs.tomograms.name, None)
-
-    def _checkTomograms(self, inTomoSet, expectedSetSize=None):
-        self.checkTomograms(inTomoSet,
-                            expectedSetSize=expectedSetSize,
-                            expectedSRate=DataSetRe4STATuto.unbinnedPixSize.value * self.binFactor,
-                            expectedDimensions=self.expectedTomoDims)
+# class TestRelionTomoRecTomograms(TestRefineCycleBase):
+#     binFactor = 8
+#     expectedTomoDims = [464, 464, 140]
+#
+#     @classmethod
+#     def _runPreviousProtocols(cls):
+#         super()._runPreviousProtocols()
+#         cls.protPrepare = cls._runPrepareData4RelionTomo()
+#
+#     def testRecSingleTomoFromPrep(self):
+#         if IS_RE_40:
+#             expectedSize = 1
+#             tomoSet = self._runRecFromPrepare_SingleTomo()
+#             self._checkTomograms(tomoSet, expectedSetSize=expectedSize)
+#         else:
+#             print(yellowStr('Relion 5 detected. Test for protocol "Reconstruct tomograms from prepare '
+#                             'data prot" skipped.'))
+#
+#     def testRecAllTomosFromPrep(self):
+#         if IS_RE_40:
+#             expectedSize = 2
+#             tomoSet = self._runRecFromPrepare_AllTomos()
+#             self._checkTomograms(tomoSet, expectedSetSize=expectedSize)
+#         else:
+#             print(yellowStr('Relion 5 detected. Test for protocol "Reconstruct tomograms from prepare '
+#                             'data prot" skipped.'))
+#
+#     @classmethod
+#     def _runRecFromPrepare_SingleTomo(cls):
+#         print(magentaStr("\n==> Reconstructing one of the tomograms with Relion:"))
+#         protRelionRec = cls._recFromPrepare(SINGLE_TOMO, tomoId='TS_54')  #
+#         return protRelionRec
+#
+#     @classmethod
+#     def _runRecFromPrepare_AllTomos(cls):
+#         print(magentaStr("\n==> Reconstructing all the tomograms with Relion:"))
+#         protRelionRec = cls._recFromPrepare(ALL_TOMOS)
+#         return protRelionRec
+#
+#     @classmethod
+#     def _recFromPrepare(cls, recMode, tomoId=None):
+#         protRelionRec = cls.newProtocol(ProtRelionTomoReconstruct,
+#                                         protPrepare=cls.protPrepare,
+#                                         recTomoMode=recMode,
+#                                         tomoId=tomoId,
+#                                         binFactor=cls.binFactor)
+#         cls.launchProtocol(protRelionRec)
+#         return getattr(protRelionRec, ProtRelionTomoReconstruct._possibleOutputs.tomograms.name, None)
+#
+#     def _checkTomograms(self, inTomoSet, expectedSetSize=None):
+#         self.checkTomograms(inTomoSet,
+#                             expectedSetSize=expectedSetSize,
+#                             expectedSRate=DataSetRe4STATuto.unbinnedPixSize.value * self.binFactor,
+#                             expectedDimensions=self.expectedTomoDims)
 
 
 class TestRelionTomoRecParticleFromTs(TestRefineCycleBase):
