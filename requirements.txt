@@ -1,4 +1,4 @@
-scipion-em-tomo>=3.9.1,
-emtable,
-scipion-em-relion,
-scipion-em-imod,  # Remove this when Relion4 is deprecated
+scipion-em-tomo>=3.9.1
+emtable
+scipion-em-relion
+scipion-em-imod # Remove this when Relion4 is deprecated
