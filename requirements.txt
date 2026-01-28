@@ -1,4 +1,5 @@
-scipion-em-tomo>=3.9.1
+scipion-pyworkflow >= 3.11.6
+scipion-em-tomo >= 3.11.3
 emtable
 scipion-em-relion
 scipion-em-imod # Remove this when Relion4 is deprecated
