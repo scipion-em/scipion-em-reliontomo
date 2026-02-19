@@ -338,9 +338,10 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
         refVolumeSRate = refVolume.getSamplingRate()
         solventMask = self.solventMask.get()
         # Check the sampling rate
-        if abs(inParticlesSRate - refVolumeSRate) >= sRateTol:
-            errorMsg.append(f'The introduced particles and the reference volume must have the same sampling rate:\n'
-                            f'{inParticlesSRate:.3f} != {refVolumeSRate:.3f} Å/px')
+        if not self.doResizeRef.get():
+            if abs(inParticlesSRate - refVolumeSRate) >= sRateTol:
+                errorMsg.append(f'The introduced particles and the reference volume must have the same sampling rate:\n'
+                                f'{inParticlesSRate:.3f} != {refVolumeSRate:.3f} Å/px. Consider to resize the reference')
         # Check the dimensions
         x, y, z = refVolume.getDimensions()
         xp, yp, zp = inParticles.getDimensions()
@@ -351,9 +352,10 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
             refVolDims = (x, y, z)
             inParticlesDims = (xp, yp, zp)
 
-        if refVolDims != inParticlesDims:
-            errorMsg.append(f'The dimensions of the reference volume {refVolDims} px and the particles '
-                            f'{inParticlesDims} px must be the same')
+        if not self.doResizeRef.get():
+            if refVolDims != inParticlesDims:
+                errorMsg.append(f'The dimensions of the reference volume {refVolDims} px and the particles '
+                                f'{inParticlesDims} px must be the same')
         # If a solvent mask is provided, check the sampling rate and the dimensions
         if solventMask:
             # Sampling rate
