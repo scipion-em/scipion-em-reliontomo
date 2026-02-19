@@ -330,60 +330,47 @@ class ProtRelionRefineBase(ProtRelionTomoBase):
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
+        def _getDims(obj, is2d):
+            """ Helper to get (x, y) or (x, y, z) based on dimensionality. """
+            x, y, z = obj.getDimensions()
+            return (x, y) if is2d else (x, y, z)
+
         errorMsg = super()._validate()
         sRateTol = 1e-2
         inParticles = self.getInputParticles()
-        refVolume = self.referenceVolume.get()
         inParticlesSRate = inParticles.getSamplingRate()
-        refVolumeSRate = refVolume.getSamplingRate()
-        solventMask = self.solventMask.get()
-        # Check the sampling rate
+        is2D = inParticles.are2dStacks()
+        partDims = _getDims(inParticles, is2D)
+
+        # 1. Check Reference Volume
         if not self.doResizeRef.get():
-            if abs(inParticlesSRate - refVolumeSRate) >= sRateTol:
+            refVolume = self.referenceVolume.get()
+            if abs(inParticlesSRate - refVolume.getSamplingRate()) >= sRateTol:
                 errorMsg.append(f'The introduced particles and the reference volume must have the same sampling rate:\n'
-                                f'{inParticlesSRate:.3f} != {refVolumeSRate:.3f} Å/px. Consider to resize the reference')
-        # Check the dimensions
-        x, y, z = refVolume.getDimensions()
-        xp, yp, zp = inParticles.getDimensions()
-        if inParticles.are2dStacks():
-            refVolDims = (x, y)
-            inParticlesDims = (xp, yp)
-        else:
-            refVolDims = (x, y, z)
-            inParticlesDims = (xp, yp, zp)
+                                f'{inParticlesSRate:.3f} != {refVolume.getSamplingRate():.3f} Å/px. Consider resizing.')
 
-        if not self.doResizeRef.get():
-            if refVolDims != inParticlesDims:
-                errorMsg.append(f'The dimensions of the reference volume {refVolDims} px and the particles '
-                                f'{inParticlesDims} px must be the same')
-        # If a solvent mask is provided, check the sampling rate and the dimensions
+            if _getDims(refVolume, is2D) != partDims:
+                errorMsg.append(f'The dimensions of the reference volume and the particles must be the same.')
+
+        # 2. Check Solvent Mask
+        solventMask = self.solventMask.get()
         if solventMask:
-            # Sampling rate
-            if abs(inParticlesSRate - solventMask.getSamplingRate()) >= sRateTol:
+            maskSRate = solventMask.getSamplingRate()
+            if abs(inParticlesSRate - maskSRate) >= sRateTol:
                 errorMsg.append(f'The introduced particles and the solvent mask must have the same sampling rate:\n'
-                                f'{inParticlesSRate:.3f} != {refVolumeSRate:.3f} Å/px')
-                # Dimensions
-                x, y, z = solventMask.getDimensions()
-                if inParticles.are2dStacks():
-                    solvenMaskDims = (x, y)
-                    inParticlesDims = (xp, yp)
-                else:
-                    solvenMaskDims = (x, y, z)
-                    inParticlesDims = (xp, yp, zp)
-                if solvenMaskDims != inParticlesDims:
-                    errorMsg.append(f'The dimensions of the solvent mask {solventMask} px and the particles '
-                                    f'{inParticlesDims} px must be the same')
+                                f'{inParticlesSRate:.3f} != {maskSRate:.3f} Å/px')
 
-        # Number of MPI must be at least 3
+            if _getDims(solventMask, is2D) != partDims:
+                errorMsg.append(f'The dimensions of the solvent mask and the particles must be the same.')
+
+        # 3. Resource checks (MPI & GPUs)
         if self.numberOfMpi.get() < 3:
             errorMsg.append('The number of MPIs must be at least 3.')
 
-        # GPUs: they must be separated by ':'
-        gpus = self.gpusToUse.get()
-        gpuNoSpaces = gpus.replace(' ', '')
-        if len(gpuNoSpaces) > 1 and ':' not in gpuNoSpaces:
-            errorMsg.append("Bad format detected in GPUs -> they should be separated by ':'. "
-                            "See the help for detailed info.")
+        gpus = self.gpusToUse.get().replace(' ', '')
+        if len(gpus) > 1 and ':' not in gpus:
+            errorMsg.append("Bad format detected in GPUs -> they should be separated by ':'.")
+
         return errorMsg
 
     def _warnings(self):

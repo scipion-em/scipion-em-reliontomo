@@ -202,6 +202,8 @@ class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
         if self.initialLowPassFilterA.get():
             cmd += '--ini_high %.2f ' % self.initialLowPassFilterA.get()
         cmd += '--sym %s ' % self.symmetry.get()
+        if IS_RELION_50 and self.doResizeRef.get():
+            cmd += '--trust_ref_size '
 
         # CTF args
         cmd += self._genCTFBaseCmd()
