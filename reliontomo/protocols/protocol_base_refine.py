@@ -32,7 +32,215 @@ from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase, IS_REL
 
 
 class ProtRelionRefineBase(ProtRelionTomoBase):
-    """Base protocol used for the getting the initial model and performing the auto-refinment"""
+    """
+    Provides the common refinement framework used for subtomogram
+    reconstruction, initial model generation, and iterative auto-refinement
+    workflows within RELION tomography environments.
+
+    AI Generated:
+
+    RELION Tomography Refinement Base (ProtRelionRefineBase) — User Manual
+        Overview
+
+        This protocol serves as the central refinement foundation for
+        tomography-based reconstruction workflows in RELION. Its purpose is
+        to prepare, control, and optimize iterative refinement procedures for
+        pseudo-subtomograms and related particle representations generated
+        from cryo-electron tomography experiments. The protocol establishes a
+        consistent environment for both ab initio model generation and
+        high-resolution auto-refinement while supporting a broad range of
+        experimental conditions and computational infrastructures.
+
+        In biological cryo-ET studies, refinement is the stage where noisy
+        particle observations are progressively aligned and combined into a
+        coherent three-dimensional reconstruction. This process is essential
+        for improving structural interpretability, separating heterogeneous
+        conformations, and obtaining biologically meaningful density maps.
+        The protocol is therefore commonly used after particle extraction and
+        before downstream interpretation steps such as classification, atomic
+        modeling, or focused analysis.
+
+        Input Data and Reconstruction Context
+
+        The protocol operates on pseudo-subtomograms generated from tilt-series
+        data. These inputs represent intermediate reconstruction objects that
+        approximate the original two-dimensional information while remaining
+        compatible with the RELION refinement framework. They are designed to
+        preserve alignment and contrast-transfer information required for
+        iterative Bayesian optimization.
+
+        From a biological perspective, the quality of the input particles
+        strongly influences refinement stability. Accurate particle picking,
+        reliable tomogram alignment, and appropriate CTF estimation are all
+        critical prerequisites. Poorly aligned subtomograms or highly
+        heterogeneous particle populations may lead to unstable refinements or
+        loss of structural detail.
+
+        The protocol also supports workflows involving both two-dimensional
+        particle stacks and fully three-dimensional subtomographic data,
+        allowing flexibility across different tomography processing strategies.
+
+        CTF Correction and Optical Considerations
+
+        Contrast transfer function correction plays a central role in cryo-EM
+        and cryo-ET refinement because it compensates for microscope-induced
+        phase distortions. This protocol allows refinement workflows to apply
+        CTF correction during projection matching and reconstruction, improving
+        the recovery of high-resolution information.
+
+        In some experimental situations, especially when low-resolution CTF
+        behavior is unreliable, users may choose to suppress correction near
+        the first CTF peak. This can stabilize refinements for difficult data,
+        although it may also reduce sensitivity to low-frequency information.
+        For most well-behaved datasets, standard CTF correction remains the
+        preferred strategy.
+
+        Refinement and Regularisation Strategy
+
+        The protocol supports iterative Bayesian refinement approaches in
+        which experimental evidence is balanced against prior expectations.
+        Regularisation controls this balance and strongly affects refinement
+        behavior. Lower regularisation values tend to enforce smoother and
+        more conservative reconstructions, while larger values increase the
+        influence of experimental observations and may reveal additional
+        structural detail.
+
+        In practical biological applications, moderate regularisation values
+        are often preferred during early refinement stages to avoid overfitting
+        noise. As the refinement stabilizes and particle quality improves,
+        stronger weighting of the experimental data may become beneficial.
+
+        The framework also supports stochastic gradient optimization strategies
+        suitable for initial model generation and heterogeneous datasets. These
+        approaches are particularly valuable when the initial structure is
+        unknown or when multiple structural states coexist within the dataset.
+
+        Classification and Structural Heterogeneity
+
+        The protocol can support workflows involving multiple structural
+        classes. In biological cryo-ET studies, heterogeneous conformations
+        are extremely common due to molecular flexibility, compositional
+        variability, or differences in biochemical state.
+
+        Multi-class refinement can separate these structural populations and
+        prevent incompatible particles from degrading reconstruction quality.
+        In practice, users often employ multiple classes to identify damaged
+        particles, contaminants, assembly intermediates, or distinct functional
+        conformations. Homogeneous datasets may refine successfully with a
+        single class, whereas highly variable systems typically benefit from
+        more extensive classification strategies.
+
+        Symmetry and Structural Constraints
+
+        Symmetry handling is one of the most biologically important aspects of
+        refinement because it directly affects the interpretation of the final
+        reconstruction. Correct symmetry application can dramatically improve
+        signal quality by averaging equivalent structural views. However,
+        imposing incorrect symmetry may artificially distort biologically
+        meaningful asymmetry.
+
+        For uncertain systems, it is often advisable to begin refinement in
+        asymmetric mode and only apply symmetry after validating the particle
+        architecture. This approach is especially important for flexible
+        assemblies, partially occupied complexes, and macromolecules with
+        pseudo-symmetry.
+
+        The protocol also supports workflows in which symmetry determination
+        is delayed until later refinement stages. This strategy can improve
+        robustness during early optimization and reduce the risk of convergence
+        toward incorrect symmetric solutions.
+
+        Particle Masking and Solvent Treatment
+
+        Proper masking is critical for stable refinement because it determines
+        which regions contribute most strongly to alignment and reconstruction.
+        Circular particle masks are commonly used to isolate the molecular
+        signal while suppressing solvent noise.
+
+        For compact particles, standard spherical masking is usually sufficient.
+        More complex systems, including elongated assemblies or membrane
+        proteins with flexible regions, may require careful adjustment of mask
+        diameter to avoid excluding biologically relevant density.
+
+        Solvent flattening and non-negative density enforcement further improve
+        reconstruction stability by reducing unrealistic density fluctuations.
+        These constraints are particularly useful during early iterations or
+        when processing noisy subtomograms.
+
+        Angular Sampling and Alignment Precision
+
+        Angular and translational sampling parameters determine how broadly the
+        protocol explores possible particle orientations and positions. Wider
+        searches improve robustness for poorly aligned datasets but increase
+        computational cost. Narrower searches improve efficiency and precision
+        once approximate alignments are already available.
+
+        Prior angular information can also be incorporated into refinement
+        workflows. This is especially valuable in tomography datasets where
+        particles may exhibit biologically constrained orientations, such as
+        membrane-associated complexes, filaments, or surface-bound assemblies.
+
+        The careful use of priors can significantly stabilize refinement while
+        preserving meaningful structural variability.
+
+        GPU Acceleration and Computational Scaling
+
+        Tomographic refinement is computationally demanding because it involves
+        repeated alignment and reconstruction of large particle datasets. The
+        protocol therefore supports parallel execution strategies, GPU
+        acceleration, memory optimization, and advanced disk-management modes.
+
+        GPU acceleration substantially reduces refinement time and is strongly
+        recommended for large-scale datasets or high-resolution studies. Memory
+        management options allow users to optimize performance depending on
+        available hardware resources, storage speed, and network configuration.
+
+        On high-performance computing systems, balancing MPI processes, thread
+        usage, GPU distribution, and memory consumption is essential for stable
+        and efficient execution.
+
+        Output Interpretation
+
+        The protocol produces refined particle metadata, reconstruction maps,
+        and iteration-dependent refinement information that can be used for
+        downstream processing. These outputs form the basis for subsequent
+        classification, post-processing, local refinement, focused masking,
+        and biological interpretation.
+
+        During iterative refinement, users should monitor convergence behavior,
+        map quality, and consistency between iterations. Sudden changes in map
+        appearance, unstable angular assignments, or unexpected resolution
+        behavior may indicate overfitting, heterogeneity, or parameter
+        misconfiguration.
+
+        Practical Recommendations
+
+        For most biological cryo-ET projects, it is advisable to begin with
+        conservative refinement settings and gradually increase refinement
+        complexity as stability improves. Initial reconstructions often benefit
+        from broad angular searches, moderate regularisation, and careful
+        masking strategies.
+
+        GPU acceleration should be enabled whenever compatible hardware is
+        available. Users should also verify that reference maps, masks, and
+        particles share compatible dimensions and sampling rates before
+        starting refinement.
+
+        In heterogeneous datasets, introducing multiple classes early in the
+        workflow often improves refinement robustness and prevents poor-quality
+        particles from dominating the reconstruction. Symmetry should only be
+        applied when biologically justified.
+
+        Final Perspective
+
+        Tomographic refinement is not simply a numerical optimization process
+        but a biologically meaningful reconstruction strategy that transforms
+        noisy particle observations into interpretable structural information.
+        Successful refinement depends on balancing computational precision,
+        prior biological knowledge, experimental quality, and careful parameter
+        selection. When used appropriately, this protocol provides a powerful
+        foundation for high-resolution cryo-electron tomography analysis.
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

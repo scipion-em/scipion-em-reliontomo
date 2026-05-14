@@ -49,8 +49,170 @@ class outputObjects(Enum):
 
 
 class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
-    """extracts the relevant cropped areas of the tilt series images for each individual particle and saves them as
-    CTF-premultiplied extracted 2D image stacks (or as 3D volumes).
+    """
+    Extracts particle-centered subtomograms or 2D particle stacks from
+tilt series data for downstream subtomogram averaging and refinement
+workflows in Relion.
+
+    AI Generated:
+
+    Extract Subtomos (ProtRelion5ExtractSubtomos) - User Manual
+        Overview
+
+        The Extract Subtomos protocol prepares particle-centered data
+from cryo-electron tomography tilt series for subsequent processing in
+Relion subtomogram averaging workflows. Its primary objective is to
+generate localized particle representations from aligned tilt images,
+allowing individual molecular complexes to be reconstructed, classified,
+or refined in later stages of analysis.
+
+        In practical cryo-ET studies, this protocol is commonly used
+after particle picking and tomogram reconstruction. Biological users
+typically employ it to isolate macromolecular complexes from crowded
+cellular environments, enabling structural analysis of particles that
+would otherwise remain difficult to interpret directly inside the full
+tomogram. The protocol supports both first-time extraction from 3D
+coordinates and re-extraction workflows where previously generated
+pseudo-subtomograms are updated after refinement or correction steps.
+
+        Inputs and General Workflow
+
+        The protocol requires particle positions together with the
+corresponding tilt series and contrast transfer function information.
+These datasets must describe the same tomographic acquisition because
+particle extraction depends on accurate geometric correspondence between
+coordinates, tilt images, and imaging parameters. In biological
+practice, ensuring consistency among these inputs is essential for
+obtaining correctly centered and interpretable particle data.
+
+        During processing, the protocol maps particle positions into the
+tilt series geometry and generates particle-centered image data suitable
+for Relion tomography refinement procedures. Depending on the selected
+mode, the output can be written either as 2D particle substacks or as
+3D pseudo-subtomograms. The 2D stack representation is generally
+preferred in modern Relion workflows because it preserves the original
+projection information more directly and can improve downstream
+refinement flexibility.
+
+        Coordinate Scaling and Tomographic Consistency
+
+        A biologically important aspect of cryo-ET particle extraction
+is the relationship between tomogram voxel size and tilt-series pixel
+size. Coordinates derived from reconstructed tomograms frequently need
+to be rescaled before extraction so that particles correspond correctly
+to the original tilt images. Proper scaling ensures that extracted
+particles remain centered on the biological structure of interest.
+
+        This becomes particularly important when combining data from
+different preprocessing pipelines or when tomograms were reconstructed
+using binning factors different from those used during tilt-series
+alignment. Incorrect scaling can produce shifted particles, loss of
+high-resolution information, or biologically misleading reconstructions.
+
+        Dose Filtering and Frame Selection
+
+        The protocol allows users to define a maximum electron dose and
+a minimum number of acceptable tilt images contributing to each particle.
+These parameters are biologically significant because radiation damage
+progressively reduces structural information during tomography data
+collection.
+
+        Excluding highly damaged projections generally improves the
+quality of extracted particles and reduces reconstruction artifacts.
+However, aggressive filtering may reduce angular coverage for some
+particles, particularly in crowded or thick specimens. Biological users
+should therefore balance data quality against sufficient sampling of
+particle orientations.
+
+        Choice Between 2D Stacks and 3D Pseudo-Subtomograms
+
+        The protocol supports two related but distinct extraction
+strategies. The first produces 2D substacks containing the particle
+signal extracted directly from the tilt images. The second generates 3D
+pseudo-subtomograms that approximate a reconstructed subtomogram volume.
+
+        For most modern Relion tomography workflows, 2D stacks are the
+recommended option because they retain the original projection-space
+information and integrate naturally with current refinement methods.
+Pseudo-subtomograms remain useful for compatibility with older workflows
+or for exploratory analyses where direct volumetric inspection is desired.
+
+        From a biological perspective, both approaches aim to isolate
+the same molecular structures, but the interpretation and downstream
+processing strategy may differ substantially depending on the selected
+representation.
+
+        Handedness and Geometrical Interpretation
+
+        The protocol includes control over the handedness of the tilt
+geometry, which determines how focus changes along the tomographic Z
+direction. Correct handedness is essential for maintaining proper
+three-dimensional orientation of the reconstructed biological structures.
+
+        Incorrect handedness may lead to mirrored reconstructions or
+inconsistent particle orientations, potentially affecting interpretation
+of structural asymmetry, membrane topology, or molecular organization
+inside cellular environments.
+
+        Fiducial Projection and Coordinate Tracking
+
+        When particle coordinates are extracted directly from tomograms,
+the protocol can also generate projected coordinate information across
+the tilt series. This allows visualization and tracking of particle
+positions within individual projections and can assist in validating
+particle localization quality.
+
+        In biological workflows involving crowded intracellular regions
+or heterogeneous specimens, these projected coordinates can provide
+valuable confirmation that particles remain consistently associated with
+their intended structures throughout the tilt series.
+
+        Outputs and Their Interpretation
+
+        The main output consists of Relion-compatible pseudo-subtomograms
+or 2D particle stacks together with the associated metadata required for
+subsequent subtomogram averaging, classification, or refinement. These
+outputs preserve the spatial and acquisition relationships needed for
+high-resolution cryo-ET analysis.
+
+        When coordinate projection information is generated, additional
+landmark-style outputs may also be produced to facilitate visualization
+of particle trajectories within the tilt series geometry.
+
+        Biological users should interpret the extracted particles as
+intermediate representations optimized for downstream refinement rather
+than final structural maps. The quality of these extracted datasets
+strongly influences the reliability of all subsequent classification and
+averaging steps.
+
+        Practical Recommendations
+
+        In routine cryo-ET practice, it is generally advisable to begin
+with 2D stack extraction because it offers the most flexible and
+future-proof processing strategy within Relion tomography workflows.
+Users should verify that tilt series are properly aligned and that
+coordinate scaling between tomograms and tilt images is correct before
+launching large extraction jobs.
+
+        Conservative dose thresholds are often beneficial for preserving
+high-resolution information, particularly in sensitive biological
+specimens. However, users should avoid excessively strict filtering that
+might reduce particle visibility across too many projections.
+
+        Re-extraction workflows become especially valuable after CTF
+refinement, Bayesian polishing, or improved alignment procedures because
+updated extraction can significantly improve downstream subtomogram
+averaging quality.
+
+        Final Perspective
+
+        Subtomogram extraction is one of the foundational stages of
+cryo-electron tomography analysis because it transforms complex cellular
+data into particle-centered representations suitable for structural
+interpretation. Careful management of coordinate scaling, tilt-series
+geometry, dose filtering, and extraction strategy is essential for
+producing biologically reliable particle datasets that support accurate
+downstream refinement and interpretation.
     """
     _label = 'Extract subtomos'
     _possibleOutputs = outputObjects

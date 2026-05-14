@@ -33,29 +33,119 @@ evenAberrationOrders = [4, 6, 8]
 
 
 class ProtRelionCtfRefine(ProtRelionPerParticlePerTiltBase):
-    """Tomo CTF refine:\n
+    """
+    Refines tomographic Contrast Transfer Function parameters from tilt-series data in order to improve
+    the accuracy and interpretability of subtomogram reconstructions. The protocol estimates defocus,
+    signal attenuation effects related to ice thickness, and higher-order optical aberrations across
+    tilt images, allowing the resulting tomographic data to achieve improved contrast consistency and
+    optical correction.
 
-    This program estimates the astigmatic defoci of the individual tilt images, the ice
-    thickness (which determines the overall signal intensity) and higher-order optical aberrations.\n
+    AI Generated:
 
-    _Defocus_: In tomography, the relative depth distances between particles are known from the 3D
-    positions of the particles. Therefore, only one defocus value is estimated for all the particles
-    in each tilt image. Because of the often large number of particles in each tomogram, this value
-    can typically be estimated to greater precision than in single-particle analysis, where the defocus
-    of each particle has to be estimated independently.\n
-    _Ice-thickness_: A thicker sample permits fewer electrons to pass through, which reduces the scale
-    of the signal. In addition to the actual variation in sample thickness, the effective thickness
-    of the ice also increases as the sample is tilted. This program allows the user to estimate the
-    signal intensity either independently for each tilt image, or by fitting the base thickness,
-    the initial beam luminance and the surface normal of the sample assuming Beer-Lambert’s Law.
-    In the latter case, only one surface normal and base thickness are estimated for an entire
-    tilt series, which allows for a more stable fit from tomograms with fewer particles.\n
-    _Higher-order optical aberrations_: This algorithm works analogously to relion_ctf_refine for
-    single-particle analysis. As in single-particle analysis, the aberrations are estimated
-    per optics group. This allows the user to group particles that are expected to share the
-    same aberrations, either by image region or by subset of tilt series, or both. Both
-    symmetrical (even) and antisymmetrical (odd) aberrations are supported. A detailed description
-     of the aberrations estimation algorithm can be found in the relion aberrations paper.
+    Tomo CTF Refine (ProtRelionCtfRefine) — User Manual
+        Overview
+
+        The Tomo CTF Refine protocol performs advanced refinement of optical parameters in cryo-electron
+        tomography datasets. Its purpose is to improve the physical description of image formation within
+        a tilt series by refining parameters that directly influence contrast transfer and signal quality.
+        Accurate correction of these effects is essential for achieving higher-resolution subtomogram
+        averages and for improving the reliability of downstream structural interpretation.
+
+        In tomography workflows, particles occupy different depths inside the specimen and are observed
+        across many tilted projections. Because of this geometry, optical distortions and signal
+        attenuation vary systematically throughout the dataset. This protocol takes advantage of the
+        known three-dimensional particle positions to estimate more stable and physically meaningful
+        corrections than those typically achievable in single-particle analysis.
+
+        Defocus Refinement
+
+        One of the primary functions of the protocol is the refinement of defocus values for tilt
+        images. In cryo-electron tomography, all particles from the same projection share a common
+        imaging geometry, which allows defocus estimation to be performed collectively for each tilt.
+        Since many particles contribute simultaneously, the resulting estimates are often more precise
+        and robust than independent particle-by-particle approaches.
+
+        Defocus refinement is especially important for high-resolution subtomogram averaging, where
+        small inaccuracies in phase correction can significantly reduce map quality. The protocol allows
+        users to define a search range for the refinement, enabling adaptation to datasets with varying
+        imaging conditions or uncertainty in the initial microscope parameters.
+
+        For challenging datasets acquired at high tilt angles, the protocol also supports regularization
+        of defocus estimates. This stabilizes the refinement by constraining neighboring tilt images to
+        maintain physically consistent values. Such regularization is particularly useful when the
+        signal-to-noise ratio decreases strongly at high tilts, where overfitting can otherwise occur.
+
+        Ice Thickness and Signal Scale Estimation
+
+        The protocol also estimates signal attenuation effects caused by specimen thickness and electron
+        absorption. In cryo-electron tomography, thicker ice regions reduce transmitted electron signal,
+        leading to variations in image intensity across the tilt series. These effects become more
+        pronounced at high tilt angles because electrons traverse a longer effective path through the
+        sample.
+
+        Users may choose between estimating signal intensity independently for each tilt image or using
+        a physically constrained ice-thickness model. Independent estimation provides flexibility and
+        can adapt to complex datasets with irregular signal variations. In contrast, the ice-thickness
+        model estimates global physical parameters such as specimen thickness, beam luminance, and
+        surface orientation, resulting in a more stable and noise-resistant refinement.
+
+        The physically constrained model is often preferable for datasets with limited particle numbers
+        or noisy projections because it reduces the number of free parameters. However, datasets with
+        strong local variations in illumination or sample thickness may benefit from the more flexible
+        per-frame refinement approach.
+
+        Higher-Order Optical Aberration Refinement
+
+        The protocol optionally refines higher-order optical aberrations that arise from imperfections
+        in the microscope optics. These aberrations include both symmetrical and asymmetrical distortions
+        that affect image quality and limit achievable resolution if left uncorrected.
+
+        Symmetrical aberrations include effects such as spherical aberration and related higher-order
+        distortions, while asymmetrical aberrations include coma-like or trefoil-like components. The
+        protocol estimates these parameters per optics group, allowing users to separate datasets
+        acquired under different optical conditions or from different microscope regions.
+
+        In practice, higher-order aberration refinement is most beneficial for high-resolution datasets
+        where subtle optical imperfections become resolution limiting. For lower-resolution exploratory
+        projects, these corrections may provide smaller improvements and can often be omitted during
+        initial processing stages.
+
+        Inputs and General Workflow
+
+        The protocol requires aligned tomographic particle data together with previously estimated CTF
+        information. Reliable particle alignment and accurate tilt-series geometry are essential because
+        the refinement depends directly on the spatial consistency of the dataset.
+
+        During execution, the protocol analyzes the tilt-series projections collectively and estimates
+        the selected optical parameters according to the chosen refinement strategy. Depending on the
+        dataset size and selected options, the refinement may range from relatively fast defocus updates
+        to more computationally demanding aberration estimation procedures.
+
+        The resulting refined optical parameters can then be propagated into subsequent subtomogram
+        averaging or refinement workflows, leading to improved contrast correction and potentially
+        higher-resolution reconstructions.
+
+        Practical Recommendations
+
+        For most biological projects, beginning with defocus refinement and signal-scale estimation is
+        a sensible strategy. These corrections often provide the largest immediate improvements in map
+        quality and alignment stability. Defocus regularization is strongly recommended for datasets
+        containing many high-tilt images or low signal levels.
+
+        Ice-thickness modeling is particularly useful for datasets with limited particle counts because
+        it imposes physically meaningful constraints that improve robustness. Per-frame scale refinement
+        may be preferable when illumination conditions vary substantially across the acquisition.
+
+        Higher-order aberration refinement is generally most valuable during late-stage refinement of
+        high-resolution datasets. Users should ensure that optics groups are defined appropriately so
+        that particles sharing similar optical conditions are refined together.
+
+        Final Perspective
+
+        Accurate modeling of optical effects is one of the key factors determining the quality of
+        cryo-electron tomography reconstructions. By refining defocus, correcting signal attenuation,
+        and compensating for higher-order aberrations, this protocol improves the physical consistency
+        of tomographic datasets and enhances the reliability of downstream structural interpretation.
     """
 
     _label = 'CTF refinement'

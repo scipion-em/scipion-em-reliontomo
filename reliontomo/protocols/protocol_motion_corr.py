@@ -71,7 +71,196 @@ class outputObjects(Enum):
 
 
 class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
-    """Motion correction of tilt-series movies"""
+    """
+    Performs motion correction of tilt-series movies in cryo-electron
+    tomography workflows in order to compensate for beam-induced specimen
+    movement and generate aligned tilt images suitable for downstream
+    reconstruction and subtomogram analysis.
+
+    AI Generated:
+
+    Motion Correction of Tilt-series Movies (ProtRelionTomoMotionCorr) — User Manual
+        Overview
+
+        The Motion Correction protocol is responsible for correcting
+        beam-induced motion present in tilt-series movie data acquired during
+        cryo-electron tomography experiments. During electron exposure, the
+        sample often undergoes small physical displacements caused by radiation
+        damage, charging effects, mechanical instability, or ice relaxation.
+        These motions blur the recorded signal and reduce the attainable
+        resolution of downstream reconstructions.
+
+        The primary objective of this protocol is to align the individual
+        frames of each movie so that specimen motion is compensated before further
+        processing. The resulting aligned tilt images provide improved signal
+        quality, sharper Thon rings for CTF estimation, and more reliable inputs
+        for tomogram reconstruction and subtomogram averaging workflows.
+
+        In biological cryo-ET studies, proper motion correction is one of
+        the earliest and most critical preprocessing stages. Errors introduced at
+        this point propagate through the entire workflow and may negatively affect
+        alignment accuracy, contrast transfer estimation, particle picking, and
+        high-resolution refinement.
+
+        Inputs and General Workflow
+
+        The protocol requires a collection of tilt-series movies acquired
+        during tomography data collection. Each tilt image is composed of multiple
+        movie frames that capture the temporal evolution of the specimen during
+        electron exposure. The protocol aligns these frames to reduce motion blur
+        and generates corrected tilt images organized into aligned tilt-series.
+
+        The corrected outputs can subsequently be used for tomogram
+        reconstruction, particle extraction, denoising, subtomogram refinement,
+        and structural interpretation. In many cryo-ET pipelines, motion
+        correction is performed immediately after data import and before any CTF
+        analysis or tilt-series alignment procedures.
+
+        Binning and Image Scaling
+
+        The protocol allows optional binning during motion correction.
+        Binning reduces the image dimensions by combining neighboring pixels and
+        therefore decreases storage requirements and computational cost.
+
+        In practical biological workflows, moderate binning is often used
+        during exploratory processing or for very large super-resolution datasets.
+        However, aggressive binning permanently removes high-frequency information
+        and may limit the maximum achievable resolution. Users aiming for
+        high-resolution subtomogram averaging generally prefer minimal binning
+        during early preprocessing.
+
+        Because binning changes the effective pixel size, downstream
+        processing steps must remain consistent with the selected scaling factor.
+
+        Patch-based Motion Correction
+
+        Motion correction may be performed globally or locally using image
+        patches. Local patch-based correction is biologically important because
+        different regions of the specimen can move differently during exposure.
+        This behavior is especially common in thicker cryo-ET samples, lamellae,
+        cellular environments, or flexible ice regions.
+
+        Increasing the number of patches allows the correction to model
+        more spatially heterogeneous motion. However, excessive subdivision may
+        reduce robustness when image contrast is weak. Smaller patch sizes are
+        generally more useful for large fields of view or highly non-uniform
+        motion, whereas simpler global correction may be sufficient for stable,
+        thin specimens.
+
+        Biological users should balance local flexibility against noise
+        sensitivity when selecting patch parameters.
+
+        Frame Grouping and Dose Considerations
+
+        The protocol can group consecutive frames before estimating motion.
+        Frame grouping improves signal-to-noise ratio and stabilizes alignment,
+        particularly in low-dose conditions typical of tomography experiments.
+
+        Excessive grouping, however, may reduce temporal resolution and
+        limit the ability to correct rapid beam-induced movements. In practice,
+        moderate grouping values often provide a good compromise between alignment
+        stability and motion accuracy.
+
+        Dose-dependent considerations are especially important in cryo-ET
+        because high tilt angles typically contain lower signal and increased
+        effective specimen thickness. Reliable motion correction therefore helps
+        preserve weak high-resolution information across the entire tilt range.
+
+        Gain Reference and Detector Corrections
+
+        The protocol supports detector gain correction and detector defect
+        handling. Gain references compensate for non-uniform detector response,
+        while defect correction addresses permanently damaged or unreliable pixels.
+
+        Proper detector calibration is essential for accurate intensity
+        normalization and optimal image quality. Incorrect gain orientation or
+        flipping may introduce artifacts that propagate throughout the tomography
+        workflow.
+
+        In biological practice, users should carefully verify detector
+        configuration parameters during initial data processing, especially when
+        working with new microscope setups or unfamiliar acquisition software.
+
+        EER Data Processing
+
+        The protocol supports Electron Event Representation data generated
+        by modern direct electron detectors. EER datasets preserve very fine
+        temporal sampling and provide increased flexibility during frame grouping
+        and dose management.
+
+        Fractionation settings determine how detector events are grouped
+        into processing frames. Smaller fractions preserve finer temporal
+        information but increase computational cost and storage demands. Larger
+        fractions simplify processing and may improve robustness in lower-quality
+        datasets.
+
+        Biological users performing high-resolution tomography often
+        benefit from carefully optimized EER fractionation strategies tailored to
+        their specimen type and acquisition conditions.
+
+        Even and Odd Frame Outputs
+
+        The protocol optionally produces separate outputs from even and odd
+        movie frames. These paired datasets are particularly valuable for
+        downstream denoising approaches such as cryoCARE and related machine
+        learning strategies.
+
+        Although generating even and odd outputs increases processing time
+        and storage requirements, many laboratories routinely enable this option
+        because it preserves flexibility for future denoising and enhancement
+        steps.
+
+        Power Spectra and CTF Estimation
+
+        Motion correction can also generate summed power spectra optimized
+        for contrast transfer function estimation. Accurate CTF determination is
+        especially important in tomography because signal quality decreases
+        substantially at high tilt angles.
+
+        Properly averaged power spectra improve visibility of Thon rings
+        and facilitate more reliable defocus estimation. This directly influences
+        subsequent tomogram reconstruction quality and subtomogram refinement
+        performance.
+
+        Outputs and Their Interpretation
+
+        The protocol produces aligned tilt-series suitable for downstream
+        tomographic workflows. Depending on the selected options, additional
+        outputs may include even-frame and odd-frame tilt-series for denoising
+    applications.
+
+        The corrected images should exhibit improved sharpness, reduced
+        frame blurring, and more consistent high-frequency signal. Biological
+        users commonly inspect power spectra, image contrast, and visual alignment
+        quality to confirm that motion correction has performed successfully.
+
+        Practical Recommendations
+
+        For routine cryo-ET processing, moderate patch-based alignment and
+        careful gain correction generally provide robust results. Users should
+        avoid excessive binning when high-resolution subtomogram averaging is the
+        final objective.
+
+        When processing challenging specimens such as thick lamellae,
+        cellular tomograms, or highly tilted datasets, local motion correction and
+        appropriate frame grouping become particularly important. In these cases,
+        testing several parameter combinations may substantially improve final map
+        quality.
+
+        Laboratories interested in denoising or machine learning
+        enhancement should strongly consider generating even and odd frame
+        outputs during initial preprocessing, since recreating them later may be
+        impossible without repeating the entire workflow.
+
+        Final Perspective
+
+        Motion correction is one of the foundational preprocessing stages
+        in cryo-electron tomography. Accurate compensation of beam-induced motion
+        preserves structural information that would otherwise be lost during image
+        acquisition. Careful optimization of motion correction parameters can
+        significantly improve tomogram quality, subtomogram averaging resolution,
+        and the biological interpretability of reconstructed structures.
+    """
     _label = 'Motion correction of tilt-series movies'
     _possibleOutputs = outputObjects
 

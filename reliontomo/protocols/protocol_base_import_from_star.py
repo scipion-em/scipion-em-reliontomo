@@ -46,7 +46,107 @@ class importCoordsOutputs(Enum):
 
 
 class ProtBaseImportFromStar(EMProtocol, ProtTomoBase):
-    """Base protocol for importing data from a star file"""
+    """
+    Imports tomographic particle coordinates from STAR metadata files and associates them with an existing set of tomograms.
+
+    AI Generated:
+
+    Import Coordinates From STAR (ProtBaseImportFromStar) - User Manual
+        Overview
+
+        The Import Coordinates From STAR protocol is designed to integrate particle coordinate information generated in
+        external cryo-electron tomography workflows into a Scipion tomography project. Its primary purpose is to read
+        coordinates stored in STAR metadata files and connect them with previously imported tomograms so they can be
+        used in downstream subtomogram analysis, particle extraction, refinement, or classification workflows.
+
+        In practical cryo-ET processing, coordinates are often generated outside the main processing environment using
+        particle picking tools, template matching approaches, neural-network detectors, or manual annotation software.
+        This protocol provides a bridge between those coordinate sources and the tomography data already available in
+        the project. The resulting coordinate set becomes a structured object that can be reused consistently across
+        multiple downstream protocols.
+
+        Inputs and Coordinate Association
+
+        The protocol requires two principal inputs: a STAR metadata file containing coordinate information and a set of
+        tomograms that define the spatial reference system. The imported coordinates are interpreted relative to the
+        geometry and sampling characteristics of the selected tomograms. Correct correspondence between the STAR file
+        identifiers and the tomogram identifiers is therefore essential for successful import.
+
+        From a biological perspective, this association step ensures that each detected particle is linked to the
+        correct cellular volume or tilt series reconstruction. Incorrect matching between coordinates and tomograms may
+        lead to particles being misplaced in unrelated regions, producing biologically meaningless downstream analyses.
+
+        Sampling Rate Considerations
+
+        One of the most important practical aspects of coordinate import is the management of sampling rates. The
+        protocol allows coordinates generated at one pixel size to be correctly scaled into tomograms reconstructed at
+        another pixel size. This situation is common in cryo-ET workflows where particle picking is performed on
+        downsampled tomograms for speed, while later subtomogram processing may use higher-resolution reconstructions.
+
+        If a coordinate sampling rate is not explicitly provided, the protocol attempts to infer it from the metadata
+        available in the STAR file. When no such information exists, the tomogram sampling rate is assumed. Correct
+        scaling is biologically critical because inaccurate coordinate scaling may shift particles away from their true
+        structural locations, compromising extraction quality and subsequent refinement.
+
+        Compatibility Across STAR Formats
+
+        Cryo-ET metadata formats have evolved across different versions of RELION and related tomography tools. This
+        protocol is intended to support coordinate import from multiple generations of STAR files while maintaining
+        compatibility with modern tomography workflows. Older coordinate conventions and newer RELION tomography data
+        structures are both considered during import validation.
+
+        In practical use, this flexibility is particularly valuable for laboratories combining historical datasets with
+        newly acquired experiments or integrating coordinates produced by independent external software. The protocol
+        attempts to identify the metadata conventions automatically and adapt the import process accordingly.
+
+        Coordinate Validation and Tomogram Matching
+
+        Before importing coordinates, the protocol performs consistency checks between the coordinate metadata and the
+        tomogram collection. These validations help ensure that identifiers used in the STAR file correspond to the
+        tomograms available in the project. This step is especially important in large cryo-ET studies where multiple
+        tomograms or experimental conditions are processed simultaneously.
+
+        Biologically, proper validation reduces the risk of cross-assignment between unrelated tomograms, which could
+        otherwise produce misleading localization patterns or incorrect subtomogram populations. Careful identifier
+        consistency is therefore essential for reliable interpretation.
+
+        Box Size and Extraction Context
+
+        The protocol allows the user to define a coordinate box size that represents the expected extraction region
+        surrounding each particle. This parameter influences the spatial context retained around the imported particle
+        coordinates and therefore affects later subtomogram reconstruction and averaging stages.
+
+        Smaller box sizes may be appropriate for compact macromolecular assemblies, while larger values are often
+        beneficial when studying membrane-associated complexes, flexible structures, or crowded intracellular
+        environments where contextual information may assist alignment and classification.
+
+        Outputs and Their Interpretation
+
+        After execution, the protocol produces a set of 3D coordinates linked directly to the corresponding tomograms.
+        These coordinates preserve the spatial organization of the original tomography experiment and can be used in
+        particle extraction, subtomogram averaging, classification, or visualization workflows.
+
+        The resulting coordinate set serves as a foundational object within cryo-ET processing pipelines because many
+        downstream analyses depend on accurate particle localization. The biological quality of later reconstructions is
+        therefore strongly influenced by the precision and consistency of the imported coordinates.
+
+        Practical Recommendations
+
+        In routine practice, users should verify that tomogram identifiers in the STAR file match the identifiers used
+        in the tomography dataset before import. It is also advisable to confirm that coordinate scaling corresponds to
+        the intended reconstruction level, particularly when coordinates were generated on binned tomograms.
+
+        When integrating coordinates from older software environments, careful visual inspection after import is highly
+        recommended to ensure that particles occupy biologically plausible regions within the tomograms. Small metadata
+        inconsistencies can otherwise propagate into substantial downstream alignment errors.
+
+        Final Perspective
+
+        Coordinate import is a critical integration step in cryo-electron tomography because it connects external
+        particle detection workflows with the internal processing environment used for subtomogram analysis. Accurate
+        association between coordinates, tomograms, and sampling rates ensures that downstream structural refinement
+        begins from biologically meaningful particle locations and preserves the integrity of the original experiment.
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

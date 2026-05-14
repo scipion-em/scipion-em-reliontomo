@@ -42,15 +42,210 @@ class outputObjects(Enum):
 
 
 class ProtRelionDeNovoInitialModel(ProtRelionRefineBase):
-    """ Generate a de novo 3D initial model from the pseudo-subtomograms.
+    """
+    Generates a de novo 3D initial model from pseudo-subtomograms in
+    cryo-electron tomography workflows. The protocol is designed to
+    create an initial low-resolution structural reference without the
+    need for a previously known map, enabling downstream refinement,
+    classification, and structural interpretation.
 
-    This de novo 3D initial model allows to obtain a map without any prior knowledge.
-    Provided you have a reasonable distribution of angular directions, this algorithm
-    is likely to yield a suitable, low-resolution model that can subsequently be used
-    for 3D classification or 3D auto-refine.\n
+    AI Generated:
 
-    Relion-4.0 uses a gradient-driven algorithm to generate a de novo 3D initial model
-    from the pseudo-subtomograms.
+    De Novo Initial Model (ProtRelionDeNovoInitialModel) — User Manual
+        Overview
+
+        The De Novo Initial Model protocol generates one or more initial
+        three-dimensional maps directly from pseudo-subtomograms using
+        Relion tomography workflows. Its main purpose is to provide an
+        unbiased starting structure for subtomogram averaging and
+        refinement when no reliable reference model is available.
+
+        In cryo-electron tomography, obtaining an initial reference is
+        often one of the most challenging stages of analysis. Biological
+        structures may be poorly characterized, structurally flexible,
+        or entirely unknown. This protocol addresses that problem by
+        reconstructing a low-resolution model directly from the particle
+        data itself, allowing users to begin iterative refinement and
+        classification procedures without introducing strong external
+        bias.
+
+        The protocol is particularly valuable during exploratory studies
+        of macromolecular complexes, membrane assemblies, viral particles,
+        or heterogeneous cellular structures where structural information
+        is incomplete or unavailable.
+
+        Inputs and General Workflow
+
+        The protocol requires a set of pseudo-subtomograms generated from
+        tomographic data. These particles should already represent the
+        biological structure of interest and should ideally contain a
+        broad distribution of orientations. Angular diversity is one of
+        the key requirements for successful de novo reconstruction because
+        insufficient orientation coverage can lead to distorted or unstable
+        maps.
+
+        The workflow begins by estimating an initial low-resolution volume
+        directly from the particle set. This model is iteratively improved
+        while simultaneously refining particle orientations and translations.
+        The resulting structure can then serve as the starting point for
+        downstream subtomogram averaging, classification, or high-resolution
+        refinement.
+
+        From a biological perspective, the protocol is intended to recover
+        the dominant structural organization present in the dataset rather
+        than detailed atomic features. The resulting maps should therefore
+        be interpreted as low-resolution consensus representations suitable
+        for further refinement.
+
+        Symmetry Considerations
+
+        Symmetry handling is one of the most biologically important aspects
+        of de novo model generation. Many macromolecular assemblies exhibit
+        rotational or point-group symmetry, and incorporating that symmetry
+        can significantly improve reconstruction quality and signal recovery.
+
+        The protocol allows the user to define a target symmetry group.
+        However, the initial reconstruction process may first proceed in
+        asymmetric mode before symmetry is later imposed. This strategy is
+        particularly useful because it reduces the risk of enforcing an
+        incorrect symmetry too early in the reconstruction process.
+
+        For biological systems with uncertain or ambiguous symmetry, it is
+        often safer to begin conservatively and inspect the resulting map
+        before applying strong symmetry constraints. Incorrect symmetry
+        assignment can artificially distort structural features and may
+        hide biologically meaningful asymmetry.
+
+        When symmetry is correctly chosen, however, it can greatly stabilize
+        reconstruction and improve map interpretability, especially for
+        highly symmetric assemblies such as viral capsids, ring-shaped
+        complexes, or oligomeric membrane proteins.
+
+        Classification and Structural Heterogeneity
+
+        The protocol can generate either a single consensus model or
+        multiple initial classes. Multiple classes become particularly
+        important when the dataset contains conformational variability,
+        compositional heterogeneity, or structurally distinct particle
+        populations.
+
+        In biological practice, heterogeneous datasets are extremely common.
+        Flexible molecular machines, partially assembled complexes, and
+        ligand-dependent conformations may all coexist within the same
+        experiment. Generating several initial models allows these distinct
+        states to begin separating early in the processing workflow.
+
+        However, increasing the number of classes also increases computational
+        complexity and may dilute the number of particles contributing to
+        each reconstruction. For smaller datasets, excessive classification
+        can produce unstable or noisy maps. Users should therefore balance
+        biological expectations against the practical limitations of particle
+        count and data quality.
+
+        Angular Sampling and Translational Searches
+
+        The protocol allows control over angular and translational search
+        parameters during optimization. These settings influence both the
+        robustness of reconstruction and the computational cost.
+
+        Fine angular sampling improves orientation precision but requires
+        substantially more computation. Coarser sampling is often sufficient
+        during early exploratory stages, especially when the objective is
+        only to obtain an approximate initial model.
+
+        Translational searches determine how broadly particles may shift
+        relative to the evolving reference. Wider ranges are useful when
+        particle centering is uncertain, although excessively large search
+        spaces may slow convergence and increase the risk of unstable
+        solutions.
+
+        In most biological workflows, the default settings provide a good
+        balance between robustness and efficiency, particularly for standard
+        subtomogram averaging datasets.
+
+        Solvent Flattening and Regularization
+
+        The protocol includes options that stabilize reconstruction by
+        controlling noise and solvent behavior. Solvent flattening is
+        especially useful for isolated particles embedded within noisy
+        tomographic environments because it suppresses irrelevant density
+        outside the molecular region.
+
+        Regularization parameters influence how strongly the reconstruction
+        is constrained during optimization. Stronger regularization generally
+        produces smoother and more stable maps, while weaker regularization
+        may preserve additional structural detail at the cost of increased
+        sensitivity to noise.
+
+        From a biological perspective, early de novo models should prioritize
+        robustness and interpretability rather than maximal detail. Stable
+        low-resolution maps provide a much stronger foundation for downstream
+        refinement than unstable high-frequency features.
+
+        Computational Considerations
+
+        De novo reconstruction can be computationally demanding because the
+        protocol simultaneously estimates particle orientations and the
+        evolving reference structure. GPU acceleration substantially improves
+        performance and is strongly recommended for practical use with large
+        subtomogram datasets.
+
+        The protocol is intended to operate using a single MPI process. This
+        limitation reflects the optimization strategy employed during the
+        reconstruction procedure and should be considered when planning
+        computational resources.
+
+        Particle dimensions are also important. Pseudo-subtomograms should
+        have even box sizes to ensure compatibility with the reconstruction
+        workflow and avoid downstream processing problems.
+
+        Outputs and Their Interpretation
+
+        After completion, the protocol produces one or more reconstructed
+        volumes representing the estimated initial structural states. These
+        maps are typically low to intermediate resolution and are intended
+        primarily as starting references for subsequent refinement procedures.
+
+        When multiple classes are generated, each output volume represents a
+        distinct structural population identified within the dataset. These
+        classes may correspond to biologically meaningful conformational
+        states, assembly intermediates, or compositional variants.
+
+        The resulting maps should always be inspected visually before further
+        processing. Biological plausibility, symmetry consistency, and overall
+        structural continuity are important indicators of successful
+        reconstruction.
+
+        Practical Recommendations
+
+        In most practical workflows, users should begin with a single class
+        and moderate angular sampling to establish whether the dataset can
+        produce a stable consensus structure. Once a reliable initial model
+        is obtained, additional classes or finer refinement strategies may
+        be introduced if structural heterogeneity is suspected.
+
+        Careful particle preparation remains critical. Poorly centered
+        particles, insufficient angular coverage, or highly contaminated
+        datasets can strongly reduce reconstruction quality regardless of
+        optimization settings.
+
+        Symmetry should be applied cautiously, especially during exploratory
+        projects involving poorly characterized assemblies. It is often safer
+        to verify structural features visually before enforcing strong
+        symmetry constraints.
+
+        Final Perspective
+
+        For cryo-electron tomography users, de novo initial model generation
+        represents a foundational step in structural interpretation. A robust
+        initial reference enables reliable downstream alignment, classification,
+        and refinement while minimizing bias introduced by external templates.
+
+        Successful reconstruction depends not only on computational settings
+        but also on the biological quality of the dataset itself. Broad angular
+        coverage, accurate particle extraction, and realistic expectations of
+        achievable resolution are the key factors that determine whether a
+        meaningful initial structure can be obtained.
     """
 
     _label = '3D initial model'
