@@ -92,7 +92,8 @@ class ProtRelionTomoBase(EMProtocol):
                            "--pad 2\n")
 
     # --------------------------- UTILS functions -----------------------------
-    def getInputParticles(self, returnPointer: bool=False) -> Union[Pointer, RelionSetOfPseudoSubtomograms]:
+    def getInputParticles(self, returnPointer: bool = False) -> Union[
+        Pointer, RelionSetOfPseudoSubtomograms, SetOfCoordinates3D]:
         reParticlesPointer = self.inReParticles
         return reParticlesPointer if returnPointer else reParticlesPointer.get()
 
@@ -158,15 +159,15 @@ class ProtRelionTomoBase(EMProtocol):
         psubtomoSet.copyInfo(inParticlesSet)
 
         # Verify out star file
-        optimSetStar =  self._getExtraPath(optimisationFileName)
+        optimSetStar = self._getExtraPath(optimisationFileName)
         if exists(optimSetStar):
             psubtomoSet.filesMaster = optimSetStar
 
-        particles =  self._getExtraPath(particles)
+        particles = self._getExtraPath(particles)
         if exists(particles):
             psubtomoSet.setParticles(particles)
 
-        tomograms =  self._getExtraPath(tomograms)
+        tomograms = self._getExtraPath(tomograms)
         if exists(tomograms):
             psubtomoSet.setTomogramsStar(tomograms)
 

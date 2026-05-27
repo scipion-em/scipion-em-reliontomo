@@ -25,16 +25,14 @@
 import logging
 from enum import Enum
 from os import rename
-from os.path import exists
-
+from os.path import exists, abspath
 import mrcfile
 import numpy as np
 from emtable import Table
-
-from pwem.emlib.image import ImageHandler
+from pwem.emlib.image.image_readers import Dm4ImageReader
 from pyworkflow.protocol import PointerParam, IntParam, GE, BooleanParam, LEVEL_ADVANCED, FloatParam, EnumParam, \
     FileParam
-from pyworkflow.utils import Message, makePath, removeBaseExt, createLink
+from pyworkflow.utils import Message, makePath, removeBaseExt, createLink, replaceBaseExt, cyanStr
 from reliontomo import Plugin
 from reliontomo.constants import (IN_TS_STAR, FRAMES_DIR, MOTIONCORR_DIR,
                                   RLN_TOMO_NOMINAL_STAGE_TILT_ANGLE, RLN_MICROGRAPH_NAME, RLN_MICROGRAPH_NAME_EVEN,
@@ -62,6 +60,7 @@ EVEN = 'even'
 ODD = 'odd'
 
 MRC = '.mrc'
+MRCS = '.MRCS'
 
 
 class outputObjects(Enum):
@@ -77,6 +76,8 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.gainFn = None
+        self.defectsFn = None
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -180,7 +181,7 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
 
         form.addSection(label='EER')
         form.addParam('eerFractionation', IntParam,
-                      default=32,
+                      default=8,
                       validators=[GE(1)],
                       label='EER fractionation',
                       help="The number of hardware frames to group into one fraction. This option is relevant only "
@@ -205,14 +206,13 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
         writer = convert50_tomo.Writer()
         writer.tsMSet2Star(self.inputTiltSeriesM.get(), self._getExtraPath())
         # Convert the gain file to MRC if it is in another format, such as dm4
-        gainFile = self.inputTiltSeriesM.get().getGain()
-        if gainFile:
-            gainMrcFName = self._getGainMrcFName(gainFile)
-            if gainFile.endswith(MRC):
-                createLink(gainFile, gainMrcFName)
-            else:
-                ih = ImageHandler()
-                ih.convert(gainFile, gainMrcFName)
+        if self.gainFile:
+            gainFile = self.inputTiltSeriesM.get().getGain()
+            self.gainFn = self._convertCorrectionImage(gainFile)
+        # The same with the defects file
+        if self.defectsFn:
+            defectsFn = self.defectFile.get()
+            self.defectsFn = self._convertCorrectionImage(defectsFn)
 
     def correctMotionStep(self):
         nMpi = self.numberOfMpi.get()
@@ -279,7 +279,6 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
         return False if IS_RELION_50 else True
 
     def getMotionCorrSubtomosCmd(self):
-        gainFile = self.inputTiltSeriesM.get().getGain()
         cmd = f'--use_own --j {self.binThreads.get()} '
         cmd += f'--i {IN_TS_STAR} '
         cmd += f'--o {MOTIONCORR_DIR}/ '
@@ -295,14 +294,13 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
         cmd += f'--patch_y {self.patchY.get()} '
         cmd += f'--group_frames {self.groupFrames.get()} '
         cmd += f'--bin_factor {self.binningFactor.get()} '
-        if gainFile:
-            gainMrcFName = self._getGainMrcFName(gainFile)
-            cmd += f'--gainref {gainMrcFName} '
+        if self.gainFn:
+            cmd += f'--gainref {self.gainFile} '
             cmd += f'--gain_rot {self.gainRot.get()} '
             cmd += f'--gain_flip {self.gainFlip.get()} '
-        if self.defectFile.get():
-            cmd += f'--defect_file {self.defectFile.get()} '
-            cmd += f'--eer_grouping {self.eerFractionation.get()}'
+        if self.defectsFn:
+            cmd += f'--defect_file {self.defectsFn.get()} '
+        cmd += f'--eer_grouping {self.eerFractionation.get()}'
         # EXTRA PARAMS
         cmd += self._genExtraParamsCmd()
         return cmd
@@ -313,7 +311,7 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
 
     def getOutStackName(self, tsId, suffix=''):
         bName = f'{tsId}_{suffix}' if suffix else tsId
-        return self._getExtraPath(MOTIONCORR_DIR, bName + MRC)
+        return self._getExtraPath(MOTIONCORR_DIR, bName + MRCS)
 
     def mountStack(self, ts):
         tsId = ts.getTsId()
@@ -356,3 +354,17 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
 
     def _getGainMrcFName(self, inGainFileName):
         return self._getExtraPath(removeBaseExt(inGainFileName) + MRC)
+
+    def _convertCorrectionImage(self, corrImgFn: str) -> str:
+        """ Reimplement to convert dm4 gain only. """
+        if corrImgFn.endswith(".dm4"):
+            # Get final correction image file
+            finalName = self._getExtraPath(replaceBaseExt(corrImgFn, "mrc"))
+
+            if not exists(finalName):
+                Dm4ImageReader.dmToMrc(corrImgFn, finalName)
+                logger.info(cyanStr(f"Converting {corrImgFn} to {finalName}"))
+
+            return abspath(finalName)
+        else:
+            return corrImgFn
