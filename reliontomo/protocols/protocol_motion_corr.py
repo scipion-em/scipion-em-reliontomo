@@ -206,7 +206,7 @@ class ProtRelionTomoMotionCorr(ProtRelionTomoBase):
         writer = convert50_tomo.Writer()
         writer.tsMSet2Star(self.inputTiltSeriesM.get(), self._getExtraPath())
         # Convert the gain file to MRC if it is in another format, such as dm4
-        if self.gainFile:
+        if self.gainFn:
             gainFile = self.inputTiltSeriesM.get().getGain()
             self.gainFn = self._convertCorrectionImage(gainFile)
         # The same with the defects file
