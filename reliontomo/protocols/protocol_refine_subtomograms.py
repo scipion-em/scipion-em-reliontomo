@@ -401,12 +401,3 @@ class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
         self._iterRegex = re.compile('_it(\d{3})_')
 
     # -------------------------- INFO functions -------------------------------
-    def _warnings(self):
-        warnMsg = []
-        if not self.inReParticles.get().are2dStacks():
-            warnMsg.append('Relion5 will likely fail.\n'
-                           'Masking with noise (option Masking with zeros - No ) '
-                           'seems to be incompatible with 3D pseudo-subtomograms. '
-                           'If Relion has fixed this behavior, please let us '
-                           'know so we can remove this warning.')
-        return warnMsg

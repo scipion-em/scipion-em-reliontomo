@@ -1,3 +1,7 @@
+v4.0.4:
+  Users:
+    - Recover size validation in refinement. Remove deploy log messages from convert.
+    - Fix motioncorr gain file location error.
 v4.0.3: deploy test.
 v4.0.2:
   Users:
