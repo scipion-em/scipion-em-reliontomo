@@ -23,7 +23,7 @@
 # *
 # **************************************************************************
 from os.path import exists
-from typing import Type, Union, Tuple
+from typing import Type, Tuple
 from imod.protocols import ProtImodImportTransformationMatrix
 from imod.protocols.protocol_base import OUTPUT_TILTSERIES_NAME
 from pwem.objects import Volume, SetOfVolumes
@@ -170,8 +170,15 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
         return outCoords
 
     @classmethod
-    def _runExtractSubtomos(cls, inParticles=None, inputCtfTs=None, inputTS=None, binningFactor=None,
-                            boxSize=None, croppedBoxSize=None, gen2dParticles=False):
+    def _runExtractSubtomos(cls,
+                            inParticles=None,
+                            inputCtfTs=None,
+                            inputTS=None,
+                            binningFactor=None,
+                            boxSize=None,
+                            croppedBoxSize=None,
+                            gen2dParticles=False,
+                            genProjCoords=False):
         extractMsg = 'Extract' if type(inParticles) is SetOfCoordinates3D else 'Re-extract'
         partTypeMsg = '2D' if gen2dParticles else '3D'
         print(magentaStr(f"\n==> {extractMsg}ing the particles from the tilt-series:\n"
@@ -184,6 +191,7 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
                                       boxSize=boxSize,
                                       croppedBoxSize=croppedBoxSize,
                                       write2dStacks=gen2dParticles,
+                                      genProjCoords=genProjCoords,
                                       numberOfMpi=2,  # There are 2 tomograms in the current dataset
                                       binThreads=4)
         protExtract.setObjLabel(f"{extractMsg} subtomos {partTypeMsg}")
@@ -254,15 +262,24 @@ class TestRelion5RefineCycleBase(TestBaseCentralizedLayer):
 
 class TestRelion5TomoExtractSubtomos(TestRelion5RefineCycleBase):
 
-    def _runTestExtractSubtomos(self, inParticles=None, inputCtfTs=None, inputTS=None, binningFactor=None,
-                                boxSize=None, croppedBoxSize=None, are2dParticles=False, isReExtraction=False):
+    def _runTestExtractSubtomos(self,
+                                inParticles=None,
+                                inputCtfTs=None,
+                                inputTS=None,
+                                binningFactor=None,
+                                boxSize=None,
+                                croppedBoxSize=None,
+                                are2dParticles=False,
+                                isReExtraction=False,
+                                genProjCoords=False):
         protExtract = self._runExtractSubtomos(inParticles=inParticles,
                                                inputCtfTs=inputCtfTs,
                                                inputTS=inputTS,
                                                binningFactor=binningFactor,
                                                boxSize=boxSize,
                                                croppedBoxSize=croppedBoxSize,
-                                               gen2dParticles=are2dParticles)
+                                               gen2dParticles=are2dParticles,
+                                               genProjCoords=genProjCoords)
         outParticles = getattr(protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.relionParticles.name, None)
         # Check RelionTomoMetadata: both particles and tomograms files are generated
         self._checkRe4Metadata(outParticles,
@@ -276,7 +293,7 @@ class TestRelion5TomoExtractSubtomos(TestRelion5RefineCycleBase):
                                tsSamplingRate=self.unbinnedSRate)
         # Check that the projected coordinates have been generated
         fiducials = getattr(protExtract, ProtRelion5ExtractSubtomos._possibleOutputs.projected2DCoordinates.name, None)
-        if isReExtraction:
+        if isReExtraction or not genProjCoords:
             self.assertIsNone(fiducials, msg='The projected coordinates wer not expected to be genrated.')
         else:
             self.assertIsNotNone(fiducials, msg='The projected coordinates were not generated.')
