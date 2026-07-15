@@ -89,6 +89,14 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                       default=True,
                       help='It is the handedness of the tilt geometry and it is used to describe '
                            'whether the focus increases or decreases as a function of Z distance.')
+        form.addParam('genProjCoords', BooleanParam,
+                      default=False,
+                      label='Generate projected 2D coordinates?',
+                      help='Only applies if the input is a set of 3D coordinates for '
+                           'visualization purposes. '
+                           'If set to Yes, it generates the projection of the 3D coordinates as if it was '
+                           'an IMOD fiducial model, so the projections can be observed directly '
+                           'on the tilt-series using IMOD viewer')
         form.addSection(label='Reconstruct')
         self._defineCommonRecParams(form)
         form.addParam('maxDose', IntParam,
@@ -190,7 +198,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     def createOutputStep(self):
         isInSetOf3dCoords = self.isInputSetOf3dCoords()
         boxSize = self.croppedBoxSize.get()
-        if isInSetOf3dCoords:
+        if isInSetOf3dCoords and self.genProjCoords.get():
             tsPointer = self.inputTS
             tsSet = tsPointer.get()
             tsSRate = tsSet.getSamplingRate()
