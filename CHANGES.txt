@@ -1,3 +1,6 @@
+v4.0.5:
+  Users: protocol subtomograms extraction allows not to generate the 2D projected coordinates in the
+  first extraction, which means when the input is a set of 3D coordinates. 
 v4.0.4:
   Users:
     - Recover size validation in refinement. Remove deploy log messages from convert.

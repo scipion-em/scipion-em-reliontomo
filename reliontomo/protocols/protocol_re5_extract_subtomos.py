@@ -22,7 +22,6 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-import time
 from enum import Enum
 import numpy as np
 from emtable import Table
@@ -89,6 +88,14 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                       default=True,
                       help='It is the handedness of the tilt geometry and it is used to describe '
                            'whether the focus increases or decreases as a function of Z distance.')
+        form.addParam('genProjCoords', BooleanParam,
+                      default=False,
+                      label='Generate projected 2D coordinates?',
+                      help='Only applies if the input is a set of 3D coordinates for '
+                           'visualization purposes. '
+                           'If set to Yes, it generates the projection of the 3D coordinates as if it was '
+                           'an IMOD fiducial model, so the projections can be observed directly '
+                           'on the tilt-series using IMOD viewer')
         form.addSection(label='Reconstruct')
         self._defineCommonRecParams(form)
         form.addParam('maxDose', IntParam,
@@ -190,14 +197,22 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
     def createOutputStep(self):
         isInSetOf3dCoords = self.isInputSetOf3dCoords()
         boxSize = self.croppedBoxSize.get()
-        if isInSetOf3dCoords:
-            tsPointer = self.inputTS
-            tsSet = tsPointer.get()
-            tsSRate = tsSet.getSamplingRate()
-            inCoords = self.inCoords
-            acq = tsSet.getAcquisition()
+        fiducialModelGaps = None
+        tsPointer = self.inputTS
+        tsSet = tsPointer.get()
 
-            # FIDUCIALS ################################################################################################
+        if isInSetOf3dCoords:
+            inCoords = self.inCoords
+            tsSRate = tsSet.getSamplingRate()
+            acq = tsSet.getAcquisition()
+        else:
+            inParticles = self.getInputParticles()
+            tsSRate = inParticles.getTsSamplingRate()
+            acq = inParticles.getAcquisition()
+            inCoords = inParticles.getCoordinates3D(asPointer=True)
+
+        # FIDUCIALS ####################################################################################################
+        if isInSetOf3dCoords and self.genProjCoords.get():
             fiducialSize = int((inCoords.getBoxSize() * inCoords.getSamplingRate()) / 2)  # Radius in angstroms
             fiducialModelGaps = SetOfLandmarkModels.create(self.getPath(),
                                                            template='setOfLandmarks%s.sqlite',
@@ -233,13 +248,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                     particleCounter += 1
 
                 fiducialModelGaps.append(landmarkModelGaps)
-
-        # PARTICLES ####################################################################################################
-        else:
-            inParticles = self.getInputParticles()
-            tsSRate = inParticles.getTsSamplingRate()
-            acq = inParticles.getAcquisition()
-            inCoords = inParticles.getCoordinates3D(asPointer=True)
+        # END OF FIDUCIALS #############################################################################################
 
         psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
                                                      self._getExtraPath(OPTIMISATION_SET_STAR),
@@ -256,14 +265,14 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
 
         # Define the outputs and the relations
         outDict = {outputObjects.relionParticles.name: psubtomoSet}
-        if isInSetOf3dCoords:
+        if fiducialModelGaps:
             outDict[outputObjects.projected2DCoordinates.name] = fiducialModelGaps
+            self._defineSourceRelation(tsPointer, fiducialModelGaps)
         self._defineOutputs(**outDict)
         self._defineSourceRelation(self.inReParticles, psubtomoSet)
         if isInSetOf3dCoords:
             self._defineSourceRelation(self.inputCtfTs, psubtomoSet)
             self._defineSourceRelation(tsPointer, psubtomoSet)
-            self._defineSourceRelation(tsPointer, fiducialModelGaps)
 
     # -------------------------- INFO functions -------------------------------
     def _validate(self):
