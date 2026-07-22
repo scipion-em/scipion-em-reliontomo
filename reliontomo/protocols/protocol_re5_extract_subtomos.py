@@ -91,6 +91,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         form.addParam('genProjCoords', BooleanParam,
                       default=False,
                       label='Generate projected 2D coordinates?',
+                      expertLevel=LEVEL_ADVANCED,
                       help='Only applies if the input is a set of 3D coordinates for '
                            'visualization purposes. '
                            'If set to Yes, it generates the projection of the 3D coordinates as if it was '
