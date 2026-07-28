@@ -1113,6 +1113,21 @@ def getCoordsTransformMatrixFromRow(row, sRate=1):
     return genTransformMatrix(shiftx, shifty, shiftz, rot, tilt, psi, sRate)
 
 
+class StarCoordImport:
+    """ Helper to import 3D coordinates from a RELION-style star file containing only a
+    data_particles block with rlnCoordinateX/Y/Z (one star file per tomogram/tilt-series,
+    matched by filename, as opposed to a combined star file matched via rlnTomoName). """
+
+    def importCoordinates3D(self, fileName, addCoordinate):
+        dataTable = Table()
+        dataTable.read(fileName, tableName=PARTICLES_TABLE)
+        for row in dataTable:
+            x = float(row.get(RLN_COORDINATEX))
+            y = float(row.get(RLN_COORDINATEY))
+            z = float(row.get(RLN_COORDINATEZ))
+            addCoordinate(Coordinate3D(), x, y, z)
+
+
 class StarFileIterator:
     def __init__(self, star_data, field_name, field_value):
         self.star_data = star_data
