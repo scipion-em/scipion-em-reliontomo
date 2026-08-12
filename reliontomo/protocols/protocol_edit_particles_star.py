@@ -55,7 +55,136 @@ class outputObjects(Enum):
 
 
 class ProtRelionEditParticlesStar(ProtRelionTomoBase):
-    """Operate on the particles star file"""
+    """
+    Performs editing, refinement, and cleanup operations on RELION particle metadata associated with subtomograms
+    and tomography workflows. The protocol is intended to help users reorganize particle positions and orientations
+    after alignment, classification, or refinement procedures in order to improve the consistency and biological
+    interpretability of downstream analyses.
+
+    AI Generated:
+
+    Edit RELION Particles (ProtRelionEditParticlesStar) - User Manual
+        Overview
+
+        The Edit RELION Particles protocol provides a collection of utilities for modifying particle metadata
+        associated with subtomogram averaging and cryo-electron tomography workflows. Its primary purpose is to
+        adjust particle positioning, redefine particle centers, remove duplicated particles, and optionally modify
+        geometric metadata such as coordinates, shifts, or angular assignments.
+
+        In practical cryo-ET workflows, particle metadata often evolves throughout iterative alignment and refinement
+        procedures. During these stages, particles may drift from their original centers, converge toward overlapping
+        positions, or accumulate orientation adjustments that require correction before further refinement. This
+        protocol serves as an intermediate curation and cleanup step that improves the reliability of subsequent
+        analyses.
+
+        Biological Context and Motivation
+
+        In subtomogram averaging, accurate particle positioning is critical because even small centering errors can
+        significantly reduce achievable resolution. Mis-centered particles introduce blurring during averaging and may
+        obscure biologically meaningful structural details. For this reason, re-centering particles around a specific
+        structural feature is often an essential refinement strategy.
+
+        Duplicate particles represent another important issue in tomography workflows. During iterative refinement,
+        neighboring particles may converge toward the same physical location, particularly in crowded cellular
+        environments or membrane-associated assemblies. If not corrected, duplicated particles artificially inflate
+        particle counts and compromise independent half-set validation procedures such as gold-standard FSC
+        calculations.
+
+        The protocol therefore supports operations that improve both the geometric consistency of the dataset and the
+        statistical validity of downstream refinements.
+
+        Inputs and General Workflow
+
+        The protocol operates on RELION particle metadata generated from subtomogram averaging workflows. These
+        particles typically contain positional information, angular assignments, translational shifts, and associated
+        tomographic metadata required for downstream RELION processing.
+
+        Users may optionally provide an average subtomogram and a reference mask when performing re-centering
+        operations. These references help define the biologically relevant feature that should become the new particle
+        center. This is particularly useful when the dominant signal in the particle is offset from the original
+        extraction center or when refinement converges toward a distinct structural region.
+
+        After processing, the protocol generates a new edited particle set that preserves the original particle
+        identities while updating their geometric metadata according to the selected operations.
+
+        Re-centering Particles
+
+        Re-centering is one of the most biologically meaningful operations provided by this protocol. In many cryo-ET
+        studies, the initial extraction coordinates correspond only approximately to the true structural center of the
+        the complex. Subsequent refinement may reveal that a different region of the structure provides a more stable
+        or biologically relevant alignment target.
+
+        By shifting the particle center toward a chosen reference position, users can improve alignment consistency
+        and reduce variability across the dataset. This is especially valuable for asymmetric complexes, elongated
+        assemblies, membrane proteins, or particles containing flexible peripheral domains.
+
+        The provided shifts correspond to positional offsets within the particle reference frame. Care should be taken
+        to ensure that the chosen center reflects a structurally stable region rather than a flexible or poorly
+        resolved component.
+
+        Duplicate Particle Removal
+
+        The protocol also supports removal of particles that occupy nearly identical spatial positions. This operation
+        is particularly important in high-density cellular datasets where repeated refinement cycles may cause nearby
+        particles to collapse toward the same coordinate.
+
+        Removing duplicates improves dataset integrity and prevents overrepresentation of certain structural regions.
+        It also protects the validity of resolution estimation procedures that rely on statistical independence
+        between particle subsets.
+
+        The minimum inter-particle distance parameter determines how aggressively duplicates are removed. Smaller
+        values preserve closely packed particles, whereas larger values favor stricter cleanup. Biologically crowded
+        systems such as ribosome-rich cytoplasm or membrane lattices may require conservative thresholds to avoid
+        eliminating genuinely distinct particles.
+
+        Metadata Editing Operations
+
+        In earlier workflow configurations, the protocol additionally supports arithmetic operations on particle
+        metadata fields such as coordinates, shifts, and Euler angles. These operations allow users to uniformly
+        modify particle geometry across an entire dataset.
+
+        Such functionality can be useful when correcting systematic offsets, compensating for known coordinate
+        transformations, or adjusting orientation conventions between processing pipelines. However, these operations
+        should be used cautiously because inappropriate modifications may disrupt the physical consistency of the
+        dataset.
+
+        Coordinate operations affect particle positions within the tomogram, shift operations modify alignment
+        translations, and angular operations alter particle orientations. Since these parameters directly determine
+        the spatial interpretation of the reconstruction, all modifications should be biologically justified and
+        carefully validated visually.
+
+        Outputs and Interpretation
+
+        The protocol produces an updated RELION particle set suitable for subsequent subtomogram refinement,
+        classification, averaging, or visualization workflows. The edited dataset maintains compatibility with RELION
+        tomography processing while incorporating the selected geometric corrections.
+
+        Re-centered particles typically yield improved alignment stability and sharper averages, whereas duplicate
+        removal reduces statistical bias and improves reliability of resolution assessment. Metadata editing
+        operations may also facilitate interoperability between different processing pipelines or experimental setups.
+
+        Practical Recommendations
+
+        In routine cryo-ET workflows, re-centering is most effective when guided by a well-resolved structural core.
+        Users should avoid centering on highly flexible domains or poorly resolved peripheral regions, as this may
+        destabilize refinement.
+
+        Duplicate removal should generally be performed after major alignment refinements and before final resolution
+        estimation. Conservative distance thresholds are recommended for crowded biological environments to avoid
+        removing valid neighboring particles.
+
+        Metadata editing operations should only be applied when there is a clear understanding of the coordinate and
+        orientation conventions used throughout the workflow. Visual inspection of particle placement before and after
+        editing is strongly recommended.
+
+        Final Perspective
+
+        Accurate particle geometry is fundamental for successful subtomogram averaging and structural interpretation.
+        The Edit RELION Particles protocol provides a controlled environment for correcting positional inconsistencies,
+        refining particle centering, and maintaining dataset quality throughout iterative tomography workflows.
+        Careful use of these operations can substantially improve both reconstruction quality and biological
+        interpretability.
+    """
 
     _label = 'Apply operation to Relion particles'
     _possibleOutputs = outputObjects

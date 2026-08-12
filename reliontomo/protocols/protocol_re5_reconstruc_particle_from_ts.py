@@ -40,7 +40,150 @@ class outputObjects(Enum):
 
 
 class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase):
-    """Reconstructs/averages from the tilt series projected particles"""
+    """
+    Reconstructs and averages subtomographic particle information extracted
+    from tilt series data in RELION 5. The protocol generates a 3D map
+    representing the consensus structure of the analyzed particles and is
+    designed for cryo-electron tomography workflows where aligned particle
+    projections are combined into a refined volumetric reconstruction.
+
+    AI Generated:
+
+    Reconstruct Particle Relion 5 (ProtRelion5ReconstructParticle) - User Manual
+        Overview
+
+        The Reconstruct Particle Relion 5 protocol performs subtomogram
+        reconstruction and averaging using RELION 5 tomography tools. Its
+        main purpose is to combine particle information extracted from tilt
+        series experiments into a single three-dimensional density map that
+        represents the average structure of the analyzed specimen.
+
+        In cryo-electron tomography workflows, this protocol is commonly used
+        after particle extraction and alignment steps have already determined
+        the orientations and positions of individual particles. The resulting
+        reconstruction provides an interpretable 3D map that can be used for
+        structural analysis, visualization, classification, or subsequent
+        refinement procedures.
+
+        Biological Context
+
+        Subtomogram averaging is particularly useful for studying molecular
+        complexes in their native cellular or in situ environments. Unlike
+        single-particle analysis, cryo-electron tomography preserves spatial
+        context and allows biological assemblies to be analyzed directly
+        inside cells, organelles, membranes, or pleomorphic structures.
+
+        By averaging many aligned particles together, the protocol improves
+        the signal-to-noise ratio and enhances structural features that may
+        not be visible in individual tomograms. This is especially important
+        in tomography datasets, where acquisition limitations and electron
+        dose constraints typically produce noisier data than conventional
+        single-particle experiments.
+
+        Inputs and Reconstruction Workflow
+
+        The protocol expects particles that already contain orientation and
+        alignment information derived from previous tomography processing
+        steps. These particles are combined into a consensus reconstruction
+        that represents the average structural state of the selected dataset.
+
+        The reconstruction process operates directly on tomography-derived
+        particle information and supports parallel execution for efficient
+        processing of large datasets. This makes the protocol suitable for
+        both exploratory analyses and high-throughput cryo-ET studies.
+
+        Symmetry Considerations
+
+        Users may specify a symmetry group for the reconstruction. Symmetry
+        can significantly improve the quality of the final map when the
+        biological assembly possesses known rotational or point-group
+        symmetry. Applying symmetry increases the effective amount of signal
+        contributing to the reconstruction and often improves resolution and
+        map interpretability.
+
+        However, symmetry should only be imposed when biologically justified.
+        Incorrect symmetry assignment may distort structural features or mask
+        meaningful asymmetry. For complexes with unknown or flexible
+        organization, using C1 symmetry is generally the safest starting
+        point.
+
+        Wiener Filtering and Signal Preservation
+
+        The protocol optionally supports Wiener filtering through the use of
+        a signal-to-noise ratio estimate. This filtering can help stabilize
+        reconstructions and reduce amplification of noise in poorly sampled
+        frequency regions.
+
+        From a biological perspective, conservative filtering strategies are
+        usually preferable. Excessively aggressive filtering may suppress
+        high-resolution information and obscure subtle structural features
+        that are important for interpretation or downstream refinement.
+        Conversely, moderate filtering can improve the visual clarity and
+        robustness of the resulting density map.
+
+        Parallelization and Computational Considerations
+
+        Tomographic reconstruction is computationally demanding due to the
+        large size of tomograms and the complexity of subtomogram averaging.
+        The protocol is designed to operate in distributed computing
+        environments using MPI-based execution, allowing efficient handling
+        of large particle datasets.
+
+        Biological users working with extensive in situ datasets should
+        ensure that sufficient computational resources are available,
+        particularly memory resources. Large reconstructions may require
+        substantial memory allocation during averaging and Fourier-space
+        processing.
+
+        Outputs and Interpretation
+
+        The primary output is an averaged subtomogram volume representing the
+        consensus structure of the reconstructed particles. When available,
+        half maps are also preserved, enabling downstream validation and
+        resolution estimation procedures.
+
+        The reconstructed map can be used for visualization, segmentation,
+        docking of atomic models, structural interpretation, or additional
+        refinement workflows. Because the reconstruction represents an
+        average over many particles, the resulting density emphasizes common
+        structural features while reducing random noise contributions.
+
+        Biological interpretation should nevertheless consider the potential
+        presence of structural heterogeneity. Flexible regions, compositional
+        variability, or mixed conformational states may appear blurred or
+        weakened in the averaged reconstruction.
+
+        Practical Recommendations
+
+        In most biological workflows, reconstruction quality strongly depends
+        on the accuracy of the upstream alignment and particle extraction
+        procedures. Before interpreting structural details, users should
+        visually inspect the resulting map and verify that major features are
+        biologically plausible and consistent with prior knowledge.
+
+        Applying symmetry should be approached cautiously, especially for
+        complexes embedded in membranes or cellular environments where
+        asymmetry may be functionally important. Similarly, Wiener filtering
+        parameters should be selected conservatively to avoid suppressing
+        relevant structural information.
+
+        For large cryo-ET datasets, distributed execution with multiple MPI
+        processes is generally recommended to ensure efficient reconstruction
+        performance and manageable processing times.
+
+        Final Perspective
+
+        The Reconstruct Particle Relion 5 protocol provides a practical and
+        biologically meaningful framework for generating consensus 3D maps
+        from subtomogram datasets. By combining aligned particles into a
+        unified reconstruction, it enables structural interpretation of
+        macromolecular assemblies directly within their native tomographic
+        environments.
+
+        Careful consideration of symmetry, filtering, and data quality is
+        essential for obtaining biologically reliable reconstructions that
+        accurately reflect the structural organization of the studied system.
+    """
 
     _label = 'Reconstruct particle Relion 5'
     _possibleOutputs = outputObjects
