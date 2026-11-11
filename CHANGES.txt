@@ -1,3 +1,4 @@
+v4.0.7: adjust memory flag spacing in RELION particle reconstruction command for proper parsing.
 v4.0.6: fix bug in extract subotomos -> generation of the projected coordinates (advanced parameter).
 v4.0.5:
   Users: protocol subtomograms extraction allows not to generate the 2D projected coordinates in the

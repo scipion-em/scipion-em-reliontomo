@@ -81,7 +81,7 @@ class ProtRelion5ReconstructParticle(ProtRelion5ExtractSubtomoAndRecParticleBase
                                  numberOfMpi=self.numberOfMpi.get())
         except:
             # The --mem argument should also be set using around 80-90% to keep a safety margin
-            Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_particle_mpi', cmd + '--mem 50 ',
+            Plugin.runRelionTomo(self, 'relion_tomo_reconstruct_particle_mpi', cmd + ' --mem 50',
                                  numberOfMpi=self.numberOfMpi.get())
 
     def createOutputStep(self):
