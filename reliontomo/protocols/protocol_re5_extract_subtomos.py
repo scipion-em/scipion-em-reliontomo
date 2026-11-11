@@ -249,6 +249,7 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
                     particleCounter += 1
 
                 fiducialModelGaps.append(landmarkModelGaps)
+            fiducialModelGaps.write()
         # END OF FIDUCIALS #############################################################################################
 
         psubtomoSet = createSetOfRelionPSubtomograms(self._getPath(),
@@ -268,8 +269,10 @@ class ProtRelion5ExtractSubtomos(ProtRelion5ExtractSubtomoAndRecParticleBase):
         outDict = {outputObjects.relionParticles.name: psubtomoSet}
         if fiducialModelGaps:
             outDict[outputObjects.projected2DCoordinates.name] = fiducialModelGaps
-            self._defineSourceRelation(tsPointer, fiducialModelGaps)
         self._defineOutputs(**outDict)
+        # The relations must be defined after the outputs, once they are stored in the mapper
+        if fiducialModelGaps:
+            self._defineSourceRelation(tsPointer, fiducialModelGaps)
         self._defineSourceRelation(self.inReParticles, psubtomoSet)
         if isInSetOf3dCoords:
             self._defineSourceRelation(self.inputCtfTs, psubtomoSet)
