@@ -26,7 +26,7 @@
 
 _logo = "relion_logo.jpg"
 _references = ['Zivanov2022', 'Burt2024']
-__version__ = '4.0.5'
+__version__ = '4.0.6'
 
 try:
     import pwem
@@ -41,13 +41,15 @@ try:
 
         @classmethod
         def _defineVariables(cls):
+            # Relion variables (e.g. RELION_ENV_ACTIVATION) are needed even if the relion plugin is not registered
+            super()._defineVariables()
             cls._defineEmVar(RELIONTOMO_HOME, 'relion-%s' % relion.V5_0)
             cls._defineVar(RELIONTOMO_CUDA_LIB, pwem.Config.CUDA_LIB)
 
         @staticmethod
         def isRe50():
             return True if (Plugin.getHome().endswith(V5_0) or
-                            Plugin.getVar(RELION_ENV_ACTIVATION).endswith(V5_0)) else False
+                            Plugin.getVar(RELION_ENV_ACTIVATION, '').endswith(V5_0)) else False
 
         @classmethod
         def isRe40(cls):
