@@ -36,7 +36,8 @@ from reliontomo.constants import *
 import numpy as np
 from os.path import join, basename, exists
 from reliontomo.convert.convertBase import (getTransformInfoFromCoordOrSubtomo,
-                                            WriterTomo, ReaderTomo, getTransformMatrixFromRow, genTransformMatrix)
+                                            WriterTomo, ReaderTomo, getTransformMatrixFromRow, genTransformMatrix,
+                                            genRe5ParticleMatrices, getRe5ParticleAnglesAndShifts)
 from reliontomo.objects import RelionPSubtomogram, RelionSetOfPseudoSubtomograms
 from tomo.constants import TR_RELION, SCIPION
 from tomo.objects import Coordinate3D, Tomogram, TiltSeries, CTFTomoSeries, SetOfCoordinates3D, SetOfTomograms, \
@@ -809,7 +810,17 @@ class Writer(WriterTomo):
 
             particlesTable = Table(columns=particlesStarFields)
             for pSubtomo in pSubtomoSet.iterSubtomos():
-                angles, shifts = getTransformInfoFromCoordOrSubtomo(pSubtomo, sRate)
+                if pSubtomo.isTransformAbsolute() and pSubtomo.hasCoordinate3D():
+                    # The prior orientation is in the coordinate and the transformation matrix is absolute
+                    angles, particleAngles, shifts = getRe5ParticleAnglesAndShifts(
+                        pSubtomo.getCoordinate3D().getMatrix(),
+                        pSubtomo.getTransform().getMatrix(),
+                        sRate,
+                        refAngles=(pSubtomo.getRot(), pSubtomo.getTilt(), pSubtomo.getPsi()),
+                        refShiftsAngst=(pSubtomo.getX(), pSubtomo.getY(), pSubtomo.getZ()))
+                else:
+                    angles, shifts = getTransformInfoFromCoordOrSubtomo(pSubtomo, sRate)
+                    particleAngles = (pSubtomo.getRot(), pSubtomo.getTilt(), pSubtomo.getPsi())
                 # Fields 12 and 13 is different depending on if the particles are 2D or 3D
                 imageName = pSubtomo.getFileName()
                 if are2dParticles:
@@ -825,9 +836,9 @@ class Writer(WriterTomo):
                     angles[0],  # 2, rlnTomoSubtomogramRot
                     angles[1],  # 3, rlnTomoSubtomogramTilt
                     angles[2],  # 4, rlnTomoSubtomogramPsi
-                    pSubtomo.getRot(),  # 5, rlnAngleRot
-                    pSubtomo.getTilt(),  # 6, rlnAngleTilt
-                    pSubtomo.getPsi(),  # 7, rlnAnglePsi
+                    particleAngles[0],  # 5, rlnAngleRot
+                    particleAngles[1],  # 6, rlnAngleTilt
+                    particleAngles[2],  # 7, rlnAnglePsi
                     pSubtomo.getTiltPrior(),  # 8, rlnAngleTiltPrior
                     pSubtomo.getPsiPrior(),  # 9, rlnAnglePsiPrior
                     pSubtomo.getOpticsGroupId(),  # 10, rlnOpticsGroup
@@ -980,9 +991,11 @@ class Reader(ReaderTomo):
                 coordY = coord.getY(BOTTOM_LEFT_CORNER) * coordFactor
                 coordZ = coord.getZ(BOTTOM_LEFT_CORNER) * coordFactor
             else:
-                coordX = row.get(RLN_COORDINATEX, 0)
-                coordY = row.get(RLN_COORDINATEY, 0)
-                coordZ = row.get(RLN_COORDINATEZ, 0)
+                # The Warp coordinates are written by pseudoSubtomograms2Star as wrpCoordinateX/Y/Z, or as
+                # rlnCoordinateX/Y/Z when the star file is generated for Warp/M
+                coordX = row.get(RLN_COORDINATEX, row.get(WRP_COORDINATE_X, 0))
+                coordY = row.get(RLN_COORDINATEY, row.get(WRP_COORDINATE_Y, 0))
+                coordZ = row.get(RLN_COORDINATEZ, row.get(WRP_COORDINATE_Z, 0))
 
             psubtomo = RelionPSubtomogram(fileName=particleFile,
                                           samplingRate=sRate,
@@ -1029,10 +1042,25 @@ class Reader(ReaderTomo):
                 sciCoord.setZ(row.get(SCIPION_COORD_Z), SCIPION)
                 sciCoord.setGroupId(row.get(SCIPION_COORD_GROUP_ID, 1))
                 sciCoord.setTomoId(row.get(TOMO_NAME))
+                # The coordinate stores the prior orientation (rlnTomoSubtomogramRot|Tilt|Psi) and the
+                # transformation matrix is absolute: the prior orientation and the refinement (rlnAngleRot|Tilt|Psi
+                # and rlnOriginX|Y|ZAngst)
+                coordMatrix, particleMatrix = genRe5ParticleMatrices(
+                    (row.get(RLN_TOMOSUBTOMOGRAMROT, 0), row.get(RLN_TOMOSUBTOMOGRAMTILT, 0),
+                     row.get(RLN_TOMOSUBTOMOGRAMPSI, 0)),
+                    (row.get(RLN_ANGLEROT, 0), row.get(RLN_ANGLETILT, 0), row.get(RLN_ANGLEPSI, 0)),
+                    (row.get(RLN_ORIGINXANGST, 0), row.get(RLN_ORIGINYANGST, 0), row.get(RLN_ORIGINZANGST, 0)),
+                    sRate)
+                sciCoord.setMatrix(coordMatrix)
                 psubtomo.setCoordinate3D(sciCoord)
+                t.setMatrix(particleMatrix)
+                psubtomo.setTransformAbsolute(True)
+            else:
+                # Without a coordinate to store the prior orientation, the transformation matrix only contains
+                # the prior orientation (rlnTomoSubtomogramRot|Tilt|Psi) and the shifts
+                t.setMatrix(getTransformMatrixFromRow(row, sRate=sRate, isRe5Star=True))
 
             # Set the transformation matrix
-            t.setMatrix(getTransformMatrixFromRow(row, sRate=sRate, isRe5Star=True))
             psubtomo.setTransform(t)
             # This is not necessary: psubtomo.setIndex(counter)
             psubtomo.setClassId(row.get(RLN_CLASSNUMBER, 1))

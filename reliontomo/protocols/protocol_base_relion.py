@@ -147,7 +147,7 @@ class ProtRelionTomoBase(EMProtocol):
                            tomograms=OUT_TOMOS_STAR,
                            trajectories=TRAJECTORIES_STAR,
                            binningFactor=None,
-                           boxSize=24):
+                           boxSize=None):
         """Generate a RelionSetOfPseudoSubtomograms object containing the files involved for the next protocol,
         considering that some protocols don't generate the optimisation_set.star file. In that case, the input Object
         which represents it will be copied and, after that, this method will be used to update the corresponding
@@ -178,6 +178,7 @@ class ProtRelionTomoBase(EMProtocol):
         if binningFactor:
             psubtomoSet.setRelionBinning(binningFactor)
 
+        # If not provided, the box size copied from the input particles is kept
         if boxSize:
             psubtomoSet.setBoxSize(boxSize)
 
