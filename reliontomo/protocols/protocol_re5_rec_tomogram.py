@@ -45,7 +45,186 @@ class tomoRecOtputObjects(Enum):
 
 
 class ProtRelion5TomoReconstruct(ProtRelionTomoBase):
-    """Tomograms reconstruction"""
+    """
+    Reconstructs cryo-electron tomography volumes from aligned tilt
+    series and their associated CTF information. The protocol generates
+    tomograms suitable for visualization, particle picking, subtomogram
+    analysis, denoising workflows, and downstream structural studies.
+
+    AI Generated:
+
+    Tomograms Reconstruction (ProtRelion5TomoReconstruct) - User Manual
+
+        Overview
+
+        The Tomograms Reconstruction protocol reconstructs 3D tomograms
+        from aligned tilt-series datasets using Relion tomography tools.
+        Its primary purpose is to transform a series of 2D projection
+        images acquired at multiple tilt angles into biologically
+        interpretable 3D cellular or molecular volumes. These tomograms
+        provide the structural context necessary for subtomogram
+        averaging, particle extraction, in situ structural biology, and
+        visual inspection of macromolecular organization inside cells or
+        vitrified specimens.
+
+        In practical cryo-electron tomography workflows, this protocol
+        is often one of the central reconstruction stages following
+        motion correction, tilt-series alignment, and CTF estimation.
+        The quality of the reconstructed tomograms strongly influences
+        all downstream analyses, including particle localization,
+        classification, averaging, and denoising.
+
+        Inputs and Dataset Consistency
+
+        The protocol requires two major inputs: aligned tilt-series data
+        and corresponding CTF estimations. These datasets must be
+        compatible and correctly associated through matching tilt-series
+        identifiers. Proper consistency between tilt geometry and CTF
+        metadata is essential because reconstruction accuracy depends on
+        the correct interpretation of both spatial alignment and optical
+        distortions.
+
+        From a biological perspective, reconstruction quality depends
+        heavily on the quality of the preprocessing stages. Poor tilt
+        alignment, incomplete metadata, or inaccurate CTF estimation may
+        generate blurred tomograms, reconstruction artifacts, or reduced
+        interpretability of intracellular structures.
+
+        Tomogram Dimensions and Sampling
+
+        The protocol allows the user to define the reconstructed
+        tomogram dimensions along X, Y, and Z. These dimensions should
+        be large enough to contain the entire specimen throughout the
+        reconstruction process, particularly when rotations or specimen
+        tilts increase the effective occupied volume.
+
+        Choosing the tomogram thickness is biologically important. A
+        tomogram that is too thin may truncate relevant cellular
+        structures or particles, while an excessively thick tomogram
+        increases storage requirements and computational cost without
+        necessarily improving biological interpretation. In many cases,
+        selecting a thickness that approximately matches the specimen
+        thickness produces the most efficient and interpretable results.
+
+        The protocol also allows reconstruction at a larger effective
+        pixel size through binning. Increasing the binned pixel size
+        reduces computational demands and disk usage, which is often
+        advantageous during exploratory analysis or large-scale
+        processing campaigns. Smaller pixel sizes preserve more high-
+        resolution information but substantially increase processing
+        time and storage consumption.
+
+        Reconstruction Modes
+
+        The protocol supports reconstruction of either a single
+        tomogram or all tomograms within the dataset. Reconstructing a
+        single tomogram is useful during parameter optimization, quality
+        control, or troubleshooting because it allows rapid inspection
+        of reconstruction settings before processing an entire
+        collection.
+
+        Full dataset reconstruction is typically performed once the user
+        has validated that alignment, sampling, and reconstruction
+        parameters produce biologically meaningful results. In large
+        tomography studies, beginning with a representative tomogram is
+        generally recommended before scaling to the complete dataset.
+
+        CTF Correction
+
+        The protocol optionally performs CTF correction during the
+        reconstruction process. This step compensates for optical phase
+        distortions introduced during image acquisition and can improve
+        interpretability of structural features within the tomogram.
+
+        From a biological standpoint, CTF correction is particularly
+        important when the reconstructed tomograms will be used for
+        subtomogram averaging, template matching, or high-resolution
+        refinement. However, the effectiveness of CTF correction depends
+        strongly on the accuracy of the estimated defocus values and the
+        quality of the tilt-series acquisition.
+
+        In some exploratory or low-resolution workflows, users may
+        initially reconstruct without CTF correction for faster
+        processing and later generate corrected tomograms for detailed
+        analysis.
+
+        Odd and Even Tomograms
+
+        The protocol can generate odd and even tomograms derived from
+        separated subsets of the tilt-series data. These paired
+        tomograms are particularly useful for denoising approaches such
+        as cryoCARE and related machine-learning workflows.
+
+        Biologically, odd/even tomograms preserve statistically
+        independent signal representations while maintaining the same
+        specimen content. This independence is essential for training
+        denoising models without introducing artificial correlations or
+        overfitting.
+
+        To use this functionality effectively, the input tilt-series
+        must already contain odd and even frame separation generated in
+        earlier preprocessing stages.
+
+        Tilt Geometry and Angular Offsets
+
+        The protocol allows the introduction of a global tilt-angle
+        offset during reconstruction. This option is useful in specific
+        experimental geometries, such as lamella preparation workflows
+        where specimens are milled at consistent angles relative to the
+        microscope coordinate system.
+
+        Correct handling of tilt geometry is biologically important
+        because systematic angular offsets may otherwise distort the
+        reconstructed cellular architecture or introduce anisotropic
+        reconstruction artifacts.
+
+        Outputs and Interpretation
+
+        After completion, the protocol produces reconstructed tomograms
+        ready for visualization and downstream analysis. These tomograms
+        retain acquisition metadata and sampling information necessary
+        for subsequent cryo-electron tomography workflows.
+
+        When CTF correction is enabled, the resulting tomograms are
+        marked accordingly and are generally more appropriate for
+        subtomogram averaging and structural refinement. If odd/even
+        tomograms are generated, these outputs can be directly employed
+        in denoising or validation workflows.
+
+        Biological interpretation of the reconstructed tomograms should
+        always include visual inspection. Users should verify membrane
+        continuity, particle visibility, reconstruction completeness,
+        and the absence of strong alignment or missing-wedge artifacts.
+
+        Practical Recommendations
+
+        For exploratory analysis, it is often advantageous to begin with
+        a moderately binned reconstruction because it significantly
+        reduces processing time while preserving sufficient structural
+        detail for quality assessment.
+
+        During parameter optimization, reconstructing a single
+        representative tomogram allows efficient testing of dimensions,
+        tilt-angle offsets, and CTF correction strategies before
+        launching large-scale processing.
+
+        When preparing tomograms for subtomogram averaging or machine-
+        learning denoising, careful selection of sampling rate and
+        tomogram thickness becomes especially important. Excessively
+        large tomograms increase storage and computational cost without
+        necessarily improving downstream biological interpretation.
+
+        Final Perspective
+
+        Tomogram reconstruction is one of the foundational stages of
+        cryo-electron tomography because it transforms aligned projection
+        images into biologically interpretable three-dimensional
+        representations of cellular organization and molecular
+        architecture. Reliable reconstruction depends not only on
+        computational parameters, but also on accurate preprocessing,
+        appropriate sampling choices, and careful consideration of the
+        biological specimen under study.
+    """
 
     _label = 'Tomograms reconstruction'
     _possibleOutputs = tomoRecOtputObjects

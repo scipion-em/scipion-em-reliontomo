@@ -56,7 +56,185 @@ class outputObjects(Enum):
 
 
 class ProtRelionPrepareData(EMProtocol, ProtTomoBase):
-    """Prepare data for Relion 4
+    """
+    Prepares tomography data and particle coordinate information for
+    compatibility with Relion 4 subtomogram analysis workflows. The
+    protocol converts aligned tilt-series data, tomogram geometry,
+    coordinate information, and CTF metadata into the organizational
+    structure expected by Relion tomography tools.
+
+    AI Generated:
+
+    Prepare Data for Relion 4 (ProtRelionPrepareData) — User Manual
+        Overview
+
+        The Prepare Data for Relion 4 protocol serves as a bridge
+        between tomographic reconstruction workflows and Relion-based
+        subtomogram processing. Its primary goal is to transform
+        coordinates, tilt-series metadata, and tomographic acquisition
+        information into a format that can be directly interpreted by
+        Relion tomography pipelines.
+
+        In practical cryo-electron tomography workflows, particle
+        coordinates are often generated after tomogram reconstruction
+        and visualization using external software environments such as
+        IMOD or Scipion. However, Relion requires a precise definition
+        of tilt geometry, coordinate orientation, reconstruction
+        handedness, and imaging parameters before particles can be
+        imported and reconstructed as pseudo-subtomograms. This
+        protocol centralizes these preparation steps and ensures that
+        the biological particle positions remain correctly associated
+        with their originating tilt series.
+
+        Inputs and Biological Context
+
+        The protocol requires three major categories of information:
+        three-dimensional particle coordinates, aligned tilt series,
+        and CTF estimation data. Together, these datasets define the
+        geometric and optical context necessary for subtomogram
+        extraction and refinement.
+
+        The coordinate set represents the biological targets of
+        interest, such as ribosomes, membrane complexes, viral spikes,
+        or macromolecular assemblies identified within reconstructed
+        tomograms. These coordinates are linked to their parent
+        tomograms and must correspond correctly to the associated tilt
+        series. Any mismatch between coordinates and tilt-series
+        identifiers prevents meaningful reconstruction and should be
+        corrected before processing.
+
+        The tilt series should represent the original aligned images
+        used during tomogram reconstruction. Non-interpolated aligned
+        tilt series are generally preferred because they preserve the
+        original sampling characteristics and avoid interpolation
+        artifacts that may affect downstream subtomogram refinement.
+
+        CTF tomo series provide the defocus information required for
+        Relion tomography processing. Accurate CTF metadata is
+        especially important for high-resolution subtomogram averaging,
+        where small inaccuracies in optical modeling may strongly
+        influence refinement quality.
+
+        Coordinate Scaling and Sampling Consistency
+
+        One of the most important biological considerations in this
+        protocol is the relationship between tomogram sampling and
+        tilt-series sampling. Coordinates generated on reconstructed
+        tomograms may not directly correspond to the original pixel
+        size of the tilt images. The protocol automatically reconciles
+        these differences so that particle locations are expressed in
+        the coordinate system expected by Relion.
+
+        This rescaling process is essential when tomograms were
+        reconstructed using binning or reduced sampling rates. Without
+        proper scaling, extracted subtomograms may appear shifted,
+        incorrectly centered, or entirely misplaced relative to the
+        biological structure of interest.
+
+        Coordinate System Orientation
+
+        Cryo-electron tomography workflows frequently involve changes
+        in axis orientation during reconstruction and visualization.
+        Different software packages may rotate, flip, or reorder axes
+        in distinct ways. This protocol provides several options to
+        reconcile these coordinate-system differences before Relion
+        import.
+
+        The flip YZ option is commonly required because many tomogram
+        reconstruction workflows rotate the tomogram volume after
+        reconstruction for visualization purposes. If this geometric
+        transformation is not reproduced consistently during particle
+        import, the resulting subtomograms may appear mirrored or
+        incorrectly oriented.
+
+        Similarly, flipping the Z axis may be necessary depending on
+        the reconstruction convention used by the acquisition pipeline.
+        Incorrect Z orientation is one of the most common causes of
+        apparent particle inversion or misplaced subtomograms during
+        Relion processing.
+
+        The optional swapping of X and Y dimensions is mainly intended
+        for compatibility troubleshooting in difficult reconstruction
+        environments. Biological users typically leave this option
+        unchanged unless particle orientations or projection geometry
+        appear inconsistent after import.
+
+        Handedness and Tilt Geometry
+
+        Correct handedness is fundamental in cryo-electron tomography.
+        The protocol allows the user to specify whether focus decreases
+        or increases along the Z direction. This setting defines the
+        handedness convention used during Relion import and directly
+        affects how the three-dimensional geometry is interpreted.
+
+        Incorrect handedness can produce mirrored structures,
+        inconsistent particle orientations, or biologically impossible
+        reconstructions. In practice, users should carefully verify the
+        handedness convention of their acquisition and reconstruction
+        pipeline before large-scale processing.
+
+        Generation of Relion-Compatible Metadata
+
+        The protocol prepares all metadata required for Relion
+        tomography import procedures, including tomogram geometry,
+        reconstruction dimensions, optical parameters, and coordinate
+        associations. This preparation allows Relion to interpret the
+        experimental geometry consistently across all tilt series.
+
+        In addition, the protocol generates pseudo-subtomogram
+        particle sets suitable for subsequent subtomogram refinement,
+        classification, and averaging workflows. These pseudo-
+        subtomograms preserve the biological coordinate relationships
+        while adapting them to Relion conventions.
+
+        Fiducial Projection Models
+
+        The protocol also creates projected landmark models derived
+        from the imported particle positions. These projected
+        coordinates can be useful for validating geometric consistency
+        across tilt images and for visual inspection of particle
+        trajectories within the tomographic acquisition geometry.
+
+        From a biological perspective, these projection models provide
+        an intuitive method for verifying whether particles are
+        correctly associated with the expected structures throughout
+        the tilt series. Misaligned projections may indicate problems
+        with coordinate scaling, tilt geometry, or tomogram alignment.
+
+        Practical Recommendations
+
+        Before execution, users should verify that the coordinate set,
+        tilt series, and CTF information all refer to the same
+        experimental dataset and share consistent identifiers. The
+        protocol only processes tilt series that are common across all
+        required inputs.
+
+        In most biological workflows, the default axis orientation
+        options are appropriate when tomograms were reconstructed and
+        visualized using standard IMOD conventions. However, if the
+        resulting subtomograms appear inverted, mirrored, or displaced,
+        users should revisit the coordinate transformation options and
+        test alternative configurations.
+
+        Accurate sampling rates are particularly important. Even small
+        inconsistencies between tomogram and tilt-series pixel sizes
+        may produce significant coordinate shifts during subtomogram
+        extraction.
+
+        Final Perspective
+
+        Preparing tomography data for Relion subtomogram analysis is
+        not merely a file-conversion task but a critical geometric and
+        biological validation step. Correct handling of coordinate
+        scaling, handedness, reconstruction orientation, and imaging
+        metadata directly determines whether downstream subtomogram
+        refinement will produce biologically meaningful structures.
+
+        Careful verification of coordinate consistency and tilt-series
+        geometry before large-scale refinement substantially improves
+        the reliability of subtomogram averaging and reduces the risk
+        of difficult-to-diagnose orientation errors later in the
+        workflow.
     """
     _label = 'Prepare data for Relion 4'
     _possibleOutputs = outputObjects

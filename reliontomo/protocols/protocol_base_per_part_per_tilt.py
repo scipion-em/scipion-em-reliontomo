@@ -44,7 +44,164 @@ class outputObjects(Enum):
 
 
 class ProtRelionPerParticlePerTiltBase(ProtRelionTomoBase):
-    """Base protocol used for the getting the frame alignment and ctf-refinment"""
+    """
+    Base protocol used for the getting the frame alignment and ctf-refinment
+
+    AI Generated:
+
+    Per-Particle and Per-Tilt Refinement Base
+    (ProtRelionPerParticlePerTiltBase) - User Manual
+
+        Overview
+
+        This protocol provides the common framework for advanced
+        tomography refinement procedures that operate at the level of
+        individual particles and individual tilt images. Its main goal
+        is to improve the quality of pseudo-subtomograms by refining
+        local image properties that cannot be fully corrected during
+        earlier reconstruction stages. These procedures are especially
+        important in high-resolution cryo-electron tomography workflows,
+        where small alignment or optical inaccuracies can strongly
+        affect the final structural interpretation.
+
+        In biological practice, this type of refinement is commonly
+        used after an initial reconstruction has already been obtained.
+        The protocol assumes that particles have already been extracted,
+        aligned, and associated with tomographic metadata. It then uses
+        a refined reference together with tomographic geometry
+        information to improve consistency between the experimental
+        tilt-series data and the reconstructed structure.
+
+        Biological Purpose
+
+        Cryo-electron tomography datasets often contain local motion,
+        beam-induced distortions, or residual optical inaccuracies that
+        vary from tilt to tilt and from particle to particle. Global
+        corrections alone are frequently insufficient for demanding
+        structural studies. This protocol establishes the infrastructure
+        needed for more precise local refinement procedures that improve
+        map sharpness, alignment stability, and high-resolution signal
+        recovery.
+
+        From a biological perspective, these refinements become
+        especially important for heterogeneous specimens, flexible
+        assemblies, membrane-associated complexes, and crowded cellular
+        environments. Subtle structural details that are initially
+        obscured by local inaccuracies may become significantly clearer
+        after refinement.
+
+        Inputs and Reference Information
+
+        The protocol requires pseudo-subtomograms together with their
+        associated tomographic metadata. These particles must already be
+        connected to the original tilt-series information so that local
+        corrections can be propagated consistently through the workflow.
+
+        A reconstructed volume with associated half maps is also
+        required. The half maps are essential because they provide an
+        independent estimation of signal reliability and reduce the risk
+        of overfitting during refinement. In practical workflows, the
+        reference should ideally correspond to the best available
+        reconstruction of the biological state under study.
+
+        An optional soft reference mask can be provided to focus the
+        refinement on biologically meaningful regions. This is
+        particularly useful for flexible complexes, membrane proteins,
+        or assemblies embedded within noisy tomographic environments.
+        Proper masking helps emphasize stable structural regions while
+        reducing the influence of surrounding solvent or unrelated
+        density.
+
+        FSC Information and Signal Reliability
+
+        The protocol optionally accepts Fourier Shell Correlation
+        information derived from post-processing procedures. This data
+        improves the estimation of signal-to-noise relationships during
+        refinement and provides a more realistic interpretation of
+        resolution-dependent confidence.
+
+        When FSC information is unavailable, refinement can still
+        proceed, but the estimated signal quality may become slightly
+        optimistic. For exploratory analyses this is often acceptable,
+        whereas for high-resolution or publication-level studies the use
+        of properly validated FSC information is strongly recommended.
+
+        Box Size and High-Resolution Recovery
+
+        The estimation box size defines the spatial region used during
+        refinement calculations. Choosing an appropriate value is
+        biologically important because high-frequency information may be
+        spatially delocalized by the contrast transfer function.
+
+        In practice, larger estimation boxes can improve the recovery
+        of high-resolution information, particularly for large
+        complexes, thick specimens, or datasets collected under strong
+        defocus conditions. However, larger boxes also increase memory
+        usage and computational cost. A balanced choice is therefore
+        recommended depending on specimen size and desired resolution.
+
+        Workflow Integration
+
+        This protocol is designed as a foundational component for more
+        specialized refinement procedures such as motion correction,
+        trajectory refinement, or CTF refinement within tomographic
+        workflows. It manages the relationships between particle
+        metadata, tomographic geometry, reference information, and
+        refinement outputs so that downstream protocols can operate
+        consistently.
+
+        During execution, the protocol preserves and updates the
+        tomographic metadata associated with each particle. This ensures
+        that subsequent processing stages continue to operate on a
+        coherent representation of the experimental dataset.
+
+        Outputs and Their Interpretation
+
+        The main output is an updated set of pseudo-subtomograms with
+        refined metadata and improved consistency relative to the
+        reconstructed reference. These refined particles are intended
+        for subsequent high-resolution refinement, classification, or
+        reconstruction procedures.
+
+        In practical biological workflows, improvements may appear as
+        enhanced map sharpness, better-resolved secondary structure,
+        clearer membrane features, or improved interpretability of
+        flexible regions. The quality of these improvements strongly
+        depends on the accuracy of the initial reconstruction and the
+        consistency of the underlying tomographic data.
+
+        Practical Recommendations
+
+        For most datasets, the reference volume should already be well
+        refined before applying per-particle or per-tilt corrections.
+        Poor initial references may propagate incorrect structural
+        features into later stages of refinement.
+
+        The reference mask should include the biologically meaningful
+        signal while excluding excessive solvent regions. Overly tight
+        masks may suppress flexible but important structural features,
+        whereas overly loose masks may reduce refinement sensitivity.
+
+        Providing validated FSC information is recommended whenever
+        reliable resolution estimation is important. This is especially
+        relevant in high-resolution subtomogram averaging projects.
+
+        Because these procedures can become computationally demanding,
+        users should also ensure that sufficient processing resources
+        and storage capacity are available before starting large-scale
+        refinements.
+
+        Final Perspective
+
+        Per-particle and per-tilt refinement represents one of the most
+        important advances in modern cryo-electron tomography because it
+        enables correction of local inaccuracies that limit structural
+        resolution. By combining particle metadata, tilt-series
+        geometry, half-map validation, and localized refinement
+        strategies, this protocol establishes the foundation for
+        obtaining biologically meaningful high-resolution tomographic
+        reconstructions.
+    """
 
     _possibleOutputs = outputObjects
 

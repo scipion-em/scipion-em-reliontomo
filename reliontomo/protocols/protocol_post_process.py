@@ -44,13 +44,165 @@ class outputObjects(Enum):
 
 
 class ProtRelionPostProcess(ProtRelionTomoBase):
-    """Sharpen a 3D reference map and estimate the gold-standard FSC curves for subtomogram averaging
-    After performing a refinement, the map needs to be sharpened. Also, the gold-standard FSC curves
-    inside the auto-refine procedures only use unmasked maps (unless you’ve used the option
-    Use solvent-flattened FSCs). This means that the actual resolution is under-estimated during
-    the actual refinement, because noise in the solvent region will lower the FSC curve. relion’s
-    procedure for B-factor sharpening and calculating masked FSC curves [CMF+13] is called post-processing.
-    First however, we’ll need to make a mask to define where the protein ends and the solvent region starts.
+    """
+    Sharpens refined subtomogram averaging maps and estimates masked
+    Fourier Shell Correlation curves in order to improve map interpretability
+    and obtain more realistic resolution measurements after refinement.
+
+    AI Generated:
+
+    Post-processing (ProtRelionPostProcess) — User Manual
+        Overview
+
+        The Post-processing protocol is designed to improve the visual
+        and interpretative quality of reconstructed cryo-electron tomography maps
+        after subtomogram refinement. In standard refinement workflows, the final
+        reconstruction often appears blurred because high-resolution information
+        is attenuated during imaging and reconstruction. This protocol enhances
+        structural detail through sharpening procedures while also estimating
+        gold-standard FSC curves that more accurately reflect the true resolution
+        of the reconstructed structure.
+
+        In practical cryo-EM and cryo-ET workflows, this step is usually
+        performed immediately after a successful refinement. The resulting map is
+        typically the version used for visualization, biological interpretation,
+        atomic modeling, figure preparation, and deposition. The protocol is also
+        important because it provides masked FSC calculations, which generally
+        yield more realistic resolution estimates than unmasked curves by reducing
+        the influence of solvent noise.
+
+        Inputs and Biological Context
+
+        The protocol requires a refined 3D volume together with its
+        corresponding half maps. These half reconstructions are essential because
+        gold-standard FSC estimation relies on comparing two independently refined
+        datasets. Without half maps, reliable resolution assessment cannot be
+        performed.
+
+        A solvent mask is also required. This mask defines the region
+        occupied by the biological structure and separates it from the surrounding
+        solvent region. In cryo-EM, masking is biologically important because
+        large solvent regions contribute mostly noise and can artificially lower
+        FSC values. Proper masking therefore improves both sharpening behavior and
+        resolution estimation.
+
+        In most biological applications, the mask should tightly enclose
+        the stable molecular region while maintaining soft edges. Soft transitions
+        between protein and solvent regions help avoid Fourier artifacts and
+        prevent artificially inflated resolution estimates. Excessively sharp or
+        poorly designed masks may introduce distortions or misleading FSC curves.
+
+        B-factor Sharpening
+
+        One of the central features of this protocol is B-factor
+        sharpening. Sharpening compensates for the gradual decay of high-frequency
+        signal that occurs during imaging and reconstruction. The purpose is to
+        enhance fine structural features such as alpha helices, beta sheets, side
+        chains, membrane boundaries, or ligand densities.
+
+        Automatic B-factor estimation is generally recommended for most
+        datasets. In this mode, the protocol estimates an overall sharpening
+        factor directly from the reconstruction using established cryo-EM
+        approaches based on Guinier analysis. This strategy is often effective for
+        well-behaved datasets with sufficient signal extending into intermediate
+        resolutions.
+
+        In some situations, however, automatic estimation may not provide
+        optimal results. Highly flexible complexes, heterogeneous samples, noisy
+        datasets, or maps with limited resolution range may produce unstable or
+        biologically unrealistic sharpening. In these cases, users may provide a
+        custom B-factor manually.
+
+        Negative B-factors sharpen the map, whereas excessively strong
+        sharpening may amplify noise and create artificial high-resolution
+        features. Biological interpretation should therefore always be performed
+        with caution. A map that appears visually sharper is not necessarily more
+        accurate.
+
+        FSC Weighting and Filtering
+
+        The protocol can apply FSC-based weighting to attenuate frequency
+        ranges dominated by noise. This weighting procedure improves the balance
+        between signal preservation and noise suppression, often resulting in maps
+        that are easier to interpret biologically.
+
+        In some workflows, users may instead choose to disable FSC
+        weighting and apply a manual low-pass filter. This approach can be useful
+        when local resolution varies substantially across the structure. For
+        example, rigid domains may contain high-resolution information while
+        flexible regions remain poorly resolved. In such cases, a carefully chosen
+        ad-hoc filter may produce maps that are visually more interpretable.
+
+        Biological users should remember that applying overly aggressive
+        filters or sharpening parameters can lead to over-interpretation of noise.
+        Features near or beyond the reported resolution limit should always be
+        validated carefully against known structural biology principles and, when
+        possible, independent experimental evidence.
+
+        Detector MTF Considerations
+
+        The protocol optionally allows inclusion of the detector Modulation
+        Transfer Function. Incorporating detector MTF information improves the
+        physical correction of detector-dependent signal attenuation and may yield
+        more accurate sharpening behavior.
+
+        This option is particularly relevant for high-resolution datasets
+        or when detector calibration is well characterized. However, many routine
+        workflows still produce biologically meaningful results without explicitly
+        providing detector MTF information.
+
+        Pixel Size Calibration
+
+        Accurate pixel size calibration is essential for meaningful FSC
+        interpretation and downstream structural analysis. Small calibration
+        errors may significantly affect reported resolutions, atomic fitting, and
+        model validation.
+
+        The protocol therefore allows users to provide a calibrated pixel
+        size when improved measurements become available after refinement or model
+        fitting. This is especially important in high-resolution studies where
+        small magnification inaccuracies can influence biological conclusions.
+
+        Outputs and Interpretation
+
+        The protocol produces a sharpened post-processed map together with
+        masked FSC curves describing the estimated resolution of the reconstruction.
+        The sharpened map is generally the preferred volume for visualization and
+        structural interpretation.
+
+        The FSC curves provide quantitative information about the spatial
+        frequency content supported by the data. Biological users should interpret
+        these curves carefully and avoid relying exclusively on a single reported
+        resolution value. Local flexibility, compositional heterogeneity, preferred
+        orientations, and masking effects may all influence FSC behavior.
+
+        Practical Recommendations
+
+        In routine cryo-ET practice, automatic B-factor estimation with a
+        carefully prepared soft solvent mask is usually the best starting point.
+        Maps should always be inspected visually after sharpening to ensure that
+        enhanced features remain biologically plausible.
+
+        If the sharpened reconstruction appears noisy, fragmented, or
+        contains unrealistic density features, weaker sharpening or stronger
+        filtering may be appropriate. Conversely, if important structural details
+        remain difficult to observe, moderate additional sharpening may improve
+        interpretability.
+
+        For flexible complexes or highly heterogeneous specimens, users
+        should be particularly cautious about over-interpreting weak densities.
+        Combining post-processing analysis with local resolution estimation and
+        independent structural validation is often advisable.
+
+        Final Perspective
+
+        Post-processing is not merely a cosmetic enhancement step but a
+        critical stage in the biological interpretation of cryo-EM and cryo-ET
+        reconstructions. Appropriate masking, careful sharpening, and realistic
+        resolution estimation strongly influence how confidently structural
+        features can be interpreted. When applied thoughtfully, this protocol
+        helps transform refined density maps into biologically meaningful
+        representations suitable for visualization, modeling, and publication.
     """
 
     _label = 'Post-processing'

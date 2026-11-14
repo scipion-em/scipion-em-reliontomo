@@ -44,6 +44,122 @@ IS_RELION_50 = Plugin.isRe50()
 
 
 class ProtRelionTomoBase(EMProtocol):
+    """
+    Provides the foundational infrastructure for cryo-electron tomography workflows based on RELION
+    pseudo-subtomograms. The protocol establishes the common mechanisms required for handling particle
+    metadata, generating compatible STAR files, managing tomographic reconstruction outputs, and
+    maintaining interoperability between different RELION tomography processing stages.
+
+    AI Generated:
+
+    Relion Tomography Base Protocol (ProtRelionTomoBase) — User Manual
+        Overview
+
+        The Relion Tomography Base Protocol serves as the common foundation for multiple cryo-electron
+        tomography workflows that operate on pseudo-subtomograms within the RELION environment. Its
+        purpose is to standardize how tomographic particle information, metadata, reconstruction
+        products, and intermediate processing files are handled throughout a tomography processing
+        pipeline.
+
+        In RELION tomography workflows, pseudo-subtomograms are used as an efficient representation of
+        tomographic particle information. Rather than representing a direct physical reconstruction of
+        the particle scattering potential, these objects provide a computationally practical framework
+        for integrating two-dimensional tilt-series information into iterative refinement and averaging
+        procedures. This approach allows RELION tomography to leverage established refinement strategies
+        while remaining computationally tractable for large cryo-EM datasets.
+
+        Pseudo-Subtomograms and Their Biological Role
+
+        Pseudo-subtomograms are central to modern RELION tomography workflows because they provide the
+        information required for alignment, refinement, and classification while preserving the
+        relationship between particles and their original tilt-series observations. These objects are
+        generated from contrast-transfer-function-corrected projections together with auxiliary
+        information describing sampling statistics and frequency-space coverage.
+
+        From a biological perspective, pseudo-subtomograms enable iterative refinement of macromolecular
+        complexes observed inside cells, vesicles, viral assemblies, or purified specimens embedded in
+        vitreous ice. They support workflows aimed at recovering higher-resolution structures while
+        accounting for the geometric complexity inherent to tomography experiments.
+
+        Input Data and Workflow Integration
+
+        The protocol framework is designed to work with RELION pseudo-subtomogram datasets generated
+        during earlier tomography processing stages. These datasets typically contain particle
+        coordinates, alignment information, tomogram references, and associated metadata required for
+        downstream refinement or reconstruction protocols.
+
+        The protocol ensures that metadata is consistently transferred between processing stages,
+        allowing subsequent workflows such as subtomogram averaging, classification, CTF refinement,
+        polishing, or post-processing to access a coherent description of the experimental data.
+
+        Compatibility Between RELION Versions
+
+        An important role of the protocol is maintaining compatibility between tomography datasets
+        generated using different RELION versions. RELION 4 and RELION 5 introduced differences in
+        pseudo-subtomogram organization and metadata conventions, and this protocol framework provides
+        mechanisms to validate dataset compatibility and generate the appropriate metadata structures
+        required for each version.
+
+        In practical terms, this helps users avoid inconsistencies that could otherwise lead to failed
+        refinements, incorrect metadata interpretation, or incompatible processing pipelines. Users
+        working across multiple computational environments or collaborating between facilities may
+        particularly benefit from these compatibility safeguards.
+
+        STAR File Management
+
+        RELION tomography workflows rely heavily on STAR files to organize metadata describing particles,
+        tomograms, trajectories, optics information, and refinement results. This protocol framework
+        manages the generation and propagation of these files so that downstream protocols receive the
+        required metadata in a consistent format.
+
+        Proper STAR file management is biologically important because alignment parameters, particle
+        identities, optical information, and reconstruction geometry must remain synchronized throughout
+        the processing workflow. Even small metadata inconsistencies can compromise averaging quality or
+        lead to incorrect structural interpretation.
+
+        Reconstruction and Output Handling
+
+        The protocol also provides mechanisms for handling tomographic reconstruction products,
+        post-processed volumes, Fourier shell correlation measurements, and related metadata objects.
+        These outputs are prepared in a form that allows direct integration into visualization,
+        refinement, validation, and interpretation workflows within the Scipion ecosystem.
+
+        Sampling rates, binning information, particle dimensions, and reconstruction geometry are
+        propagated together with the reconstructed data to preserve physical consistency throughout the
+        workflow. This is particularly important when combining multiple refinement stages or comparing
+        reconstructions generated under different processing conditions.
+
+        Computational Considerations
+
+        Tomography processing can require substantial computational resources because many tilt-series
+        projections, tomograms, and pseudo-subtomograms may need to be processed simultaneously. The
+        protocol framework therefore supports configurable parallel execution strategies and integration
+        with RELION multithreading capabilities.
+
+        Users should consider available memory resources carefully when selecting processing parameters.
+        Large tomograms, extensive particle sets, or highly parallel execution strategies can
+        significantly increase memory usage and computational demand.
+
+        Practical Recommendations
+
+        For most biological workflows, maintaining metadata consistency across all tomography processing
+        stages is essential. Users should ensure that pseudo-subtomogram datasets are generated using
+        compatible RELION versions and that particle metadata remains synchronized after filtering,
+        classification, or subset selection operations.
+
+        When transferring datasets between workflows, it is advisable to verify sampling rates, box
+        sizes, and tomography geometry before initiating downstream refinement or averaging steps.
+        Maintaining consistent metadata throughout the pipeline reduces the risk of subtle alignment
+        errors and improves the reproducibility of structural results.
+
+        Final Perspective
+
+        Modern cryo-electron tomography relies not only on accurate image processing algorithms but also
+        on reliable management of complex metadata describing particles, optics, geometry, and
+        reconstruction state. This protocol provides the organizational backbone required to maintain
+        consistency throughout RELION tomography workflows, enabling robust subtomogram analysis and
+        biologically meaningful structural interpretation.
+    """
     _devStatus = BETA if IS_RELION_50 else PROD
 
     def __init__(self, **kwargs):

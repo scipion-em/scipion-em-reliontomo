@@ -48,7 +48,157 @@ class outputObjects(Enum):
 
 
 class ProtRelion3DClassifySubtomograms(ProtRelionRefineSubtomograms):
-    """3D Classification of subtomograms."""
+    """
+    Performs 3D classification of subtomograms in cryo-electron tomography workflows. The protocol separates
+    heterogeneous particle populations into distinct structural classes while optionally refining particle
+    orientations and translations during the classification process.
+
+    AI Generated:
+
+    3D Classification of Subtomograms (ProtRelion3DClassifySubtomograms) - User Manual
+        Overview
+
+        The 3D Classification of Subtomograms protocol is designed to identify structural variability within
+        cryo-electron tomography datasets by grouping subtomograms into multiple biologically meaningful
+        classes. This process is particularly important when the sample contains conformational flexibility,
+        compositional heterogeneity, partially assembled complexes, or particles in different functional states.
+
+        In practical cryo-ET studies, classification is often the key step that separates a mixed population
+        into cleaner and more interpretable subsets. Instead of producing a single consensus reconstruction,
+        the protocol attempts to reveal the underlying structural diversity present in the dataset. This is
+        especially valuable for studying dynamic molecular machines, membrane-associated complexes, or crowded
+        cellular environments where particles rarely exist in a single homogeneous state.
+
+        Inputs and General Workflow
+
+        The protocol requires a set of subtomograms together with an initial reference volume. The reference
+        provides the starting structural information used during classification and alignment. In many cases,
+        this reference originates from a previous subtomogram refinement, an averaged reconstruction, or an
+        external structure filtered to an appropriate resolution.
+
+        During processing, the protocol iteratively compares each particle against several evolving class
+        references. Over successive iterations, particles are assigned to the classes that best represent
+        their structural features. As the refinement progresses, the class averages gradually diverge and
+        become more specialized, allowing biologically distinct conformations or assemblies to emerge.
+
+        The number of requested classes is biologically important. Using too few classes may merge distinct
+        structural states into a blurred average, while using too many classes may fragment the dataset into
+        unstable or poorly populated groups. In exploratory studies, it is common to test several class
+        numbers before selecting the most biologically meaningful solution.
+
+        Classification Versus Alignment
+
+        The protocol can operate either with simultaneous alignment and classification or with classification
+        alone. Simultaneous alignment is generally recommended when particle orientations are still uncertain.
+        In this mode, the protocol refines orientations and translations while separating particles into
+        classes, improving the consistency of each resulting reconstruction.
+
+        Classification without alignment is useful when reliable particle orientations already exist from a
+        previous refinement. This strategy is particularly effective when using highly focused masks to study
+        local variability within a stable complex. For example, a user may classify only the flexible domain
+        of a ribosome, membrane receptor, or viral spike while preserving previously determined global
+        orientations.
+
+        Angular Sampling and Local Searches
+
+        Angular sampling parameters control how broadly the protocol explores particle orientations during
+        refinement. Wider searches provide greater robustness when orientations are uncertain, although they
+        increase computational cost. Narrower searches are more efficient when particles are already roughly
+        aligned.
+
+        Local angular searches are especially useful during late refinement stages or when studying subtle
+        conformational differences. Instead of exploring the full orientation space, the protocol restricts
+        the search around previously determined orientations. This approach improves stability and reduces
+        computational demands while preserving biologically relevant refinements.
+
+        The protocol also supports adaptive sampling strategies that begin with coarser searches and become
+        progressively more precise as the refinement converges. This behavior is particularly advantageous
+        for large datasets where computational efficiency is important.
+
+        Reference Masks and Solvent Treatment
+
+        Masking plays a central role in obtaining biologically meaningful classes. A solvent mask allows the
+        protocol to focus classification on structurally relevant regions while suppressing noise from solvent
+        areas or flexible background density. Soft masks are generally preferred because they reduce edge
+        artifacts and improve refinement stability.
+
+        Focused masking becomes especially important when studying local heterogeneity. In many biological
+        systems, only a small region of the structure changes between states, while the remainder stays
+        relatively constant. By concentrating classification on the variable region, the protocol becomes
+        more sensitive to subtle conformational differences.
+
+        Solvent flattening and particle masking options further improve the stability of the refinement by
+        reducing the influence of noisy regions outside the particle boundary. Depending on the dataset,
+        either zero-filled or noise-filled solvent regions may provide better performance.
+
+        Regularisation and Overfitting Control
+
+        Classification protocols are inherently more susceptible to overfitting than gold-standard refinement
+        procedures. For this reason, regularisation parameters and resolution limits are biologically
+        important safeguards. Increasing regularisation generally favors smoother and more stable classes,
+        whereas weaker regularisation may capture finer details at the risk of amplifying noise.
+
+        The protocol allows limiting the resolution used during alignment calculations. This option is often
+        beneficial for difficult datasets with small particles, low contrast, or high flexibility. Restricting
+        the alignment to moderate resolutions can stabilize classification and prevent the algorithm from
+        fitting noise instead of genuine structural features.
+
+        Neural-network-based regularisation methods may also be available in modern processing environments.
+        These approaches attempt to denoise intermediate reconstructions during refinement and can improve
+        class interpretability for challenging datasets.
+
+        Computational Considerations
+
+        Subtomogram classification is computationally demanding because each iteration involves repeated
+        comparisons between particles and multiple class references. GPU acceleration can significantly reduce
+        runtime and is strongly recommended for large datasets.
+
+        The protocol supports several performance optimization strategies, including pooled particle handling,
+        adaptive oversampling, parallel execution, and accelerated subset-based refinement. Fast subset modes
+        are particularly useful during early exploratory analysis because they allow rapid estimation of the
+        main structural variability before committing to a full refinement.
+
+        Efficient storage systems and adequate memory resources are also important because tomography datasets
+        can become extremely large, especially when using many particles or large box sizes.
+
+        Outputs and Their Interpretation
+
+        The protocol produces a refined particle set together with a collection of 3D classes representing
+        the structural populations identified during processing. Each class includes a representative volume
+        and associated metadata describing particle assignments and refinement statistics.
+
+        Biologically, the resulting classes should be interpreted carefully. Well-resolved and highly populated
+        classes often correspond to stable conformational or compositional states. Smaller or noisier classes
+        may represent rare intermediates, damaged particles, misaligned subsets, or residual heterogeneity.
+
+        Class populations should not automatically be interpreted as exact biological abundances because
+        classification quality can depend on masking, alignment stability, particle quality, and refinement
+        parameters. Visual inspection and downstream biological validation remain essential.
+
+        Practical Recommendations
+
+        In most biological workflows, it is advisable to begin with a moderate number of classes and relatively
+        conservative alignment settings. Excessively aggressive classification may fragment the dataset and
+        complicate interpretation. Once the major conformational states become visible, additional focused
+        classifications can be performed to study specific regions in greater detail.
+
+        For highly heterogeneous samples, applying an appropriate solvent mask often provides the largest
+        improvement in class quality. Local angular searches are particularly effective when the dataset has
+        already undergone a reliable global refinement.
+
+        When classification results appear unstable or noisy, reducing alignment resolution, increasing
+        regularisation, or simplifying the number of requested classes often improves robustness. Conversely,
+        well-behaved datasets with strong signal may benefit from finer angular sampling and more detailed
+        local searches.
+
+        Final Perspective
+
+        Subtomogram classification is one of the most biologically informative stages of cryo-electron
+        tomography analysis because it transforms heterogeneous particle populations into interpretable
+        structural states. Careful selection of masks, alignment strategies, regularisation parameters,
+        and class numbers is essential for revealing meaningful biological variability while minimizing
+        overfitting and noise amplification.
+    """
 
     _label = '3D classification'
     modelTable = Table()

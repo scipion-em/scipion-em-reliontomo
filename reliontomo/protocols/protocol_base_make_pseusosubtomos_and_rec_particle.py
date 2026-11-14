@@ -27,7 +27,167 @@ from reliontomo.protocols.protocol_base_relion import ProtRelionTomoBase, IS_REL
 
 
 class ProtRelionMakePseudoSubtomoAndRecParticleBase(ProtRelionTomoBase):
-    """Reconstruct particle and make pseudo-subtomograms base class"""
+    """
+    Reconstruct particle and make pseudo-subtomograms base class
+
+    AI Generated:
+
+    Make Pseudo-Subtomograms and Reconstruct Particle Base
+    (ProtRelionMakePseudoSubtomoAndRecParticleBase) - User Manual
+
+        Overview
+
+        This protocol provides the foundational framework for generating
+        pseudo-subtomograms and reconstructed particle volumes within
+        cryo-electron tomography workflows. Its primary objective is to
+        transform aligned tomographic particle information into
+        reconstructed volumetric representations that can later be used
+        for subtomogram averaging, refinement, classification, and
+        high-resolution structural interpretation.
+
+        In practical biological workflows, pseudo-subtomograms serve as
+        intermediate representations that allow tomography data to be
+        processed using refinement strategies originally developed for
+        single-particle cryo-electron microscopy. This approach enables
+        the integration of tomographic information into highly optimized
+        refinement pipelines while preserving the geometrical and
+        experimental relationships associated with tilt-series
+        acquisition.
+
+        Biological Purpose
+
+        Cryo-electron tomography datasets are intrinsically complex
+        because each particle is reconstructed from multiple tilted
+        projection images acquired under varying imaging conditions.
+        This protocol establishes the infrastructure required to convert
+        those experimental observations into localized 3D particle
+        volumes suitable for downstream refinement and analysis.
+
+        From a biological perspective, this reconstruction stage is
+        critical because it defines the quality and interpretability of
+        all subsequent analyses. Accurate pseudo-subtomograms allow
+        users to identify structural details, classify conformational
+        states, and refine macromolecular assemblies embedded within
+        native cellular environments.
+
+        Inputs and Reconstruction Workflow
+
+        The protocol requires pseudo-subtomogram metadata together with
+        the associated tomographic information describing the original
+        tilt-series geometry and particle relationships. These inputs
+        are assumed to originate from earlier tomographic processing
+        stages where particles have already been detected, extracted,
+        and aligned.
+
+        During reconstruction, the protocol generates volumetric
+        particle representations using configurable spatial sampling and
+        reconstruction dimensions. The resulting pseudo-subtomograms are
+        designed to preserve biologically meaningful signal while
+        remaining computationally manageable for downstream refinement.
+
+        The workflow is intended to integrate naturally into iterative
+        refinement pipelines, where reconstructed particles are
+        repeatedly improved through alignment, classification, and local
+        correction procedures.
+
+        Reconstruction Box Size
+
+        One of the most biologically important parameters is the
+        reconstruction box size. This parameter determines the spatial
+        region surrounding the particle that will be reconstructed into
+        the volumetric representation.
+
+        Larger box sizes allow the inclusion of surrounding structural
+        context, which can be valuable for membrane proteins, large
+        macromolecular assemblies, or complexes interacting with nearby
+        cellular components. A sufficiently large reconstruction volume
+        also helps preserve high-frequency information that may become
+        spatially delocalized by the contrast transfer function.
+
+        However, excessively large reconstruction boxes substantially
+        increase memory usage, computational demand, and storage
+        requirements. In routine workflows, the selected box size should
+        balance structural completeness with computational efficiency.
+
+        Cropped Reconstruction Volumes
+
+        The protocol also supports generation of cropped particle
+        volumes for downstream refinement. Cropping allows the user to
+        reconstruct a larger contextual region while later retaining a
+        smaller computationally efficient region for intensive
+        refinement procedures.
+
+        This strategy is particularly useful in high-resolution
+        tomography workflows, where large contextual reconstructions may
+        improve signal recovery but smaller particle boxes are preferred
+        during iterative refinement. Care must be taken to ensure that
+        the cropped region still fully contains the biologically
+        relevant structure.
+
+        Binning and Sampling Considerations
+
+        The protocol allows reconstruction at different binning levels,
+        which directly affects voxel sampling and computational cost.
+        Binning reduces the effective image resolution while improving
+        processing speed and reducing memory consumption.
+
+        In exploratory analyses or early refinement stages, moderate
+        binning is often advantageous because it accelerates processing
+        and stabilizes alignment. For final high-resolution analyses,
+        however, lower binning or full-resolution reconstructions are
+        generally preferred.
+
+        Importantly, increasing the binning factor changes the spatial
+        sampling of the reconstructed region without necessarily
+        reducing the overall reconstruction dimensions. This allows
+        broader structural context to remain visible while maintaining
+        manageable computational requirements.
+
+        Outputs and Their Interpretation
+
+        The protocol produces reconstructed pseudo-subtomograms together
+        with updated metadata suitable for subsequent Relion tomography
+        workflows. These outputs can be directly used for refinement,
+        classification, motion correction, or local optimization
+        procedures.
+
+        Biologically, the resulting reconstructed particles provide the
+        structural foundation for all downstream analyses. The quality
+        of these reconstructions strongly influences the achievable
+        resolution, interpretability of flexible regions, and reliability
+        of conformational classification.
+
+        Practical Recommendations
+
+        In most workflows, users should initially select reconstruction
+        parameters that prioritize stability and computational
+        efficiency. Moderate binning and carefully chosen cropped box
+        sizes often provide the best compromise during early iterative
+        refinement.
+
+        Larger reconstruction boxes are beneficial when surrounding
+        structural context is biologically relevant or when strong CTF
+        delocalization effects are expected. However, cropped volumes
+        should remain sufficiently large to fully contain the particle
+        throughout all refinement stages.
+
+        Users should avoid selecting identical reconstruction and
+        cropped box sizes when later refinement steps expect reduced
+        particle dimensions. Consistent parameter selection throughout
+        the tomography workflow helps prevent downstream incompatibility
+        and improves refinement robustness.
+
+        Final Perspective
+
+        Reconstruction of pseudo-subtomograms is one of the central
+        stages in cryo-electron tomography processing because it
+        converts experimental tilt-series information into particle-
+        centered volumetric representations suitable for structural
+        analysis. By balancing reconstruction size, cropping strategy,
+        and sampling resolution, this protocol provides the essential
+        foundation for accurate and biologically meaningful tomographic
+        refinement workflows.
+    """
 
     _label = None
 

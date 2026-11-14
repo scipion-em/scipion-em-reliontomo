@@ -47,12 +47,149 @@ class ExportCoordsRe5(enum.Enum):
 
 class ProtTomoExportRe5Coords(EMProtocol):
     """
-    Extract the coordinates information from a set of pseudo-subtomograms.
+    Extracts and exports 3D particle coordinates from Relion pseudo-
+    subtomograms into tomogram-based coordinate sets. The protocol is
+    designed to recover particle positions and orientations so they can
+    be reused in downstream tomography workflows, visualization, or
+    re-extraction procedures.
 
-    This protocol is useful when we want to re-extract the subtomograms
-    (maybe resulting from classification) with the
-    original dimensions. It can be also handy to visualize the resulting
-    subtomograms in their location on the tomograms.
+    AI Generated:
+
+    Export 3D Coordinates from Relion Particles
+    (ProtTomoExportRe5Coords) - User Manual
+
+        Overview
+
+        The Export 3D Coordinates from Relion Particles protocol converts
+        Relion pseudo-subtomogram information into a standard set of 3D
+        coordinates associated with tomograms. Its primary purpose is to
+        recover the spatial localization of particles after subtomogram
+        extraction, classification, refinement, or other tomography
+        processing stages.
+
+        In cryo-electron tomography workflows, this protocol is
+        particularly useful when users need to return from processed
+        particles back to their original biological context inside the
+        tomogram. This allows the recovered coordinates to be reused for
+        re-extraction with different box sizes, visualization of particle
+        distributions, structural interpretation inside cellular
+        environments, or preparation of downstream subtomogram averaging
+        workflows.
+
+        Biological Context and Typical Applications
+
+        In many tomography projects, particles undergo several rounds of
+        classification, refinement, and cleaning before biologically
+        relevant subsets are identified. Once meaningful particle
+        populations have been selected, researchers often need to map
+        those particles back into the tomogram in order to inspect their
+        native spatial organization.
+
+        This protocol enables that transition from processed particle
+        datasets back to tomographic coordinates. Typical applications
+        include visualization of ribosomes, membrane complexes, viral
+        particles, cytoskeletal assemblies, or macromolecular machines
+        directly within reconstructed cellular volumes.
+
+        Another common application involves re-extraction of particles
+        using larger box sizes, different binning factors, or updated
+        reconstruction parameters. This is especially important when
+        downstream refinement requires higher-resolution information or
+        when earlier extraction settings were optimized only for rapid
+        exploratory analysis.
+
+        Inputs and Dataset Compatibility
+
+        The protocol requires two principal inputs: a set of Relion
+        pseudo-subtomograms and a corresponding set of tomograms. These
+        datasets must share compatible tomogram identifiers so that each
+        particle can be correctly associated with its biological source
+        volume.
+
+        Dataset consistency is biologically important because incorrect
+        associations between particles and tomograms may produce
+        misplaced coordinates, incorrect orientations, or biologically
+        meaningless spatial interpretations.
+
+        In practice, users should verify that the tomograms correspond
+        to the same reconstruction stage and sampling conditions used
+        during particle extraction and refinement.
+
+        Coordinate Scaling and Sampling Considerations
+
+        The protocol automatically adapts particle coordinates to the
+        sampling properties of the target tomograms. This step is
+        essential because pseudo-subtomograms and tomograms may exist at
+        different pixel sizes or binning levels.
+
+        Correct coordinate scaling ensures that exported particles are
+        accurately positioned within the reconstructed cellular volume.
+        From a biological perspective, proper scaling is critical for
+        meaningful interpretation of spatial organization, molecular
+        crowding, membrane association, or intracellular localization.
+
+        The protocol also allows specification of the coordinate box
+        size. This parameter defines the approximate particle region
+        associated with each exported coordinate and becomes especially
+        important during later re-extraction or visualization workflows.
+
+        Orientation Recovery and Spatial Context
+
+        In addition to particle positions, the protocol preserves
+        orientation information associated with the pseudo-subtomograms.
+        This allows exported coordinates to retain their rotational
+        context relative to the tomogram.
+
+        Preserving orientation information is biologically valuable when
+        studying ordered assemblies, membrane-associated complexes,
+        filamentous systems, or anisotropic macromolecular distributions.
+        It also facilitates downstream alignment and refinement workflows
+        that depend on maintaining consistent particle geometry.
+
+        Outputs and Interpretation
+
+        The protocol produces a set of 3D coordinates directly linked to
+        the selected tomograms. These coordinates can be visualized in
+        tomographic viewers, reused for extraction procedures, or passed
+        into additional cryo-electron tomography processing pipelines.
+
+        Each exported coordinate preserves both positional and
+        transformation information, allowing particles to remain linked
+        to their refined structural interpretation while being expressed
+        in the tomogram reference frame.
+
+        Biologically, the resulting coordinate set allows users to
+        investigate how particles are spatially organized within the
+        specimen. This can reveal clustering behavior, membrane
+        localization, intracellular gradients, lattice organization, or
+        structural heterogeneity across different cellular regions.
+
+        Practical Recommendations
+
+        Before running the protocol, users should confirm that the
+        tomograms and particle datasets correspond to the same biological
+        specimen and reconstruction workflow. Mismatched datasets may
+        generate incomplete or incorrect coordinate assignments.
+
+        When planning re-extraction workflows, it is generally advisable
+        to verify that the selected box size is large enough to contain
+        the full particle and surrounding structural context, especially
+        for flexible or membrane-associated complexes.
+
+        For visualization purposes, inspecting the exported coordinates
+        directly within tomographic viewers is strongly recommended. This
+        helps validate that particles are correctly positioned and that
+        biologically meaningful spatial patterns are preserved.
+
+        Final Perspective
+
+        Exporting refined particle information back into tomographic
+        space is an important step in many cryo-electron tomography
+        studies because it reconnects high-quality structural results
+        with their native biological environment. By preserving particle
+        localization and orientation within tomograms, this protocol
+        enables more complete interpretation of molecular organization,
+        cellular architecture, and in situ structural biology.
     """
 
     _label = 'export 3D coordinates from Relion particles'

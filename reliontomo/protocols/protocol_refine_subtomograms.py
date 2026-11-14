@@ -47,24 +47,217 @@ class outputObjects(Enum):
 
 
 class ProtRelionRefineSubtomograms(ProtRelionRefineBase):
-    """3D auto-refine
+    """
+    Performs automated high-resolution subtomogram refinement using
+    gold-standard refinement strategies within Relion tomography workflows.
+    The protocol iteratively refines particle orientations, positions, and
+    three-dimensional reconstructions while minimizing overfitting through
+    independent half-set refinement and Fourier Shell Correlation analysis.
 
-    Once we have a reference map, one may use the 3D auto-refine procedure in
-    relion to refine the dataset to high resolution in a fully automated manner.
-    This procedure employs the so-called gold-standard way to calculate Fourier
-    Shell Correlation (FSC) from independently refined half-reconstructions in order
-    to estimate resolution, so that self-enhancing overfitting may be avoided
-    [S. Scheres J. Mol biol 2012]. Combined with a procedure to estimate the accuracy
-    of the angular assignments [S. Scheres J. Struct biol2012], it automatically
-    determines when a refinement has converged. Thereby, this procedure
-    requires very little user input, i.e. it remains objective, and has been observed to
-    yield excellent maps for many data sets. Another advantage is that one typically only
-    needs to run it once, as there are hardly any parameters to optimize.\n
-    However, as the pseudo-subtomogram files require more memory resources compared to SPA,
-    we suggest to run this procedure in several steps, from high binning factors to 1,
-    to improve processing time. Since the initial model was processed using
-    pseudo-subtomograms with binning factor 4, we will start the 3D refinement using
-    those same particles.
+    AI Generated:
+
+    3D Auto-Refine for Subtomograms (ProtRelionRefineSubtomograms) —
+    User Manual
+
+        Overview
+
+        This protocol performs automated three-dimensional refinement of
+        subtomogram datasets using Relion-based gold-standard refinement
+        procedures. Its primary purpose is to improve the resolution and
+        structural consistency of subtomogram averages by iteratively refining
+        particle orientations, translations, and reconstruction parameters in
+        a statistically robust manner.
+
+        In cryo-electron tomography workflows, this refinement stage is one
+        of the most biologically important steps because it determines the
+        final structural quality of the reconstructed macromolecular complex.
+        The protocol is designed to operate with minimal user intervention
+        while automatically monitoring convergence and avoiding overfitting.
+
+        The refinement strategy relies on independent half-dataset
+        reconstructions and Fourier Shell Correlation estimation. This
+        gold-standard methodology helps ensure that the reported resolution
+        reflects reproducible structural information rather than noise
+        amplification. For biological users, this provides greater confidence
+        that visible structural features correspond to genuine molecular
+        detail.
+
+        General Workflow and Inputs
+
+        The protocol requires a set of subtomogram particles together with an
+        initial reference map. The reference provides the starting structural
+        framework toward which the particles are iteratively aligned and
+        refined. In practice, the initial reference often originates from a
+        previous subtomogram averaging stage, a low-resolution reconstruction,
+        or a biologically related structure.
+
+        The quality of the starting reference strongly influences refinement
+        stability. In most biological workflows, it is advisable to use a
+        reference that captures the overall molecular shape without containing
+        excessive high-resolution detail that could bias the refinement.
+
+        Since subtomogram refinement is computationally demanding, especially
+        for pseudo-subtomogram representations, it is often practical to begin
+        refinement at lower resolutions or higher binning levels before
+        progressively refining at higher sampling rates. This staged approach
+        improves computational efficiency while maintaining stable alignment
+        behavior.
+
+        Reference Scaling and Low-Pass Filtering
+
+        The protocol assumes that the reference map and experimental particles
+        are represented on compatible intensity scales and spatial sampling.
+        Proper scaling is biologically important because inconsistent density
+        normalization may interfere with statistical comparison between the
+        reference and experimental data.
+
+        When uncertainty exists regarding the intensity normalization of the
+        reference map, the protocol can initially rely on cross-correlation
+        approaches before transitioning into fully probabilistic refinement.
+        This strategy improves robustness when references originate from
+        external software packages or differently normalized workflows.
+
+        Low-pass filtering of the initial reference is strongly recommended.
+        From a biological perspective, aggressive filtering reduces the risk
+        that noise or reference bias dominates early refinement iterations.
+        A low-resolution starting reference encourages the refinement to
+        recover structural information directly from the experimental data.
+
+        Symmetry Considerations
+
+        The protocol supports the application of molecular symmetry during
+        refinement. Correct symmetry selection can substantially improve
+        reconstruction quality because symmetry-related particle views are
+        combined to increase the effective signal-to-noise ratio.
+
+        For highly symmetric biological assemblies such as viral capsids,
+        molecular cages, or oligomeric complexes, applying the appropriate
+        symmetry may significantly enhance achievable resolution. However,
+        imposing incorrect symmetry can distort biologically meaningful
+        structural differences and generate misleading reconstructions.
+
+        Asymmetric refinement should therefore be used whenever structural
+        heterogeneity, flexibility, or asymmetry is biologically relevant.
+        The protocol also supports symmetry relaxation approaches, which are
+        particularly useful for pseudo-symmetric systems where related
+        subunits adopt distinct conformations.
+
+        Masking and Solvent Treatment
+
+        Masking plays a central biological role in subtomogram refinement
+        because it determines which regions contribute most strongly to the
+        alignment and reconstruction process. Proper masking improves signal
+        isolation and reduces the influence of surrounding solvent noise.
+
+        A primary solvent mask can be provided to focus refinement on the
+        biologically relevant molecular region. In many workflows, soft masks
+        surrounding the particle improve refinement stability while minimizing
+        sharp boundary artifacts.
+
+        In specialized applications such as viral reconstructions, additional
+        masking strategies may be used to flatten internal density regions or
+        suppress solvent variability. These approaches can improve refinement
+        robustness in highly symmetric particles containing large enclosed
+        volumes.
+
+        Solvent-corrected Fourier Shell Correlation calculations may also be
+        enabled. These corrections often produce more realistic resolution
+        estimates when masks occupy relatively small regions of the
+        reconstruction box.
+
+        Angular Sampling and Alignment Strategy
+
+        The protocol employs adaptive angular sampling strategies that
+        progressively refine particle orientations during optimization. Early
+        iterations typically explore broader orientation ranges, while later
+        stages focus on increasingly precise local searches.
+
+        This adaptive refinement is biologically important because it balances
+        robustness and computational efficiency. Broad searches improve the
+        ability to recover correct particle orientations, whereas fine local
+        searches maximize achievable structural detail once convergence is
+        approached.
+
+        Advanced users may control local search thresholds and angular
+        sampling behavior to optimize difficult datasets. Finer angular
+        sampling can accelerate convergence toward high-resolution solutions,
+        although excessively aggressive refinement may occasionally reduce
+        robustness in heterogeneous samples.
+
+        Translation searches are also refined iteratively. Accurate particle
+        centering is essential because even small translational inaccuracies
+        can blur high-resolution structural information in the final average.
+
+        Computational Considerations
+
+        Subtomogram refinement is computationally intensive due to the large
+        volume of three-dimensional data and the iterative nature of the
+        optimization. The protocol supports parallel processing and GPU
+        acceleration to improve execution efficiency in large datasets.
+
+        Fourier-space padding options influence interpolation quality during
+        refinement. Higher padding generally improves numerical accuracy and
+        reduces reconstruction artifacts, although it increases memory usage
+        and computational cost.
+
+        In routine biological workflows, default computational parameters are
+        often sufficient. However, large particles, high-resolution targets,
+        or very large datasets may require careful balancing of computational
+        efficiency and reconstruction quality.
+
+        Outputs and Biological Interpretation
+
+        The protocol produces refined subtomogram particles, reconstructed
+        three-dimensional maps, independently refined half-maps, and Fourier
+        Shell Correlation curves. Together, these outputs provide the basis
+        for biological interpretation and downstream structural analysis.
+
+        The final reconstruction represents the consensus structural state
+        recovered from the particle population. Improved resolution may reveal
+        secondary structure elements, ligand binding regions, membrane
+        organization, or conformational variability that were not visible in
+        earlier processing stages.
+
+        Half-maps are particularly important because they enable independent
+        validation of reconstruction quality and support subsequent
+        post-processing procedures such as sharpening and local resolution
+        estimation.
+
+        Fourier Shell Correlation curves provide quantitative estimates of
+        reconstruction resolution and refinement convergence. Biological users
+        should interpret these values together with visual inspection of the
+        density map rather than relying exclusively on nominal resolution
+        numbers.
+
+        Practical Recommendations
+
+        In most subtomogram averaging workflows, refinement should begin with
+        conservative parameters and well-filtered references. Attempting to
+        refine aggressively from poor initial models often leads to unstable
+        alignments or reference bias.
+
+        Careful masking usually provides one of the largest improvements in
+        refinement quality. Masks should include the stable molecular core
+        while excluding surrounding solvent regions and highly flexible
+        densities whenever possible.
+
+        For challenging datasets containing structural heterogeneity,
+        flexibility, or low signal-to-noise ratios, iterative refinement with
+        progressively improved references often yields better results than a
+        single aggressive refinement run.
+
+        Final Perspective
+
+        Automated subtomogram refinement is not merely a computational
+        optimization procedure but a central biological interpretation step in
+        cryo-electron tomography. The reliability of the final reconstruction
+        depends strongly on appropriate reference preparation, masking,
+        symmetry selection, and careful validation of refinement behavior.
+
+        When applied thoughtfully, this protocol enables recovery of highly
+        detailed structural information directly within native cellular or
+        molecular environments, providing biologically meaningful insight into
+        macromolecular organization and function.
     """
 
     _label = '3D auto-refine'
