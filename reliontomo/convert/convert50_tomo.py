@@ -23,8 +23,7 @@
 # *
 # **************************************************************************
 import logging
-import os.path
-from typing import Dict, Union, List, Set, Tuple
+from typing import Dict, Union, List, Tuple
 from emtable import Table
 from pwem import ALIGN_NONE
 from pwem.emlib.image import ImageHandler
@@ -34,7 +33,7 @@ from pyworkflow.utils import yellowStr, createLink
 from relion.convert import OpticsGroups
 from reliontomo.constants import *
 import numpy as np
-from os.path import join, basename, exists
+from os.path import join, basename
 from reliontomo.convert.convertBase import (getTransformInfoFromCoordOrSubtomo,
                                             WriterTomo, ReaderTomo, getTransformMatrixFromRow, genTransformMatrix,
                                             genRe5ParticleMatrices, getRe5ParticleAnglesAndShifts)
@@ -42,7 +41,7 @@ from reliontomo.objects import RelionPSubtomogram, RelionSetOfPseudoSubtomograms
 from tomo.constants import TR_RELION, SCIPION
 from tomo.objects import Coordinate3D, Tomogram, TiltSeries, CTFTomoSeries, SetOfCoordinates3D, SetOfTomograms, \
     TiltSeriesM, SetOfTiltSeriesM, TiltImage
-from tomo.utils import getCommonTsAndCtfElements
+from tomo.utils import getPresentAcqOrdersTsAndCtf
 
 logger = logging.getLogger(__name__)
 eyeMatrix3x3 = np.eye(3)
@@ -280,14 +279,14 @@ class Writer(WriterTomo):
         for tsId, ts in tsDict.items():
             ctf = ctfDict.get(tsId, None)
             if ctf:
-                presentAcqOrders = getCommonTsAndCtfElements(ts, ctf)
+                presentAcqOrders = getPresentAcqOrdersTsAndCtf(ts, ctf)
                 self.ts2Star(ts, ctf, outPath, presentAcqOrders)
 
     @staticmethod
     def ts2Star(ts: TiltSeries,
                 ctf: CTFTomoSeries,
                 outPath: str,
-                presentAcqOrders: Set[int]):
+                presentAcqOrders: List[int]):
         """
         :param ts: Tilt-series
         :param ctf: CTF tomo series.
