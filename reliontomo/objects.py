@@ -87,11 +87,23 @@ class RelionPSubtomogram(SubTomogram):
         self._psi = Float(psi)
         self._tiltPrior = Float(tiltPrior)
         self._psiPrior = Float(psiPrior)
-        # NOTE: the angles used in the transformation matrix are rlnTomoSubtomogramRot|Tilt|Psi. Hence, the others are
-        # stored as class attributes
+        # NOTE: Relion 5 particles read with their coordinate (_absTransform = True): the matrix of the coordinate
+        # contains the prior orientation (rlnTomoSubtomogramRot|Tilt|Psi) and the transformation matrix is absolute,
+        # the prior orientation and the refinement (rlnAngleRot|Tilt|Psi and rlnOriginX|Y|ZAngst). The attributes
+        # above are kept to preserve the values written by Relion, but the matrices are the ones used to write the
+        # star files. Otherwise (_absTransform = False, e.g. sets generated before this was introduced), the angles
+        # used in the transformation matrix are rlnTomoSubtomogramRot|Tilt|Psi and the others are only stored as
+        # class attributes.
+        self._absTransform = Boolean(False)
         self._coordX = Float(coordX)
         self._coordY = Float(coordY)
         self._coordZ = Float(coordZ)
+
+    def isTransformAbsolute(self):
+        return bool(self._absTransform.get())
+
+    def setTransformAbsolute(self, val):
+        self._absTransform.set(val)
 
     def getCoordX(self):
         return self._coordX.get()

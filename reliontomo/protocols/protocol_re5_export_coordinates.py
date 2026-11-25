@@ -180,6 +180,12 @@ class ProtTomoExportRe5Coords(EMProtocol):
         # shifts[0],  # 14, rlnOriginXAngst
         # shifts[1],  # 15, rlnOriginYAngst
         # shifts[2],  # 16, rlnOriginZAngst,
+        if particle.isTransformAbsolute():
+            # The transformation matrix already contains the prior orientation and the refined one
+            M = np.eye(4)
+            M[:3, :3] = particle.getTransform().getMatrix()[:3, :3]
+            return M
+
         anglesTomoSubtomo, _ = getTransformInfoFromCoordOrSubtomo(particle, sRate)
         shiftx = scaleFactor * particle.getX() / sRate  # They are stored in Relion 5 in angstroms, but needed here in px
         shifty = scaleFactor * particle.getY() / sRate

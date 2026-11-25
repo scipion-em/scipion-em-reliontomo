@@ -33,7 +33,7 @@ from pyworkflow.tests import setupTestProject, DataSet
 from pyworkflow.utils import magentaStr, yellowStr
 from reliontomo import Plugin
 from reliontomo.constants import OUT_PARTICLES_STAR, IN_TOMOS_STAR, FILE_NOT_FOUND, POSTPROCESS_STAR_FIELD
-from reliontomo.convert.convertBase import getTransformInfoFromCoordOrSubtomo
+from reliontomo.convert.convertBase import getRe5ParticleAnglesAndShifts
 from reliontomo.protocols import ProtImportCoordinates3DFromStar, ProtRelion5ExtractSubtomos, \
     ProtRelion5ReconstructParticle, ProtRelionDeNovoInitialModel, ProtRelionRefineSubtomograms, \
     ProtRelion3DClassifySubtomograms, ProtRelionPostProcess
@@ -505,7 +505,10 @@ class TestRelion5TomoEditStar(TestRelion5RefineCycleBase):
 
     @classmethod
     def _getShiftsFromPSubtomogram(cls, pSubtomo):
-        _, shifts = getTransformInfoFromCoordOrSubtomo(pSubtomo, pSubtomo.getSamplingRate())
+        """Returns the Relion 5 particle shifts (rlnOriginX|Y|ZAngst), in angstroms."""
+        _, _, shifts = getRe5ParticleAnglesAndShifts(pSubtomo.getCoordinate3D().getMatrix(),
+                                                     pSubtomo.getTransform().getMatrix(),
+                                                     pSubtomo.getSamplingRate())
         return shifts[0], shifts[1], shifts[2]
 
 
